@@ -1,0 +1,145 @@
+name: Оновлення карти
+
+on:
+  schedule:
+    - cron: '0 3 * * 1'        # щопонеділка о 03:00 UTC (06:00 за Києвом)
+  workflow_dispatch:            # плюс кнопка ручного запуску
+    inputs:
+      max_docs:
+        description: 'Максимум документів за цей запуск (0 = без обмеження)'
+        default: '20000'
+      refresh_risks:
+        description: 'Перезавантажити шар ризиків з OSM'
+        type: boolean
+        default: false
+      retrain_risk:
+        description: 'Перенавчити модель ризику (крок 4) — довго, вручну раз на кілька місяців'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: karta-update
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Кеш адресної бази OSM
+        uses: actions/cache@v4
+        with:
+          path: |
+            data/osm_kyiv_city.json
+            data/osm_risks_raw.json
+            data/network.json
+          key: osm-${{ github.run_id }}
+          restore-keys: osm-
+
+      - name: Крок 0 — свіжий дамп ЄДРСР
+        run: |
+          python src/step0_fetch_dump.py $(date +%Y)
+          # минулий рік добираємо раз на місяць (перший понеділок)
+          if [ "$(date +%d)" -le 07 ]; then
+            python src/step0_fetch_dump.py $(( $(date +%Y) - 1 )) || true
+          fi
+
+      - name: Крок 1 — тексти рішень і адреси
+        env:
+          MAX_DOCS: ${{ github.event.inputs.max_docs || '20000' }}
+        run: python src/step1_download.py
+
+      - name: Крок 2 — геокодування
+        run: python src/step2_geocode.py
+
+      - name: Крок 2b — шар ризиків
+        run: |
+          if [ "${{ github.event.inputs.refresh_risks }}" = "true" ]; then
+            rm -f data/osm_risks_raw.json
+          fi
+          python src/step2b_risks.py || echo "шар ризиків пропущено"
+
+      - name: Крок 2c — мережевий аналіз
+        env:
+          ROUTES: '6000'
+        run: python src/step2c_network.py || echo "мережевий аналіз пропущено"
+
+      - name: Крок 2d — межі районів
+        run: python src/step2d_borders.py || echo "межі районів пропущено (файл уже є або OSM недоступний)"
+
+      - name: Крок 4 — модель ризику
+        run: |
+          RETRAIN="${{ github.event.inputs.retrain_risk }}"
+          # автоматично раз на місяць — у перший понеділок; решту тижнів
+          # модель лишається тією, що вже натренована (це економить ~20 хв на запуск)
+          if [ "$RETRAIN" != "true" ] && [ "$(date +%d)" -le 07 ]; then
+            RETRAIN=true
+            echo "перший тиждень місяця — перенавчаю модель автоматично"
+          fi
+          if [ "$RETRAIN" = "true" ]; then
+            pip install --quiet numpy scikit-learn
+            python src/step4_engine.py
+          else
+            echo "модель ризику цього запуску не перенавчається"
+          fi
+
+      - name: Крок 3 — збірка карти
+        run: python src/step3_map.py
+
+      - name: Крок 5 — сайт з районами (викладач/слухач)
+        run: python src/step5_site.py
+
+      - name: Зберегти стан у репозиторії
+        run: |
+          git config user.name  "karta-bot"
+          git config user.email "actions@github.com"
+          for f in data/events.csv.gz data/risks.json data/network.json data/vykluchennya.txt data/borders.json data/engine_report.json data/risk.json; do
+            [ -f "$f" ] && git add -f "$f" && echo "додано $f"
+          done
+          if git diff --quiet --cached; then
+            echo "змін немає"
+          else
+            git commit -m "оновлення даних $(date +%Y-%m-%d)"
+            git pull --rebase --autostash origin main || true
+            git push
+          fi
+
+      # Версія одна для всіх: поділу на викладацьку й слухацьку більше немає.
+      # Перелік проблем відкритий — перший крок ланцюга саме «обрати проблему
+      # зі списку», а робота слухача починається далі, за SARA.
+      - name: Підготувати публічну сторінку
+        run: |
+          if [ ! -f site/kyiv.html ] || [ ! -f site/index.html ]; then
+            echo "::error::site/ не зібрано — дивіться крок 5"
+            exit 1
+          fi
+          rm -rf _site && mkdir -p _site
+          cp -r site/. _site/
+          printf '%s' "$(date -u +'%Y-%m-%d %H:%M UTC')" > _site/updated.txt
+          echo "публікується файлів: $(ls _site | wc -l)  розмір: $(du -sh _site | cut -f1)"
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

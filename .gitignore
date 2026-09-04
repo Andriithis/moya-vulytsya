@@ -1,0 +1,16 @@
+data/kyiv_*.csv
+data/documents.csv
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+data/_dump_*.zip
+data/osm_kyiv_city.json
+data/osm_risks_raw.json
+data/top100_dlya_pereviryky.txt
+data/adres_klastery.txt
+data/_check_last.json
+FABULA_REZULTAT.txt
+site/
+_site/
+__pycache__/
