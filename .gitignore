@@ -1,16 +1,56 @@
-data/kyiv_*.csv
-data/documents.csv
-data/*.db
-data/*.db-journal
-data/*.db-wal
-data/*.db-shm
-data/_dump_*.zip
-data/osm_kyiv_city.json
-data/osm_risks_raw.json
-data/top100_dlya_pereviryky.txt
-data/adres_klastery.txt
-data/_check_last.json
-FABULA_REZULTAT.txt
+# === ДАНІ ===
+# Дані у git не зберігаються: вони великі, змінюються щодня
+# і їх завжди можна завантажити заново з data.gov.ua.
+# У git лежить тільки код, який їх обробляє.
+
+data/*
+!data/README.md
+!data/.gitkeep
+!data/fixtures/
+!data/fixtures/**
+
+# === ПИТОН ===
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# === NODE ===
+node_modules/
+dist/
+build/
+.next/
+.parcel-cache/
+
+# === СЕРЕДОВИЩЕ І СЕКРЕТИ ===
+# Паролі й ключі ніколи не потрапляють у git
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets.json
+
+# === ЗІБРАНИЙ САЙТ ===
 site/
 _site/
-__pycache__/
+public/build/
+
+# === РЕДАКТОРИ І СИСТЕМА ===
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# === ЛОГИ І ТИМЧАСОВЕ ===
+*.log
+logs/
+tmp/
+.cache/
