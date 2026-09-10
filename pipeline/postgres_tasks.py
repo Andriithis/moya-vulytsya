@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Bridge between the PostgreSQL document queue and legacy step1 processing.
 
-The module is optional.  psycopg is imported only when DATABASE_URL is used,
+The module is optional. psycopg is imported only when DATABASE_URL is used,
 so installations that still run purely on CSV/SQLite keep working unchanged.
 """
 from __future__ import annotations
@@ -36,14 +36,18 @@ def _connect(database_url: str):
     return psycopg.connect(database_url)
 
 
-def load_pending_work(database_url: str) -> PendingWork:
-    """Return only documents whose source state says they need processing.
+def load_pending_work(database_url: str, court_codes: Iterable[str]) -> PendingWork:
+    """Return pending documents only for the courts handled by this map.
 
-    Active documents are returned for extraction.  Explicitly inactive EDRSR
+    Active documents are returned for extraction. Explicitly inactive EDRSR
     documents are returned separately so legacy SQLite/public snapshots can
     remove them without treating mere absence from a yearly snapshot as a
     deletion.
     """
+    courts = sorted({str(x) for x in court_codes if x})
+    if not courts:
+        return PendingWork(active=[], inactive_ids=[])
+
     active: list[PendingDocument] = []
     inactive: list[str] = []
 
@@ -54,8 +58,10 @@ def load_pending_work(database_url: str) -> PendingWork:
                    adjudication_date, doc_url, source_status
             FROM document
             WHERE needs_processing = TRUE
+              AND court_code = ANY(%s)
             ORDER BY adjudication_date NULLS LAST, edrsr_id
-            """
+            """,
+            (courts,),
         )
         for doc_id, court_code, category_code, date, doc_url, status in cur:
             if int(status) == 0:
@@ -77,7 +83,7 @@ def load_pending_work(database_url: str) -> PendingWork:
 
 
 def mark_processed(database_url: str, doc_ids: Iterable[str]) -> int:
-    """Clear needs_processing for documents successfully handed to step1.
+    """Clear needs_processing for documents safely persisted by step1.
 
     Calling this only after the local SQLite/snapshot write makes retries safe:
     a crash before this point merely causes the document to be processed again.
