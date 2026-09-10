@@ -48,7 +48,7 @@ WORKERS  = 4
 DELAY    = 0.12          # пауза кожного потоку між запитами
 PRIORITY = ['1_PUBLIC_ORDER','2_ALCOHOL_TRADE','4_VIOLENCE','7_ENVIRONMENT',
             '3_DRUGS','5_PROPERTY','6_TRAFFIC']
-SKIP     = {'8_DOMESTIC'}   # приватні адреси - на публічну карту не йдуть
+SKIP     = {'8_DOMESTIC', 'ДОМ'}   # домашнє насильство на публічну карту не йде
 
 UA = 'Mozilla/5.0 (edrsr-research-academy; educational use)'
 
