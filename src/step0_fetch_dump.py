@@ -2,8 +2,9 @@
 """Крок 0. Качає свіжий дамп ЄДРСР з data.gov.ua і фільтрує до kyiv_YYYY.csv.
 
 Під час міграції це лишається compatibility-export для старих кроків pipeline.
-Сам формат офіційного snapshot тепер читає pipeline.edrsr_snapshot, щоб однаково
-валідувати структуру й рахувати hash рядків/архіву для майбутнього DB-upsert.
+Сам формат офіційного snapshot читає pipeline.edrsr_snapshot. Якщо налаштовано
+DATABASE_URL, той самий snapshot додатково реєструється у PostgreSQL і документи
+upsert-яться в нормалізовану схему.
 
 Портал data.gov.ua лягає регулярно. Якщо свіжий дамп недоступний, але старі
 kyiv_*.csv існують, наступні кроки продовжують працювати на них.
@@ -130,6 +131,34 @@ def export_compatibility_csv(zpath, year):
     return out, total, found, inactive, grp
 
 
+def persist_to_postgres(zpath, year, url):
+    """Опційний DB-шар. Без DATABASE_URL legacy pipeline не змінюється."""
+    database_url = os.environ.get('DATABASE_URL')
+    if not database_url:
+        print('   DATABASE_URL не задано — PostgreSQL ingestion пропущено')
+        return None
+
+    from pipeline.postgres_ingest import ingest_snapshot
+
+    result = ingest_snapshot(
+        database_url,
+        zpath,
+        year=year,
+        source_url=url,
+        archive_path_for_db=f'edrsr/{year}/{os.path.basename(zpath)}',
+    )
+    if result.no_op:
+        print(f'   PostgreSQL: snapshot #{result.snapshot_id} уже оброблений — no-op')
+    else:
+        print(
+            '   PostgreSQL: '
+            f'snapshot #{result.snapshot_id}, рядків {result.rows_seen:,}, '
+            f'нових {result.documents_new:,}, змінених {result.documents_changed:,}, '
+            f'неактивних {result.documents_inactive:,}'
+        )
+    return result
+
+
 def main():
     year = int(sys.argv[1]) if len(sys.argv) > 1 else datetime.date.today().year
     os.makedirs(DATA, exist_ok=True)
@@ -152,6 +181,16 @@ def main():
         if os.path.exists(zpath):
             os.remove(zpath)
         give_up(f'Архів пошкоджений або формат змінився ({type(e).__name__}: {e}).')
+
+    try:
+        persist_to_postgres(zpath, year, url)
+    except Exception as e:
+        # Якщо DATABASE_URL задано, мовчки відкотитися до legacy режиму не можна:
+        # інакше оператор вважатиме DB актуальною, хоча вона не оновилась.
+        if os.path.exists(zpath):
+            os.remove(zpath)
+        print(f'ПОМИЛКА PostgreSQL ingestion ({type(e).__name__}: {e})')
+        sys.exit(1)
 
     os.remove(zpath)
     print(f'   прочитано {total:,}, неактивних {inactive:,}, відібрано {found:,} -> {os.path.basename(out)}')
