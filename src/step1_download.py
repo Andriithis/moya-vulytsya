@@ -4,11 +4,17 @@ import os, re, sys, csv, glob, time, sqlite3, threading, queue
 import urllib.request, urllib.error
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import addr as A
+import labels as L
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT)
 DATA = os.path.join(ROOT, 'data')
 DB   = os.path.join(DATA, 'events.db')
 SNAP = os.path.join(DATA, 'events.csv.gz')   # стан для зберігання в репозиторії
+
+COURTS = {"2601":"Golosiivskyi","2602":"Darnytskyi","2603":"Desnianskyi","2604":"Dniprovskyi",
+ "2605":"Obolonskyi","2606":"Pecherskyi","2607":"Podilskyi","2608":"Sviatoshynskyi",
+ "2609":"Solomianskyi","2610":"Shevchenkivskyi"}
 
 def snapshot_load(conn):
     import gzip, csv as _csv
@@ -81,6 +87,36 @@ def load_tasks(done):
     rows.sort(key=lambda r: (order.get(r['group'], 99), r['date']), reverse=False)
     return rows
 
+def load_tasks_from_postgres(database_url):
+    """Бере тільки нові/змінені документи з PostgreSQL.
+
+    Повертає також явно неактивні документи, які треба прибрати зі старого
+    SQLite-знімка. Відсутність документа у snapshot не трактується як видалення.
+    """
+    from pipeline.postgres_tasks import load_pending_work
+
+    work = load_pending_work(database_url, COURTS.keys())
+    rows = []
+    skipped = []
+    for d in work.active:
+        lb = L.CODE.get(d.category_code)
+        if not lb or lb[0] in SKIP:
+            skipped.append(d.doc_id)
+            continue
+        rows.append({
+            'doc_id': d.doc_id,
+            'court_code': d.court_code,
+            'court': COURTS.get(d.court_code, d.court_code),
+            'group': lb[0],
+            'category_code': d.category_code,
+            'cause_num': '',
+            'date': d.date,
+            'doc_url': d.doc_url,
+        })
+    order = {g: i for i, g in enumerate(PRIORITY)}
+    rows.sort(key=lambda r: (order.get(r['group'], 99), r['date']))
+    return rows, work.inactive_ids, skipped
+
 # Маркер одноразового перерахунку адрес. Зберігається як рядок у базі,
 # тож потрапляє у знімок і переживає перезапуски. Геокоду в нього немає,
 # тож ні на карті, ні в моделі він не з'являється.
@@ -136,16 +172,39 @@ def main():
     n = recheck_addresses(conn)
     if n:
         print(f'на повторне завантаження (була адреса установи): {n:,}')
-    done = {r[0] for r in conn.execute('SELECT doc_id FROM events')}
-    print(f'вже оброблено: {len(done):,}')
-    tasks = load_tasks(done)
+
+    database_url = os.environ.get('DATABASE_URL', '').strip()
+    inactive_ids = []
+    skipped_db_ids = []
+
+    if database_url:
+        print('джерело черги: PostgreSQL (тільки нові/змінені документи)')
+        tasks, inactive_ids, skipped_db_ids = load_tasks_from_postgres(database_url)
+        if inactive_ids:
+            conn.executemany('DELETE FROM events WHERE doc_id=?', [(x,) for x in inactive_ids])
+            conn.commit()
+            print(f'прибрано явно неактивних рішень: {len(inactive_ids):,}')
+    else:
+        done = {r[0] for r in conn.execute('SELECT doc_id FROM events')}
+        print(f'вже оброблено: {len(done):,}')
+        tasks = load_tasks(done)
+
     print(f'до обробки:    {len(tasks):,}')
     lim = int(os.environ.get('MAX_DOCS', '0'))
     if lim and len(tasks) > lim:
         tasks = tasks[:lim]
         print(f'обмеження MAX_DOCS: цього запуску {lim:,}')
+
     if not tasks:
+        k = snapshot_save(conn) if inactive_ids else None
+        if database_url and (inactive_ids or skipped_db_ids):
+            from pipeline.postgres_tasks import mark_processed
+            changed = mark_processed(database_url, inactive_ids + skipped_db_ids)
+            print(f'позначено обробленими у PostgreSQL: {changed:,}')
+        if k is not None:
+            print(f'знімок оновлено після деактивацій: {k:,} записів')
         print('усе вже завантажено.'); return
+
     est = len(tasks) * DELAY / WORKERS / 3600
     print(f'орієнтовний час: {est:.1f} год\n')
 
@@ -154,6 +213,7 @@ def main():
     lock = threading.Lock()
     stats = {'ok': 0, 'hit': 0, 'err': 0}
     buf = []
+    completed = []
 
     def flush(force=False):
         with lock:
@@ -188,6 +248,7 @@ def main():
                         time.sleep(1.5 * (attempt + 1))
             with lock:
                 buf.append(rec)
+                completed.append(r['doc_id'])
                 if rec[7] == 'error': stats['err'] += 1
                 else:
                     stats['ok'] += 1
@@ -210,6 +271,12 @@ def main():
         print('\nзупинено. прогрес збережено, наступний запуск продовжить.')
     flush(True)
     k = snapshot_save(conn)
+
+    if database_url:
+        from pipeline.postgres_tasks import mark_processed
+        changed = mark_processed(database_url, completed + inactive_ids + skipped_db_ids)
+        print(f'позначено обробленими у PostgreSQL: {changed:,}')
+
     print(f"\n=== ГОТОВО за {(time.time()-t0)/60:.0f} хв ===")
     print(f"оброблено {stats['ok']:,}, з адресою {stats['hit']:,}, помилок {stats['err']}")
     print(f"знімок збережено: {k:,} записів -> data/events.csv.gz")
