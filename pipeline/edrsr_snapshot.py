@@ -102,10 +102,13 @@ def iter_documents(archive_path: os.PathLike[str] | str) -> Iterator[DocumentRow
             if not header:
                 raise ValueError("documents.csv is empty")
             normalized_header = tuple(_normalize(v) for v in header[:12])
-            # Older dumps have occasionally varied in labels. We require the
-            # known field count/order but surface a clear error if it changes.
-            if len(normalized_header) < 12:
-                raise ValueError(f"documents.csv header has only {len(normalized_header)} columns")
+            if len(header) < 12:
+                raise ValueError(f"documents.csv header has only {len(header)} columns")
+            if normalized_header != EXPECTED_COLUMNS:
+                raise ValueError(
+                    "documents.csv header/order changed: "
+                    f"expected {EXPECTED_COLUMNS!r}, got {normalized_header!r}"
+                )
 
             for line_no, values in enumerate(reader, start=2):
                 if not values or all(not v.strip() for v in values):
