@@ -5,6 +5,7 @@ import urllib.request, urllib.error
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import addr as A
 import labels as L
+import location_evidence as LE
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
@@ -68,6 +69,7 @@ def init_db():
         doc_id TEXT PRIMARY KEY, court TEXT, grp TEXT, cat TEXT,
         date TEXT, street TEXT, house TEXT, level TEXT, tm TEXT, err TEXT)""")
     c.execute("CREATE INDEX IF NOT EXISTS i_lvl ON events(level)")
+    LE.init_evidence(c)
     c.commit()
     return c
 
@@ -86,6 +88,14 @@ def load_tasks(done):
     order = {g: i for i, g in enumerate(PRIORITY)}
     rows.sort(key=lambda r: (order.get(r['group'], 99), r['date']), reverse=False)
     return rows
+
+
+def completed_location_docs(conn):
+    """Для явного повторного прогону: успішні витяги поточної версії, навіть без адреси."""
+    return {r[0] for r in conn.execute('''
+        SELECT e.doc_id FROM events e JOIN address_evidence a ON a.doc_id=e.doc_id
+        WHERE a.version=? AND e.err IS NULL
+    ''', (A.EXTRACTION_VERSION,))}
 
 def load_tasks_from_postgres(database_url):
     """Бере тільки нові/змінені документи з PostgreSQL.
@@ -186,6 +196,8 @@ def main():
             print(f'прибрано явно неактивних рішень: {len(inactive_ids):,}')
     else:
         done = {r[0] for r in conn.execute('SELECT doc_id FROM events')}
+        if os.environ.get('RECHECK_LOCATION_EVIDENCE') == '1':
+            done = completed_location_docs(conn)
         print(f'вже оброблено: {len(done):,}')
         tasks = load_tasks(done)
 
@@ -213,6 +225,7 @@ def main():
     lock = threading.Lock()
     stats = {'ok': 0, 'hit': 0, 'err': 0}
     buf = []
+    evidence_buf = []
     completed = []
 
     def flush(force=False):
@@ -220,7 +233,9 @@ def main():
             if len(buf) >= 200 or (force and buf):
                 try:
                     conn.executemany('INSERT OR REPLACE INTO events VALUES(?,?,?,?,?,?,?,?,?,?)', buf)
-                    conn.commit(); buf.clear()
+                    for doc_id, candidates in evidence_buf:
+                        LE.save_evidence(conn, doc_id, candidates)
+                    conn.commit(); buf.clear(); evidence_buf.clear()
                 except Exception as e:
                     print('ПОМИЛКА ЗАПИСУ В БАЗУ:', e)
                     raise
@@ -231,12 +246,14 @@ def main():
             try: r = q.get_nowait()
             except queue.Empty: return
             rec = None
+            candidates = []
             for attempt in range(3):
                 try:
                     rq = urllib.request.Request(r['doc_url'], headers={'User-Agent': UA})
                     with urllib.request.urlopen(rq, timeout=45) as resp:
                         raw = resp.read()
                     res = A.extract(rtf_to_text(raw))
+                    candidates = res['candidates']
                     rec = (r['doc_id'], r['court'], r['group'], r['category_code'], r['date'],
                            res['street'], res['house'], res['level'], res['time'], None)
                     break
@@ -248,6 +265,7 @@ def main():
                         time.sleep(1.5 * (attempt + 1))
             with lock:
                 buf.append(rec)
+                evidence_buf.append((r['doc_id'], candidates))
                 completed.append(r['doc_id'])
                 if rec[7] == 'error': stats['err'] += 1
                 else:

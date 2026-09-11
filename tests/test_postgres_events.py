@@ -32,7 +32,7 @@ class PostgresEventsBridgeTests(unittest.TestCase):
             conn.execute(
                 "INSERT INTO events VALUES(?,?,?,?,?,?,?,?,?,?)",
                 (
-                    "123",
+                    "123456789",
                     "Shevchenkivskyi",
                     "МАЙ",
                     "40576",
@@ -64,7 +64,7 @@ class PostgresEventsBridgeTests(unittest.TestCase):
 
             rows = list(iter_legacy_events(path))
             self.assertEqual(len(rows), 1)
-            self.assertEqual(rows[0].doc_id, "123")
+            self.assertEqual(rows[0].doc_id, "123456789")
             self.assertEqual(rows[0].street, "вул. Хрещатик")
             self.assertEqual(rows[0].house, "10")
             self.assertEqual(rows[0].event_time, "22:30")

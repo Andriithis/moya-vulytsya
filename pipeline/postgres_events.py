@@ -1,28 +1,23 @@
 # -*- coding: utf-8 -*-
-"""Synchronise legacy step1 extraction results into PostgreSQL.
+"""Перенесення результатів step1 та контексту адрес у PostgreSQL.
 
-This is a migration bridge, not the final extractor.  The existing step1 still
-writes its SQLite/events.csv.gz compatibility state.  After that succeeds, this
-module mirrors the extracted event and its candidate event location into the
-normalised PostgreSQL model.
-
-Important rules:
-- adjudication/decision date is NOT copied to event.event_date;
-- only addresses already accepted by addr.py as house/street candidates become
-  EVENT_LOCATION links;
-- all new events remain is_public=FALSE until later validation/geocoding;
-- rerunning the sync is idempotent.
+Дата рішення не підміняє дату події. Старі адреси без контексту мають роль
+UNKNOWN. EVENT_LOCATION потребує явного зв'язку з подією та однозначного
+вибору. Усі події залишаються is_public=FALSE до наступних перевірок.
+Повторний sync замінює витягнуті зв'язки, не створюючи дублів.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 import re
+import json
 import sqlite3
 from pathlib import Path
 from typing import Iterable, Optional
+from src.addr import AddressCandidate, EXTRACTION_VERSION, select_event_candidate
+from src.location_evidence import load_candidates
 
 
-EXTRACTION_VERSION = "legacy-step1-v1"
 VALID_LOCATION_LEVELS = {"house", "street"}
 
 
@@ -35,6 +30,7 @@ class LegacyEventRow:
     level: Optional[str]
     event_time: Optional[str]
     error: Optional[str]
+    candidates: tuple[AddressCandidate, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -82,7 +78,7 @@ def iter_legacy_events(sqlite_path: str | Path) -> Iterable[LegacyEventRow]:
             """
             SELECT doc_id, grp, street, house, level, tm, err
             FROM events
-            WHERE doc_id NOT LIKE '__%__'
+            WHERE doc_id NOT GLOB '__*__'
             ORDER BY doc_id
             """
         ):
@@ -94,6 +90,7 @@ def iter_legacy_events(sqlite_path: str | Path) -> Iterable[LegacyEventRow]:
                 level=_clean(row[4]),
                 event_time=_clean(row[5]),
                 error=_clean(row[6]),
+                candidates=tuple(load_candidates(conn, str(row[0]))),
             )
     finally:
         conn.close()
@@ -137,43 +134,61 @@ def _upsert_one(cur, row: LegacyEventRow) -> tuple[bool, bool, bool]:
     )
     event_id = cur.fetchone()[0]
 
-    # A changed document may yield a different address.  Replace only the
-    # extracted EVENT_LOCATION link; future non-event roles remain untouched.
+    # При повторному витягуванні прибираємо старі результати нашого extractor-а.
+    # Інші не-подієві зв'язки, наприклад ручна класифікація, залишаються.
     cur.execute(
-        "DELETE FROM event_location WHERE event_id=%s AND role='EVENT_LOCATION'",
+        """DELETE FROM event_location WHERE event_id=%s AND
+           (role='EVENT_LOCATION' OR evidence LIKE 'location-roles-v1:%%'
+            OR evidence LIKE 'legacy-step1-v1:%%')""",
         (event_id,),
     )
 
-    if not row.street or row.level not in VALID_LOCATION_LEVELS:
+    if row.error:
         return True, False, False
 
-    key = location_key(row.street, row.house)
-    address_raw = row.street + ((", " + row.house) if row.house else "")
-    cur.execute(
-        """
-        INSERT INTO location (location_key, address_raw, street, house, updated_at)
-        VALUES (%s, %s, %s, %s, now())
-        ON CONFLICT (location_key) DO UPDATE SET
-            address_raw = EXCLUDED.address_raw,
-            street = EXCLUDED.street,
-            house = EXCLUDED.house,
-            updated_at = now()
-        RETURNING id
-        """,
-        (key, address_raw, row.street, row.house),
-    )
-    location_id = cur.fetchone()[0]
-    cur.execute(
-        """
-        INSERT INTO event_location (event_id, location_id, role, confidence, evidence)
-        VALUES (%s, %s, 'EVENT_LOCATION', NULL, %s)
-        ON CONFLICT (event_id, location_id, role) DO UPDATE SET
-            confidence = EXCLUDED.confidence,
-            evidence = EXCLUDED.evidence
-        """,
-        (event_id, location_id, f"{EXTRACTION_VERSION}:{row.level}"),
-    )
-    return True, True, False
+    selected = select_event_candidate(row.candidates)
+    if selected and ((selected.street, selected.house) != (row.street, row.house)
+                     or row.level not in VALID_LOCATION_LEVELS):
+        selected = None
+    # Знімок старого step1 не містить контексту: це лише UNKNOWN, не подія.
+    grouped = {}
+    for candidate in row.candidates:
+        role = candidate.role
+        if role == 'EVENT_LOCATION' and selected is None:
+            role = 'UNKNOWN'
+        key = (candidate.street, candidate.house, role)
+        grouped.setdefault(key, []).append(asdict(candidate))
+    if not grouped and row.street and row.level in VALID_LOCATION_LEVELS:
+        grouped[(row.street, row.house, 'UNKNOWN')] = [{'reason': 'legacy_without_context'}]
+    for (street, house, role), evidence in grouped.items():
+        key = location_key(street, house)
+        address_raw = street + ((", " + house) if house else "")
+        cur.execute(
+            """
+            INSERT INTO location (location_key, address_raw, street, house, updated_at)
+            VALUES (%s, %s, %s, %s, now())
+            ON CONFLICT (location_key) DO UPDATE SET
+                address_raw = EXCLUDED.address_raw,
+                street = EXCLUDED.street,
+                house = EXCLUDED.house,
+                updated_at = now()
+            RETURNING id
+            """,
+            (key, address_raw, street, house),
+        )
+        location_id = cur.fetchone()[0]
+        cur.execute(
+            """
+            INSERT INTO event_location (event_id, location_id, role, confidence, evidence)
+            VALUES (%s, %s, %s, NULL, %s)
+            ON CONFLICT (event_id, location_id, role) DO UPDATE SET
+                confidence = EXCLUDED.confidence,
+                evidence = EXCLUDED.evidence
+            """,
+            (event_id, location_id, role,
+             EXTRACTION_VERSION + ':' + json.dumps(evidence, ensure_ascii=False)),
+        )
+    return True, bool(grouped), False
 
 
 def sync_legacy_events(database_url: str, sqlite_path: str | Path) -> SyncResult:

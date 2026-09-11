@@ -18,6 +18,7 @@ from step3_tpl import TPL
 from map_excl import load_excl, detect_institutional
 import map_layers
 import map_problems
+from location_evidence import confirmed_rows
 from map_problems import COURTS, SLUG
 
 LAST_META = {}          # meta останньої збірки — читає крок 5
@@ -61,6 +62,10 @@ def main(district=None, out=None):
 
     rows = list(c.execute("""SELECT e.doc_id,e.court,e.cat,e.date,e.tm,e.street,e.house,
         g.lat,g.lon,g.precision FROM events e JOIN geo g ON g.doc_id=e.doc_id"""))
+    confirmed = {r[0] for r in confirmed_rows(c)}
+    rows = [r for r in rows if r[0] in confirmed]
+    if not rows:
+        raise RuntimeError('Немає геокодованих подій із доказовим контекстом. Публікацію зупинено.')
     print(f'подій з координатами: {len(rows):,}')
     if not rows: return
 

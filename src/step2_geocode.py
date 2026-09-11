@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 """Крок 2. Адресна база СУВОРО в межах міста Києва + зіставлення."""
 import os, re, sys, json, time, sqlite3, math, urllib.request, urllib.parse, urllib.error, collections
+try:
+    from .location_evidence import confirmed_rows
+except ImportError:
+    from location_evidence import confirmed_rows
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, 'data')
@@ -89,6 +93,11 @@ def spread_km(pts):
 
 def main():
     if not os.path.exists(DB): print('спочатку крок 1'); sys.exit(1)
+    conn = sqlite3.connect(DB)
+    todo = confirmed_rows(conn)
+    if not todo:
+        conn.close()
+        raise RuntimeError('Немає підтверджених місць подій. Потрібне повторне витягування з контекстом; старий CSV не є доказом.')
     print('1) адресна база OpenStreetMap, тільки місто Київ')
     rows = fetch()
     if not rows:
@@ -109,12 +118,10 @@ def main():
             centro[k] = (sum(a for a, b in v)/len(v), sum(b for a, b in v)/len(v))
     print(f'   вулиць: {len(streets):,}, з них придатні для прив\'язки без номера: {len(centro):,}')
 
-    conn = sqlite3.connect(DB)
     conn.execute('DROP TABLE IF EXISTS geo')
     conn.execute('CREATE TABLE geo(doc_id TEXT PRIMARY KEY, lat REAL, lon REAL, precision TEXT)')
     conn.commit()
 
-    todo = list(conn.execute("SELECT doc_id, street, house FROM events WHERE street IS NOT NULL"))
     print(f'2) зіставлення заново: {len(todo):,} записів')
 
     tail = collections.defaultdict(list)
