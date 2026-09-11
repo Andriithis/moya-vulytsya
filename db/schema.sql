@@ -65,6 +65,7 @@ CREATE TABLE IF NOT EXISTS event (
     id BIGSERIAL PRIMARY KEY,
     case_id BIGINT REFERENCES case_record(id),
     source_document_id TEXT REFERENCES document(edrsr_id),
+    source_event_index SMALLINT NOT NULL DEFAULT 0,
     category TEXT,
     event_date DATE,
     event_time TIME,
@@ -73,7 +74,8 @@ CREATE TABLE IF NOT EXISTS event (
     confidence NUMERIC(4,3),
     is_public BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (source_document_id, source_event_index)
 );
 
 CREATE INDEX IF NOT EXISTS event_source_document_idx ON event (source_document_id);
@@ -81,6 +83,7 @@ CREATE INDEX IF NOT EXISTS event_date_idx ON event (event_date);
 
 CREATE TABLE IF NOT EXISTS location (
     id BIGSERIAL PRIMARY KEY,
+    location_key TEXT UNIQUE,
     address_raw TEXT,
     street TEXT,
     house TEXT,
