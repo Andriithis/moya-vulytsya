@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 import re
+from dataclasses import dataclass, asdict
+
+EXTRACTION_VERSION = 'location-roles-v1'
 
 TYPES = [
  (r'вул(?:иц[іяею])?\.?', 'вул.'),
@@ -88,32 +91,122 @@ def body_start(text):
 
 def extract(text):
     """best (street, house, time) for the offence event"""
-    cands = find_all(text)
-    bs = body_start(text)
-    # 1) чисті кандидати з ОПИСУ ПОДІЇ (після ВСТАНОВИВ) — найнадійніші
-    inb = [c for c in cands if c[3] >= bs and context_ok(text, c[3], floor=bs)]
-    # 2) якщо опису немає або в ньому адреси немає — чисті з усього тексту
-    good = [c for c in cands if context_ok(text, c[3])]
-    pool = inb or good
-    if not pool:
-        # Свідомо НЕ повертаємось до відкинутих кандидатів. Раніше тут стояло
-        # `pool = good if good else cands`, і коли чистих не було, функція
-        # віддавала адресу суду з позначкою level='house' — тобто вигадувала
-        # місце події. Краще чесне «адреси немає», ніж хибна точність.
-        m = PS.search(text[bs:] or text)
-        if m:
-            t, n = norm_street(m.group(1), m.group(2))
-            if n and n.lower() not in STOP and len(n) >= 3 and context_ok(text, bs + m.start(), floor=bs):
-                return dict(street=f"{t} {n}", house=None, level='street', time=find_time(text))
-        return dict(street=None, house=None, level='none', time=None)
-    t, n, h, p = pool[0]
-    return dict(street=f"{t} {n}", house=h, level='house' if h else 'street',
-                time=find_time(text, p))
+    candidates = extract_candidates(text)
+    selected = select_event_candidate(candidates)
+    result = dict(street=None, house=None, level='none', time=None,
+                  candidates=[asdict(c) for c in candidates],
+                  extraction_version=EXTRACTION_VERSION)
+    if selected:
+        result.update(street=selected.street, house=selected.house,
+                      level='house' if selected.house else 'street',
+                      time=find_time(selected.context))
+    return result
 
-def find_time(text, pos=None):
-    seg = text[max(0,(pos or 0)-320):(pos or 0)+120] if pos else text[:2500]
-    best=None
-    for m in re.finditer(r"(?:о|близько|приблизно|орієнтовно)\s*(\d{1,2})\s*(?:год|:)\s*(\d{2})?", seg, re.U):
-        hh=int(m.group(1)); mm=int(m.group(2) or 0)
-        if 0<=hh<=23 and 0<=mm<=59: best=f"{hh:02d}:{mm:02d}"
-    return best
+
+@dataclass(frozen=True)
+class AddressCandidate:
+    street: str
+    house: str | None
+    start: int
+    end: int
+    raw: str
+    context: str
+    context_start: int
+    role: str
+    reason: str
+    version: str = EXTRACTION_VERSION
+
+
+# Заборонені ролі мають пріоритет над ознаками події в тому самому фрагменті.
+ROLE_PATTERNS = [(role, re.compile(pattern, re.I)) for role, pattern in (
+    ('COURT', r'\bсуд\w*|\bканцеляр\w*'),
+    ('RESIDENCE', r'прожива\w*|проживан\w*|мешка\w*|зареєстрован\w*|реєстраці\w*|житл\w*'),
+    ('WORKPLACE', r'працю\w*|робоч\w*\s+місц\w*|місц\w*\s+робот\w*|роботодав\w*'),
+    ('PROPERTY', r'власност\w*|належ\w*|нерухом\w*|оренд\w*'),
+    ('INSTITUTION', r'прокурат\w*|поліці\w*|управлін\…4112 tokens truncated…:,} записів')
+        print('усе вже завантажено.'); return
+
+    est = len(tasks) * DELAY / WORKERS / 3600
+    print(f'орієнтовний час: {est:.1f} год\n')
+
+    q = queue.Queue()
+    for t in tasks: q.put(t)
+    lock = threading.Lock()
+    stats = {'ok': 0, 'hit': 0, 'err': 0}
+    buf = []
+    evidence_buf = []
+    completed = []
+
+    def flush(force=False):
+        with lock:
+            if len(buf) >= 200 or (force and buf):
+                try:
+                    conn.executemany('INSERT OR REPLACE INTO events VALUES(?,?,?,?,?,?,?,?,?,?)', buf)
+                    for doc_id, candidates in evidence_buf:
+                        LE.save_evidence(conn, doc_id, candidates)
+                    conn.commit(); buf.clear(); evidence_buf.clear()
+                except Exception as e:
+                    print('ПОМИЛКА ЗАПИСУ В БАЗУ:', e)
+                    raise
+
+    def worker():
+      try:
+        while True:
+            try: r = q.get_nowait()
+            except queue.Empty: return
+            rec = None
+            candidates = []
+            for attempt in range(3):
+                try:
+                    rq = urllib.request.Request(r['doc_url'], headers={'User-Agent': UA})
+                    with urllib.request.urlopen(rq, timeout=45) as resp:
+                        raw = resp.read()
+                    res = A.extract(rtf_to_text(raw))
+                    candidates = res['candidates']
+                    rec = (r['doc_id'], r['court'], r['group'], r['category_code'], r['date'],
+                           res['street'], res['house'], res['level'], res['time'], None)
+                    break
+                except Exception as e:
+                    if attempt == 2:
+                        rec = (r['doc_id'], r['court'], r['group'], r['category_code'], r['date'],
+                               None, None, 'error', None, str(e)[:120])
+                    else:
+                        time.sleep(1.5 * (attempt + 1))
+            with lock:
+                buf.append(rec)
+                evidence_buf.append((r['doc_id'], candidates))
+                completed.append(r['doc_id'])
+                if rec[7] == 'error': stats['err'] += 1
+                else:
+                    stats['ok'] += 1
+                    if rec[7] == 'house': stats['hit'] += 1
+                n = stats['ok'] + stats['err']
+            flush()
+            if n % 500 == 0:
+                pct = 100 * stats['hit'] / max(stats['ok'], 1)
+                print(f"  {n:,} / {len(tasks):,}   з адресою {stats['hit']:,} ({pct:.0f}%)   помилок {stats['err']}")
+            time.sleep(DELAY)
+      except Exception:
+        import traceback; traceback.print_exc()
+
+    ths = [threading.Thread(target=worker, daemon=True) for _ in range(WORKERS)]
+    t0 = time.time()
+    for t in ths: t.start()
+    try:
+        for t in ths: t.join()
+    except KeyboardInterrupt:
+        print('\nзупинено. прогрес збережено, наступний запуск продовжить.')
+    flush(True)
+    k = snapshot_save(conn)
+
+    if database_url:
+        from pipeline.postgres_tasks import mark_processed
+        changed = mark_processed(database_url, completed + inactive_ids + skipped_db_ids)
+        print(f'позначено обробленими у PostgreSQL: {changed:,}')
+
+    print(f"\n=== ГОТОВО за {(time.time()-t0)/60:.0f} хв ===")
+    print(f"оброблено {stats['ok']:,}, з адресою {stats['hit']:,}, помилок {stats['err']}")
+    print(f"знімок збережено: {k:,} записів -> data/events.csv.gz")
+
+if __name__ == '__main__':
+    main()
