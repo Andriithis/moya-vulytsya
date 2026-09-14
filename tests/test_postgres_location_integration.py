@@ -25,12 +25,15 @@ class PostgresIntegrationTests(unittest.TestCase):
         self.conn.execute(sql.SQL('SET search_path TO {},public').format(sql.Identifier(self.schema)))
         self.conn.execute(Path('db/schema.sql').read_text(encoding='utf-8'))
         self.conn.execute("""INSERT INTO document(edrsr_id,source_status,source_row_hash)
-                             VALUES ('123456789',1,'test')""")
+                             VALUES ('123456789',1,%s)""", ('a' * 64,))
 
     def row(self, text=None):
         result = addr.extract(text) if text else {'street': 'вул. Лугова', 'house': '16', 'level': 'house'}
-        return LegacyEventRow('123456789', 'ГП', result['street'], result['house'], result['level'],
-                              None, None, tuple(addr.extract_candidates(text)) if text else ())
+        return LegacyEventRow(
+            '123456789', 'ГП', result['street'], result['house'], result['level'],
+            None, None, tuple(addr.extract_candidates(text)) if text else (),
+            'a' * 64 if text else None,
+        )
 
     def sync(self, row):
         with self.conn.transaction(), self.conn.cursor() as cur:
@@ -68,6 +71,46 @@ class PostgresIntegrationTests(unittest.TestCase):
                 _upsert_one(cur, self.row('Водій керував по вул. Лугова, 16.'))
                 raise RuntimeError('імітований збій до commit')
         self.assertEqual(self.roles(), [('UNKNOWN',)])
+
+    def test_changed_source_revokes_stale_event_location_during_sync(self):
+        self.sync(self.row('ВСТАНОВИВ: водій керував по вул. Лугова, 16.'))
+        self.assertEqual(self.roles(), [('EVENT_LOCATION',)])
+        self.conn.execute(
+            'UPDATE document SET source_row_hash=%s,needs_processing=TRUE',
+            ('c' * 64,),
+        )
+
+        self.sync(self.row('ВСТАНОВИВ: водій керував по вул. Лугова, 16.'))
+
+        self.assertEqual(self.roles(), [])
+        self.assertEqual(self.conn.execute('SELECT is_public FROM event').fetchone(), (False,))
+
+    def test_candidates_without_source_hash_fail_closed(self):
+        row = self.row('ВСТАНОВИВ: водій керував по вул. Лугова, 16.')
+        unsafe = LegacyEventRow(
+            row.doc_id, row.category, row.street, row.house, row.level,
+            row.event_time, row.error, row.candidates, None,
+        )
+        self.sync(unsafe)
+        self.assertEqual(self.roles(), [])
+        self.assertEqual(self.conn.execute('SELECT count(*) FROM event').fetchone(), (0,))
+
+    def test_migration_0003_is_repeatable_on_existing_database(self):
+        self.conn.execute('DROP TABLE document_extraction')
+        migration = Path('db/migrations/0003_document_extraction.sql').read_text(encoding='utf-8')
+        self.conn.execute(migration)
+        self.conn.execute(migration)
+        self.conn.execute(
+            """INSERT INTO document_extraction
+               (document_id,source_row_hash,extraction_version,text_sha256,record,candidates)
+               VALUES ('123456789',%s,'test',%s,
+                       '["123456789",null,null,null,null,null,null,"none",null,null]','[]')""",
+            ('a' * 64, 'b' * 64),
+        )
+        self.assertEqual(
+            self.conn.execute('SELECT count(*) FROM document_extraction').fetchone(),
+            (1,),
+        )
 
     def checkpoint_data(self, text='ВСТАНОВИВ: водій керував по вул. Лугова, 16.'):
         result = addr.extract(text)

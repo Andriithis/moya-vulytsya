@@ -82,7 +82,7 @@ class EvidenceTests(unittest.TestCase):
 class RecordingCursor:
     def __init__(self, status=1):
         self.calls = []
-        self.results = iter([(1, status), (2,)] + [(3,)] * 20)
+        self.results = iter([(1, status, 'a' * 64), (2,)] + [(3,)] * 20)
 
     def execute(self, sql, params):
         self.calls.append((sql, params))
@@ -94,9 +94,12 @@ class RecordingCursor:
 class PostgresLocationGateTests(unittest.TestCase):
     def row(self, text=None, error=None):
         result = addr.extract(text) if text else {'street': 'вул. Лугова', 'house': '16', 'level': 'house'}
-        return LegacyEventRow('123456789', 'ГП', result['street'], result['house'],
-                              result['level'], None, error,
-                              tuple(addr.extract_candidates(text)) if text else ())
+        return LegacyEventRow(
+            '123456789', 'ГП', result['street'], result['house'],
+            result['level'], None, error,
+            tuple(addr.extract_candidates(text)) if text else (),
+            'a' * 64 if text else None,
+        )
 
     def roles(self, cur):
         return [params[2] for sql, params in cur.calls if 'INSERT INTO event_location' in sql]

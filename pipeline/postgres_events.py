@@ -31,6 +31,7 @@ class LegacyEventRow:
     event_time: Optional[str]
     error: Optional[str]
     candidates: tuple[AddressCandidate, ...] = ()
+    source_row_hash: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -74,6 +75,13 @@ def iter_legacy_events(sqlite_path: str | Path) -> Iterable[LegacyEventRow]:
     sqlite_path = Path(sqlite_path)
     conn = sqlite3.connect(str(sqlite_path))
     try:
+        has_evidence = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='address_evidence'"
+        ).fetchone() is not None
+        evidence_columns = (
+            {item[1] for item in conn.execute('PRAGMA table_info(address_evidence)')}
+            if has_evidence else set()
+        )
         for row in conn.execute(
             """
             SELECT doc_id, grp, street, house, level, tm, err
@@ -82,6 +90,13 @@ def iter_legacy_events(sqlite_path: str | Path) -> Iterable[LegacyEventRow]:
             ORDER BY doc_id
             """
         ):
+            source_row_hash = None
+            if 'source_row_hash' in evidence_columns:
+                proof = conn.execute(
+                    'SELECT source_row_hash FROM address_evidence WHERE doc_id=? AND version=?',
+                    (str(row[0]), EXTRACTION_VERSION),
+                ).fetchone()
+                source_row_hash = _clean(proof[0]) if proof else None
             yield LegacyEventRow(
                 doc_id=str(row[0]),
                 category=str(row[1] or ""),
@@ -91,6 +106,7 @@ def iter_legacy_events(sqlite_path: str | Path) -> Iterable[LegacyEventRow]:
                 event_time=_clean(row[5]),
                 error=_clean(row[6]),
                 candidates=tuple(load_candidates(conn, str(row[0]))),
+                source_row_hash=source_row_hash,
             )
     finally:
         conn.close()
@@ -99,16 +115,35 @@ def iter_legacy_events(sqlite_path: str | Path) -> Iterable[LegacyEventRow]:
 def _upsert_one(cur, row: LegacyEventRow) -> tuple[bool, bool, bool]:
     """Return (event_upserted, location_linked, missing_document)."""
     cur.execute(
-        "SELECT case_id, source_status FROM document WHERE edrsr_id=%s",
+        "SELECT case_id, source_status, source_row_hash FROM document WHERE edrsr_id=%s FOR UPDATE",
         (row.doc_id,),
     )
     source = cur.fetchone()
     if source is None:
         return False, False, True
 
-    case_id, source_status = source
+    case_id, source_status, current_source_hash = source
     if int(source_status) == 0:
         cur.execute("DELETE FROM event WHERE source_document_id=%s", (row.doc_id,))
+        return False, False, False
+
+    # Кандидати з SQLite придатні лише для тієї самої версії source document.
+    # Відсутній хеш біля кандидатів також означає, що їх не можна довести.
+    stale_extraction = (
+        row.source_row_hash is not None and row.source_row_hash != current_source_hash
+    ) or (bool(row.candidates) and row.source_row_hash is None)
+    if stale_extraction:
+        cur.execute(
+            "UPDATE event SET is_public=FALSE, updated_at=now() WHERE source_document_id=%s",
+            (row.doc_id,),
+        )
+        cur.execute(
+            """DELETE FROM event_location el USING event e
+               WHERE el.event_id=e.id AND e.source_document_id=%s AND
+                 (el.role='EVENT_LOCATION' OR el.evidence LIKE 'location-roles-v%%:%%'
+                  OR el.evidence LIKE 'legacy-step1-v1:%%')""",
+            (row.doc_id,),
+        )
         return False, False, False
 
     # step1 currently has no reliable event-date extractor.  Do not copy the
