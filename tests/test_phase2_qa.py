@@ -48,6 +48,10 @@ class Phase2QaTests(unittest.TestCase):
             (root / '123.txt').write_text('Синтетичний текст.', encoding='utf-8')
             output = root / 'private/qa'
             with patch('pipeline.phase2_qa.PRIVATE', root / 'private'):
+                with patch('pipeline.phase2_qa.sha256_file', side_effect=['a' * 64, 'b' * 64]):
+                    with self.assertRaisesRegex(ValueError, 'Архів змінився'):
+                        prepare(archive, 'https://data.gov.ua/dataset/synthetic', root, output)
+                self.assertFalse(output.exists())
                 summary = prepare(archive, 'https://data.gov.ua/dataset/synthetic', root, output)
                 self.assertEqual((summary['selected'], summary['texts_missing']), (2, 1))
                 review = [json.loads(line) for line in (output / 'review.jsonl').read_text(encoding='utf-8').splitlines()]

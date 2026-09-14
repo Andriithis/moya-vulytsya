@@ -35,7 +35,10 @@ def prepare(archive, dataset_url, text_dir, output, limit=200, seed='phase2-hold
         raise ValueError('QA-пакет дозволено записувати тільки у private/<назва>')
     development = json.loads(DEVELOPMENT_MANIFEST.read_text(encoding='utf-8'))
     excluded = {item['case_number'] for item in development['cases']}
+    archive_hash = sha256_file(archive)
     selected = select_sample(iter_documents(archive), limit, seed, excluded)
+    if sha256_file(archive) != archive_hash:
+        raise ValueError('Архів змінився під час відбору: повторіть на незмінному ZIP')
     if any(not row.doc_id.isascii() or not row.doc_id.isdigit() for row in selected):
         raise ValueError('ID документа має бути числовим')
     # Новий каталог: повтор не перезаписує ручну розмітку.
@@ -59,7 +62,7 @@ def prepare(archive, dataset_url, text_dir, output, limit=200, seed='phase2-hold
                 'expected_candidates': None, 'expected_event_location': None,
                 'expected_geocode': None, 'notes': None,
             }, ensure_ascii=False) + '\n')
-    summary = {'archive_sha256': sha256_file(archive), 'dataset_url': dataset_url,
+    summary = {'archive_sha256': archive_hash, 'dataset_url': dataset_url,
                'seed': seed, 'requested': limit, 'selected': len(selected),
                'texts_available': ready, 'texts_missing': len(selected)-ready,
                'independent_human_review_complete': False,
