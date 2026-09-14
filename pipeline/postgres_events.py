@@ -138,7 +138,7 @@ def _upsert_one(cur, row: LegacyEventRow) -> tuple[bool, bool, bool]:
     # Інші не-подієві зв'язки, наприклад ручна класифікація, залишаються.
     cur.execute(
         """DELETE FROM event_location WHERE event_id=%s AND
-           (role='EVENT_LOCATION' OR evidence LIKE 'location-roles-v1:%%'
+           (role='EVENT_LOCATION' OR evidence LIKE 'location-roles-v%%:%%'
             OR evidence LIKE 'legacy-step1-v1:%%')""",
         (event_id,),
     )

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Iterable
+from src.addr import EXTRACTION_VERSION
 
 
 @dataclass(frozen=True)
@@ -17,6 +18,7 @@ class PendingDocument:
     category_code: str
     date: str
     doc_url: str
+    source_row_hash: str = ''
 
 
 @dataclass(frozen=True)
@@ -55,15 +57,18 @@ def load_pending_work(database_url: str, court_codes: Iterable[str]) -> PendingW
         cur.execute(
             """
             SELECT edrsr_id, court_code, category_code,
-                   adjudication_date, doc_url, source_status
-            FROM document
-            WHERE needs_processing = TRUE
+                   adjudication_date, doc_url, source_status, source_row_hash
+            FROM document d
+            WHERE (needs_processing = TRUE OR (source_status=1 AND NOT EXISTS (
+                SELECT 1 FROM document_extraction x WHERE x.document_id=d.edrsr_id
+                AND x.source_row_hash=d.source_row_hash AND x.extraction_version=%s
+            )))
               AND court_code = ANY(%s)
             ORDER BY adjudication_date NULLS LAST, edrsr_id
             """,
-            (courts,),
+            (EXTRACTION_VERSION, courts),
         )
-        for doc_id, court_code, category_code, date, doc_url, status in cur:
+        for doc_id, court_code, category_code, date, doc_url, status, source_hash in cur:
             if int(status) == 0:
                 inactive.append(str(doc_id))
                 continue
@@ -76,6 +81,7 @@ def load_pending_work(database_url: str, court_codes: Iterable[str]) -> PendingW
                     category_code=str(category_code or ""),
                     date=date.isoformat() if date is not None else "",
                     doc_url=str(doc_url or ""),
+                    source_row_hash=str(source_hash),
                 )
             )
 

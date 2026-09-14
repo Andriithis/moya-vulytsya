@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Крок 1. Качає тексти рішень, витягає адресу і час. З відновленням після зупинки."""
 import os, re, sys, csv, glob, time, sqlite3, threading, queue
+import hashlib
 import urllib.request, urllib.error
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import addr as A
@@ -122,6 +123,7 @@ def load_tasks_from_postgres(database_url):
             'cause_num': '',
             'date': d.date,
             'doc_url': d.doc_url,
+            'source_row_hash': d.source_row_hash,
         })
     order = {g: i for i, g in enumerate(PRIORITY)}
     rows.sort(key=lambda r: (order.get(r['group'], 99), r['date']))
@@ -188,6 +190,9 @@ def main():
     skipped_db_ids = []
 
     if database_url:
+        from pipeline.extraction_store import restore_local_results
+        restored = restore_local_results(database_url, conn, COURTS.keys(), SKIP)
+        print(f'відновлено доказовий контекст із PostgreSQL: {restored:,}')
         print('джерело черги: PostgreSQL (тільки нові/змінені документи)')
         tasks, inactive_ids, skipped_db_ids = load_tasks_from_postgres(database_url)
         if inactive_ids:
@@ -208,7 +213,7 @@ def main():
         print(f'обмеження MAX_DOCS: цього запуску {lim:,}')
 
     if not tasks:
-        k = snapshot_save(conn) if inactive_ids else None
+        k = snapshot_save(conn) if database_url or inactive_ids else None
         if database_url and (inactive_ids or skipped_db_ids):
             from pipeline.postgres_tasks import mark_processed
             changed = mark_processed(database_url, inactive_ids + skipped_db_ids)
@@ -227,16 +232,18 @@ def main():
     buf = []
     evidence_buf = []
     completed = []
+    worker_errors = []
 
     def flush(force=False):
         with lock:
             if len(buf) >= 200 or (force and buf):
                 try:
                     conn.executemany('INSERT OR REPLACE INTO events VALUES(?,?,?,?,?,?,?,?,?,?)', buf)
-                    for doc_id, candidates in evidence_buf:
-                        LE.save_evidence(conn, doc_id, candidates)
+                    for doc_id, candidates, source_hash, text_hash in evidence_buf:
+                        LE.save_evidence(conn, doc_id, candidates, source_hash, text_hash)
                     conn.commit(); buf.clear(); evidence_buf.clear()
                 except Exception as e:
+                    conn.rollback()
                     print('ПОМИЛКА ЗАПИСУ В БАЗУ:', e)
                     raise
 
@@ -247,12 +254,15 @@ def main():
             except queue.Empty: return
             rec = None
             candidates = []
+            text_hash = None
             for attempt in range(3):
                 try:
                     rq = urllib.request.Request(r['doc_url'], headers={'User-Agent': UA})
                     with urllib.request.urlopen(rq, timeout=45) as resp:
                         raw = resp.read()
-                    res = A.extract(rtf_to_text(raw))
+                    text = rtf_to_text(raw)
+                    text_hash = hashlib.sha256(text.encode('utf-8')).hexdigest()
+                    res = A.extract(text)
                     candidates = res['candidates']
                     rec = (r['doc_id'], r['court'], r['group'], r['category_code'], r['date'],
                            res['street'], res['house'], res['level'], res['time'], None)
@@ -265,7 +275,7 @@ def main():
                         time.sleep(1.5 * (attempt + 1))
             with lock:
                 buf.append(rec)
-                evidence_buf.append((r['doc_id'], candidates))
+                evidence_buf.append((r['doc_id'], candidates, r.get('source_row_hash'), text_hash))
                 completed.append(r['doc_id'])
                 if rec[7] == 'error': stats['err'] += 1
                 else:
@@ -279,6 +289,8 @@ def main():
             time.sleep(DELAY)
       except Exception:
         import traceback; traceback.print_exc()
+        with lock:
+            worker_errors.append(True)
 
     ths = [threading.Thread(target=worker, daemon=True) for _ in range(WORKERS)]
     t0 = time.time()
@@ -286,14 +298,22 @@ def main():
     try:
         for t in ths: t.join()
     except KeyboardInterrupt:
-        print('\nзупинено. прогрес збережено, наступний запуск продовжить.')
+        # Не записуємо snapshot паралельно з потоками, що ще змінюють SQLite.
+        raise
+    if worker_errors:
+        raise RuntimeError('Збій запису результатів; чергу не позначено завершеною')
     flush(True)
-    k = snapshot_save(conn)
 
     if database_url:
+        from pipeline.extraction_store import persist_local_results, restore_local_results
+        stale = persist_local_results(database_url, conn, completed)
+        print(f'застаріли під час обробки: {len(stale):,}')
+        # Повторна звірка після завершення завантаження відсікає деактивації/зміни.
+        restore_local_results(database_url, conn, COURTS.keys(), SKIP)
         from pipeline.postgres_tasks import mark_processed
-        changed = mark_processed(database_url, completed + inactive_ids + skipped_db_ids)
+        changed = mark_processed(database_url, inactive_ids + skipped_db_ids)
         print(f'позначено обробленими у PostgreSQL: {changed:,}')
+    k = snapshot_save(conn)
 
     print(f"\n=== ГОТОВО за {(time.time()-t0)/60:.0f} хв ===")
     print(f"оброблено {stats['ok']:,}, з адресою {stats['hit']:,}, помилок {stats['err']}")

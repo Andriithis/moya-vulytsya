@@ -2,7 +2,7 @@
 import re
 from dataclasses import dataclass, asdict
 
-EXTRACTION_VERSION = 'location-roles-v1'
+EXTRACTION_VERSION = 'location-roles-v2'
 
 TYPES = [
  (r'вул(?:иц[іяею])?\.?', 'вул.'),
@@ -128,15 +128,26 @@ ROLE_PATTERNS = [(role, re.compile(pattern, re.I)) for role, pattern in (
 EVENT_CUE = re.compile(
     r'\b(?:керував|керувала|викрав|викрала|вчинив|вчинила|скоїв|скоїла|'
     r'наніс|нанесла|завдав|завдала|пошкодив|пошкодила|збував|збувала)\b|'
+    r'\bздійснюва[вл][а]?\s+(?:роздрібну\s+)?(?:торгівлю|продаж)\b|'
+    r'\b(?:курив|курила|палив|палила)\b|'
     r'\b(?:сталася|сталось|сталося)\s+(?:ДТП|крадіжка|зіткнення)\b', re.I)
-LOCATIVE = re.compile(r'\b(?:за\s+адресою|по|на|біля|поблизу)\s*$', re.I)
+LOCATIVE = re.compile(r'\b(?:за\s+адресою|по|на|біля|поблизу)\s*:?\s*'
+                      r'(?:(?:м\.?|місто|місті)\s*Ки(?:їв|єві|єва)\s*,?\s*)?$', re.I)
 UNSAFE_CONTEXT = re.compile(
     r'\bне\b|\bнібито\b|\bможливо\b|\bякби\b|\bзапереч\w*|'
     r'\bклопотан\w*|\bобшук\w*|\bогляд\w*|\bдостав\w*|\bзобов\w*|'
     r'\bзатрим\w*|\bповіст\w*|\bвиклик\w*|'
     r'\bпросить\b|\bдозвіл\b|\bтимчасов\w*\s+доступ\w*', re.I)
 # Крапки у «вул.», «буд.», «м.» та 01.09.2026 не є межами речення.
-CLAUSE_BREAK = re.compile(r'[;!?\n\r]+|(?<=[а-яіїєґ0-9»])\.(?=\s+[А-ЯІЇЄҐ])')
+CLAUSE_BREAK = re.compile(r'[;!?\n\r]+|(?<=[А-Яа-яІіЇїЄєҐґ0-9»)\]])\.(?=\s+[А-ЯІЇЄҐ])')
+
+
+def is_sentence_break(text, match):
+    if match.group() != '.':
+        return True
+    word = re.search(r'([А-Яа-яІіЇїЄєҐґ]+)$', text[:match.start()])
+    return not word or (len(word.group(1)) > 1 and word.group(1).lower() not in
+                        {'вул', 'буд', 'просп', 'пров', 'гр', 'ст', 'год', 'хв', 'ім'})
 
 
 def extract_candidates(text):
@@ -164,7 +175,7 @@ def extract_candidates(text):
             matches.append((m.start(), m.end(), f'{t} {n}', None))
     matches.sort()
     # Не розбиваємо речення всередині самої адреси.
-    breaks = [m for m in CLAUSE_BREAK.finditer(text)
+    breaks = [m for m in CLAUSE_BREAK.finditer(text) if is_sentence_break(text, m)
               if not any(a <= m.start() < b for a, b, *_ in matches)]
     bs = body_start(text)
     out = []
@@ -201,6 +212,17 @@ def extract_candidates(text):
                     bridge = prefix[cue.end():locative.start()]
                     if not re.search(r'[,;:]|\b(?:а|але|потім|після|де|коли)\b', bridge, re.I):
                         role, reason = 'EVENT_LOCATION', 'explicit_event_and_locative'
+                elif locative:
+                    suffix = text[end:right]
+                    # Лише прямий зв'язок «за адресою ... ОСОБА_N вчинив ...».
+                    # Друга дія/інше місце між адресою та дією не допускаються.
+                    subject = re.match(
+                        r'^[\s,]*(?:де\s+)?(?:(?:громадянин|громадянка)\s+)?'
+                        r'(?:ОСОБА_\d+\s*,?\s*)?'
+                        r'(?:(?:перебуваючи\s+)?у\s+громадському\s+місці\s*,?\s*)?',
+                        suffix, re.I)
+                    if EVENT_CUE.match(suffix, subject.end()):
+                        role, reason = 'EVENT_LOCATION', 'locative_then_explicit_event'
         out.append(AddressCandidate(street, house, start, end, text[start:end],
                                     context, left, role, reason))
     return out
