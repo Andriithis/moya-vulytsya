@@ -54,3 +54,12 @@ desktop.ini
 logs/
 tmp/
 .cache/
+
+# Приватні тексти, контексти й локальні бази (також поза data/).
+FABULA_REZULTAT.txt
+*.db
+*.db.gz
+*.db-*
+*.sqlite*
+*.rtf
+private/

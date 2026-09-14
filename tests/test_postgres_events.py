@@ -4,6 +4,7 @@ import tempfile
 import unittest
 
 from pipeline.postgres_events import iter_legacy_events, location_key
+from src import addr, location_evidence as evidence
 
 
 class PostgresEventsBridgeTests(unittest.TestCase):
@@ -68,6 +69,34 @@ class PostgresEventsBridgeTests(unittest.TestCase):
             self.assertEqual(rows[0].street, "вул. Хрещатик")
             self.assertEqual(rows[0].house, "10")
             self.assertEqual(rows[0].event_time, "22:30")
+
+    def test_iter_legacy_events_carries_current_source_hash(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = os.path.join(td, "events.db")
+            conn = sqlite3.connect(path)
+            conn.execute(
+                """CREATE TABLE events(
+                    doc_id TEXT PRIMARY KEY, court TEXT, grp TEXT, cat TEXT,
+                    date TEXT, street TEXT, house TEXT, level TEXT, tm TEXT, err TEXT
+                )"""
+            )
+            conn.execute(
+                "INSERT INTO events VALUES(?,?,?,?,?,?,?,?,?,?)",
+                ('123456789', 'court', 'grp', 'cat', '2026-09-01',
+                 None, None, 'none', None, None),
+            )
+            evidence.init_evidence(conn)
+            conn.execute(
+                """INSERT INTO address_evidence
+                   (doc_id,version,candidates,source_row_hash,text_sha256)
+                   VALUES (?,?,?,?,?)""",
+                ('123456789', addr.EXTRACTION_VERSION, '[]', 'a' * 64, 'b' * 64),
+            )
+            conn.commit()
+            conn.close()
+
+            rows = list(iter_legacy_events(path))
+            self.assertEqual(rows[0].source_row_hash, 'a' * 64)
 
 
 if __name__ == "__main__":

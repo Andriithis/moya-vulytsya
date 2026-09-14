@@ -88,6 +88,23 @@ class LocationRoleTests(unittest.TestCase):
         self.assertEqual(len(addr.extract_candidates(text)), 2)
         self.assertEqual(addr.extract(text)['house'], '16')
 
+    def test_address_before_action_with_city_abbreviation(self):
+        result = addr.extract('ВСТАНОВИВ: за адресою: м. Київ, вул. Лугова, 16, '
+                              'ОСОБА_1 здійснював торгівлю з рук. Суд розглянув справу.')
+        self.assertEqual((result['street'], result['house']), ('вул. Лугова', '16'))
+
+    def test_city_abbreviation_does_not_separate_institution_context(self):
+        for prefix in ('Суд розташований', 'Особа проживає', 'Відділ поліції знаходиться'):
+            with self.subTest(prefix=prefix):
+                self.assertIsNone(addr.extract(prefix + ' за адресою: м. Київ, вул. Лугова, 16, '
+                                               'ОСОБА_1 вчинив крадіжку.')['street'])
+
+    def test_new_post_address_rule_does_not_promote_later_unrelated_action(self):
+        for suffix in ('а потім ОСОБА_1 вчинив крадіжку', 'ОСОБА_1 не вчинив крадіжку',
+                       'ОСОБА_1 зустрів друга, який вчинив крадіжку'):
+            with self.subTest(suffix=suffix):
+                self.assertIsNone(addr.extract('За адресою: м. Київ, вул. Лугова, 16, ' + suffix)['street'])
+
 
 if __name__ == '__main__':
     unittest.main()

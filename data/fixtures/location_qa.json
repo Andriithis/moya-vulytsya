@@ -1,0 +1,116 @@
+{
+  "source_artifact": "FABULA_REZULTAT.txt",
+  "source_scope": "cached_excerpt",
+  "reviewer": "assistant",
+  "requires_independent_human_review": true,
+  "cases": [
+    {
+      "case_number": "761/9934/24",
+      "source_url": "https://od.reyestr.court.gov.ua/files/59/04d62b651b29416e23de8d27d4366534.rtf",
+      "text_sha256": "063108838e622f29b153aa0def2b7432f63b9c1a836f7b4e26a5f666c83b2283",
+      "expected_location": [
+        "вул. Ю. Іллєнка",
+        "3"
+      ]
+    },
+    {
+      "case_number": "759/26147/25",
+      "source_url": "https://od.reyestr.court.gov.ua/files/65/462ce735bc74db45feacbc34f21a212e.rtf",
+      "text_sha256": "dc954bdd9fb3bede48597dcb3476fd21bd5e306601d592727f190af7b775688a",
+      "expected_location": null
+    },
+    {
+      "case_number": "752/17930/25",
+      "source_url": "https://od.reyestr.court.gov.ua/files/65/d3be268de98eb4609a41139bc7ba9270.rtf",
+      "text_sha256": "6042cfc60b744135beffc9a30d594b9bafbe89f29f523f55fbc6c89e18ab09ff",
+      "expected_location": null
+    },
+    {
+      "case_number": "752/24343/23",
+      "source_url": "https://od.reyestr.court.gov.ua/files/58/b12e5e02fbeac2331add904b695ebe6b.rtf",
+      "text_sha256": "33928a1f7cb1962f6c8d35c241fdfe059ca2f61d63889d17dda4f185b9de0992",
+      "expected_location": [
+        "вул. Німецька",
+        "2"
+      ]
+    },
+    {
+      "case_number": "752/18364/24",
+      "source_url": "https://od.reyestr.court.gov.ua/files/61/4bfe10c504a52e40158af9d1f3f41df6.rtf",
+      "text_sha256": "4828d0c492673578cee15f0cecb93954d6480df74a57c51fdc11dbaec1c79b66",
+      "expected_location": [
+        "вул. Оріхуватська",
+        "10"
+      ]
+    },
+    {
+      "case_number": "752/6429/24",
+      "source_url": "https://od.reyestr.court.gov.ua/files/59/0cf5b29b8f5eda1c911f4f44c1618057.rtf",
+      "text_sha256": "81dbd636195be0a8dd23f4ea71d8f8eb4602005aac1e8bca8b2d07761db6132c",
+      "expected_location": [
+        "вул. Велика Васильківська",
+        "116"
+      ]
+    },
+    {
+      "case_number": "754/10642/26",
+      "source_url": "https://od.reyestr.court.gov.ua/files/68/b68118c0ee06700556fe145aaed3e859.rtf",
+      "text_sha256": "36d1ecd89a9b6d14c694556b5a0dfeee0e8e90a0d3f9d661b22561739dc6b83c",
+      "expected_location": [
+        "вул. Кіото",
+        "8"
+      ]
+    },
+    {
+      "case_number": "760/5588/25",
+      "source_url": "https://od.reyestr.court.gov.ua/files/64/8326e6b7e889da0541fda83d6d0edc06.rtf",
+      "text_sha256": "8bb266388703da2438debfaeba9233946fca6d9846e2d6037ce3d57fe7d8cec8",
+      "expected_location": [
+        "вул. Єреванська",
+        "14"
+      ]
+    },
+    {
+      "case_number": "759/9635/25",
+      "source_url": "https://od.reyestr.court.gov.ua/files/64/8d00341b823caf6b85b66d9e795f186f.rtf",
+      "text_sha256": "bf5a4503bf3246e29077654eda8235e18db8aaedd9892a5f93bf17f12ad50e46",
+      "expected_location": [
+        "вул. Чорнобильська",
+        "13Б"
+      ]
+    },
+    {
+      "case_number": "760/29996/24",
+      "source_url": "https://od.reyestr.court.gov.ua/files/62/78b281cd346d667954ff50864ccfec42.rtf",
+      "text_sha256": "30d7ba7932cc334a2d9b9dd8d0ac00f4ba18bc0309bb67156341045eeaa018d3",
+      "expected_location": [
+        "вул. Авіаконструктора Антонова",
+        "2/32"
+      ]
+    },
+    {
+      "case_number": "761/34866/24",
+      "source_url": "https://od.reyestr.court.gov.ua/files/60/ef00f3c1deb1409d00f15de792cfaf66.rtf",
+      "text_sha256": "208456f99b4d89596e062d32551bc1410c0848bb013d8d52cc1848021456e017",
+      "expected_location": [
+        "вул. Щусєва",
+        "19"
+      ]
+    },
+    {
+      "case_number": "758/10578/24",
+      "source_url": "https://od.reyestr.court.gov.ua/files/61/fbbaba40f420fd9fb9e8a078628a10d9.rtf",
+      "text_sha256": "21fda8e7788451ccf7ea5445b9fd497a193122d95e78c67cac42fea8e456d3b7",
+      "expected_location": [
+        "пров. Полковий",
+        "1"
+      ]
+    },
+    {
+      "case_number": "755/6914/25",
+      "source_url": "https://od.reyestr.court.gov.ua/files/64/bfec3bf96bf40a894dc90b1d470ba15f.rtf",
+      "text_sha256": "92e1d85593dbde9d6255836d64d88bab7259ba3f4a3b41cbf630c4a97587dc34",
+      "expected_location": null
+    }
+  ]
+}
