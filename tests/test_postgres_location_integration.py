@@ -64,6 +64,14 @@ class PostgresIntegrationTests(unittest.TestCase):
         self.assertEqual(self.roles(), [])
         self.assertEqual(self.conn.execute('SELECT count(*) FROM event').fetchone(), (0,))
 
+    def test_forbidden_roles_never_become_event_locations(self):
+        for phrase in ['суд за адресою', 'лікарня за адресою', 'проживає за адресою',
+                       'працює за адресою', 'належить квартира за адресою']:
+            with self.subTest(phrase=phrase):
+                self.sync(self.row(f'ВСТАНОВИВ: {phrase} вул. Лугова, 16. Водій керував автомобілем.'))
+                self.assertNotIn(('EVENT_LOCATION',), self.roles())
+                self.assertEqual(self.conn.execute('SELECT is_public FROM event').fetchone(), (False,))
+
     def test_transaction_rollback_preserves_previous_links(self):
         self.sync(self.row())
         with self.assertRaises(RuntimeError):

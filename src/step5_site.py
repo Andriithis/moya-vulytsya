@@ -18,6 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import labels as L
 import step3_map as M3
 import step6_docs as D6
+from geocode_quality import eligible_geo_ids
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, 'data')
@@ -28,10 +29,14 @@ SLUG = M3.SLUG          # спільний з картою, щоб посила�
 def stats():
     """кількість проблем, аномалій та інцидентів і профіль кожного району"""
     conn = sqlite3.connect(os.path.join(DATA, 'events.db'))
-    rows = conn.execute("""SELECT e.court, e.cat FROM events e
+    rows = conn.execute("""SELECT e.doc_id, e.court, e.cat FROM events e
                            JOIN geo g ON g.doc_id=e.doc_id WHERE g.precision='house'""").fetchall()
     per = collections.defaultdict(collections.Counter)
-    for court, cat in rows:
+    eligible = eligible_geo_ids(conn)
+    conn.close()
+    for doc, court, cat in rows:
+        if doc not in eligible:
+            continue
         lb = L.CODE.get(cat)
         if lb: per[M3.COURTS.get(court, court)][lb[0]] += 1
     return per
