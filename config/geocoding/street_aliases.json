@@ -1,0 +1,88 @@
+{
+  "scope": "initial_verified_subset",
+  "aliases": [
+    {
+      "source_url": "https://minio.kyivcity.gov.ua/kyivcity/sites/21/uploaded-files/Perelik%20pereimenovanykh%20u%202014-2025%20rokakh%20vulyts%20mista%20Kyieva.pdf",
+      "source_sha256": "e7ecaf723d144dffaf3203d96a38e773782c5c05788a704e4dfc1d2a0087cbd1",
+      "reviewed_at": "2026-09-15",
+      "reviewed_by": "assistant",
+      "independent_human_review": false,
+      "old": "вулиця Мельникова",
+      "new": "вулиця Юрія Іллєнка",
+      "source_page": 10
+    },
+    {
+      "source_url": "https://minio.kyivcity.gov.ua/kyivcity/sites/21/uploaded-files/Perelik%20pereimenovanykh%20u%202014-2025%20rokakh%20vulyts%20mista%20Kyieva.pdf",
+      "source_sha256": "e7ecaf723d144dffaf3203d96a38e773782c5c05788a704e4dfc1d2a0087cbd1",
+      "reviewed_at": "2026-09-15",
+      "reviewed_by": "assistant",
+      "independent_human_review": false,
+      "old": "вулиця Тельмана",
+      "new": "вулиця Німецька",
+      "source_page": 1
+    },
+    {
+      "source_url": "https://minio.kyivcity.gov.ua/kyivcity/sites/21/uploaded-files/Perelik%20pereimenovanykh%20u%202014-2025%20rokakh%20vulyts%20mista%20Kyieva.pdf",
+      "source_sha256": "e7ecaf723d144dffaf3203d96a38e773782c5c05788a704e4dfc1d2a0087cbd1",
+      "reviewed_at": "2026-09-15",
+      "reviewed_by": "assistant",
+      "independent_human_review": false,
+      "old": "вулиця Тверська",
+      "new": "вулиця Єжи Ґедройця",
+      "source_page": 1
+    },
+    {
+      "source_url": "https://minio.kyivcity.gov.ua/kyivcity/sites/21/uploaded-files/Perelik%20pereimenovanykh%20u%202014-2025%20rokakh%20vulyts%20mista%20Kyieva.pdf",
+      "source_sha256": "e7ecaf723d144dffaf3203d96a38e773782c5c05788a704e4dfc1d2a0087cbd1",
+      "reviewed_at": "2026-09-15",
+      "reviewed_by": "assistant",
+      "independent_human_review": false,
+      "old": "проспект Червонозоряний",
+      "new": "проспект Валерія Лобановського",
+      "source_page": 1
+    }
+  ],
+  "blocked": [
+    {
+      "source_url": "https://minio.kyivcity.gov.ua/kyivcity/sites/21/uploaded-files/Perelik%20pereimenovanykh%20u%202014-2025%20rokakh%20vulyts%20mista%20Kyieva.pdf",
+      "source_sha256": "e7ecaf723d144dffaf3203d96a38e773782c5c05788a704e4dfc1d2a0087cbd1",
+      "reviewed_at": "2026-09-15",
+      "reviewed_by": "assistant",
+      "independent_human_review": false,
+      "street": "вулиця Червоноармійська",
+      "source_pages": [
+        1,
+        2,
+        8,
+        10
+      ],
+      "reason": "Різні перейменування за районами: Велика Васильківська і Заплавна."
+    },
+    {
+      "source_url": "https://minio.kyivcity.gov.ua/kyivcity/sites/21/uploaded-files/Perelik%20pereimenovanykh%20u%202014-2025%20rokakh%20vulyts%20mista%20Kyieva.pdf",
+      "source_sha256": "e7ecaf723d144dffaf3203d96a38e773782c5c05788a704e4dfc1d2a0087cbd1",
+      "reviewed_at": "2026-09-15",
+      "reviewed_by": "assistant",
+      "independent_human_review": false,
+      "street": "вулиця Горького",
+      "source_pages": [
+        1,
+        3
+      ],
+      "reason": "Різні перейменування за районами: Антоновича і Тодося Осьмачки."
+    },
+    {
+      "source_url": "https://minio.kyivcity.gov.ua/kyivcity/sites/21/uploaded-files/Perelik%20pereimenovanykh%20u%202014-2025%20rokakh%20vulyts%20mista%20Kyieva.pdf",
+      "source_sha256": "e7ecaf723d144dffaf3203d96a38e773782c5c05788a704e4dfc1d2a0087cbd1",
+      "reviewed_at": "2026-09-15",
+      "reviewed_by": "assistant",
+      "independent_human_review": false,
+      "street": "вулиця Максима Горького",
+      "source_pages": [
+        2,
+        6
+      ],
+      "reason": "Різні перейменування за районами: Кирила Осьмака і Анатолія Лупиноса."
+    }
+  ]
+}

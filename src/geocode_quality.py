@@ -9,11 +9,12 @@ import re
 import unicodedata
 from pathlib import Path
 
-POLICY_VERSION = 'kyiv-exact-house-v1'
+POLICY_VERSION = 'kyiv-exact-house-v2'
 MIN_CONFIDENCE = 1.0
 DATA = Path(__file__).resolve().parents[1] / 'data'
-BOUNDARY = DATA / 'kyiv_boundary.geojson'
-ALIASES = DATA / 'street_aliases.json'
+REFERENCE = DATA.parent / 'config/geocoding'
+BOUNDARY = REFERENCE / 'kyiv_boundary.geojson'
+ALIASES = REFERENCE / 'street_aliases.json'
 OSM = DATA / 'osm_kyiv_city.json'
 
 TYPES = {
@@ -135,8 +136,14 @@ class Boundary:
 
 
 class Resolver:
-    def __init__(self, rows, boundary, aliases=()):
+    def __init__(self, rows, boundary, aliases=(), blocked=()):
         self.boundary = boundary
+        self.blocked = set()
+        for item in blocked:
+            key = street_key(item['street'])
+            if not key or not item.get('reason') or not item.get('source_url'):
+                raise ValueError('Неоднозначна назва потребує джерела та причини')
+            self.blocked.add(key)
         self.aliases = {}
         for item in aliases:
             old, new = street_key(item['old']), street_key(item['new'])
@@ -149,7 +156,7 @@ class Resolver:
         # Цикли заборонені; послідовні перейменування підтримуються.
         for key in self.aliases:
             self.canonical(key)
-        self.reference_hash = fingerprint([POLICY_VERSION, rows, boundary.hash, aliases])
+        self.reference_hash = fingerprint([POLICY_VERSION, rows, boundary.hash, aliases, blocked])
         self.index = {}
         for street, house, lat, lon in rows:
             key = self.key(street, house)
@@ -166,7 +173,10 @@ class Resolver:
         return key
 
     def key(self, street, house):
-        st, h = self.canonical(street_key(street)), house_key(house)
+        original = street_key(street)
+        st, h = self.canonical(original), house_key(house)
+        if original in self.blocked or st in self.blocked:
+            return ''
         return st + '|' + h if st and h else ''
 
     def resolve(self, street, house):
@@ -195,10 +205,10 @@ class Resolver:
 
 def load_resolver(rows=None):
     boundary = Boundary(json.loads(BOUNDARY.read_text(encoding='utf-8')))
-    aliases = json.loads(ALIASES.read_text(encoding='utf-8')) if ALIASES.exists() else []
+    aliases = json.loads(ALIASES.read_text(encoding='utf-8'))
     if rows is None:
         rows = json.loads(OSM.read_text(encoding='utf-8'))
-    return Resolver(rows, boundary, aliases)
+    return Resolver(rows, boundary, aliases['aliases'], aliases['blocked'])
 
 
 def eligible_geo_ids(conn, resolver=None):
