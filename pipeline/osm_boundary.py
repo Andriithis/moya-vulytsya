@@ -45,6 +45,13 @@ def convert(path, reviewed_at):
         raise ValueError('Relation не відповідає адміністративній межі Києва')
     nodes = {n.get('id'): [float(n.get('lon')), float(n.get('lat'))] for n in root.findall('node')}
     ways = {w.get('id'): [n.get('ref') for n in w.findall('nd')] for w in root.findall('way')}
+    allowed = {('way', 'outer'), ('way', 'inner'), ('relation', 'subarea'),
+               ('node', 'admin_centre'), ('node', 'label')}
+    if any((m.get('type'), m.get('role')) not in allowed for m in relation.findall('member')):
+        raise ValueError('Невідомий член relation; потрібна перевірка джерела')
+    geometry_ids = [m.get('ref') for m in relation.findall('member') if m.get('type') == 'way']
+    if len(geometry_ids) != len(set(geometry_ids)):
+        raise ValueError('Дубльований геометричний член relation')
     assembled = {}
     for role in ('outer', 'inner'):
         members = [m for m in relation.findall('member') if m.get('role') == role]
