@@ -69,14 +69,53 @@ class EvidenceTests(unittest.TestCase):
             fetch.assert_not_called()
 
     def test_geocoder_uses_only_confirmed_rows(self):
+        from src.geocode_quality import Resolver, eligible_geo_ids
+        from test_geocode_quality import boundary
+        resolver = Resolver([['вул. Лугова', '16', 50.45, 30.52]], boundary())
         self.store('ВСТАНОВИВ: водій керував по вул. Лугова, 16.')
         self.conn.execute("INSERT INTO events VALUES('old','вул. Лугова','16','house',NULL)")
         self.conn.execute("INSERT INTO geo VALUES('old',50.45,30.52,'house')")
+        self.conn.commit()
         with patch.object(geocode.os.path, 'exists', return_value=True), \
                 patch.object(geocode.sqlite3, 'connect', return_value=self.conn), \
-                patch.object(geocode, 'fetch', return_value=[['Лугова', '16', 50.45, 30.52]]):
+                patch.object(geocode, 'fetch', return_value=[['вул. Лугова', '16', 50.45, 30.52]]), \
+                patch.object(geocode, 'load_resolver', return_value=resolver):
             geocode.main()
         self.assertEqual(self.conn.execute('SELECT doc_id FROM geo').fetchall(), [('123456789',)])
+        self.assertEqual(eligible_geo_ids(self.conn, resolver), {'123456789'})
+        for sql in ["UPDATE geo SET geocode_confidence=0.9", "UPDATE geo SET lat=50.7",
+                    "UPDATE geo SET policy_version='old'", "UPDATE geo SET address_key='wrong'"]:
+            self.conn.execute('SAVEPOINT mutation')
+            self.conn.execute(sql)
+            self.assertEqual(eligible_geo_ids(self.conn, resolver), set())
+            self.conn.execute('ROLLBACK TO mutation')
+            self.conn.execute('RELEASE mutation')
+
+    def test_missing_boundary_stops_before_fetch(self):
+        self.store('ВСТАНОВИВ: водій керував по вул. Лугова, 16.')
+        with patch.object(geocode.os.path, 'exists', return_value=True), \
+                patch.object(geocode.sqlite3, 'connect', return_value=self.conn), \
+                patch.object(geocode, 'load_resolver', side_effect=FileNotFoundError('межа')), \
+                patch.object(geocode, 'fetch') as fetch:
+            with self.assertRaises(FileNotFoundError):
+                geocode.main()
+            fetch.assert_not_called()
+
+    def test_geocode_failure_rolls_back_table_replacement(self):
+        from src.geocode_quality import Resolver
+        from test_geocode_quality import boundary
+        resolver = Resolver([['вул. Лугова', '16', 50.45, 30.52]], boundary())
+        self.store('ВСТАНОВИВ: водій керував по вул. Лугова, 16.')
+        self.conn.execute("INSERT INTO geo VALUES('old',50.45,30.52,'street')")
+        self.conn.commit()
+        with patch.object(geocode.os.path, 'exists', return_value=True), \
+                patch.object(geocode.sqlite3, 'connect', return_value=self.conn), \
+                patch.object(geocode, 'fetch', return_value=[['вул. Лугова', '16', 50.45, 30.52]]), \
+                patch.object(geocode, 'load_resolver', return_value=resolver), \
+                patch.object(resolver, 'cached', side_effect=RuntimeError('збій')):
+            with self.assertRaises(RuntimeError):
+                geocode.main()
+        self.assertEqual(self.conn.execute('SELECT * FROM geo').fetchall(), [('old', 50.45, 30.52, 'street')])
 
 
 class RecordingCursor:
