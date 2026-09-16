@@ -2,7 +2,7 @@
 import re
 from dataclasses import dataclass, asdict
 
-EXTRACTION_VERSION = 'location-roles-v2'
+EXTRACTION_VERSION = 'location-roles-v3'
 
 TYPES = [
  (r'вул(?:иц[іяею])?\.?', 'вул.'),
@@ -18,7 +18,8 @@ TYPES = [
 ]
 TYPE_RE = '(?:' + '|'.join(t for t,_ in TYPES) + ')'
 NAME = r"[А-ЯІЇЄҐ][А-Яа-яІіЇїЄєҐґ'`’\-\s\.]{1,40}?"
-HOUSE = r"(\d{1,4}\s*(?:[-/]\s*\d{1,3})?\s*(?:[А-ЯA-Za-zа-я])?)"
+HOUSE = (r"(\d{1,4}(?:\s*[-/]\s*\d{1,3})?"
+         r"(?:\s*(?!(?i:[ву])\s+(?i:м\.|міст))[А-ЯA-Za-zа-я])?)")
 
 # variant A: type before name   "вул. Лугова, 16"
 PA = re.compile(rf"\b({TYPE_RE})\s*({NAME})[,\s]+(?:буд(?:инок|\.)?\s*)?№?\s*{HOUSE}\b", re.U)
@@ -159,6 +160,9 @@ def extract_candidates(text):
     matches = []
     for pattern, reverse in ((PA, False), (PB, True)):
         for m in pattern.finditer(text):
+            # Кілометрова позначка дороги не є номером будинку.
+            if re.match(r'\s*(?:км\b|кілометр)', text[m.end():], re.I):
+                continue
             t, n = norm_street(m.group(2 if reverse else 1), m.group(1 if reverse else 2))
             if not n or n.lower() in STOP or len(n) < 3:
                 continue
@@ -217,7 +221,7 @@ def extract_candidates(text):
                     # Лише прямий зв'язок «за адресою ... ОСОБА_N вчинив ...».
                     # Друга дія/інше місце між адресою та дією не допускаються.
                     subject = re.match(
-                        r'^[\s,]*(?:де\s+)?(?:(?:громадянин|громадянка)\s+)?'
+                        r'^[\s,]*(?:де\s+)?(?:(?:громадянин|громадянка|водій)\s+)?'
                         r'(?:ОСОБА_\d+\s*,?\s*)?'
                         r'(?:(?:перебуваючи\s+)?у\s+громадському\s+місці\s*,?\s*)?',
                         suffix, re.I)
