@@ -31,6 +31,7 @@ class BackfillTests(unittest.TestCase):
             packet.mkdir(parents=True)
             plan = [{'doc_id': '123', 'source_row_hash': 'a'*64,
                      'justice_kind': '2', 'judgment_code': '1',
+                     'category_code': '40576', 'instance_code': '3', 'case_number': 'test/1',
                      'source_url': 'https://od.reyestr.court.gov.ua/files/68/' + 'a'*32 + '.rtf'}]
             path = packet / 'backfill_plan.json'
             path.write_text(json.dumps(plan), encoding='utf-8')
@@ -76,7 +77,7 @@ class BackfillTests(unittest.TestCase):
                              {'justice_kind': '5', 'judgment_code': '2'},
                              {'justice_kind': '1', 'judgment_code': '1'}):
                     (packet/'backfill_plan.json').write_text(json.dumps([item]))
-                    with self.assertRaisesRegex(ValueError, 'кримінальні вироки'):
+                    with self.assertRaisesRegex(ValueError, 'цільові вироки'):
                         run(packet, download=True)
                 fetch.assert_not_called()
                 resolver.assert_not_called()

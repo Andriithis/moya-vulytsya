@@ -12,7 +12,8 @@ from urllib.parse import urlparse
 from src import addr, location_evidence
 from src.geocode_quality import load_resolver
 from src.step1_download import rtf_to_text
-from pipeline.document_scope import is_criminal_verdict
+from pipeline.document_scope import admission
+from pipeline.episode_rules import analyze_document, init_ledger, store_analysis, apply_case_change
 
 PRIVATE = Path(__file__).resolve().parents[1] / 'private'
 MAX_BYTES = 8 * 1024 * 1024
@@ -55,9 +56,10 @@ def run(packet, download=False):
     plan = json.loads((packet / 'backfill_plan.json').read_text(encoding='utf-8'))
     if len(plan) > 200:
         raise ValueError('Контрольний прогін обмежено 200 документами')
-    if any(not is_criminal_verdict(item.get('justice_kind'), item.get('judgment_code'))
+    if any(admission(item.get('justice_kind'), item.get('judgment_code'),
+                     item.get('category_code'), item.get('instance_code')) != 'analysis_candidate'
            for item in plan):
-        raise ValueError('План має містити лише кримінальні вироки з кодами джерела; старий план треба перевідбирати')
+        raise ValueError('План має містити цільові вироки або постанови КУпАП з перевіреними кодами; старий план треба перевідбирати')
     if any(not re.fullmatch(r'[0-9]+', item['doc_id']) or not allowed_url(item['source_url'])
            or not re.fullmatch(r'[a-f0-9]{64}', item['source_row_hash']) for item in plan):
         raise ValueError('Непридатний QA-план')
@@ -74,11 +76,13 @@ def run(packet, download=False):
         conn.execute('''CREATE TABLE IF NOT EXISTS events(doc_id TEXT PRIMARY KEY,
                         street TEXT,house TEXT,level TEXT,err TEXT)''')
         location_evidence.init_evidence(conn)
+        init_ledger(conn)
+        conn.execute('CREATE TABLE IF NOT EXISTS document_analysis(doc_id TEXT PRIMARY KEY, payload TEXT NOT NULL)')
         conn.execute('''CREATE TABLE IF NOT EXISTS outcomes(doc_id TEXT PRIMARY KEY,
                         source_row_hash TEXT,text_sha256 TEXT,raw_sha256 TEXT,geocode TEXT,error TEXT)''')
         conn.commit()
         totals = {'planned': len(plan), 'downloaded': 0, 'reused': 0, 'errors': 0,
-                  'event_locations': 0, 'geocoded': 0, 'human_review_complete': False,
+                  'event_locations': 0, 'geocoded': 0, 'confirmed_episodes': 0, 'publication_candidates': 0, 'human_review_complete': False,
                   'production_precision_established': False, 'scope': 'private_sqlite_sample'}
         for i, item in enumerate(plan, 1):
             doc = item['doc_id']
@@ -89,6 +93,7 @@ def run(packet, download=False):
                 text = path.read_bytes().decode('utf-8') if path.exists() else ''
                 text_hash = hashlib.sha256(text.encode()).hexdigest()
                 if (previous.get('source_row_hash') == item['source_row_hash']
+                        and previous.get('source_url') == item['source_url']
                         and previous.get('text_sha256') == text_hash and text):
                     totals['reused'] += 1
                 else:
@@ -103,8 +108,14 @@ def run(packet, download=False):
                     meta.write_text(json.dumps(previous, ensure_ascii=False), encoding='utf-8')
                     totals['downloaded'] += 1
                     time.sleep(0.2)
+                review_path = packet / 'analysis' / f'{doc}.json'
+                review = json.loads(review_path.read_text(encoding='utf-8')) if review_path.exists() else None
+                analysis = analyze_document(item, text, review)
+                store_analysis(conn, analysis)
                 result = addr.extract(text)
                 with conn:
+                    conn.execute('INSERT OR REPLACE INTO document_analysis VALUES(?,?)',
+                                 (doc, json.dumps(analysis, ensure_ascii=False)))
                     conn.execute('INSERT OR REPLACE INTO events VALUES(?,?,?,?,NULL)',
                                  (doc, result['street'], result['house'], result['level']))
                     location_evidence.save_evidence(conn, doc, result['candidates'],
@@ -112,10 +123,14 @@ def run(packet, download=False):
                     hit = resolver.cached(conn, result['street'], result['house']) if result['street'] else None
                     conn.execute('INSERT OR REPLACE INTO outcomes VALUES(?,?,?,?,?,NULL)',
                                  (doc, item['source_row_hash'], text_hash, previous['raw_sha256'], json.dumps(hit)))
+                totals['confirmed_episodes'] += sum(e['confirmed'] for e in analysis['episodes'])
+                totals['publication_candidates'] += sum(e['publication_allowed'] for e in analysis['episodes'])
                 totals['event_locations'] += bool(result['street'])
                 totals['geocoded'] += hit is not None
             except Exception as exc:
                 with conn:
+                    conn.execute('DELETE FROM episode_ledger WHERE source_document=?', (doc,))
+                    conn.execute('DELETE FROM document_analysis WHERE doc_id=?', (doc,))
                     conn.execute('DELETE FROM events WHERE doc_id=?', (doc,))
                     conn.execute('DELETE FROM address_evidence WHERE doc_id=?', (doc,))
                     conn.execute('INSERT OR REPLACE INTO outcomes VALUES(?,?,NULL,NULL,NULL,?)',
@@ -123,6 +138,23 @@ def run(packet, download=False):
                 totals['errors'] += 1
             if i % 25 == 0:
                 print(f'Оброблено {i}/{len(plan)}; помилок {totals["errors"]}', flush=True)
+        # Вища інстанція не входить до плану створення нових епізодів.
+        # Зв'язок і результат спершу перевіряє аналітик; повтор ідемпотентний.
+        for path in sorted((packet / 'changes').glob('*.json')):
+            change = json.loads(path.read_text(encoding='utf-8'))
+            doc = change.get('doc_id', '')
+            if not re.fullmatch(r'[0-9]+', doc):
+                raise ValueError('Непридатний ID рішення перегляду')
+            text = (texts / f'{doc}.txt').read_bytes().decode('utf-8')
+            meta = json.loads((texts / f'{doc}.json').read_text(encoding='utf-8'))
+            if (meta.get('source_url') != change.get('source_url')
+                    or meta.get('text_sha256') != hashlib.sha256(text.encode()).hexdigest()
+                    or meta.get('source_row_hash') != change.get('source_row_hash')):
+                raise ValueError('Зміна справи не відповідає збереженому джерелу')
+            apply_case_change(conn, change, text)
+        totals['publication_candidates'] = conn.execute(
+            'SELECT count(*) FROM episode_ledger WHERE eligible=1').fetchone()[0]
+        totals['stored_episodes'] = conn.execute('SELECT count(*) FROM episode_ledger').fetchone()[0]
         totals['stored_outcomes'] = conn.execute('SELECT count(*) FROM outcomes').fetchone()[0]
         (work / 'summary.json').write_text(json.dumps(totals, ensure_ascii=False, indent=2), encoding='utf-8')
         return totals

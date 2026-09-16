@@ -15,7 +15,7 @@ from pipeline.edrsr_snapshot import EXPECTED_COLUMNS
 class Phase2QaTests(unittest.TestCase):
     def test_sample_is_deterministic_active_kyiv_and_excludes_development(self):
         rows = [SimpleNamespace(doc_id=str(i), court_code='2601', status=1, cause_num=str(i),
-                                justice_kind='2', judgment_code='1')
+                                justice_kind='2', judgment_code='1', category_code='40576')
                 for i in range(20)]
         rows += [SimpleNamespace(doc_id='inactive', court_code='2601', status=0, cause_num='x'),
                  SimpleNamespace(doc_id='outside', court_code='9999', status=1, cause_num='y')]
@@ -40,7 +40,7 @@ class Phase2QaTests(unittest.TestCase):
             writer = csv.writer(tsv, delimiter='\t')
             writer.writerow(EXPECTED_COLUMNS)
             for doc in ['123', '124']:
-                writer.writerow([doc, '2601', '1', '2', 'test', f'synthetic-{doc}',
+                writer.writerow([doc, '2601', '1', '2', '40576', f'synthetic-{doc}',
                                  '2026-09-01', '2026-09-01', '',
                                  'https://example.invalid/synthetic', '1', '2026-09-01'])
             archive = root / 'synthetic.zip'
@@ -48,24 +48,26 @@ class Phase2QaTests(unittest.TestCase):
                 zf.writestr('documents.csv', tsv.getvalue())
             (root / '123.txt').write_text('Синтетичний текст.', encoding='utf-8')
             output = root / 'private/qa'
-            with patch('pipeline.phase2_qa.PRIVATE', root / 'private'):
+            with patch('pipeline.phase2_qa.PRIVATE', root / 'private'), \
+                    patch('pipeline.phase2_qa.validate_dictionaries', return_value={'2601': {'instance_code': '3'}}):
                 with patch('pipeline.phase2_qa.sha256_file', side_effect=['a' * 64, 'b' * 64]):
                     with self.assertRaisesRegex(ValueError, 'Архів змінився'):
                         prepare(archive, 'https://data.gov.ua/dataset/synthetic', root, output)
                 self.assertFalse(output.exists())
                 summary = prepare(archive, 'https://data.gov.ua/dataset/synthetic', root, output)
                 self.assertEqual((summary['selected'], summary['texts_missing']), (2, 1))
-                self.assertEqual(summary['document_scope'], 'criminal-verdicts-v1')
+                self.assertEqual(summary['document_scope'], 'target-corpus-v1')
                 review = [json.loads(line) for line in (output / 'review.jsonl').read_text(encoding='utf-8').splitlines()]
                 self.assertTrue(all(row['expected_event_location'] is None for row in review))
                 self.assertFalse(summary['backfill_executed'])
                 with self.assertRaises(FileExistsError):
                     prepare(archive, 'https://data.gov.ua/dataset/synthetic', root, output)
 
-    def test_only_criminal_verdicts_not_rulings_civil_or_administrative(self):
+    def test_two_streams_not_rulings_civil_or_administrative_justice(self):
         rows = [SimpleNamespace(doc_id=str(i), court_code='2601', status=1,
-                                cause_num=str(i), justice_kind=kind, judgment_code=form)
+                                cause_num=str(i), justice_kind=kind, judgment_code=form,
+                                category_code='41080' if kind == '5' else '40576')
                 for i, (kind, form) in enumerate([
                     ('2', '1'), ('2', '5'), ('1', '3'), ('5', '2'),
                     ('4', '2'), ('1', '1'), ('', '1'), ('2', ''), ('2', '2')])]
-        self.assertEqual([r.doc_id for r in select_sample(rows, 20, 'scope')], ['0'])
+        self.assertEqual({r.doc_id for r in select_sample(rows, 20, 'scope')}, {'0', '3'})
