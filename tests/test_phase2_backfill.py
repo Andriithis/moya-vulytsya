@@ -30,6 +30,7 @@ class BackfillTests(unittest.TestCase):
             packet = root / 'private/qa'
             packet.mkdir(parents=True)
             plan = [{'doc_id': '123', 'source_row_hash': 'a'*64,
+                     'justice_kind': '2', 'judgment_code': '1',
                      'source_url': 'https://od.reyestr.court.gov.ua/files/68/' + 'a'*32 + '.rtf'}]
             path = packet / 'backfill_plan.json'
             path.write_text(json.dumps(plan), encoding='utf-8')
@@ -62,3 +63,21 @@ class BackfillTests(unittest.TestCase):
                     self.assertEqual(conn.execute('SELECT count(*) FROM address_evidence').fetchone(), (0,))
                 finally:
                     conn.close()
+
+    def test_wrong_or_missing_scope_rejected_before_network_or_database(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            packet = root / 'qa'
+            packet.mkdir()
+            with patch('pipeline.phase2_backfill.PRIVATE', root), \
+                    patch('pipeline.phase2_backfill.fetch_text') as fetch, \
+                    patch('pipeline.phase2_backfill.load_resolver') as resolver:
+                for item in ({}, {'justice_kind': '2', 'judgment_code': '5'},
+                             {'justice_kind': '5', 'judgment_code': '2'},
+                             {'justice_kind': '1', 'judgment_code': '1'}):
+                    (packet/'backfill_plan.json').write_text(json.dumps([item]))
+                    with self.assertRaisesRegex(ValueError, 'кримінальні вироки'):
+                        run(packet, download=True)
+                fetch.assert_not_called()
+                resolver.assert_not_called()
+                self.assertFalse((packet/'withheld').exists())

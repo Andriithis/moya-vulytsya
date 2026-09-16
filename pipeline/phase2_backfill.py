@@ -12,6 +12,7 @@ from urllib.parse import urlparse
 from src import addr, location_evidence
 from src.geocode_quality import load_resolver
 from src.step1_download import rtf_to_text
+from pipeline.document_scope import is_criminal_verdict
 
 PRIVATE = Path(__file__).resolve().parents[1] / 'private'
 MAX_BYTES = 8 * 1024 * 1024
@@ -54,6 +55,9 @@ def run(packet, download=False):
     plan = json.loads((packet / 'backfill_plan.json').read_text(encoding='utf-8'))
     if len(plan) > 200:
         raise ValueError('Контрольний прогін обмежено 200 документами')
+    if any(not is_criminal_verdict(item.get('justice_kind'), item.get('judgment_code'))
+           for item in plan):
+        raise ValueError('План має містити лише кримінальні вироки з кодами джерела; старий план треба перевідбирати')
     if any(not re.fullmatch(r'[0-9]+', item['doc_id']) or not allowed_url(item['source_url'])
            or not re.fullmatch(r'[a-f0-9]{64}', item['source_row_hash']) for item in plan):
         raise ValueError('Непридатний QA-план')

@@ -14,7 +14,8 @@ from pipeline.edrsr_snapshot import EXPECTED_COLUMNS
 
 class Phase2QaTests(unittest.TestCase):
     def test_sample_is_deterministic_active_kyiv_and_excludes_development(self):
-        rows = [SimpleNamespace(doc_id=str(i), court_code='2601', status=1, cause_num=str(i))
+        rows = [SimpleNamespace(doc_id=str(i), court_code='2601', status=1, cause_num=str(i),
+                                justice_kind='2', judgment_code='1')
                 for i in range(20)]
         rows += [SimpleNamespace(doc_id='inactive', court_code='2601', status=0, cause_num='x'),
                  SimpleNamespace(doc_id='outside', court_code='9999', status=1, cause_num='y')]
@@ -54,8 +55,17 @@ class Phase2QaTests(unittest.TestCase):
                 self.assertFalse(output.exists())
                 summary = prepare(archive, 'https://data.gov.ua/dataset/synthetic', root, output)
                 self.assertEqual((summary['selected'], summary['texts_missing']), (2, 1))
+                self.assertEqual(summary['document_scope'], 'criminal-verdicts-v1')
                 review = [json.loads(line) for line in (output / 'review.jsonl').read_text(encoding='utf-8').splitlines()]
                 self.assertTrue(all(row['expected_event_location'] is None for row in review))
                 self.assertFalse(summary['backfill_executed'])
                 with self.assertRaises(FileExistsError):
                     prepare(archive, 'https://data.gov.ua/dataset/synthetic', root, output)
+
+    def test_only_criminal_verdicts_not_rulings_civil_or_administrative(self):
+        rows = [SimpleNamespace(doc_id=str(i), court_code='2601', status=1,
+                                cause_num=str(i), justice_kind=kind, judgment_code=form)
+                for i, (kind, form) in enumerate([
+                    ('2', '1'), ('2', '5'), ('1', '3'), ('5', '2'),
+                    ('4', '2'), ('1', '1'), ('', '1'), ('2', ''), ('2', '2')])]
+        self.assertEqual([r.doc_id for r in select_sample(rows, 20, 'scope')], ['0'])

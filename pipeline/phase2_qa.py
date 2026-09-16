@@ -10,6 +10,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from pipeline.edrsr_snapshot import iter_documents, sha256_file
+from pipeline.document_scope import is_criminal_verdict, SCOPE_VERSION
 
 PRIVATE = Path(__file__).resolve().parents[1] / 'private'
 DEVELOPMENT_MANIFEST = PRIVATE.parent / 'data/fixtures/location_qa.json'
@@ -21,12 +22,13 @@ def select_sample(rows, limit, seed, excluded_cases=()):
     if limit < 1:
         raise ValueError('Розмір вибірки має бути додатним')
     eligible = (row for row in rows if row.status == 1 and row.court_code in COURTS
+                and is_criminal_verdict(row.justice_kind, row.judgment_code)
                 and row.cause_num not in excluded_cases)
     return heapq.nsmallest(limit, eligible, key=lambda row:
         (hashlib.sha256(f'{seed}|{row.doc_id}'.encode()).digest(), row.doc_id))
 
 
-def prepare(archive, dataset_url, text_dir, output, limit=200, seed='phase2-holdout-v1'):
+def prepare(archive, dataset_url, text_dir, output, limit=200, seed='phase2-verdicts-v1'):
     parsed = urlparse(dataset_url)
     if parsed.scheme != 'https' or parsed.hostname != 'data.gov.ua' or not parsed.path.startswith('/dataset/'):
         raise ValueError('Потрібне посилання на офіційний набір data.gov.ua')
@@ -53,6 +55,7 @@ def prepare(archive, dataset_url, text_dir, output, limit=200, seed='phase2-hold
             text = path.read_bytes().decode('utf-8') if path.exists() else None
             ready += text is not None
             plan.append({'doc_id': row.doc_id, 'source_row_hash': row.source_row_hash,
+                         'justice_kind': row.justice_kind, 'judgment_code': row.judgment_code,
                          'source_url': row.doc_url, 'text_available': text is not None})
             review.write(json.dumps({
                 'doc_id': row.doc_id, 'source_url': row.doc_url,
@@ -63,6 +66,7 @@ def prepare(archive, dataset_url, text_dir, output, limit=200, seed='phase2-hold
                 'expected_geocode': None, 'notes': None,
             }, ensure_ascii=False) + '\n')
     summary = {'archive_sha256': archive_hash, 'dataset_url': dataset_url,
+               'document_scope': SCOPE_VERSION,
                'seed': seed, 'requested': limit, 'selected': len(selected),
                'texts_available': ready, 'texts_missing': len(selected)-ready,
                'independent_human_review_complete': False,
@@ -105,7 +109,7 @@ def main():
     parser.add_argument('--text-dir', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--limit', type=int, default=200)
-    parser.add_argument('--seed', default='phase2-holdout-v1')
+    parser.add_argument('--seed', default='phase2-verdicts-v1')
     args = parser.parse_args()
     print(json.dumps(prepare(args.archive, args.dataset_url, args.text_dir, args.output,
                              args.limit, args.seed), ensure_ascii=False, indent=2))
