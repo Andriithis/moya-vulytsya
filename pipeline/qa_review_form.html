@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="uk"><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; form-action 'none'; base-uri 'none'">
+<title>Сліпа перевірка документів</title>
+<style>
+body{font:17px system-ui;margin:24px auto;max-width:1200px;padding:0 20px;color:#182b35;background:#f5f7f8}button,input,select,textarea{font:inherit;padding:8px;margin:5px 0}button{cursor:pointer}main{display:grid;grid-template-columns:3fr 2fr;gap:24px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:white;padding:20px;max-height:70vh;overflow:auto;font:16px/1.6 system-ui}label{display:block;margin:12px 0}textarea{box-sizing:border-box;width:100%;min-height:100px}nav{display:flex;gap:12px;align-items:center;flex-wrap:wrap}small{display:block}#message{color:#953d00}@media(max-width:800px){main{display:block}}
+</style>
+<h1>Ручна перевірка · перша порція</h1>
+<p>Читайте документ і позначайте лише прямо підтверджені відомості. Прогнози алгоритму приховані. Це перевірка місця події, а не дозвіл публікувати документ.</p>
+<p><strong>Перед закриттям натисніть «Зберегти відповіді».</strong> Форма працює без мережі. Збережений файл тримайте у приватній папці; для продовження завантажте його нижче.</p>
+<label>Ваше ім’я або код перевіряльника <input id="reviewer" autocomplete="off"></label>
+<nav><button id="prev">← Попередній</button><span id="progress"></span><button id="next">Наступний →</button><button id="save">Зберегти відповіді</button><label>Продовжити з файла <input id="load" type="file" accept="application/json,.json"></label></nav>
+<p id="message" role="status"></p>
+<main><section><h2 id="document"></h2><pre id="text"></pre></section><section>
+<label>Чи можна визначити місце описаної події?
+<select id="status"><option value="unreviewed">Ще не перевірено</option><option value="event">Так, є явно вказане місце</option><option value="none">Немає придатного місця події</option><option value="uncertain">Не впевнений — потрібен другий перегляд</option><option value="unreadable">Текст пошкоджений / нечитабельний</option></select></label>
+<label>Місце події та цитата, що підтверджує зв’язок<textarea id="event"></textarea></label>
+<small>Не підставляйте адресу суду, установи, проживання, роботи чи майна. Якщо адресу приховано як АДРЕСА_1 — так і напишіть; не відновлюйте її здогадкою.</small>
+<label>Усі згадані адреси й ролі (по одній на рядок)<textarea id="candidates" placeholder="Адреса — суд / установа / проживання / робота / майно / подія / невідомо"></textarea></label>
+<label>Примітки: тип документа, чи є опис події, сумніви<textarea id="notes"></textarea></label>
+<p>Координати й перейменування перевірятимуться окремо. Тут не потрібно шукати адресу в мережі.</p>
+</section></main>
+<script>
+'use strict';
+const data=/*PAYLOAD*/;
+const $=id=>document.getElementById(id), fields=['status','event','candidates','notes'];
+let index=0, dirty=false;
+const blank=r=>({doc_id:r.doc_id,source_row_hash:r.source_row_hash,text_sha256:r.text_sha256,status:'unreviewed',event:'',candidates:'',notes:'',reviewed_at:null});
+let answers=data.rows.map(blank);
+function capture(){const a=answers[index];for(const k of fields)a[k]=$(k).value;}
+function show(){const r=data.rows[index],a=answers[index];$('document').textContent='Документ '+r.doc_id;$('text').textContent=r.text;for(const k of fields)$(k).value=a[k];$('progress').textContent=`${index+1} / ${answers.length} · позначено ${answers.filter(x=>x.status!=='unreviewed').length}`;$('prev').disabled=index===0;$('next').disabled=index===answers.length-1;}
+for(const k of fields)$(k).addEventListener('input',()=>{capture();answers[index].reviewed_at=answers[index].status==='unreviewed'?null:new Date().toISOString();dirty=true;});
+$('reviewer').oninput=()=>{dirty=true;};
+for(const [id,delta] of [['prev',-1],['next',1]])$(id).onclick=()=>{capture();index+=delta;show();};
+$('save').onclick=()=>{capture();if(!$('reviewer').value.trim()){$('message').textContent='Вкажіть ім’я або код перевіряльника.';return;}const result={schema:'blind-review-notes-v1',fingerprint:data.fingerprint,reviewer:$('reviewer').value.trim(),exported_at:new Date().toISOString(),answers};const url=URL.createObjectURL(new Blob([JSON.stringify(result,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='manual-review-first-batch.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);dirty=false;$('message').textContent='Файл підготовлено до збереження. Переконайтеся, що він завантажився, і перенесіть його у private.';};
+$('load').onchange=async e=>{try{const x=JSON.parse(await e.target.files[0].text());if(x.schema!=='blind-review-notes-v1'||x.fingerprint!==data.fingerprint||typeof x.reviewer!=='string'||!Array.isArray(x.answers)||x.answers.length!==answers.length)throw Error();const valid=['unreviewed','event','none','uncertain','unreadable'];x.answers.forEach((a,i)=>{const r=data.rows[i];if(['doc_id','source_row_hash','text_sha256'].some(k=>a[k]!==r[k])||!valid.includes(a.status)||fields.some(k=>typeof a[k]!=='string')||!(a.reviewed_at===null||typeof a.reviewed_at==='string'))throw Error();});if(dirty&&!confirm('Замінити незбережені відповіді відповідями з файла?'))return;answers=x.answers.map(a=>Object.fromEntries(Object.keys(blank(data.rows[0])).map(k=>[k,a[k]])));$('reviewer').value=x.reviewer;dirty=false;show();$('message').textContent='Відповіді відновлено.';}catch{$('message').textContent='Файл не підходить до цієї порції або пошкоджений. Відповіді не змінено.'}e.target.value='';};
+window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});show();
+</script></html>

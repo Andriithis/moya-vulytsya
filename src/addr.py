@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 import re
+from dataclasses import dataclass, asdict
+
+EXTRACTION_VERSION = 'location-roles-v3'
 
 TYPES = [
  (r'вул(?:иц[іяею])?\.?', 'вул.'),
@@ -15,7 +18,8 @@ TYPES = [
 ]
 TYPE_RE = '(?:' + '|'.join(t for t,_ in TYPES) + ')'
 NAME = r"[А-ЯІЇЄҐ][А-Яа-яІіЇїЄєҐґ'`’\-\s\.]{1,40}?"
-HOUSE = r"(\d{1,4}\s*(?:[-/]\s*\d{1,3})?\s*(?:[А-ЯA-Za-zа-я])?)"
+HOUSE = (r"(\d{1,4}(?:\s*[-/]\s*\d{1,3})?"
+         r"(?:\s*(?!(?i:[ву])\s+(?i:м\.|міст))[А-ЯA-Za-zа-я])?)")
 
 # variant A: type before name   "вул. Лугова, 16"
 PA = re.compile(rf"\b({TYPE_RE})\s*({NAME})[,\s]+(?:буд(?:инок|\.)?\s*)?№?\s*{HOUSE}\b", re.U)
@@ -88,27 +92,156 @@ def body_start(text):
 
 def extract(text):
     """best (street, house, time) for the offence event"""
-    cands = find_all(text)
+    candidates = extract_candidates(text)
+    selected = select_event_candidate(candidates)
+    result = dict(street=None, house=None, level='none', time=None,
+                  candidates=[asdict(c) for c in candidates],
+                  extraction_version=EXTRACTION_VERSION)
+    if selected:
+        result.update(street=selected.street, house=selected.house,
+                      level='house' if selected.house else 'street',
+                      time=find_time(selected.context))
+    return result
+
+
+@dataclass(frozen=True)
+class AddressCandidate:
+    street: str
+    house: str | None
+    start: int
+    end: int
+    raw: str
+    context: str
+    context_start: int
+    role: str
+    reason: str
+    version: str = EXTRACTION_VERSION
+
+
+# Заборонені ролі мають пріоритет над ознаками події в тому самому фрагменті.
+ROLE_PATTERNS = [(role, re.compile(pattern, re.I)) for role, pattern in (
+    ('COURT', r'\bсуд\w*|\bканцеляр\w*'),
+    ('RESIDENCE', r'прожива\w*|проживан\w*|мешка\w*|зареєстрован\w*|реєстраці\w*|житл\w*'),
+    ('WORKPLACE', r'працю\w*|робоч\w*\s+місц\w*|місц\w*\s+робот\w*|роботодав\w*'),
+    ('PROPERTY', r'власност\w*|належ\w*|нерухом\w*|оренд\w*'),
+    ('INSTITUTION', r'прокурат\w*|поліці\w*|управлін\w*|відділ\w*|лікарн\w*|установ\w*|підприємств\w*|\bТОВ\b|\bГУНП\b|\bРУП\b|\bУПП\b'),
+)]
+EVENT_CUE = re.compile(
+    r'\b(?:керував|керувала|викрав|викрала|вчинив|вчинила|скоїв|скоїла|'
+    r'наніс|нанесла|завдав|завдала|пошкодив|пошкодила|збував|збувала)\b|'
+    r'\bздійснюва[вл][а]?\s+(?:роздрібну\s+)?(?:торгівлю|продаж)\b|'
+    r'\b(?:курив|курила|палив|палила)\b|'
+    r'\b(?:сталася|сталось|сталося)\s+(?:ДТП|крадіжка|зіткнення)\b', re.I)
+LOCATIVE = re.compile(r'\b(?:за\s+адресою|по|на|біля|поблизу)\s*:?\s*'
+                      r'(?:(?:м\.?|місто|місті)\s*Ки(?:їв|єві|єва)\s*,?\s*)?$', re.I)
+UNSAFE_CONTEXT = re.compile(
+    r'\bне\b|\bнібито\b|\bможливо\b|\bякби\b|\bзапереч\w*|'
+    r'\bклопотан\w*|\bобшук\w*|\bогляд\w*|\bдостав\w*|\bзобов\w*|'
+    r'\bзатрим\w*|\bповіст\w*|\bвиклик\w*|'
+    r'\bпросить\b|\bдозвіл\b|\bтимчасов\w*\s+доступ\w*', re.I)
+# Крапки у «вул.», «буд.», «м.» та 01.09.2026 не є межами речення.
+CLAUSE_BREAK = re.compile(r'[;!?\n\r]+|(?<=[А-Яа-яІіЇїЄєҐґ0-9»)\]])\.(?=\s+[А-ЯІЇЄҐ])')
+
+
+def is_sentence_break(text, match):
+    if match.group() != '.':
+        return True
+    word = re.search(r'([А-Яа-яІіЇїЄєҐґ]+)$', text[:match.start()])
+    return not word or (len(word.group(1)) > 1 and word.group(1).lower() not in
+                        {'вул', 'буд', 'просп', 'пров', 'гр', 'ст', 'год', 'хв', 'ім'})
+
+
+def extract_candidates(text):
+    """Усі розпізнані згадки адрес, без втрати повторів та їхнього контексту.
+
+    Це консервативні правила, не виміряна ймовірність і не повне розуміння
+    судового тексту. Непідтриманий або неоднозначний опис лишається UNKNOWN.
+    """
+    matches = []
+    for pattern, reverse in ((PA, False), (PB, True)):
+        for m in pattern.finditer(text):
+            # Кілометрова позначка дороги не є номером будинку.
+            if re.match(r'\s*(?:км\b|кілометр)', text[m.end():], re.I):
+                continue
+            t, n = norm_street(m.group(2 if reverse else 1), m.group(1 if reverse else 2))
+            if not n or n.lower() in STOP or len(n) < 3:
+                continue
+            if any(m.start() < end and m.end() > start for start, end, *_ in matches):
+                continue
+            matches.append((m.start(), m.end(), f'{t} {n}', norm_house(m.group(3))))
+    # Вулиця без номера: повна назва до пунктуації, не перше слово назви.
+    street_only = re.compile(rf'\b({TYPE_RE})\s*({NAME})(?=[,;\n.!?]|$)', re.U)
+    for m in street_only.finditer(text):
+        if any(m.start() < end and m.end() > start for start, end, *_ in matches):
+            continue
+        t, n = norm_street(m.group(1), m.group(2))
+        if n and n.lower() not in STOP and len(n) >= 3:
+            matches.append((m.start(), m.end(), f'{t} {n}', None))
+    matches.sort()
+    # Не розбиваємо речення всередині самої адреси.
+    breaks = [m for m in CLAUSE_BREAK.finditer(text) if is_sentence_break(text, m)
+              if not any(a <= m.start() < b for a, b, *_ in matches)]
     bs = body_start(text)
-    # 1) чисті кандидати з ОПИСУ ПОДІЇ (після ВСТАНОВИВ) — найнадійніші
-    inb = [c for c in cands if c[3] >= bs and context_ok(text, c[3], floor=bs)]
-    # 2) якщо опису немає або в ньому адреси немає — чисті з усього тексту
-    good = [c for c in cands if context_ok(text, c[3])]
-    pool = inb or good
-    if not pool:
-        # Свідомо НЕ повертаємось до відкинутих кандидатів. Раніше тут стояло
-        # `pool = good if good else cands`, і коли чистих не було, функція
-        # віддавала адресу суду з позначкою level='house' — тобто вигадувала
-        # місце події. Краще чесне «адреси немає», ніж хибна точність.
-        m = PS.search(text[bs:] or text)
-        if m:
-            t, n = norm_street(m.group(1), m.group(2))
-            if n and n.lower() not in STOP and len(n) >= 3 and context_ok(text, bs + m.start(), floor=bs):
-                return dict(street=f"{t} {n}", house=None, level='street', time=find_time(text))
-        return dict(street=None, house=None, level='none', time=None)
-    t, n, h, p = pool[0]
-    return dict(street=f"{t} {n}", house=h, level='house' if h else 'street',
-                time=find_time(text, p))
+    out = []
+    for start, end, street, house in matches:
+        left = max([m.end() for m in breaks if m.end() <= start] + [0])
+        right = min([m.start() for m in breaks if m.start() >= end] + [len(text)])
+        if start >= bs:
+            left = max(left, bs)
+        context = text[left:right]
+        # Назва вулиці «Судова» / «Лікарняна» не визначає роль адреси.
+        masked = list(context)
+        for a, b, *_ in matches:
+            if left <= a and b <= right:
+                masked[a-left:b-left] = ' ' * (b-a)
+        prose = ''.join(masked)
+        role, reason = 'UNKNOWN', 'no_explicit_event_link'
+        for name, pattern in ROLE_PATTERNS:
+            if pattern.search(prose):
+                role, reason = name, 'non_event_context'
+                break
+        else:
+            count = sum(left <= a and b <= right for a, b, *_ in matches)
+            if start < bs:
+                reason = 'document_header'
+            elif count != 1:
+                reason = 'multiple_addresses_in_clause'
+            elif UNSAFE_CONTEXT.search(prose):
+                reason = 'negated_or_procedural_context'
+            else:
+                prefix = text[left:start]
+                cue = EVENT_CUE.search(prefix)
+                locative = LOCATIVE.search(prefix)
+                if cue and locative and cue.end() <= locative.start():
+                    bridge = prefix[cue.end():locative.start()]
+                    if not re.search(r'[,;:]|\b(?:а|але|потім|після|де|коли)\b', bridge, re.I):
+                        role, reason = 'EVENT_LOCATION', 'explicit_event_and_locative'
+                elif locative:
+                    suffix = text[end:right]
+                    # Лише прямий зв'язок «за адресою ... ОСОБА_N вчинив ...».
+                    # Друга дія/інше місце між адресою та дією не допускаються.
+                    subject = re.match(
+                        r'^[\s,]*(?:де\s+)?(?:(?:громадянин|громадянка|водій)\s+)?'
+                        r'(?:ОСОБА_\d+\s*,?\s*)?'
+                        r'(?:(?:перебуваючи\s+)?у\s+громадському\s+місці\s*,?\s*)?',
+                        suffix, re.I)
+                    if EVENT_CUE.match(suffix, subject.end()):
+                        role, reason = 'EVENT_LOCATION', 'locative_then_explicit_event'
+        out.append(AddressCandidate(street, house, start, end, text[start:end],
+                                    context, left, role, reason))
+    return out
+
+
+def select_event_candidate(candidates):
+    """Один підтверджений адресний ключ; конфлікт ролей не вирішуємо навмання."""
+    events = [c for c in candidates if c.role == 'EVENT_LOCATION']
+    keys = {(c.street.casefold(), c.house) for c in events}
+    if len(keys) != 1:
+        return None
+    if any((c.street.casefold(), c.house) in keys and c.role != 'EVENT_LOCATION'
+           for c in candidates):
+        return None
+    return events[0]
 
 def find_time(text, pos=None):
     seg = text[max(0,(pos or 0)-320):(pos or 0)+120] if pos else text[:2500]
