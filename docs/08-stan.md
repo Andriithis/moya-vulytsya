@@ -38,9 +38,15 @@ sheet → аналітичний preview → CTA повного аналізу �
 У dani-edrsr виправлено виділення службових уривків, додано очищення тільки
 оформлення та 15 синтетичних тестових методів. Зберігаються заперечення,
 приблизність, наслідки й ролі. Локально 99 перевірок пройшли, 28 PostgreSQL
-пропущені; поточний GitHub CI перевіряється перед завершенням PR #13.
-У продукті: 67 перевірок пройшли, 13 PostgreSQL пропущено.
-[Методика, результати й межі](https://github.com/Andriithis/dani-edrsr/blob/codex/editor-pilot-recovery/docs/0011-control35-programmatic.md).
+пропущені. Нові перевірки GitHub, включно з PostgreSQL, успішні:
+[dani-edrsr](https://github.com/Andriithis/dani-edrsr/actions/runs/37749649622),
+[продукт](https://github.com/Andriithis/moya-vulytsya/actions/runs/37749884545).
+У продукті локально: 67 перевірок пройшли, 13 PostgreSQL пропущено.
+[Методика, результати й межі](https://github.com/Andriithis/dani-edrsr/blob/main/docs/0011-control35-programmatic.md).
+
+**PR #13 dani-edrsr злитий (`ce72cb8`); PR #20 продукту злитий (`2d5ecb3`).**
+Конфлікт із новішим main усунено зі збереженням продуктових рішень 03.10
+та документаційної звірки 08.10. Обидві локальні копії переведено на main.
 
 Приватний звіт `private/audit-2026-10-08/report.html`: 35 записів, сім
 прикладів «було → стало», джерела та хеші. Судові тексти й цитати поза Git;
