@@ -6,7 +6,9 @@
 (function () {
   'use strict';
 
-  var PODII = ['pryishly', 'adresa', 'peredzamovyty', 'kontakt'];
+  var PODII = ['pryishly', 'adresa', 'peredzamovyty', 'kontakt',
+    // ZAVDANNYA-07: гра «Вгадай, де це було». Лише назва події й канал, як і для чотирьох чисел.
+    'hra_start', 'hra_vidpovid', 'hra_kinets', 'hra_podilytysia', 'den_zihrano'];
   var SHCHO = ['analiz', 'pidpyska', 'povidomyty', 'kompaniya'];
 
   function nalashtuvannya() {
