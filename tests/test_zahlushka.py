@@ -91,19 +91,19 @@ class StorinkyTests(unittest.TestCase):
         self.assertTrue((SAIT / 'shryfty' / 'OFL-Manrope.txt').is_file())
 
     def test_tsiny_yak_u_mv3(self):
-        """Ціни на сторінці: 400 грн аналіз, 150 грн/міс підписка — і жодних інших."""
+        """Ціни на сторінці: 690 грн аналіз, 299 грн/міс підписка (MV-11) — і жодних інших."""
         rishennya = (KORIN / 'RISHENNYA.md').read_text(encoding='utf-8')
-        self.assertIn('**400 грн**', rishennya)
-        self.assertIn('150', rishennya)
+        self.assertIn('**299 грн на місяць**', rishennya)
+        self.assertIn('**690 грн**', rishennya)
         html = (SAIT / 'index.html').read_text(encoding='utf-8')
         tsiny = {int(x) for x in re.findall(r'(\d+)\s*грн', html)}
-        self.assertEqual(tsiny, {0, 150, 400})
+        self.assertEqual(tsiny, {0, 299, 690})
         for blok in re.findall(r'data-tsina="analiz">([^<]+)', html):
-            self.assertTrue(blok.startswith('400 грн'), blok)
+            self.assertTrue(blok.startswith('690 грн'), blok)
         for blok in re.findall(r'data-tsina="pidpyska">(.+?)</span>', html):
-            self.assertRegex(blok, r'^150 грн(\s*<small>/ місяць</small>|/міс)$')
-        self.assertIn('Аналіз адреси — 400 грн', html)
-        self.assertIn('Підписка — 150 грн / місяць', html)
+            self.assertRegex(blok, r'^299 грн(\s*<small>/ місяць</small>|/міс)$')
+        self.assertIn('Аналіз адреси — 690 грн', html)
+        self.assertIn('Підписка — 299 грн / місяць', html)
 
     def test_zghoda_u_formi(self):
         html = (SAIT / 'index.html').read_text(encoding='utf-8')
