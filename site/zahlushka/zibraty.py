@@ -11,6 +11,12 @@
     з файлу --zapovnennya (JSON: {"ВЛАСНИК": "...", ...});
   * звужує дозвіл на з'єднання (Content-Security-Policy) до однієї адреси сховища.
 
+Гра «Вгадай, де це було» (ZAVDANNYA-07, site/hra/) збирається в підтеку hra/:
+  * колода — з --koloda (справжня, з конвеєра dani-edrsr) або демо-колода для перегляду;
+  * заборонені категорії MV-12 / MV-4 відкидаються під час збирання (site/hra/koloda.py);
+  * для публікації демо-колода НЕ проходить: з демо-колодою збирання падає,
+    а без --koloda гра просто не збирається (заглушку можна публікувати й без гри).
+
 Режим --dlya-publikatsiyi падає, якщо:
   * не задано адресу або ключ сховища, або адреса не https://<проєкт>.supabase.co;
   * ключ схожий на секретний (service_role, sb_secret_) — такий ключ у сторінці
@@ -39,6 +45,11 @@ from pathlib import Path
 
 DZHERELO = Path(__file__).resolve().parent
 KORIN = DZHERELO.parents[1]
+DZHERELO_HRY = KORIN / 'site' / 'hra'
+sys.path.insert(0, str(DZHERELO_HRY))
+import koloda as koloda_hry  # noqa: E402
+# Файли гри, які йдуть на сайт (код .py і робочі файли — ні).
+ROZSHYRENNYA_HRY = {'.html', '.css', '.js', '.json', '.geojson', '.txt'}
 FAILY = ['index.html', 'polityka.html', 'zrazok.html', 'styli.css', 'zrazok.css',
          'nadsylannya.js', 'storinka.js',
          # ZAVDANNYA-06: оферта, звернення, встановлення на телефон
@@ -78,7 +89,7 @@ def klyuch_sekretnyi(klyuch: str) -> bool:
 
 
 def zibraty(vykhid: Path, adresa: str, klyuch: str, zapovnennya: dict[str, str],
-            dlya_publikatsiyi: bool) -> list[str]:
+            dlya_publikatsiyi: bool, koloda: Path | None = None) -> list[str]:
     """Збирає сайт. Повертає список незаповнених місць (порожній — усе заповнено)."""
     adresa = adresa.strip().rstrip('/')
     klyuch = klyuch.strip()
@@ -130,11 +141,57 @@ def zibraty(vykhid: Path, adresa: str, klyuch: str, zapovnennya: dict[str, str],
     else:
         shutil.copy2(DZHERELO / 'config.example.js', vykhid / 'config.js')
 
+    nezapovneni += zibraty_hru(vykhid, adresa, zapovnennya, dlya_publikatsiyi, koloda)
+
     zibraty_sw(vykhid)
 
     if dlya_publikatsiyi and nezapovneni:
         raise PomylkaZbyrannya('Незаповнені місця — публікувати не можна:\n  ' + '\n  '.join(nezapovneni))
     return nezapovneni
+
+
+def zibraty_hru(vykhid: Path, adresa: str, zapovnennya: dict[str, str],
+                dlya_publikatsiyi: bool, koloda: Path | None) -> list[str]:
+    """Збирає гру в vykhid/hra/. Повертає незаповнені місця гри."""
+    if dlya_publikatsiyi and koloda is None:
+        # Демо-колоду не публікуємо ніколи; без справжньої колоди — сайт без гри і без ярлика «Грати».
+        print('Увага: гру не зібрано — для публікації потрібна справжня колода (--koloda).', file=sys.stderr)
+        manifest = vykhid / 'manifest.webmanifest'
+        dani = json.loads(manifest.read_text(encoding='utf-8'))
+        dani.pop('shortcuts', None)
+        manifest.write_text(json.dumps(dani, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+        return []
+    try:
+        fail = koloda_hry.prochytaty(koloda or koloda_hry.DEMO)
+        gotova = koloda_hry.pidhotuvaty(fail)
+        if dlya_publikatsiyi:
+            koloda_hry.dlya_publikatsiyi(gotova)
+    except koloda_hry.PomylkaKolody as e:
+        raise PomylkaZbyrannya(f'Колода гри: {e}') from e
+    if not gotova['podii']:
+        raise PomylkaZbyrannya('Колода гри: немає жодної придатної події.')
+
+    tsil = vykhid / 'hra'
+    for f in sorted(DZHERELO_HRY.rglob('*')):
+        vidn = f.relative_to(DZHERELO_HRY)
+        if not f.is_file() or f.suffix not in ROZSHYRENNYA_HRY or '__pycache__' in vidn.parts:
+            continue
+        if f.name == 'koloda.json' or (f.name == 'koloda-demo.json' and not gotova['demo']):
+            continue
+        (tsil / vidn).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(f, tsil / vidn)
+    (tsil / 'koloda.json').write_text(json.dumps(gotova, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+
+    storinka = tsil / 'index.html'
+    tekst = storinka.read_text(encoding='utf-8')
+    for mistse, znachennya in zapovnennya.items():
+        znachennya = str(znachennya).strip()
+        if znachennya:
+            tekst = tekst.replace(f'[{mistse}]', html.escape(znachennya))
+    if adresa:
+        tekst = tekst.replace('https://*.supabase.co', adresa)
+    storinka.write_text(tekst, encoding='utf-8')
+    return [f'hra/index.html: {m}' for m in sorted(set(MISTSE.findall(tekst)))]
 
 
 def zibraty_sw(vykhid: Path) -> None:
@@ -149,7 +206,8 @@ def zibraty_sw(vykhid: Path) -> None:
     for f in faily:
         vidbytok.update(f.encode() + b'\0' + (vykhid / f).read_bytes())
     tekst = tekst.replace(SW_VERSIYA, json.dumps(vidbytok.hexdigest()[:12]))
-    tekst = tekst.replace(SW_FAILY, json.dumps(['./'] + faily, ensure_ascii=False))
+    teky = ['hra/'] if (vykhid / 'hra' / 'index.html').is_file() else []   # гра відкривається як /hra/
+    tekst = tekst.replace(SW_FAILY, json.dumps(['./'] + teky + faily, ensure_ascii=False))
     sw.write_text(tekst, encoding='utf-8')
 
 
@@ -158,6 +216,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument('--vykhid', type=Path, default=KORIN / '_site' / 'zahlushka')
     p.add_argument('--zapovnennya', type=Path, help='JSON зі значеннями для місць у квадратних дужках')
     p.add_argument('--dlya-publikatsiyi', action='store_true', help='сувора перевірка перед публікацією')
+    p.add_argument('--koloda', type=Path, help='справжня колода гри з конвеєра (без неї — демо-колода для перегляду)')
     a = p.parse_args(argv)
     zapovnennya = {}
     if a.zapovnennya:
@@ -165,7 +224,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         nezapovneni = zibraty(a.vykhid, os.environ.get('MV_SUPABASE_URL', ''),
                               os.environ.get('MV_SUPABASE_PUBLICHNYI_KLYUCH', ''),
-                              zapovnennya, a.dlya_publikatsiyi)
+                              zapovnennya, a.dlya_publikatsiyi, a.koloda)
     except PomylkaZbyrannya as e:
         print('ЗБИРАННЯ ЗУПИНЕНО:', e, file=sys.stderr)
         return 1

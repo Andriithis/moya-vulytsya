@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data: blob:; worker-src 'self'; child-src 'self'; connect-src 'self' https://tiles.openfreemap.org https://*.supabase.co; form-action 'none'; base-uri 'none'">
+<title>Вгадай, де це було — Моя вулиця</title>
+<meta name="description" content="Гра на карті Києва: прочитайте опис події з судового рішення і вгадайте, де це сталося.">
+<link rel="preload" href="../shryfty/manrope-cyrillic-800-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="../shryfty/inter-cyrillic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<meta name="theme-color" content="#F7F6F2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#111517" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="../ikony/ikona-192.png">
+<link rel="stylesheet" href="biblioteka/maplibre-gl.css">
+<link rel="stylesheet" href="hra.css">
+</head>
+<body data-sait="[САЙТ]">
+
+<header class="shapka">
+  <div class="shapka__vnutri">
+    <a class="znak" href="../index.html" aria-label="Моя вулиця — на головну">
+      <svg aria-hidden="true" width="24" height="26" viewBox="0 0 26 28"><path class="znak__sota" d="M13 1 L25 8 L25 20 L13 27 L1 20 L1 8 Z"></path><path class="znak__seredyna" d="M13 9 L18 12 L18 17 L13 20 L8 17 L8 12 Z"></path></svg>
+      <span class="znak__nazva">Моя вулиця</span>
+    </a>
+    <span class="mitka-demo" id="mitka-demo" hidden>Демо-колода</span>
+    <button type="button" class="knopka-tekst" id="do-menyu" hidden>
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"></path></svg>
+      Меню
+    </button>
+  </div>
+</header>
+
+<!-- ============ Меню ============ -->
+<main class="menyu" id="ekran-menyu">
+  <div class="menyu__vnutri">
+    <p class="nadpys">Гра на карті Києва</p>
+    <h1 class="menyu__nazva">Вгадай, де це було</h1>
+    <p class="menyu__opys">Читаєте, що сталося, — і торкаєтеся карти там, де, на вашу думку, це було. Потім бачите справжнє місце, відстань і повний опис.</p>
+
+    <div class="demo-pidkazka" id="demo-pidkazka" hidden>
+      <strong>Це демо-колода.</strong> Події узагальнені й не справжні, місця — площі й станції метро. Справжні події з судових рішень з'являться пізніше.
+    </div>
+
+    <div class="rezhymy">
+      <button type="button" class="rezhym rezhym--holovnyi" id="pochaty-raund">
+        <span class="rezhym__ikona" aria-hidden="true">
+          <svg width="28" height="28" viewBox="0 0 24 24"><path d="M12 21s-6-5.6-6-11a6 6 0 0 1 12 0c0 5.4-6 11-6 11z"></path><circle cx="12" cy="10" r="2.2"></circle></svg>
+        </span>
+        <span class="rezhym__tekst">
+          <span class="rezhym__nazva">Раунд з 10 подій</span>
+          <span class="rezhym__opys">До 1 000 очок за кожну. Найкраще — <span id="naikrashchyi">ще не грали</span></span>
+        </span>
+        <span class="rezhym__strilka" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"></path></svg></span>
+      </button>
+
+      <button type="button" class="rezhym" id="pochaty-den">
+        <span class="rezhym__ikona" aria-hidden="true">
+          <svg width="28" height="28" viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="14.5" rx="2.5"></rect><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"></path></svg>
+        </span>
+        <span class="rezhym__tekst">
+          <span class="rezhym__nazva">Подія дня</span>
+          <span class="rezhym__opys" id="den-opys">Одна подія на добу — та сама для всіх</span>
+        </span>
+        <span class="rezhym__strilka" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"></path></svg></span>
+      </button>
+    </div>
+
+    <section class="pravyla" aria-labelledby="pravyla-nazva">
+      <h2 class="pravyla__nazva" id="pravyla-nazva">Як рахуються очки</h2>
+      <ul class="pravyla__spysok">
+        <li><span class="pravyla__chyslo">1 000</span><span>до 50 м від справжнього місця</span></li>
+        <li><span class="pravyla__chyslo">500</span><span>за 500 м</span></li>
+        <li><span class="pravyla__chyslo">349</span><span>за 1 км</span></li>
+        <li><span class="pravyla__chyslo">0</span><span>за 5 км і далі</span></li>
+      </ul>
+      <p class="pravyla__prymitka">Події — з судових рішень. Гра показує, що ставалося, а не де «небезпечно». Без реєстрації: найкращий результат зберігається лише на вашому пристрої.</p>
+    </section>
+  </div>
+  <footer class="pidval">
+    <a href="../zvernennya.html">Виправити або прибрати подію</a>
+    <span>Карта: © учасники OpenStreetMap</span>
+  </footer>
+</main>
+
+<!-- ============ Гра: завдання і відповідь ============ -->
+<main class="hra" id="ekran-hra" hidden>
+  <section class="panel" id="panel" aria-live="polite">
+    <!-- Завдання -->
+    <div class="zavdannya" id="zavdannya">
+      <div class="zavdannya__shapka">
+        <span class="nadpys" id="nadpys">Вгадай, де це було · 1 / 10</span>
+        <span class="rakhunok" id="rakhunok-zahalnyi" aria-label="Очки в раунді">0</span>
+      </div>
+      <div class="krokiv" id="kroky" aria-hidden="true"></div>
+      <p class="zavdannya__opys" id="opys-korotkyi"></p>
+      <p class="zavdannya__meta"><span id="meta-vyd"></span><span class="tochka" aria-hidden="true">·</span><span id="meta-rik"></span></p>
+    </div>
+
+    <!-- Результат однієї події -->
+    <div class="vidpovid" id="vidpovid" hidden>
+      <div class="zavdannya__shapka">
+        <span class="nadpys" id="nadpys-vidpovid">Вгадай, де це було · 1 / 10</span>
+        <span class="rakhunok" id="rakhunok-vidpovid">0</span>
+      </div>
+      <div class="vidpovid__chysla">
+        <div class="velyke">
+          <span class="velyke__chyslo" id="vidstan">—</span>
+          <span class="velyke__pidpys">від справжнього місця</span>
+        </div>
+        <div class="velyke velyke--ochky">
+          <span class="velyke__chyslo" id="ochky">0</span>
+          <span class="velyke__pidpys" id="ochky-slovo">очок</span>
+        </div>
+      </div>
+      <div class="mistse">
+        <span class="mistse__znak" aria-hidden="true"></span>
+        <div>
+          <p class="mistse__pidpys">Справжнє місце</p>
+          <p class="mistse__adresa" id="adresa"></p>
+        </div>
+      </div>
+      <p class="vidpovid__opys" id="opys-povnyi"></p>
+      <p class="vidpovid__meta"><span id="meta-vyd-2"></span><span class="tochka" aria-hidden="true">·</span><span id="meta-rik-2"></span></p>
+      <p class="rishennya" id="rishennya"></p>
+      <p class="den-zihrano" id="den-zihrano" hidden>Ви вже зіграли подію дня. Наступна — завтра.</p>
+    </div>
+
+    <div class="dii" id="dii">
+      <p class="dii__pidkazka" id="pidkazka">Торкніться карти там, де це могло бути</p>
+      <button type="button" class="knopka" id="vidpovisty" disabled>Відповісти</button>
+      <button type="button" class="knopka" id="dali" hidden>Далі</button>
+      <button type="button" class="knopka knopka--druhorydna" id="podilytysia-den" hidden>Поділитися</button>
+    </div>
+  </section>
+
+  <div class="karta-ramka" id="karta-ramka">
+    <div class="karta" id="karta" role="application" aria-label="Карта Києва. Торкніться, щоб поставити позначку."></div>
+    <p class="karta__zboi" id="karta-zboi" hidden>Підкладка карти не завантажилася — видно лише межу міста.</p>
+    <div class="lehenda" id="lehenda" hidden>
+      <span><i class="lehenda__vasha" aria-hidden="true"></i>Ваша відповідь</span>
+      <span><i class="lehenda__spravzhnie" aria-hidden="true"></i>Справжнє місце</span>
+    </div>
+  </div>
+</main>
+
+<!-- ============ Кінець раунду ============ -->
+<main class="kinets" id="ekran-kinets" hidden>
+  <div class="kinets__vnutri">
+    <p class="nadpys">Вгадай, де це було · раунд завершено</p>
+    <div class="pidsumok">
+      <span class="pidsumok__chyslo" id="suma">0</span>
+      <span class="pidsumok__pidpys" id="suma-pidpys">очок із 10 000</span>
+    </div>
+    <p class="rekord" id="rekord"></p>
+    <div class="soty-raundu" id="soty-raundu" aria-hidden="true"></div>
+
+    <div class="krainosti">
+      <div class="krainist">
+        <p class="krainist__nazva">Найближче</p>
+        <p class="krainist__chyslo" id="naiblyzhche-vidstan"></p>
+        <p class="krainist__opys" id="naiblyzhche-opys"></p>
+      </div>
+      <div class="krainist">
+        <p class="krainist__nazva">Найдалі</p>
+        <p class="krainist__chyslo" id="naidali-vidstan"></p>
+        <p class="krainist__opys" id="naidali-opys"></p>
+      </div>
+    </div>
+
+    <ol class="spysok-raundu" id="spysok-raundu"></ol>
+
+    <div class="kinets__dii">
+      <button type="button" class="knopka" id="hraty-shche">Грати ще</button>
+      <button type="button" class="knopka knopka--druhorydna" id="podilytysia">Поділитися</button>
+    </div>
+    <p class="podilytysia-stan" id="podilytysia-stan" role="status"></p>
+  </div>
+</main>
+
+<p class="zavantazhennya" id="zavantazhennya" role="status">Завантажуємо колоду…</p>
+
+<script src="../config.js"></script>
+<script src="../nadsylannya.js"></script>
+<script src="biblioteka/maplibre-gl-csp.js"></script>
+<script src="hra-yadro.js"></script>
+<script src="hra-karta.js"></script>
+<script src="hra-kartka.js"></script>
+<script src="hra.js"></script>
+</body>
+</html>

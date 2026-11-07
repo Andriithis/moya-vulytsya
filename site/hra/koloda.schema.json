@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "koloda.schema.json",
+  "title": "Колода гри «Вгадай, де це було» (ZAVDANNYA-07)",
+  "description": "Один файл — одна колода подій для гри. Справжню колоду робить конвеєр dani-edrsr; демо-колода лежить у site/hra/koloda-demo.json. Категорії MV-4 (статеві злочини, щодо дітей, домашнє насильство) у колоду не потрапляють: їх відкидає і конвеєр, і збирання сайту (koloda.py), і сама гра (hra-yadro.js).",
+  "type": "object",
+  "required": ["demo", "versiya", "misto", "podii"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "demo": { "type": "boolean", "description": "true — демо-колода з узагальненими подіями. Режим публікації (zibraty.py --dlya-publikatsiyi) таку колоду не пропускає." },
+    "versiya": { "type": "integer", "minimum": 1, "description": "Версія формату колоди." },
+    "misto": { "type": "string", "const": "Київ" },
+    "opys": { "type": "string", "description": "Звідки колода, коли зібрана, за які роки." },
+    "zibrano": { "type": "string", "description": "Дата збирання справжньої колоди (РРРР-ММ-ДД)." },
+    "podii": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/podiya" }
+    }
+  },
+  "$defs": {
+    "podiya": {
+      "type": "object",
+      "required": ["id", "vyd", "kategoriia", "rik", "opys_korotkyi", "opys_povnyi", "adresa", "lat", "lon", "rishennya_nomer", "rishennya_url"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^(demo-[0-9]{2,4}|[0-9]{5,12}-[0-9]{1,3})$", "description": "Сталий: «номер рішення-номер епізоду» (наприклад, 112233445-1). У демо — demo-01…" },
+        "demo": { "type": "boolean" },
+        "vyd": { "type": "string", "minLength": 2, "maxLength": 60, "description": "Вид події людською мовою: «ДТП», «П'яний за кермом», «Крадіжка»." },
+        "kategoriia": {
+          "type": "string",
+          "pattern": "^[a-z_]{2,40}$",
+          "not": { "enum": ["statevi_zlochyny", "shchodo_ditei", "domashnie_nasylstvo"] },
+          "description": "Код категорії. Заборонені (MV-12, MV-4): statevi_zlochyny, shchodo_ditei, domashnie_nasylstvo."
+        },
+        "rik": { "type": "integer", "minimum": 2016, "maximum": 2026 },
+        "opys_korotkyi": { "type": "string", "minLength": 20, "maxLength": 280, "description": "Текст завдання. Без назв вулиць, станцій, площ і місць, які видають відповідь." },
+        "opys_povnyi": { "type": "string", "minLength": 20, "maxLength": 1200, "description": "Опис після відповіді. Переказ рішення без вигаданих деталей." },
+        "adresa": { "type": "string", "minLength": 3, "maxLength": 200, "description": "Справжня адреса події (MV-12: у грі можна до будинку)." },
+        "lat": { "type": "number", "minimum": 50.21, "maximum": 50.60 },
+        "lon": { "type": "number", "minimum": 30.23, "maximum": 30.83 },
+        "rishennya_nomer": { "type": "string", "description": "Номер рішення в ЄДРСР. У демо — порожній." },
+        "rishennya_url": { "type": "string", "description": "Посилання на рішення (doc_url з офіційного архіву). У демо — порожнє." }
+      }
+    }
+  }
+}

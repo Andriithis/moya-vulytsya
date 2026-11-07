@@ -1,0 +1,300 @@
+/* Гра «Вгадай, де це було» (ZAVDANNYA-07). Вигляд — за системою дизайну «Моєї вулиці»
+   (docs/STYL.md і артефакт системи): ті самі змінні, шрифти, рамки без тіней, кути 14/10 px.
+   Шрифти — файлами з сайту (../shryfty/, ліцензія OFL), без сторонніх запитів. */
+
+/* ---------- Шрифти ---------- */
+@font-face { font-family: 'Inter'; font-style: normal; font-display: swap; font-weight: 400; src: url(../shryfty/inter-cyrillic-400-normal.woff2) format('woff2'); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
+@font-face { font-family: 'Inter'; font-style: normal; font-display: swap; font-weight: 400; src: url(../shryfty/inter-latin-400-normal.woff2) format('woff2'); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: 'Inter'; font-style: normal; font-display: swap; font-weight: 600; src: url(../shryfty/inter-cyrillic-600-normal.woff2) format('woff2'); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
+@font-face { font-family: 'Inter'; font-style: normal; font-display: swap; font-weight: 600; src: url(../shryfty/inter-latin-600-normal.woff2) format('woff2'); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: 'Manrope'; font-style: normal; font-display: swap; font-weight: 700; src: url(../shryfty/manrope-cyrillic-700-normal.woff2) format('woff2'); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
+@font-face { font-family: 'Manrope'; font-style: normal; font-display: swap; font-weight: 700; src: url(../shryfty/manrope-latin-700-normal.woff2) format('woff2'); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: 'Manrope'; font-style: normal; font-display: swap; font-weight: 800; src: url(../shryfty/manrope-cyrillic-800-normal.woff2) format('woff2'); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
+@font-face { font-family: 'Manrope'; font-style: normal; font-display: swap; font-weight: 800; src: url(../shryfty/manrope-latin-800-normal.woff2) format('woff2'); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+
+/* ---------- Змінні системи дизайну (світла / темна тема) ---------- */
+:root {
+  --ground: #F7F6F2;
+  --surface: #FFFFFF;
+  --surface-tint: #F1F7F6;
+  --ink: #1B1F24;
+  --ink-2: #3D434C;
+  --muted: #5B616B;
+  --line: #E3E1DA;
+  --line-strong: #C9C6BD;
+  --accent: #0B6B6B;
+  --accent-strong: #064848;
+  --accent-soft: #D7EBEA;
+  --on-accent: #FFFFFF;
+  --attention: #B45309;
+  --attention-soft: #FBEBDD;
+  --error: #A1281C;
+  --data-1: #F1F7F6;
+  --data-2: #D7EBEA;
+  --data-3: #9CCBC7;
+  --data-4: #4FA39D;
+  --data-5: #0B6B6B;
+  --data-city: #A9ADB4;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --space-9: 56px;
+  --space-10: 72px;
+  --radius-s: 4px;
+  --radius-m: 10px;
+  --radius-l: 14px;
+  --radius-pill: 999px;
+  /* Підкладка карти — похідні тихі кольори (вода, парки, вулиці) для світлої теми. */
+  --karta-voda: #DCE5E5;
+  --karta-zelen: #ECEEE3;
+  --karta-zabudova: #EEECE6;
+  --karta-vulytsia: #FFFFFF;
+  --karta-vulytsia-ramka: #E3E1DA;
+  --karta-za-mezhamy: #ECEAE4;
+  --pole: 20px;
+  --shapka: 56px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ground: #111517;
+    --surface: #1A2023;
+    --surface-tint: #182B2A;
+    --ink: #ECEEEA;
+    --ink-2: #CDD1CC;
+    --muted: #9AA1A8;
+    --line: #2C3438;
+    --line-strong: #3C464B;
+    --accent: #5CB8AF;
+    --accent-strong: #8FD3CB;
+    --accent-soft: #1E3A38;
+    --on-accent: #0B1414;
+    --attention: #F0A257;
+    --attention-soft: #3A2A18;
+    --error: #F08C80;
+    --data-1: #1C2A2B;
+    --data-2: #1E3F3D;
+    --data-3: #2C6662;
+    --data-4: #3F978F;
+    --data-5: #6FC9BF;
+    --data-city: #6B737B;
+    --karta-voda: #0E1D20;
+    --karta-zelen: #151C1B;
+    --karta-zabudova: #1A2124;
+    --karta-vulytsia: #262E32;
+    --karta-vulytsia-ramka: #1A2023;
+    --karta-za-mezhamy: #0D1012;
+    color-scheme: dark;
+  }
+}
+@media (min-width: 900px) { :root { --pole: 24px; --shapka: 64px; } }
+
+/* ---------- Основа ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--ground); color: var(--ink); font-family: Inter, system-ui, sans-serif; font-size: 16px; line-height: 24px; min-height: 100vh; overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
+a { color: var(--accent); text-underline-offset: 3px; }
+a:hover { color: var(--accent-strong); }
+p { margin: 0; }
+[hidden] { display: none !important; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+svg { stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+
+.nadpys { font: 600 12px/16px Inter, system-ui, sans-serif; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+
+/* ---------- Кнопки ---------- */
+.knopka { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: 48px; padding: 12px 22px; border: 1px solid var(--accent); border-radius: var(--radius-m); background: var(--accent); color: var(--on-accent); font: 600 16px/20px Inter, system-ui, sans-serif; cursor: pointer; transition: background-color .15s, border-color .15s, opacity .15s; }
+.knopka:hover:not(:disabled) { background: var(--accent-strong); border-color: var(--accent-strong); }
+.knopka:disabled { background: var(--line); border-color: var(--line); color: var(--muted); cursor: not-allowed; }
+.knopka--druhorydna { background: var(--surface); color: var(--accent); border-color: var(--line-strong); }
+.knopka--druhorydna:hover:not(:disabled) { background: var(--surface-tint); border-color: var(--accent); color: var(--accent-strong); }
+.knopka-tekst { display: inline-flex; align-items: center; gap: var(--space-1); min-height: 44px; padding: 0 var(--space-2); margin-right: calc(var(--space-2) * -1); border: 0; background: none; color: var(--ink); font: 600 14px/20px Inter, system-ui, sans-serif; cursor: pointer; border-radius: var(--radius-m); }
+.knopka-tekst:hover { color: var(--accent); }
+
+/* ---------- Шапка ---------- */
+.shapka { position: sticky; top: 0; z-index: 5; height: var(--shapka); background: var(--surface); border-bottom: 1px solid var(--line); }
+.shapka__vnutri { height: 100%; max-width: 1280px; margin: 0 auto; padding: 0 var(--pole); display: flex; align-items: center; gap: var(--space-3); }
+.znak { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; margin-right: auto; }
+.znak:hover { color: var(--ink); }
+.znak svg { stroke: none; }
+.znak__sota { fill: var(--accent); }
+.znak__seredyna { fill: var(--surface); }
+.znak__nazva { font: 800 18px/24px Manrope, Inter, sans-serif; letter-spacing: -.01em; }
+.mitka-demo { display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: var(--radius-pill); background: var(--attention-soft); color: var(--attention); font: 600 12px/16px Inter, system-ui, sans-serif; letter-spacing: .02em; white-space: nowrap; }
+
+/* ---------- Меню ---------- */
+.menyu { min-height: calc(100vh - var(--shapka)); display: flex; flex-direction: column; }
+.menyu__vnutri { width: 100%; max-width: 640px; margin: 0 auto; padding: var(--space-8) var(--pole) var(--space-8); display: flex; flex-direction: column; gap: var(--space-4); flex: 1; }
+.menyu__nazva { margin: 0; font: 800 34px/40px Manrope, Inter, sans-serif; letter-spacing: -.02em; }
+.menyu__opys { font-size: 18px; line-height: 28px; color: var(--ink-2); }
+.demo-pidkazka { padding: var(--space-3) var(--space-4); border-radius: var(--radius-m); background: var(--attention-soft); color: var(--ink); font-size: 15px; line-height: 22px; }
+.demo-pidkazka strong { color: var(--attention); font-weight: 600; }
+
+.rezhymy { display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-2); }
+.rezhym { display: flex; align-items: center; gap: var(--space-4); width: 100%; min-height: 88px; padding: var(--space-4) var(--space-5); text-align: left; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius-l); cursor: pointer; font: inherit; transition: border-color .15s, background-color .15s; }
+.rezhym:hover { border-color: var(--accent); }
+.rezhym--holovnyi { background: var(--surface-tint); border-color: var(--accent-soft); }
+.rezhym__ikona { flex: none; width: 48px; height: 48px; border-radius: var(--radius-m); background: var(--accent-soft); color: var(--accent); display: flex; align-items: center; justify-content: center; }
+.rezhym--holovnyi .rezhym__ikona { background: var(--accent); color: var(--on-accent); }
+.rezhym__tekst { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rezhym__nazva { font: 700 20px/26px Manrope, Inter, sans-serif; }
+.rezhym__opys { font-size: 15px; line-height: 22px; color: var(--muted); }
+.rezhym__opys strong { color: var(--ink); font-weight: 600; }
+.rezhym__strilka { flex: none; color: var(--muted); display: flex; }
+
+.pravyla { margin-top: var(--space-6); padding-top: var(--space-6); border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: var(--space-3); }
+.pravyla__nazva { margin: 0; font: 700 20px/26px Manrope, Inter, sans-serif; }
+.pravyla__spysok { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-2); }
+.pravyla__spysok li { display: flex; flex-direction: column; gap: 2px; padding: var(--space-3); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-m); font-size: 13px; line-height: 18px; color: var(--muted); }
+.pravyla__chyslo { font: 800 20px/26px Manrope, Inter, sans-serif; color: var(--ink); }
+.pravyla__prymitka { font-size: 13px; line-height: 18px; color: var(--muted); }
+
+.pidval { max-width: 640px; width: 100%; margin: 0 auto; padding: var(--space-5) var(--pole) var(--space-7); display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-5); justify-content: space-between; font-size: 13px; line-height: 18px; color: var(--muted); }
+
+/* ---------- Гра ---------- */
+/* Телефон: шапка → картка завдання → карта на весь залишок → кнопка. Без прокручування. */
+.hra { height: calc(100vh - var(--shapka)); height: calc(100dvh - var(--shapka)); display: flex; flex-direction: column; }
+.panel { order: 1; flex: none; display: flex; flex-direction: column; background: var(--surface); border-bottom: 1px solid var(--line); }
+.karta-ramka { order: 2; flex: 1; position: relative; min-height: 240px; }
+.karta { position: absolute; inset: 0; background: var(--karta-za-mezhamy); }
+.karta canvas { outline: none; }
+
+.zavdannya, .vidpovid { padding: var(--space-4) var(--pole) var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
+.zavdannya__shapka { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.rakhunok { font: 800 16px/20px Manrope, Inter, sans-serif; color: var(--ink); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.rakhunok::after { content: ' очок'; font: 600 12px/16px Inter, system-ui, sans-serif; color: var(--muted); }
+.rakhunok[data-slovo]::after { content: ' ' attr(data-slovo); }
+.krokiv { display: flex; gap: 4px; margin: 2px 0 var(--space-1); }
+.krokiv i { flex: 1; height: 4px; border-radius: 2px; background: var(--line); }
+.krokiv i.zrobleno { background: var(--accent); }
+.krokiv i.mymo { background: var(--attention); }
+.krokiv i.zaraz { background: var(--ink); }
+.krokiv i.blyzko { background: color-mix(in srgb, var(--accent) 40%, var(--surface)); }
+.zavdannya__opys { font-size: 18px; line-height: 28px; color: var(--ink); }
+.zavdannya__meta, .vidpovid__meta { font-size: 13px; line-height: 18px; color: var(--muted); }
+.tochka { margin: 0 6px; }
+
+.dii { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--pole) var(--space-4); }
+.dii__pidkazka { flex: 1; font-size: 13px; line-height: 18px; color: var(--muted); }
+.dii .knopka { flex: none; min-width: 148px; }
+
+/* Відповідь */
+.vidpovid { gap: var(--space-3); }
+.vidpovid__chysla { display: flex; gap: var(--space-3); }
+.velyke { flex: 1; display: flex; flex-direction: column; gap: 2px; padding: var(--space-3) var(--space-4); border: 1px solid var(--line); border-radius: var(--radius-m); background: var(--ground); }
+.velyke__chyslo { font: 800 30px/34px Manrope, Inter, sans-serif; letter-spacing: -.01em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.velyke__pidpys { font-size: 13px; line-height: 18px; color: var(--muted); }
+.velyke--ochky.vluchno { background: var(--surface-tint); border-color: var(--accent-soft); }
+.velyke--ochky.vluchno .velyke__chyslo { color: var(--accent); }
+.velyke--ochky.mymo { background: var(--attention-soft); border-color: transparent; }
+.velyke--ochky.mymo .velyke__chyslo { color: var(--attention); }
+.mistse { display: flex; gap: var(--space-3); align-items: flex-start; }
+.mistse__znak { flex: none; width: 18px; height: 18px; margin-top: 3px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--surface), 0 0 0 6px var(--accent-soft); }
+.mistse__pidpys { font: 600 12px/16px Inter, system-ui, sans-serif; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.mistse__adresa { font: 700 20px/26px Manrope, Inter, sans-serif; }
+.vidpovid__opys { font-size: 16px; line-height: 24px; color: var(--ink-2); }
+.rishennya { font-size: 14px; line-height: 20px; color: var(--muted); }
+.rishennya a { font-weight: 600; }
+.den-zihrano { padding: var(--space-3) var(--space-4); border-radius: var(--radius-m); background: var(--surface-tint); color: var(--ink); font-size: 15px; line-height: 22px; }
+
+/* Після відповіді на телефоні: карта — угорі меншою, під нею результат, сторінку можна гортати вниз. */
+.hra.hra--vidpovid { height: auto; min-height: calc(100dvh - var(--shapka)); }
+.hra--vidpovid .karta-ramka { order: 1; flex: none; height: 42vh; height: 42dvh; min-height: 260px; }
+.hra--vidpovid .panel { order: 2; border-bottom: 0; border-top: 1px solid var(--line); flex: 1; }
+.hra--vidpovid .vidpovid { padding-bottom: var(--space-5); }
+.hra--vidpovid .dii { position: sticky; bottom: 0; background: var(--surface); border-top: 1px solid var(--line); padding-bottom: max(var(--space-4), env(safe-area-inset-bottom)); }
+.hra--vidpovid .dii__pidkazka { display: none; }
+.hra--vidpovid .dii .knopka { flex: 1; }
+@media (max-width: 899px) { .hra--vidpovid .karta__zboi { display: none; } }
+
+/* Позначки на карті поверх полотна (підпис-«булька» над справжнім місцем). */
+.lehenda { position: absolute; left: var(--space-3); top: var(--space-3); z-index: 2; display: flex; gap: var(--space-3); padding: 6px 10px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-pill); font-size: 12px; line-height: 16px; color: var(--ink-2); }
+.lehenda span { display: inline-flex; align-items: center; gap: 6px; }
+.lehenda i { display: inline-block; border-radius: 50%; }
+.lehenda__vasha { width: 10px; height: 10px; background: var(--ink); box-shadow: 0 0 0 2px var(--surface); }
+.lehenda__spravzhnie { width: 12px; height: 12px; background: var(--accent); box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent-soft); }
+.karta__zboi { position: absolute; left: var(--space-3); bottom: 44px; max-width: min(300px, calc(100% - 24px)); padding: 6px 10px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-m); font-size: 12px; line-height: 16px; color: var(--muted); z-index: 2; }
+
+/* Кнопки й підписи MapLibre — у стилі системи. */
+.maplibregl-ctrl-group { background: var(--surface) !important; border: 1px solid var(--line); border-radius: var(--radius-m) !important; box-shadow: none !important; overflow: hidden; }
+.maplibregl-ctrl-group button { width: 40px !important; height: 40px !important; }
+.maplibregl-ctrl-group button + button { border-top: 1px solid var(--line) !important; }
+.maplibregl-ctrl button .maplibregl-ctrl-icon { filter: none; }
+@media (prefers-color-scheme: dark) { .maplibregl-ctrl button .maplibregl-ctrl-icon { filter: invert(1) hue-rotate(180deg) brightness(1.2); } }
+.maplibregl-ctrl-attrib { background: color-mix(in srgb, var(--surface) 86%, transparent) !important; color: var(--muted); font: 400 11px/16px Inter, system-ui, sans-serif; border-radius: var(--radius-m) 0 0 0; }
+.maplibregl-ctrl-attrib a { color: var(--muted) !important; }
+.maplibregl-ctrl-attrib.maplibregl-compact { background: var(--surface) !important; border: 1px solid var(--line); }
+.maplibregl-ctrl-attrib-button { background-color: transparent !important; }
+@media (prefers-color-scheme: dark) { .maplibregl-ctrl-attrib-button { filter: invert(1); } }
+
+/* ---------- Кінець раунду ---------- */
+.kinets { min-height: calc(100vh - var(--shapka)); }
+.kinets__vnutri { max-width: 640px; margin: 0 auto; padding: var(--space-8) var(--pole) var(--space-8); display: flex; flex-direction: column; gap: var(--space-4); }
+.pidsumok { display: flex; flex-direction: column; gap: var(--space-1); }
+.pidsumok__chyslo { font: 800 52px/56px Manrope, Inter, sans-serif; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.pidsumok__pidpys { font-size: 16px; line-height: 24px; color: var(--muted); }
+.rekord { font-size: 15px; line-height: 22px; color: var(--ink-2); }
+.rekord strong { color: var(--accent); font-weight: 600; }
+.soty-raundu { display: flex; gap: 6px; flex-wrap: wrap; }
+.soty-raundu svg { width: 28px; height: 31px; }
+/* Одна сота — одна подія раунду: 500+ очок — accent, менше — світла, 0 — рамка attention («мимо»). */
+.sota { stroke-width: 1.75; }
+.sota--zrobleno { fill: var(--accent); stroke: var(--accent); }
+.sota--blyzko { fill: var(--accent-soft); stroke: var(--accent); }
+.sota--mymo { fill: var(--surface); stroke: var(--attention); }
+.krainosti { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); margin-top: var(--space-2); }
+.krainist { padding: var(--space-4); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-l); display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.krainist__nazva { font: 600 12px/16px Inter, system-ui, sans-serif; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.krainist__chyslo { font: 800 24px/30px Manrope, Inter, sans-serif; white-space: nowrap; }
+.krainist__opys { font-size: 13px; line-height: 18px; color: var(--ink-2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.spysok-raundu { list-style: none; margin: var(--space-2) 0 0; padding: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-l); overflow: hidden; }
+.spysok-raundu li { display: grid; grid-template-columns: 24px 1fr auto; gap: var(--space-3); align-items: baseline; padding: var(--space-3) var(--space-4); border-top: 1px solid var(--line); font-size: 15px; line-height: 22px; }
+.spysok-raundu li:first-child { border-top: 0; }
+.spysok-raundu .n { font: 600 12px/16px Inter, system-ui, sans-serif; color: var(--muted); }
+.spysok-raundu .shcho { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.spysok-raundu .shcho small { display: block; font-size: 13px; line-height: 18px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+.spysok-raundu .skilky { font: 800 16px/22px Manrope, Inter, sans-serif; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.spysok-raundu .skilky small { display: block; font: 400 13px/18px Inter, system-ui, sans-serif; color: var(--muted); }
+.kinets__dii { display: flex; gap: var(--space-3); margin-top: var(--space-3); }
+.kinets__dii .knopka { flex: 1; }
+.podilytysia-stan { min-height: 18px; font-size: 13px; line-height: 18px; color: var(--muted); }
+
+.zavantazhennya { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); color: var(--muted); font-size: 15px; }
+
+/* ---------- Комп'ютер: панель зліва, карта справа на всю висоту ---------- */
+@media (min-width: 900px) {
+  .menyu__vnutri { padding-top: var(--space-9); gap: var(--space-5); }
+  .menyu__nazva { font-size: 52px; line-height: 56px; }
+  .rezhymy { flex-direction: row; }
+  .rezhym { flex: 1; flex-direction: column; align-items: flex-start; min-height: 0; padding: var(--space-6); gap: var(--space-4); }
+  .rezhym__strilka { display: none; }
+  .menyu__vnutri, .pidval, .kinets__vnutri { max-width: 760px; }
+
+  .hra, .hra.hra--vidpovid { height: calc(100vh - var(--shapka)); min-height: 0; flex-direction: row; }
+  .panel, .hra--vidpovid .panel { order: 1; flex: none; width: 420px; border-bottom: 0; border-top: 0; border-right: 1px solid var(--line); overflow-y: auto; }
+  .karta-ramka, .hra--vidpovid .karta-ramka { order: 2; flex: 1; height: auto; }
+  .zavdannya, .vidpovid { padding: var(--space-7) var(--space-7) var(--space-5); gap: var(--space-3); }
+  .zavdannya__opys { font-size: 20px; line-height: 30px; }
+  .dii, .hra--vidpovid .dii { position: static; margin-top: auto; flex-direction: column; align-items: stretch; gap: var(--space-3); padding: var(--space-5) var(--space-7) var(--space-7); border-top: 1px solid var(--line); }
+  .hra--vidpovid .dii__pidkazka { display: none; }
+  .dii .knopka { width: 100%; }
+  .lehenda { left: var(--space-4); top: var(--space-4); }
+  .karta__zboi { left: var(--space-4); bottom: var(--space-4); }
+  .pidsumok__chyslo { font-size: 72px; line-height: 76px; }
+}
+
+/* ---------- Вузький телефон ---------- */
+@media (max-width: 380px) {
+  .pravyla__spysok { grid-template-columns: repeat(2, 1fr); }
+  .dii .knopka { min-width: 128px; }
+}
+@media (max-width: 600px) {
+  .pravyla__spysok { grid-template-columns: repeat(2, 1fr); }
+  .krainist__chyslo { font-size: 20px; line-height: 26px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
