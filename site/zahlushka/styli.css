@@ -1,0 +1,182 @@
+/* Моя вулиця — заглушка. Вигляд перенесено з затвердженого макета 06.11.2026
+   («Заглушка — стане»: комп'ютер 1280 px і телефон 390 px). Кольори, розміри й
+   відступи — як у макеті. Шрифти — файлами з самого сайту (ліцензія OFL). */
+
+/* ---------- Шрифти ---------- */
+@font-face { font-family: 'Inter'; font-style: normal; font-display: swap; font-weight: 400; src: url(shryfty/inter-cyrillic-400-normal.woff2) format('woff2'); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
+@font-face { font-family: 'Inter'; font-style: normal; font-display: swap; font-weight: 400; src: url(shryfty/inter-latin-400-normal.woff2) format('woff2'); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: 'Inter'; font-style: normal; font-display: swap; font-weight: 500; src: url(shryfty/inter-cyrillic-500-normal.woff2) format('woff2'); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
+@font-face { font-family: 'Inter'; font-style: normal; font-display: swap; font-weight: 500; src: url(shryfty/inter-latin-500-normal.woff2) format('woff2'); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: 'Inter'; font-style: normal; font-display: swap; font-weight: 600; src: url(shryfty/inter-cyrillic-600-normal.woff2) format('woff2'); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
+@font-face { font-family: 'Inter'; font-style: normal; font-display: swap; font-weight: 600; src: url(shryfty/inter-latin-600-normal.woff2) format('woff2'); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: 'Inter'; font-style: normal; font-display: swap; font-weight: 700; src: url(shryfty/inter-cyrillic-700-normal.woff2) format('woff2'); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
+@font-face { font-family: 'Inter'; font-style: normal; font-display: swap; font-weight: 700; src: url(shryfty/inter-latin-700-normal.woff2) format('woff2'); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: 'Manrope'; font-style: normal; font-display: swap; font-weight: 600; src: url(shryfty/manrope-cyrillic-600-normal.woff2) format('woff2'); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
+@font-face { font-family: 'Manrope'; font-style: normal; font-display: swap; font-weight: 600; src: url(shryfty/manrope-latin-600-normal.woff2) format('woff2'); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: 'Manrope'; font-style: normal; font-display: swap; font-weight: 700; src: url(shryfty/manrope-cyrillic-700-normal.woff2) format('woff2'); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
+@font-face { font-family: 'Manrope'; font-style: normal; font-display: swap; font-weight: 700; src: url(shryfty/manrope-latin-700-normal.woff2) format('woff2'); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: 'Manrope'; font-style: normal; font-display: swap; font-weight: 800; src: url(shryfty/manrope-cyrillic-800-normal.woff2) format('woff2'); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
+@font-face { font-family: 'Manrope'; font-style: normal; font-display: swap; font-weight: 800; src: url(shryfty/manrope-latin-800-normal.woff2) format('woff2'); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+
+/* ---------- Основа ---------- */
+/* Як у середовищі макета: розміри рахуються разом із відступами й рамкою.
+   Без цього три картки цін не вміщаються в один ряд, як на макеті. */
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: #F7F6F2; color: #1B1F24; font-family: Inter, system-ui, sans-serif; font-size: 16px; line-height: 1.5; }
+a { color: #0B6B6B; }
+a:hover { color: #064848; }
+.zaholovnyi { font-family: Manrope, Inter, sans-serif; }
+.prykhovano { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.lyshe-telefon { display: none; }
+[hidden] { display: none !important; }
+
+/* Пастка для ботів: людина її не бачить і не заповнює. */
+.pastka { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }
+
+/* ---------- Шапка ---------- */
+.shapka { border-bottom: 1px solid #E3E1DA; background: #FFFFFF; }
+.shapka__vnutri { max-width: 1120px; margin: 0 auto; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; box-sizing: border-box; }
+.lohotyp { display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; }
+.lohotyp:hover { color: inherit; }
+.lohotyp__nazva { font-family: Manrope, Inter, sans-serif; font-weight: 800; font-size: 19px; }
+.menyu { display: flex; gap: 20px; flex-wrap: wrap; font-size: 15px; }
+
+/* ---------- Перший екран ---------- */
+.pershyi { max-width: 1120px; margin: 0 auto; padding: 72px 24px 56px; display: flex; flex-wrap: wrap; gap: 48px; align-items: center; box-sizing: border-box; }
+.pershyi__tekst { flex: 999 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 20px; }
+.znachok { align-self: flex-start; font-size: 13px; font-weight: 600; background: #D7EBEA; color: #064848; padding: 4px 12px; border-radius: 99px; }
+.pershyi h1 { margin: 0; font-family: Manrope, Inter, sans-serif; font-size: 52px; line-height: 1.08; font-weight: 800; letter-spacing: -0.01em; }
+.pershyi__opys { margin: 0; font-size: 19px; color: #3D434C; max-width: 560px; }
+.poshuk { display: flex; flex-wrap: wrap; gap: 10px; background: #FFFFFF; border: 1px solid #E3E1DA; border-radius: 14px; padding: 10px; max-width: 620px; }
+.poshuk__mitka { position: absolute; width: 1px; height: 1px; overflow: hidden; }
+.poshuk__adresa { flex: 999 1 280px; min-width: 0; border: 0; font: inherit; font-size: 16px; padding: 12px 14px; background: transparent; color: #1B1F24; }
+.poshuk__misto { flex: 1 1 120px; font: inherit; font-size: 15px; padding: 12px; border: 1px solid #E3E1DA; border-radius: 10px; background: #F7F6F2; color: #1B1F24; }
+.poshuk__knopka { flex: 1 1 160px; text-align: center; background: #0B6B6B; color: #FFFFFF; border: 0; font: inherit; font-weight: 600; padding: 12px 20px; border-radius: 10px; min-height: 44px; box-sizing: border-box; cursor: pointer; }
+.poshuk__knopka:hover { background: #064848; }
+.pidkazka { font-size: 14px; color: #5B616B; }
+.pershyi__soty { flex: 1 1 300px; min-width: 0; display: flex; justify-content: center; }
+.pershyi__soty svg { max-width: 100%; height: auto; }
+
+/* ---------- Ціни ---------- */
+.tsiny { background: #FFFFFF; border-top: 1px solid #E3E1DA; border-bottom: 1px solid #E3E1DA; }
+.tsiny__vnutri { max-width: 1120px; margin: 0 auto; padding: 56px 24px; display: flex; flex-direction: column; gap: 28px; box-sizing: border-box; }
+h2.rozdil { margin: 0; font-family: Manrope, Inter, sans-serif; font-size: 32px; line-height: 1.25; font-weight: 700; }
+.kartky { display: flex; flex-wrap: wrap; gap: 18px; }
+.kartka { flex: 1 1 300px; min-width: 0; border: 1px solid #E3E1DA; border-radius: 14px; padding: 24px; display: flex; flex-direction: column; gap: 12px; }
+.kartka--holovna { border: 2px solid #0B6B6B; background: #F1F7F6; }
+.kartka__nazva { font-weight: 700; font-size: 18px; }
+.kartka__tsina { font-family: Manrope, Inter, sans-serif; font-size: 30px; font-weight: 800; }
+.kartka__tsina small { font-size: 16px; font-weight: 600; color: #5B616B; }
+.kartka ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 15px; }
+.knopka-kontur { margin-top: auto; text-align: center; border: 1.5px solid #0B6B6B; color: #0B6B6B; text-decoration: none; font-weight: 600; padding: 11px; border-radius: 10px; }
+.kartka__knopky { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
+.knopka-povna { text-align: center; background: #0B6B6B; color: #FFFFFF; text-decoration: none; font-weight: 600; padding: 12px; border-radius: 10px; }
+.knopka-povna:hover { background: #064848; color: #FFFFFF; }
+.kartka__zrazok { text-align: center; font-size: 15px; }
+.kompaniyi { font-size: 14px; color: #5B616B; }
+
+/* Ціни на телефоні — короткі рядки, як у макеті телефона */
+.tsiny-tel { padding: 0 20px 28px; flex-direction: column; gap: 12px; }
+.ryadok { background: #FFFFFF; border: 1px solid #E3E1DA; border-radius: 14px; padding: 18px; display: flex; justify-content: space-between; gap: 12px; }
+.ryadok--holovnyi { background: #F1F7F6; border: 2px solid #0B6B6B; flex-direction: column; gap: 10px; }
+.ryadok__verkh { display: flex; justify-content: space-between; gap: 12px; }
+.ryadok__liva { display: flex; flex-direction: column; }
+.ryadok__liva b { font-weight: 700; }
+.ryadok__liva span { font-size: 14px; color: #5B616B; }
+.ryadok__tsina { font-weight: 800; font-family: Manrope, Inter, sans-serif; white-space: nowrap; }
+.ryadok a { font-size: 14px; }
+
+/* ---------- Передзамовлення ---------- */
+.peredzamovlennya { max-width: 1120px; margin: 0 auto; padding: 56px 24px; display: flex; flex-wrap: wrap; gap: 40px; box-sizing: border-box; }
+.peredzamovlennya__tekst { flex: 1 1 340px; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.peredzamovlennya__tekst p { margin: 0; color: #3D434C; }
+.forma { flex: 1 1 460px; min-width: 0; background: #FFFFFF; border: 1px solid #E3E1DA; border-radius: 14px; padding: 24px; display: flex; flex-direction: column; gap: 16px; box-sizing: border-box; position: relative; }
+.pole { display: flex; flex-direction: column; gap: 6px; }
+.pole label, .pole__mitka { font-size: 14px; font-weight: 600; }
+.poliv-ryad { display: flex; flex-wrap: wrap; gap: 12px; }
+.poliv-ryad .pole:first-child { flex: 1 1 200px; min-width: 0; }
+.poliv-ryad .pole:last-child { flex: 2 1 260px; min-width: 0; }
+.forma input[type=text], .forma select { font: inherit; padding: 12px; border: 1px solid #C9C6BD; border-radius: 10px; background: #FFFFFF; color: #1B1F24; }
+.zghoda { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; color: #3D434C; }
+.zghoda input { width: 20px; height: 20px; margin: 2px 0 0; flex: none; }
+.forma__knopka { font: inherit; font-weight: 600; background: #0B6B6B; color: #FFFFFF; border: 0; padding: 14px; border-radius: 10px; min-height: 48px; cursor: pointer; }
+.forma__knopka:hover { background: #064848; }
+.forma__knopka[disabled] { opacity: 0.7; cursor: progress; }
+.pomylka { font-size: 14px; color: #B45309; font-weight: 600; }
+.forma--pomylka input[aria-invalid=true] { border-color: #B45309; }
+.povidomlennya { display: flex; flex-direction: column; gap: 12px; }
+.povidomlennya__holovne { font-family: Manrope, Inter, sans-serif; font-size: 22px; font-weight: 800; }
+.povidomlennya p { margin: 0; color: #3D434C; }
+
+/* ---------- Питання ---------- */
+.pytannya { background: #FFFFFF; border-top: 1px solid #E3E1DA; }
+.pytannya__vnutri { max-width: 1120px; margin: 0 auto; padding: 56px 24px; display: flex; flex-direction: column; gap: 20px; box-sizing: border-box; }
+.pytannya__ryad { display: flex; flex-wrap: wrap; gap: 24px; }
+.pytannya__odne { flex: 1 1 300px; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.pytannya__odne b { font-weight: 700; }
+.pytannya__odne span { font-size: 15px; color: #3D434C; }
+
+/* ---------- Підвал ---------- */
+.pidval { max-width: 1120px; margin: 0 auto; padding: 28px 24px 40px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #5B616B; box-sizing: border-box; }
+
+/* ---------- Окремі сторінки (політика) ---------- */
+.storinka { max-width: 760px; margin: 0 auto; padding: 48px 24px 56px; box-sizing: border-box; }
+.storinka h1 { margin: 0 0 8px; font-family: Manrope, Inter, sans-serif; font-size: 40px; line-height: 1.12; font-weight: 800; }
+.storinka h2 { margin: 32px 0 8px; font-family: Manrope, Inter, sans-serif; font-size: 22px; font-weight: 700; }
+.storinka p, .storinka li { color: #3D434C; }
+.storinka ul { padding-left: 20px; }
+.storinka .data { color: #5B616B; font-size: 14px; }
+.storinka .kartka-tekst { background: #FFFFFF; border: 1px solid #E3E1DA; border-radius: 14px; padding: 8px 28px 28px; }
+
+/* ---------- Телефон (макет 390 px) ---------- */
+@media (max-width: 600px) {
+  .lyshe-komp { display: none !important; }
+  .lyshe-telefon { display: revert; }
+  .tsiny-tel.lyshe-telefon { display: flex; }
+
+  .shapka__vnutri { padding: 14px 20px; flex-wrap: nowrap; }
+  .lohotyp { gap: 8px; }
+  .lohotyp svg { width: 22px; height: 24px; }
+  .lohotyp__nazva { font-size: 17px; }
+  .menyu a { font-size: 14px; padding: 10px 0; }
+
+  .pershyi { padding: 32px 20px 28px; gap: 16px; }
+  .pershyi__tekst { gap: 16px; flex-basis: 100%; }
+  .znachok { font-size: 12px; padding: 4px 10px; }
+  .pershyi h1 { font-size: 34px; line-height: 1.1; letter-spacing: 0; }
+  .pershyi__opys { font-size: 16px; }
+  .pershyi__soty { display: none; }
+  .poshuk { flex-direction: column; gap: 16px; background: transparent; border: 0; padding: 0; border-radius: 0; }
+  .poshuk__mitka { position: static; width: auto; height: auto; overflow: visible; font-size: 14px; font-weight: 600; margin-bottom: -6px; }
+  .poshuk__adresa { flex: none; font: inherit; padding: 14px; border: 1px solid #C9C6BD; border-radius: 12px; background: #FFFFFF; }
+  .poshuk__misto { display: none; }
+  .poshuk__knopka { flex: none; padding: 14px; border-radius: 12px; }
+  .pidkazka { display: none; }
+
+  .tsiny { display: none; }
+
+  .peredzamovlennya { background: #FFFFFF; border-top: 1px solid #E3E1DA; padding: 28px 20px; gap: 14px; flex-direction: column; }
+  .peredzamovlennya__tekst { flex: none; gap: 14px; }
+  .peredzamovlennya__tekst p { font-size: 15px; }
+  h2.rozdil { font-size: 24px; }
+  .forma { flex: none; background: transparent; border: 0; border-radius: 0; padding: 0; gap: 14px; }
+  .pole { gap: 14px; }
+  .poliv-ryad { flex-direction: column; gap: 14px; }
+  .poliv-ryad .pole:first-child, .poliv-ryad .pole:last-child { flex: none; }
+  .pole--adresa { display: none; }
+  .forma input[type=text], .forma select { padding: 14px; border-radius: 12px; }
+  .zghoda input { width: 22px; height: 22px; margin: 0; }
+  .forma__knopka { padding: 15px; border-radius: 12px; }
+
+  .pytannya { background: transparent; border-top: 0; }
+  .pytannya__vnutri { padding: 28px 20px; gap: 14px; }
+  .pytannya__ryad { flex-direction: column; gap: 14px; }
+  .pytannya__odne { flex: none; gap: 4px; }
+
+  .pidval { padding: 20px 20px 32px; font-size: 12px; }
+
+  .storinka { padding: 28px 20px 40px; }
+  .storinka h1 { font-size: 30px; }
+  .storinka .kartka-tekst { padding: 4px 18px 20px; }
+}

@@ -1,0 +1,23 @@
+/* Зразок звіту: вигляд — із затвердженого макета «Звіт — стане» (06.11.2026).
+   На комп'ютері — аркуш 860 px посередині. На телефоні — та сама послідовність
+   розділів в одну колонку (макета телефона для звіту немає). */
+body.zvit-tlo { background: #F7F6F2; padding: 24px 0; }
+.zvit { width: 860px; max-width: 100%; margin: 0 auto; box-shadow: 0 1px 3px rgba(27, 31, 36, 0.08); }
+.zvit-lohotyp { color: inherit; text-decoration: none; }
+.zvit-lohotyp:hover { color: inherit; }
+.zvit-karta { width: 100%; height: auto; }
+
+@media (max-width: 600px) {
+  body.zvit-tlo { padding: 0; }
+  .zvit { box-shadow: none; font-size: 14px !important; }
+  .zvit > div:first-child { padding-left: 20px !important; padding-right: 20px !important; }
+  .zvit-vidstup { padding-left: 20px !important; padding-right: 20px !important; }
+  .zvit header { flex-direction: column; gap: 12px !important; }
+  .zvit header > div:last-child { text-align: left !important; }
+  .zvit h1 { font-size: 26px !important; }
+  .zvit-sitka3 { grid-template-columns: minmax(0, 1fr) !important; }
+  .zvit-katehoriya { grid-template-columns: 110px 1fr 64px !important; gap: 8px !important; }
+  .zvit-katehoriya > span:first-child { font-size: 13px !important; }
+  .zvit-roky { gap: 4px !important; }
+  .zvit-heat { grid-template-columns: 48px repeat(7, minmax(0, 1fr)) !important; }
+}
