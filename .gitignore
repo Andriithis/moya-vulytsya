@@ -63,3 +63,12 @@ FABULA_REZULTAT.txt
 *.sqlite*
 *.rtf
 private/
+
+# === ЗАГЛУШКА (ZAVDANNYA-02) ===
+# Вихідні файли заглушки зберігаються в git; рядок `site/` вище лишається для
+# інших зібраних сайтів. Справжній config.js (з адресою сховища) — лише під час
+# збирання, у git не потрапляє.
+!site/
+site/*
+!site/zahlushka/
+site/zahlushka/config.js

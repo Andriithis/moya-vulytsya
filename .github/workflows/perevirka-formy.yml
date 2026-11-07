@@ -1,0 +1,46 @@
+# Перевірка форми заглушки двічі на добу (ZAVDANNYA-02, п. 10; MV-8).
+# Додає тестову заявку й подію тим самим шляхом і тим самим публічним ключем,
+# що й сторінка (канал «perevirka»), перевіряє, що публічним ключем їх не
+# прочитати, і видаляє їх секретним ключем. Будь-який збій — червоний запуск;
+# GitHub надсилає лист про збій запланованого запуску власнику (налаштування
+# Settings → Notifications → Actions → «Send notifications for failed workflows»).
+#
+# Поки сховища немає, перевірка вимкнена: вмикається змінною репозиторію
+# PEREVIRKA_FORMY = uvimknuto (Settings → Secrets and variables → Actions → Variables).
+# Потрібні:
+#   змінна  MV_SUPABASE_URL                — https://<проєкт>.supabase.co
+#   змінна  MV_SUPABASE_PUBLICHNYI_KLYUCH  — публічний ключ (той самий, що в сторінці)
+#   змінна  MV_ADRESA_SAITU                — необов'язково; якщо задано, адреса й ключ
+#                                            читаються з опублікованого config.js
+#   секрет  MV_SUPABASE_SEKRETNYI_KLYUCH   — ключ service_role / sb_secret_ (лише тут!)
+name: Перевірка форми заглушки
+
+on:
+  schedule:
+    - cron: '23 4,16 * * *'   # 06:23 і 18:23 за Києвом узимку (UTC+2)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: perevirka-formy
+  cancel-in-progress: false
+
+jobs:
+  perevirka:
+    if: ${{ vars.PEREVIRKA_FORMY == 'uvimknuto' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: site/zahlushka/perevirka_formy.py
+          sparse-checkout-cone-mode: false
+      - name: Додати, прочитати й видалити тестові записи
+        env:
+          MV_SUPABASE_URL: ${{ vars.MV_SUPABASE_URL }}
+          MV_SUPABASE_PUBLICHNYI_KLYUCH: ${{ vars.MV_SUPABASE_PUBLICHNYI_KLYUCH }}
+          MV_ADRESA_SAITU: ${{ vars.MV_ADRESA_SAITU }}
+          MV_SUPABASE_SEKRETNYI_KLYUCH: ${{ secrets.MV_SUPABASE_SEKRETNYI_KLYUCH }}
+        run: python3 site/zahlushka/perevirka_formy.py

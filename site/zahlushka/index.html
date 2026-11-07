@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://*.supabase.co; form-action 'none'; base-uri 'none'">
+<title>Моя вулиця — що суди розповіли про вашу вулицю</title>
+<meta name="description" content="Карта подій із судових рішень за 2016–2026 роки. Київ відкривається незабаром — залиште контакт на передзамовлення.">
+<link rel="preload" href="shryfty/manrope-cyrillic-800-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="shryfty/inter-cyrillic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="styli.css">
+</head>
+<body>
+
+<header class="shapka">
+<div class="shapka__vnutri">
+<a class="lohotyp" href="index.html">
+<svg aria-hidden="true" width="26" height="28" viewBox="0 0 26 28"><path d="M13 1 L25 8 L25 20 L13 27 L1 20 L1 8 Z" fill="#0B6B6B"></path><path d="M13 9 L18 12 L18 17 L13 20 L8 17 L8 12 Z" fill="#FFFFFF"></path></svg>
+<span class="lohotyp__nazva">Моя вулиця</span>
+</a>
+<nav class="menyu" aria-label="Розділи">
+<a href="zrazok.html">Зразок звіту</a>
+<a class="lyshe-komp" href="#tsiny">Ціни</a>
+<a class="lyshe-komp" href="#pytannya">Питання</a>
+</nav>
+</div>
+</header>
+
+<main>
+<section class="pershyi">
+<div class="pershyi__tekst">
+<span class="znachok"><span class="lyshe-komp">Київ відкривається незабаром · 10 років рішень суду</span><span class="lyshe-telefon">Київ незабаром · 10 років</span></span>
+<h1>Що суди розповіли про вашу вулицю</h1>
+<p class="pershyi__opys"><span class="lyshe-komp">Карта подій із судових рішень за 2016–2026 роки: ДТП, п'яні за кермом, крадіжки, бійки. Подивіться, що ставалося біля дому, який орендуєте чи купуєте.</span><span class="lyshe-telefon">Події з судових рішень за 2016–2026: ДТП, п'яні за кермом, крадіжки, бійки — біля дому, який орендуєте чи купуєте.</span></p>
+<form class="poshuk" id="poshuk" novalidate>
+<label for="adresa" class="poshuk__mitka"><span class="lyshe-komp">Адреса</span><span class="lyshe-telefon">Ваша адреса</span></label>
+<input id="adresa" class="poshuk__adresa" type="text" autocomplete="street-address" maxlength="200" placeholder="Вулиця і номер будинку, наприклад: Хрещатик, 1" data-korotko="Хрещатик, 1">
+<label for="misto" class="prykhovano">Місто</label>
+<select id="misto" class="poshuk__misto"><option value="Київ">Київ</option><option value="">Інше місто</option></select>
+<button type="submit" class="poshuk__knopka">Перевірити адресу</button>
+</form>
+<span class="pidkazka">Поки карта готується — залиште адресу, і ми надішлемо результат першими.</span>
+</div>
+<div class="pershyi__soty">
+<svg role="img" aria-label="Соти карти: темніше — більше подій у даних" width="340" height="320" viewBox="0 0 340 320">
+<g stroke="#FFFFFF" stroke-width="3">
+<path d="M70 20 L110 43 L110 89 L70 112 L30 89 L30 43 Z" fill="#E3F0EF"></path>
+<path d="M150 20 L190 43 L190 89 L150 112 L110 89 L110 43 Z" fill="#9CCBC7"></path>
+<path d="M230 20 L270 43 L270 89 L230 112 L190 89 L190 43 Z" fill="#D7EBEA"></path>
+<path d="M110 89 L150 112 L150 158 L110 181 L70 158 L70 112 Z" fill="#4FA39D"></path>
+<path d="M190 89 L230 112 L230 158 L190 181 L150 158 L150 112 Z" fill="#0B6B6B"></path>
+<path d="M270 89 L310 112 L310 158 L270 181 L230 158 L230 112 Z" fill="#9CCBC7"></path>
+<path d="M70 158 L110 181 L110 227 L70 250 L30 227 L30 181 Z" fill="#D7EBEA"></path>
+<path d="M150 158 L190 181 L190 227 L150 250 L110 227 L110 181 Z" fill="#4FA39D"></path>
+<path d="M230 158 L270 181 L270 227 L230 250 L190 227 L190 181 Z" fill="#E3F0EF"></path>
+<path d="M190 227 L230 250 L230 296 L190 319 L150 296 L150 250 Z" fill="#9CCBC7"></path>
+</g>
+<text x="190" y="141" text-anchor="middle" font-family="Manrope, Inter, sans-serif" font-weight="800" font-size="22" fill="#FFFFFF">48</text>
+<text x="110" y="141" text-anchor="middle" font-family="Manrope, Inter, sans-serif" font-weight="800" font-size="18" fill="#FFFFFF">27</text>
+</svg>
+</div>
+</section>
+
+<!-- Ціни для комп'ютера -->
+<section id="tsiny" class="tsiny">
+<div class="tsiny__vnutri">
+<h2 class="rozdil">Безкоштовно — скільки. За гроші — що саме і що це означає</h2>
+<div class="kartky">
+
+<div class="kartka">
+<span class="kartka__nazva">Карта</span>
+<span class="kartka__tsina">0 грн</span>
+<ul>
+<li>соти з числом подій</li>
+<li>роки і види подій</li>
+<li>без адрес будинків</li>
+</ul>
+</div>
+
+<div class="kartka">
+<span class="kartka__nazva">Підписка</span>
+<span class="kartka__tsina" data-tsina="pidpyska">150 грн <small>/ місяць</small></span>
+<ul>
+<li>адреси й події зі стислим описом</li>
+<li>сповіщення про нові події біля ваших адрес</li>
+<li>порівняння кількох адрес</li>
+</ul>
+<a href="#peredzamovlennya" class="knopka-kontur" data-peredzamovyty="pidpyska">Передзамовити</a>
+</div>
+
+<div class="kartka kartka--holovna">
+<span class="kartka__nazva">Аналіз адреси</span>
+<span class="kartka__tsina" data-tsina="analiz">400 грн <small>разово</small></span>
+<ul>
+<li>чим місце відрізняється від району й міста</li>
+<li>чинні проблеми поруч і що змінилося за 10 років</li>
+<li>день і година, файл PDF, який можна переслати</li>
+</ul>
+<div class="kartka__knopky">
+<a href="#peredzamovlennya" class="knopka-povna" data-peredzamovyty="analiz">Передзамовити аналіз</a>
+<a href="zrazok.html" class="kartka__zrazok">Подивитися зразок звіту</a>
+</div>
+</div>
+
+</div>
+<span class="kompaniyi">Для компаній — база в користування на рік і розбори для мереж магазинів чи ТРЦ. <a href="#peredzamovlennya" data-vybir="kompaniya">Напишіть нам</a>.</span>
+</div>
+</section>
+
+<!-- Ціни для телефона -->
+<section class="tsiny-tel lyshe-telefon" aria-label="Ціни">
+<div class="ryadok">
+<div class="ryadok__liva"><b>Карта</b><span>соти з числами, без адрес</span></div>
+<span class="ryadok__tsina">0 грн</span>
+</div>
+<div class="ryadok">
+<div class="ryadok__liva"><b>Підписка</b><span>адреси, події, сповіщення</span></div>
+<span class="ryadok__tsina" data-tsina="pidpyska">150 грн/міс</span>
+</div>
+<div class="ryadok ryadok--holovnyi">
+<div class="ryadok__verkh">
+<div class="ryadok__liva"><b>Аналіз адреси</b><span>порівняння з районом, 10 років, PDF</span></div>
+<span class="ryadok__tsina" data-tsina="analiz">400 грн</span>
+</div>
+<a href="zrazok.html">Подивитися зразок</a>
+</div>
+</section>
+
+<section id="peredzamovlennya" class="peredzamovlennya">
+<div class="peredzamovlennya__tekst">
+<h2 class="rozdil">Передзамовлення</h2>
+<p class="lyshe-komp">Зараз нічого не платите. Коли карта Києва відкриється, ми напишемо першими й дамо посилання на оплату.</p>
+<p class="lyshe-komp">Не з Києва? Вкажіть своє місто — наступним відкриємо те, звідки найбільше заявок.</p>
+<p class="lyshe-telefon">Зараз нічого не платите. Напишемо, коли Київ відкриється. Інше місто? Вкажіть його — відкриємо там, де найбільше заявок.</p>
+</div>
+
+<form class="forma" id="forma" novalidate aria-describedby="forma-stan">
+<div class="pole">
+<label for="shcho">Що цікавить</label>
+<select id="shcho" name="shcho">
+<option value="analiz" data-korotko="Аналіз адреси — 400 грн">Аналіз адреси — 400 грн</option>
+<option value="pidpyska" data-korotko="Підписка — 150 грн / міс">Підписка — 150 грн / місяць</option>
+<option value="povidomyty" data-korotko="Лише повідомити">Лише повідомити про запуск</option>
+<option value="kompaniya" data-korotko="Для компанії">Для компанії</option>
+</select>
+</div>
+<div class="poliv-ryad">
+<div class="pole">
+<label for="misto2">Місто</label>
+<input id="misto2" name="misto" type="text" value="Київ" maxlength="80" autocomplete="address-level2">
+</div>
+<div class="pole pole--adresa">
+<label for="adresa2">Адреса (необов'язково)</label>
+<input id="adresa2" name="adresa" type="text" maxlength="200" placeholder="вулиця, будинок" autocomplete="street-address">
+</div>
+</div>
+<div class="pole">
+<label for="kontakt">Пошта або Телеграм</label>
+<input id="kontakt" name="kontakt" type="text" maxlength="120" placeholder="name@pošta.ua або @nik" data-korotko="@nik" autocomplete="email" inputmode="email">
+</div>
+<!-- Пастка для ботів: людина цього поля не бачить. Заповнене — заявку не надсилаємо. -->
+<div class="pastka" aria-hidden="true">
+<label for="sait">Сайт</label>
+<input id="sait" name="sait" type="text" tabindex="-1" autocomplete="off">
+</div>
+<label class="zghoda"><input id="zghoda" name="zghoda" type="checkbox"> <span><span class="lyshe-komp">Погоджуюсь, щоб мені написали про запуск. Контакт не передаємо нікому. <a href="polityka.html">Політика конфіденційності</a></span><span class="lyshe-telefon">Погоджуюсь, щоб мені написали про запуск</span></span></label>
+<p class="pomylka" id="forma-stan" role="alert" hidden></p>
+<button type="submit" class="forma__knopka" id="forma-knopka" data-peredzamovyty="forma">Передзамовити</button>
+</form>
+
+<div class="forma povidomlennya" id="vdacha" tabindex="-1" hidden>
+<span class="povidomlennya__holovne">Ви в списку.</span>
+<p>Напишемо, коли ваше місто відкриється.</p>
+</div>
+
+<div class="forma povidomlennya" id="zboi" tabindex="-1" hidden>
+<span class="povidomlennya__holovne">Не вдалося надіслати</span>
+<p>Схоже, зник зв'язок або сервер не відповів. Ваші дані не загубилися — вони лишилися у формі.</p>
+<button type="button" class="forma__knopka" id="sprobuvaty-shche">Спробувати ще</button>
+</div>
+</section>
+
+<section id="pytannya" class="pytannya">
+<div class="pytannya__vnutri">
+<h2 class="rozdil lyshe-komp">Питання</h2>
+<div class="pytannya__ryad">
+<div class="pytannya__odne lyshe-komp"><b>Звідки дані?</b><span>З відкритого Єдиного державного реєстру судових рішень. Кожна подія має посилання на своє рішення.</span></div>
+<div class="pytannya__odne"><b><span class="lyshe-komp">Це оцінка безпеки району?</span><span class="lyshe-telefon">Це оцінка безпеки?</span></b><span>Ні. Це те, що дійшло до суду. Ми не ставимо балів і не кажемо, де «небезпечно».</span></div>
+<div class="pytannya__odne"><b><span class="lyshe-komp">Подія стосується мене — як прибрати?</span><span class="lyshe-telefon">Подія стосується мене?</span></b><span>Напишіть через форму звернення — відповідаємо протягом 10 робочих днів.</span></div>
+</div>
+</div>
+</section>
+</main>
+
+<footer class="pidval">
+<span><span class="lyshe-komp">Джерело: Єдиний державний реєстр судових рішень, розпорядник — Державна судова адміністрація України (data.gov.ua, CC BY 4.0). Адреси: © учасники OpenStreetMap.</span><span class="lyshe-telefon">Джерело: Єдиний державний реєстр судових рішень, розпорядник — ДСА України (CC BY 4.0). Адреси: © учасники OpenStreetMap.</span></span>
+<span><span data-mistse="vlasnyk">[НАЗВА ВЛАСНИКА ПРОЄКТУ]</span> · <a href="#pytannya">Оферта</a> · <a href="polityka.html"><span class="lyshe-komp">Політика конфіденційності</span><span class="lyshe-telefon">Конфіденційність</span></a> · <a href="#pytannya"><span class="lyshe-komp">Звернення про видалення</span><span class="lyshe-telefon">Звернення</span></a></span>
+</footer>
+
+<script src="config.js"></script>
+<script src="nadsylannya.js"></script>
+<script src="storinka.js"></script>
+</body>
+</html>
