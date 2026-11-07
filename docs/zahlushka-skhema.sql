@@ -51,3 +51,34 @@ create policy zayavka_lyshe_dodaty on public.zayavka for insert to anon with che
 drop policy if exists podiya_lyshe_dodaty on public.podiya;
 create policy podiya_lyshe_dodaty on public.podiya for insert to anon with check (true);
 -- Політик на select / update / delete для anon немає — отже, анонім їх не може.
+
+-- =====================================================================
+-- ZAVDANNYA-06. Звернення про виправлення або видалення (форма zvernennya.html).
+-- Виконати в тому самому SQL Editor після частини вище. Правило те саме:
+-- анонім (публічний ключ сторінки) може ЛИШЕ ДОДАТИ рядок; читає й відповідає
+-- власник у панелі Supabase. Таблиця водночас — журнал звернень із датами
+-- (docs/03-dani-i-etyka.md, розділ 7): строк відповіді — 10 робочих днів.
+-- =====================================================================
+create table if not exists public.zvernennya (
+  id            bigint generated always as identity primary key,
+  chas          timestamptz not null default now(),
+  posylannya    text not null check (char_length(posylannya) between 1 and 300),
+  shcho_ne_tak  text not null check (shcho_ne_tak in ('mistse', 'opys', 'vydalyty', 'inshe')),
+  poyasnennya   text check (poyasnennya is null or char_length(poyasnennya) <= 2000),
+  kontakt       text not null check (char_length(kontakt) between 3 and 120),
+  zghoda        boolean not null check (zghoda = true),
+  -- Нижче — лише для власника (анонім цих стовпців не має права заповнювати):
+  stan          text not null default 'nove'
+                check (stan in ('nove', 'v_roboti', 'vypravleno', 'vydaleno', 'vidmova')),
+  vidpovid_chas timestamptz,
+  prymitka      text
+);
+comment on table public.zvernennya is 'Звернення про виправлення або видалення. Відповідь — протягом 10 робочих днів. Зберігати 1 рік після відповіді.';
+create index if not exists zvernennya_chas on public.zvernennya (chas);
+
+alter table public.zvernennya enable row level security;
+revoke all on public.zvernennya from anon, authenticated;
+grant insert (posylannya, shcho_ne_tak, poyasnennya, kontakt, zghoda) on public.zvernennya to anon;
+drop policy if exists zvernennya_lyshe_dodaty on public.zvernennya;
+create policy zvernennya_lyshe_dodaty on public.zvernennya for insert to anon with check (zghoda = true);
+-- Політик на select / update / delete для anon немає — отже, анонім їх не може.

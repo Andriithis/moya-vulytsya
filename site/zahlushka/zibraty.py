@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import hashlib
 import html
 import json
 import os
@@ -39,8 +40,18 @@ from pathlib import Path
 DZHERELO = Path(__file__).resolve().parent
 KORIN = DZHERELO.parents[1]
 FAILY = ['index.html', 'polityka.html', 'zrazok.html', 'styli.css', 'zrazok.css',
-         'nadsylannya.js', 'storinka.js']
-STORINKY = ['index.html', 'polityka.html', 'zrazok.html']
+         'nadsylannya.js', 'storinka.js',
+         # ZAVDANNYA-06: оферта, звернення, встановлення на телефон
+         'oferta.html', 'zvernennya.html', 'zvernennya.js', 'vstanovlennya.js',
+         'manifest.webmanifest', 'sw.js']
+STORINKY = ['index.html', 'polityka.html', 'zrazok.html', 'oferta.html', 'zvernennya.html']
+# Ціни з MV-11 — ОДНЕ місце для оферти: у тексті оферти стоять {{tsina.analiz}} і {{tsina.pidpyska}}.
+# Змінили ціну рішенням MV — змінити тут і на головній (перевірка test_zahlushka звіряє все з RISHENNYA.md).
+TSINY = {'analiz': 690, 'pidpyska': 299}
+ZMINNA = re.compile(r'\{\{[^{}]*\}\}')
+# Робочий файл кешу: маркери, які підставляє збирання.
+SW_VERSIYA = "/*VERSIYA*/'rozrobka'"
+SW_FAILY = "/*FAILY*/['./', 'index.html']"
 MISTSE = re.compile(r"\[[А-ЯІЇЄҐ][А-ЯІЇЄҐ ,'’-]*\]")
 ADRESA_SUPABASE = re.compile(r'^https://[a-z0-9]{10,40}\.supabase\.co$')
 CSP_ZAHLUSHKA = 'connect-src \'self\' https://*.supabase.co'
@@ -87,6 +98,9 @@ def zibraty(vykhid: Path, adresa: str, klyuch: str, zapovnennya: dict[str, str],
         shutil.copy2(DZHERELO / nazva, vykhid / nazva)
     for shryft in sorted((DZHERELO / 'shryfty').iterdir()):
         shutil.copy2(shryft, vykhid / 'shryfty' / shryft.name)
+    (vykhid / 'ikony').mkdir()
+    for ikona in sorted((DZHERELO / 'ikony').glob('*.png')):
+        shutil.copy2(ikona, vykhid / 'ikony' / ikona.name)
 
     nezapovneni: list[str] = []
     for nazva in STORINKY:
@@ -96,6 +110,11 @@ def zibraty(vykhid: Path, adresa: str, klyuch: str, zapovnennya: dict[str, str],
             znachennya = str(znachennya).strip()
             if znachennya:
                 tekst = tekst.replace(f'[{mistse}]', html.escape(znachennya))
+        for nazva_tsiny, tsina in TSINY.items():
+            tekst = tekst.replace('{{tsina.' + nazva_tsiny + '}}', str(tsina))
+        zalyshky = sorted(set(ZMINNA.findall(tekst)))
+        if zalyshky:
+            raise PomylkaZbyrannya(f'{nazva}: невідомі змінні {zalyshky}')
         if adresa and CSP_ZAHLUSHKA in tekst:
             tekst = tekst.replace(CSP_ZAHLUSHKA, f"connect-src 'self' {adresa}")
         shlyakh.write_text(tekst, encoding='utf-8')
@@ -111,9 +130,27 @@ def zibraty(vykhid: Path, adresa: str, klyuch: str, zapovnennya: dict[str, str],
     else:
         shutil.copy2(DZHERELO / 'config.example.js', vykhid / 'config.js')
 
+    zibraty_sw(vykhid)
+
     if dlya_publikatsiyi and nezapovneni:
         raise PomylkaZbyrannya('Незаповнені місця — публікувати не можна:\n  ' + '\n  '.join(nezapovneni))
     return nezapovneni
+
+
+def zibraty_sw(vykhid: Path) -> None:
+    """Підставляє в sw.js перелік файлів для кешу і версію — відбиток усіх файлів."""
+    sw = vykhid / 'sw.js'
+    tekst = sw.read_text(encoding='utf-8')
+    if SW_VERSIYA not in tekst or SW_FAILY not in tekst:
+        raise PomylkaZbyrannya('sw.js: не знайдено місць для версії і переліку файлів.')
+    faily = sorted(str(p.relative_to(vykhid)).replace(os.sep, '/') for p in vykhid.rglob('*')
+                   if p.is_file() and p.name != 'sw.js')
+    vidbytok = hashlib.sha256()
+    for f in faily:
+        vidbytok.update(f.encode() + b'\0' + (vykhid / f).read_bytes())
+    tekst = tekst.replace(SW_VERSIYA, json.dumps(vidbytok.hexdigest()[:12]))
+    tekst = tekst.replace(SW_FAILY, json.dumps(['./'] + faily, ensure_ascii=False))
+    sw.write_text(tekst, encoding='utf-8')
 
 
 def main(argv: list[str] | None = None) -> int:
