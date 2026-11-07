@@ -190,7 +190,8 @@ class ZbyrannyaTests(unittest.TestCase):
     URL = 'https://abcdefghijklmnopqrst.supabase.co'
     ZAPOVNENNYA = {'НАЗВА ВЛАСНИКА ПРОЄКТУ': 'Умовна назва', 'ВЛАСНИК': 'Умовний власник',
                    'КОНТАКТ': 'умовний контакт', 'СЕРВІС І КРАЇНА ЗБЕРІГАННЯ': 'Умовний сервіс, ЄС',
-                   'ДАТА': '01.01.2027', 'САЙТ': 'умовний-сайт'}
+                   'ДАТА': '01.01.2027', 'САЙТ': 'умовний-сайт',
+                   'КОД': 'умовний код', 'АДРЕСА': 'умовна адреса'}
 
     def test_perehliad_bez_skhovyshcha(self):
         nezapovneni = zibraty.zibraty(self.tmp / 'z', '', '', {}, False)
@@ -373,7 +374,7 @@ class BrauzerTests(unittest.TestCase):
         shutil.rmtree(cls.tmp, ignore_errors=True)
 
     def setUp(self):
-        self.skh.ryadky = {'zayavka': [], 'podiya': []}
+        self.skh.ryadky = {'zayavka': [], 'podiya': [], 'zvernennya': []}
         self.skh.zapyty.clear()
         self.skh.zbii = False
 
@@ -493,6 +494,350 @@ class BrauzerTests(unittest.TestCase):
         self.assertEqual(self.zovnishni, [])
         kontekst.close()
 
+
+
+# ---------------------------------------------------------------------------
+# ZAVDANNYA-06: оферта, звернення, встановлення на телефон
+# ---------------------------------------------------------------------------
+STORINKY_06 = ('index.html', 'polityka.html', 'zrazok.html', 'oferta.html', 'zvernennya.html')
+MISTSYA_OFERTY = ('ВЛАСНИК', 'КОД', 'АДРЕСА', 'КОНТАКТ', 'САЙТ', 'ДАТА')
+
+
+def tsiny_z_rishennya():
+    """Ціни з запису MV-11 у RISHENNYA.md: (підписка, аналіз)."""
+    rishennya = (KORIN / 'RISHENNYA.md').read_text(encoding='utf-8')
+    mv11 = rishennya.split('## MV-11.', 1)[1].split('\n## ', 1)[0]
+    pidpyska = int(re.search(r'Підписка — \*\*(\d+) грн на місяць\*\*', mv11).group(1))
+    analiz = int(re.search(r'аналіз адреси — \*\*(\d+) грн\*\*', mv11).group(1))
+    return pidpyska, analiz
+
+
+def rozmir_png(p: Path):
+    dani = p.read_bytes()[:24]
+    assert dani[:8] == b'\x89PNG\r\n\x1a\n', p
+    return int.from_bytes(dani[16:20], 'big'), int.from_bytes(dani[20:24], 'big')
+
+
+class Zavdannya06Tests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_oferta_i_zvernennya_bez_storonnikh_domeniv(self):
+        adresa = re.compile(r'(?:https?:)?//([A-Za-z0-9*.-]+\.[A-Za-z]{2,})', re.I)
+        for nazva in ('oferta.html', 'zvernennya.html', 'zvernennya.js', 'vstanovlennya.js', 'sw.js',
+                      'manifest.webmanifest'):
+            tekst = (SAIT / nazva).read_text(encoding='utf-8')
+            domeny = [m.group(1) for m in adresa.finditer(tekst)]
+            if nazva == 'zvernennya.html':  # лише сховище з MV-8 у дозволі на з'єднання
+                domeny = [d for d in domeny if not d.lower().endswith('supabase.co')]
+            self.assertEqual(domeny, [], nazva)
+        self.assertNotIn('supabase', (SAIT / 'oferta.html').read_text(encoding='utf-8'))
+
+    def test_oferta_shablon_i_rozdily(self):
+        html = (SAIT / 'oferta.html').read_text(encoding='utf-8')
+        self.assertIn('ШАБЛОН — ПЕРЕВІРИТИ ПЕРЕД ПУБЛІКАЦІЄЮ', html.split('<html')[0])
+        for mistse in MISTSYA_OFERTY:
+            self.assertIn(f'[{mistse}]', html)
+        for rozdil in ('Що ми продаємо', 'не оцінка безпеки', 'Як оплатити', 'Повернення коштів',
+                       'Відповідальність', 'Звернення, виправлення і видалення', 'Як змінюється оферта'):
+            self.assertIn(rozdil, html)
+        self.assertIn('href="zvernennya.html"', html)
+
+    def test_tsiny_v_oferti_yak_u_mv11(self):
+        """Ціни в оферті — змінні з одного місця (zibraty.TSINY), і вони дорівнюють MV-11."""
+        pidpyska, analiz = tsiny_z_rishennya()
+        self.assertEqual(zibraty.TSINY, {'analiz': analiz, 'pidpyska': pidpyska})
+        dzherelo = (SAIT / 'oferta.html').read_text(encoding='utf-8')
+        self.assertEqual(re.findall(r'\d+\s*грн', dzherelo), [], 'Ціни в оферті не пишемо текстом')
+        self.assertIn('{{tsina.analiz}} грн', dzherelo)
+        self.assertIn('{{tsina.pidpyska}} грн', dzherelo)
+        zibraty.zibraty(self.tmp / 'z', '', '', {}, False)
+        oferta = (self.tmp / 'z' / 'oferta.html').read_text(encoding='utf-8')
+        self.assertNotIn('{{', oferta)
+        self.assertEqual({int(x) for x in re.findall(r'(\d+)\s*грн', oferta)}, {analiz, pidpyska})
+        self.assertIn(f'data-tsina="analiz">{analiz} грн разово', oferta)
+        self.assertIn(f'data-tsina="pidpyska">{pidpyska} грн за місяць', oferta)
+        # І головна каже те саме.
+        index = (SAIT / 'index.html').read_text(encoding='utf-8')
+        self.assertEqual({int(x) for x in re.findall(r'(\d+)\s*грн', index)}, {0, analiz, pidpyska})
+
+    def test_nevidoma_zminna_zupyniaie_zbyrannia(self):
+        dzherelo = self.tmp / 'dzherelo'
+        shutil.copytree(SAIT, dzherelo)
+        (dzherelo / 'oferta.html').write_text(
+            (SAIT / 'oferta.html').read_text(encoding='utf-8').replace('{{tsina.analiz}}', '{{tsina.shchos}}'),
+            encoding='utf-8')
+        stare = zibraty.DZHERELO
+        zibraty.DZHERELO = dzherelo
+        try:
+            with self.assertRaises(zibraty.PomylkaZbyrannya):
+                zibraty.zibraty(self.tmp / 'z', '', '', {}, False)
+        finally:
+            zibraty.DZHERELO = stare
+
+    def test_publikatsiya_padaie_bez_mists_oferty(self):
+        for mistse in MISTSYA_OFERTY:
+            z = dict(ZbyrannyaTests.ZAPOVNENNYA)
+            z[mistse] = ''
+            with self.assertRaises(zibraty.PomylkaZbyrannya, msg=mistse) as e:
+                zibraty.zibraty(self.tmp / 'z', ZbyrannyaTests.URL, 'test-publichnyi', z, True)
+            self.assertIn(f'oferta.html: [{mistse}]', str(e.exception))
+
+    def test_publikatsiya_padaie_bez_imeni_vlasnyka_na_novykh_storinkakh(self):
+        z = dict(ZbyrannyaTests.ZAPOVNENNYA)
+        del z['НАЗВА ВЛАСНИКА ПРОЄКТУ']
+        with self.assertRaises(zibraty.PomylkaZbyrannya) as e:
+            zibraty.zibraty(self.tmp / 'z', ZbyrannyaTests.URL, 'test-publichnyi', z, True)
+        for nazva in ('oferta.html', 'zvernennya.html'):
+            self.assertIn(f'{nazva}: [НАЗВА ВЛАСНИКА ПРОЄКТУ]', str(e.exception))
+
+    def test_forma_zvernennya(self):
+        html = (SAIT / 'zvernennya.html').read_text(encoding='utf-8')
+        pole = re.search(r'<input[^>]*id="zghoda"[^>]*>', html)
+        self.assertIsNotNone(pole)
+        self.assertIn('type="checkbox"', pole.group(0))
+        self.assertNotIn('checked', pole.group(0))
+        self.assertEqual(re.findall(r'name="shcho_ne_tak" value="(\w+)"', html),
+                         ['mistse', 'opys', 'vydalyty', 'inshe'])
+        for tekst in ('Помилка в місці', 'Помилка в описі', 'Стосується мене — прошу видалити', 'Інше',
+                      'Отримали.', 'Відповімо протягом 10 робочих днів.', 'class="pastka"'):
+            self.assertIn(tekst, html)
+        self.assertIn('src="nadsylannya.js"', html)
+        js = (SAIT / 'zvernennya.js').read_text(encoding='utf-8')
+        self.assertIn('N.nadislatyZvernennya', js)
+        self.assertNotIn('fetch(', js, 'Відправка — лише через nadsylannya.js')
+        sql = (KORIN / 'docs' / 'zahlushka-skhema.sql').read_text(encoding='utf-8')
+        self.assertIn('create table if not exists public.zvernennya', sql)
+        self.assertIn('grant insert (posylannya, shcho_ne_tak, poyasnennya, kontakt, zghoda) '
+                      'on public.zvernennya to anon', sql)
+        self.assertNotRegex(sql, r'grant (select|update|delete)[^;]*zvernennya')
+
+    def test_posylannya_vnyzu_na_vsikh_storinkakh(self):
+        for nazva in STORINKY_06:
+            html = (SAIT / nazva).read_text(encoding='utf-8')
+            pidval = html.split('<footer', 1)[1]
+            self.assertIn('href="oferta.html"', pidval, nazva)
+            self.assertIn('href="zvernennya.html"', pidval, nazva)
+            self.assertNotIn('href="#pytannya">Оферта', html, nazva)
+        index = (SAIT / 'index.html').read_text(encoding='utf-8')
+        pytannya = index.split('id="pytannya"', 1)[1].split('</section>', 1)[0]
+        self.assertIn('<a href="zvernennya.html">форму звернення</a>', pytannya)
+
+    def test_manifest_i_ikony(self):
+        m = json.loads((SAIT / 'manifest.webmanifest').read_text(encoding='utf-8'))
+        self.assertEqual(m['name'], 'Моя вулиця')
+        self.assertEqual(m['display'], 'standalone')
+        css = (SAIT / 'styli.css').read_text(encoding='utf-8')
+        for kolir in (m['theme_color'], m['background_color']):
+            self.assertIn(kolir, css, 'Кольори маніфесту — з заглушки')
+        rozmiry = set()
+        for ikona in m['icons']:
+            p = SAIT / ikona['src']
+            self.assertTrue(p.is_file(), ikona['src'])
+            shyryna, vysota = rozmir_png(p)
+            self.assertEqual(f'{shyryna}x{vysota}', ikona['sizes'], ikona['src'])
+            rozmiry.add(ikona['sizes'])
+        self.assertTrue({'192x192', '512x512'} <= rozmiry)
+        self.assertTrue(any('maskable' in i.get('purpose', '') for i in m['icons']))
+        for nazva in ('index.html', 'polityka.html', 'oferta.html', 'zvernennya.html'):
+            html = (SAIT / nazva).read_text(encoding='utf-8')
+            self.assertIn('<link rel="manifest" href="manifest.webmanifest">', html, nazva)
+            self.assertIn('src="vstanovlennya.js"', html, nazva)
+
+    def test_sw_keshuie_vsi_faily_i_ne_chipaie_vidpravky(self):
+        zibraty.zibraty(self.tmp / 'z', '', '', {}, False)
+        sw = (self.tmp / 'z' / 'sw.js').read_text(encoding='utf-8')
+        faily = json.loads(re.search(r'var FAILY = (\[.*?\]);', sw).group(1))
+        zibrani = sorted(str(p.relative_to(self.tmp / 'z')).replace(os.sep, '/')
+                         for p in (self.tmp / 'z').rglob('*') if p.is_file() and p.name != 'sw.js')
+        self.assertEqual(sorted(f for f in faily if f != './'), zibrani)
+        for storinka in STORINKY_06:
+            self.assertIn(storinka, faily)
+        versiya = re.search(r"VERSIYA = 'mv-zahlushka-' \+ \"([0-9a-f]{12})\"", sw).group(1)
+        # Інший вміст — інша версія, тож браузер візьме нові файли.
+        zibraty.zibraty(self.tmp / 'z2', 'https://abcdefghijklmnopqrst.supabase.co', 'test-publichnyi', {}, False)
+        sw2 = (self.tmp / 'z2' / 'sw.js').read_text(encoding='utf-8')
+        self.assertNotIn(versiya, sw2)
+        dzherelo = (SAIT / 'sw.js').read_text(encoding='utf-8')
+        self.assertIn("if (z.method !== 'GET') return;", dzherelo)
+        self.assertIn('adresa.origin !== self.location.origin', dzherelo)
+
+
+ZVERNENNYA_JS = r"""
+(async () => {
+  const rez = {};
+  const d = { posylannya: 'Рішення № 1', shchoNeTak: 'mistse', poyasnennya: '', kontakt: '@test_nik' };
+  const sprobuvaty = (dod) => N.nadislatyZvernennya(Object.assign({}, d, dod)).then(() => 'vidpravleno', () => 'vidmova');
+  rez.bezZghody = await sprobuvaty({ zghoda: false });
+  rez.zghodaRyadkom = await sprobuvaty({ zghoda: 'true' });
+  rez.bezVyboru = await sprobuvaty({ shchoNeTak: 'shchos', zghoda: true });
+  rez.zapytivPislyaVidmov = zapyty.length;
+  rez.ok = await N.nadislatyZvernennya(Object.assign({}, d, { zghoda: true }));
+  rez.zapyty = zapyty.map(z => ({ url: z.url, tilo: JSON.parse(z.opt.body), credentials: z.opt.credentials }));
+  process.stdout.write(JSON.stringify(rez));
+})();
+"""
+
+
+@unittest.skipUnless(shutil.which('node'), 'немає Node.js — перевірку модуля відправки пропущено')
+class ModulZvernennyaTests(unittest.TestCase):
+    def test_bez_zghody_ne_vidpravliaietsia(self):
+        skrypt = ModulVidpravkyTests.SKRYPT.split('(async () => {')[0] + ZVERNENNYA_JS
+        with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False) as f:
+            f.write(skrypt)
+        try:
+            r = json.loads(subprocess.check_output(['node', f.name, str(SAIT / 'nadsylannya.js')], timeout=30))
+        finally:
+            os.unlink(f.name)
+        self.assertEqual((r['bezZghody'], r['zghodaRyadkom'], r['bezVyboru']), ('vidmova',) * 3)
+        self.assertEqual(r['zapytivPislyaVidmov'], 0, 'Без згоди нічого не повинно надсилатися')
+        self.assertTrue(r['ok'])
+        [z] = r['zapyty']
+        self.assertEqual(z['url'], 'https://abcdefghijklmnopqrst.supabase.co/rest/v1/zvernennya')
+        self.assertEqual(z['tilo'], {'posylannya': 'Рішення № 1', 'shcho_ne_tak': 'mistse', 'poyasnennya': None,
+                                     'kontakt': '@test_nik', 'zghoda': True})
+        self.assertEqual(z['credentials'], 'omit')
+
+
+@unittest.skipUnless(CHROME, 'немає Playwright або Chrome — перевірку в браузері пропущено')
+class Brauzer06Tests(BrauzerTests):
+    """Звернення, робота без мережі, встановлюваність — у справжньому Chrome з підміною сховища."""
+
+    # Перевірки ZAVDANNYA-02 вже пройшли в BrauzerTests — тут їх не повторюємо.
+    test_povnyi_shlyakh_i_chotyry_chysla = None
+    test_kanal_za_zamovchuvanniam = None
+    test_pastka_dlia_botiv = None
+    test_pomylka_merezhi_i_sprobuvaty_shche = None
+    test_shryfty_zavantazheni = None
+
+    def kontekst(self, shyryna=1280):
+        k = self.brauzer.new_context(viewport={'width': shyryna, 'height': 900})
+        self.zovnishni = []
+        k.on('request', lambda z: z.url.startswith(self.url) or z.url.startswith('data:')
+             or self.zovnishni.append(z.url))
+        return k
+
+    def zapovnyty(self, s, zghoda=True):
+        s.fill('#posylannya', 'Рішення № 1')
+        s.check('input[value="vydalyty"]')
+        s.fill('#poyasnennya', 'Це моя адреса проживання.')
+        s.fill('#kontakt', '@test_nik')
+        if zghoda:
+            s.check('#zghoda')
+
+    def test_zvernennya_bez_zghody_i_zi_zghodoyu(self):
+        k = self.kontekst()
+        s = k.new_page()
+        s.goto(f'{self.url}/zahlushka/zvernennya.html')
+        s.click('#zvernennya-knopka')
+        self.assertIn('посилання', s.inner_text('#zvernennya-stan'))
+        self.zapovnyty(s, zghoda=False)
+        s.click('#zvernennya-knopka')
+        self.assertIn('згоди', s.inner_text('#zvernennya-stan'))
+        time.sleep(0.3)
+        self.assertEqual(self.skh.ryadky['zvernennya'], [], 'Без згоди звернення не надсилається')
+        s.check('#zghoda')
+        s.click('#zvernennya-knopka')
+        s.wait_for_selector('#vdacha', state='visible')
+        self.assertEqual(s.inner_text('#vdacha').split(), 'Отримали. Відповімо протягом 10 робочих днів.'.split())
+        [z] = self.skh.ryadky['zvernennya']
+        self.assertEqual((z['posylannya'], z['shcho_ne_tak'], z['poyasnennya'], z['kontakt'], z['zghoda']),
+                         ('Рішення № 1', 'vydalyty', 'Це моя адреса проживання.', '@test_nik', True))
+        self.assertEqual(self.skh.ryadky['podiya'], [], 'Звернення не входить у чотири числа')
+        self.assertEqual(k.cookies(), [])
+        self.assertEqual(self.zovnishni, [])
+        k.close()
+
+    def test_zvernennya_zboi_i_sprobuvaty_shche(self):
+        self.skh.zbii = True
+        k = self.kontekst()
+        s = k.new_page()
+        s.goto(f'{self.url}/zahlushka/zvernennya.html')
+        self.zapovnyty(s)
+        s.click('#zvernennya-knopka')
+        s.wait_for_selector('#zboi', state='visible')
+        self.assertIn('Не вдалося надіслати', s.inner_text('#zboi'))
+        self.skh.zbii = False
+        s.click('#sprobuvaty-shche')
+        s.wait_for_selector('#vdacha', state='visible')
+        self.assertEqual(len(self.skh.ryadky['zvernennya']), 1)
+        k.close()
+
+    def chekaty_robitnyka(self, s):
+        s.evaluate('navigator.serviceWorker.ready.then(() => true)')
+        if not s.evaluate('!!navigator.serviceWorker.controller'):
+            s.reload()
+        self.assertTrue(self.chekaty(lambda: s.evaluate('!!navigator.serviceWorker.controller'), 5))
+
+    def test_bez_merezhi(self):
+        """Після першого відкриття всі сторінки відкриваються без мережі; форми не гублять введене."""
+        k = self.kontekst()
+        s = k.new_page()
+        s.goto(f'{self.url}/zahlushka/index.html?dzherelo=tiktok')
+        self.chekaty_robitnyka(s)
+        k.set_offline(True)
+        for nazva in STORINKY_06:
+            s.goto(f'{self.url}/zahlushka/{nazva}?dzherelo=telegram')
+            s.evaluate('document.fonts.ready')
+            self.assertIn('Моя вулиця', s.inner_text('body'), nazva)
+            self.assertTrue(s.evaluate("document.fonts.check('400 16px Inter', 'Що')"), nazva)
+        # Звернення без мережі: зрозуміле повідомлення, введене лишилося.
+        s.goto(f'{self.url}/zahlushka/zvernennya.html')
+        self.zapovnyty(s)
+        s.click('#zvernennya-knopka')
+        s.wait_for_selector('#zboi', state='visible')
+        self.assertIn("Немає зв'язку з інтернетом", s.inner_text('#zboi'))
+        self.assertEqual(s.input_value('#posylannya'), 'Рішення № 1')
+        self.assertEqual(s.input_value('#kontakt'), '@test_nik')
+        self.assertTrue(s.is_checked('#zghoda'))
+        self.assertEqual(self.skh.ryadky['zvernennya'], [])
+        # Передзамовлення без мережі: повідомлення, введене лишилося.
+        s.goto(f'{self.url}/zahlushka/index.html')
+        s.fill('#kontakt', '@test_nik')
+        s.check('#zghoda')
+        s.click('#forma-knopka')
+        s.wait_for_selector('#zboi', state='visible')
+        self.assertIn("зник зв'язок", s.inner_text('#zboi'))
+        self.assertEqual(s.input_value('#kontakt'), '@test_nik')
+        self.assertEqual(self.skh.ryadky['zayavka'], [])
+        # Зв'язок повернувся — «Спробувати ще» надсилає.
+        k.set_offline(False)
+        s.click('#sprobuvaty-shche')
+        s.wait_for_selector('#vdacha', state='visible')
+        self.assertEqual(len(self.skh.ryadky['zayavka']), 1)
+        k.close()
+
+    def test_chrome_vvazhaie_vstanovliuvanoiu(self):
+        # Звичайний контекст Playwright — як вікно інкогніто, а там Chrome встановлення не пропонує
+        # (помилка «in-incognito»). Тому тут — окремий звичайний профіль у тимчасовій теці.
+        profil = tempfile.mkdtemp()
+        k = self.pw.chromium.launch_persistent_context(profil, executable_path=CHROME, args=['--no-sandbox'])
+        s = k.new_page()
+        s.goto(f'{self.url}/zahlushka/index.html')
+        self.chekaty_robitnyka(s)
+        cdp = k.new_cdp_session(s)
+        pomylky = None
+        for _ in range(20):
+            pomylky = cdp.send('Page.getInstallabilityErrors')['installabilityErrors']
+            if not pomylky:
+                break
+            time.sleep(0.25)
+        self.assertEqual(pomylky, [], 'Chrome не вважає сторінку встановлюваною')
+        manifest = cdp.send('Page.getAppManifest')
+        self.assertEqual(manifest.get('errors'), [])
+        k.close()
+        shutil.rmtree(profil, ignore_errors=True)
+
+    def test_telefon_bez_horyzontalnoho_prokruchuvannia(self):
+        for nazva in STORINKY_06:
+            k = self.brauzer.new_context(viewport={'width': 390, 'height': 844})
+            s = k.new_page()
+            s.goto(f'{self.url}/zahlushka/{nazva}')
+            self.assertLessEqual(s.evaluate('document.documentElement.scrollWidth'), 390, nazva)
+            k.close()
 
 if __name__ == '__main__':
     unittest.main()

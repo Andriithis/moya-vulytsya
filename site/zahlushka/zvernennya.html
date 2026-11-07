@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://*.supabase.co; form-action 'none'; base-uri 'none'">
+<title>Звернення про виправлення або видалення — Моя вулиця</title>
+<meta name="theme-color" content="#0B6B6B">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="ikony/ikona-192.png">
+<link rel="stylesheet" href="styli.css">
+</head>
+<body>
+
+<header class="shapka">
+<div class="shapka__vnutri">
+<a class="lohotyp" href="index.html">
+<svg aria-hidden="true" width="26" height="28" viewBox="0 0 26 28"><path d="M13 1 L25 8 L25 20 L13 27 L1 20 L1 8 Z" fill="#0B6B6B"></path><path d="M13 9 L18 12 L18 17 L13 20 L8 17 L8 12 Z" fill="#FFFFFF"></path></svg>
+<span class="lohotyp__nazva">Моя вулиця</span>
+</a>
+<nav class="menyu" aria-label="Розділи">
+<a href="index.html#peredzamovlennya">Передзамовлення</a>
+</nav>
+</div>
+</header>
+
+<main class="storinka">
+<h1>Звернення про виправлення або видалення</h1>
+<p class="vstup">Подія показана не в тому місці, опис неточний або подія стосується вас — напишіть нам. Відповідаємо протягом 10 робочих днів.</p>
+<p class="vstup vstup--dribno">Знімаємо подію без зайвих питань, якщо рішення суду скасоване чи змінене, якщо місце події — це ваша адреса проживання або якщо вас можна впізнати за сукупністю деталей.</p>
+
+<form class="forma forma--storinka" id="zvernennya" novalidate aria-describedby="zvernennya-stan">
+<div class="pole">
+<label for="posylannya">Посилання на подію або номер рішення</label>
+<input id="posylannya" name="posylannya" type="text" maxlength="300" placeholder="посилання або № рішення в реєстрі" autocomplete="off">
+</div>
+
+<fieldset class="vybir">
+<legend class="pole__mitka">Що не так</legend>
+<label><input type="radio" name="shcho_ne_tak" value="mistse"> <span>Помилка в місці — подія сталася не тут</span></label>
+<label><input type="radio" name="shcho_ne_tak" value="opys"> <span>Помилка в описі</span></label>
+<label><input type="radio" name="shcho_ne_tak" value="vydalyty"> <span>Стосується мене — прошу видалити</span></label>
+<label><input type="radio" name="shcho_ne_tak" value="inshe"> <span>Інше</span></label>
+</fieldset>
+
+<div class="pole">
+<label for="poyasnennya">Пояснення (необов'язково)</label>
+<textarea id="poyasnennya" name="poyasnennya" rows="5" maxlength="2000" placeholder="Що саме не так і як має бути"></textarea>
+</div>
+
+<div class="pole">
+<label for="kontakt">Пошта або Телеграм для відповіді</label>
+<input id="kontakt" name="kontakt" type="text" maxlength="120" placeholder="name@pošta.ua або @nik" autocomplete="email" inputmode="email">
+</div>
+
+<!-- Пастка для ботів: людина цього поля не бачить. Заповнене — звернення не надсилаємо. -->
+<div class="pastka" aria-hidden="true">
+<label for="sait">Сайт</label>
+<input id="sait" name="sait" type="text" tabindex="-1" autocomplete="off">
+</div>
+
+<label class="zghoda"><input id="zghoda" name="zghoda" type="checkbox"> <span>Погоджуюсь, щоб ці дані використали для розгляду звернення і відповіді мені. <a href="polityka.html">Політика конфіденційності</a></span></label>
+<p class="pomylka" id="zvernennya-stan" role="alert" hidden></p>
+<button type="submit" class="forma__knopka" id="zvernennya-knopka">Надіслати звернення</button>
+</form>
+
+<div class="forma forma--storinka povidomlennya" id="vdacha" tabindex="-1" hidden>
+<span class="povidomlennya__holovne">Отримали.</span>
+<p>Відповімо протягом 10 робочих днів.</p>
+</div>
+
+<div class="forma forma--storinka povidomlennya" id="zboi" tabindex="-1" hidden>
+<span class="povidomlennya__holovne">Не вдалося надіслати</span>
+<p id="zboi-tekst">Схоже, зник зв'язок або сервер не відповів. Ваше звернення не загубилося — воно лишилося у формі.</p>
+<button type="button" class="forma__knopka" id="sprobuvaty-shche">Спробувати ще</button>
+</div>
+</main>
+
+<footer class="pidval">
+<span>[НАЗВА ВЛАСНИКА ПРОЄКТУ] · <a href="index.html">Головна</a> · <a href="oferta.html">Оферта</a> · <a href="polityka.html"><span class="lyshe-komp">Політика конфіденційності</span><span class="lyshe-telefon">Конфіденційність</span></a> · <a href="zvernennya.html"><span class="lyshe-komp">Звернення про видалення</span><span class="lyshe-telefon">Звернення</span></a></span>
+</footer>
+
+<script src="config.js"></script>
+<script src="nadsylannya.js"></script>
+<script src="zvernennya.js"></script>
+<script src="vstanovlennya.js"></script>
+</body>
+</html>

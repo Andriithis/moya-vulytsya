@@ -26,12 +26,14 @@ SEKRETNYI = 'test-sekretnyi'
 STOVPTSI = {
     'zayavka': {'shcho', 'misto', 'adresa', 'kontakt', 'zghoda', 'kanal'},
     'podiya': {'nazva', 'kanal'},
+    # ZAVDANNYA-06: звернення про виправлення або видалення
+    'zvernennya': {'posylannya', 'shcho_ne_tak', 'poyasnennya', 'kontakt', 'zghoda'},
 }
 
 
 class Skhovyshche:
     def __init__(self):
-        self.ryadky = {'zayavka': [], 'podiya': []}
+        self.ryadky = {t: [] for t in STOVPTSI}
         self.zapyty = []          # (метод, шлях, заголовки) — для перевірок
         self.zbii = False
         self.lichylnyk = 0
@@ -82,11 +84,11 @@ class Obrobnyk(SimpleHTTPRequestHandler):
             return self._vidpovid(404, {'message': 'немає таблиці'})
         if self._klyuch() not in (PUBLICHNYI, SEKRETNYI):
             return self._vidpovid(401, {'message': 'невідомий ключ'})
-        if s.zbii and t == 'zayavka':
+        if s.zbii and t in ('zayavka', 'zvernennya'):
             return self._vidpovid(503, {'message': 'умовний збій'})
         if set(ryadok) - STOVPTSI[t]:
             return self._vidpovid(401, {'message': 'permission denied'})
-        if t == 'zayavka' and ryadok.get('zghoda') is not True:
+        if t in ('zayavka', 'zvernennya') and ryadok.get('zghoda') is not True:
             return self._vidpovid(403, {'message': 'row-level security'})
         with s.zamok:
             s.lichylnyk += 1
@@ -102,7 +104,7 @@ class Obrobnyk(SimpleHTTPRequestHandler):
         if self._klyuch() != SEKRETNYI:
             return self._vidpovid(401, {'message': 'permission denied'})
         kanal = self._filtr(q)
-        rows = [r for r in self.skhovyshche.ryadky.get(t, []) if kanal is None or r['kanal'] == kanal]
+        rows = [r for r in self.skhovyshche.ryadky.get(t, []) if kanal is None or r.get('kanal') == kanal]
         return self._vidpovid(200, [{'id': r['id']} for r in rows])
 
     def do_DELETE(self):
@@ -115,8 +117,8 @@ class Obrobnyk(SimpleHTTPRequestHandler):
         kanal = self._filtr(q)
         s = self.skhovyshche
         with s.zamok:
-            vydaleni = [r for r in s.ryadky[t] if r['kanal'] == kanal]
-            s.ryadky[t] = [r for r in s.ryadky[t] if r['kanal'] != kanal]
+            vydaleni = [r for r in s.ryadky[t] if r.get('kanal') == kanal]
+            s.ryadky[t] = [r for r in s.ryadky[t] if r.get('kanal') != kanal]
         return self._vidpovid(200, vydaleni)
 
 

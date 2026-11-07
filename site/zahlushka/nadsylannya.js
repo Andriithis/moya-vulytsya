@@ -84,9 +84,30 @@
     return vidpravyty('zayavka', ryadok, false);
   }
 
+  // Звернення про виправлення або видалення (ZAVDANNYA-06, п. 2). Без згоди — не надсилаємо.
+  var SHCHO_NE_TAK = ['mistse', 'opys', 'vydalyty', 'inshe'];
+  function nadislatyZvernennya(dani) {
+    dani = dani || {};
+    if (dani.zghoda !== true) return Promise.reject(new Error('Немає згоди'));
+    var posylannya = String(dani.posylannya || '').trim();
+    var kontakt = String(dani.kontakt || '').trim();
+    var poyasnennya = String(dani.poyasnennya || '').trim();
+    if (!posylannya) return Promise.reject(new Error('Немає посилання чи номера рішення'));
+    if (SHCHO_NE_TAK.indexOf(dani.shchoNeTak) === -1) return Promise.reject(new Error('Не вибрано, що не так'));
+    if (!kontakt) return Promise.reject(new Error('Немає контакту'));
+    return vidpravyty('zvernennya', {
+      posylannya: posylannya.slice(0, 300),
+      shcho_ne_tak: dani.shchoNeTak,
+      poyasnennya: poyasnennya ? poyasnennya.slice(0, 2000) : null,
+      kontakt: kontakt.slice(0, 120),
+      zghoda: true
+    }, false);
+  }
+
   window.MvNadsylannya = {
     nadislatyPodiyu: nadislatyPodiyu,
     nadislatyZayavku: nadislatyZayavku,
+    nadislatyZvernennya: nadislatyZvernennya,
     ochystytyKanal: ochystytyKanal
   };
 })();
