@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="uk"><head><meta charset="utf-8"><title>Обкладинка YouTube — Моя вулиця</title>
+<link rel="stylesheet" href="brend.css">
+<style>
+/* Макет 1280×720, рендер ×2 = 2560×1440. Безпечна зона YouTube (видно на всіх
+   пристроях) — 1546×423 у центрі, тобто в макеті 773×211.5 з відступом 253.5 / 254.25.
+   Увесь текст і знак — лише в ній; соти — прикраса для телевізора й комп'ютера. */
+.polotno { width: 1280px; height: 720px; }
+#soty { position: absolute; inset: 0; }
+.bezpechna { position: absolute; left: 253.5px; top: 254.25px; width: 773px; height: 211.5px;
+  display: flex; align-items: center; gap: 28px; }
+.bezpechna .tekst { display: flex; flex-direction: column; gap: 10px; }
+.nazva { font: 800 64px/1 Manrope, sans-serif; color: var(--ink); margin: 0; letter-spacing: -0.01em; }
+.gaslo { font: 400 22px/30px Inter, sans-serif; color: var(--ink-2); margin: 0; }
+.gaslo b { font-weight: 600; color: var(--accent); }
+.ramka { position: absolute; left: 253.5px; top: 254.25px; width: 773px; height: 211.5px; outline: 1px dashed var(--attention); display: none; }
+.pokazaty-zonu .ramka { display: block; }
+</style></head>
+<body><div class="polotno" id="p">
+<svg id="soty" width="1280" height="720" viewBox="0 0 1280 720" aria-hidden="true"></svg>
+<div class="bezpechna"><div id="znak"></div><div class="tekst">
+<p class="nazva" id="nazva"></p><p class="gaslo"><span id="gaslo"></span> <b id="dzherelo"></b></p></div></div>
+<div class="ramka"></div>
+</div>
+<script src="brend.js"></script>
+<script>
+window.pokazaty = function (d) {
+  var svg = document.getElementById('soty');
+  /* Бірюзова плита праворуч і соти шкали даних — за межами безпечної зони. */
+  var slab = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  slab.setAttribute('x', 1060); slab.setAttribute('y', -10); slab.setAttribute('width', 240); slab.setAttribute('height', 740);
+  slab.style.fill = 'var(--accent)'; svg.appendChild(slab);
+  Brend.sotyPole(svg, 1090, 40, 5, 18, 22, Brend.SHKALA.slice(0, 4).concat(['var(--ground)']));
+  Brend.sotyPole(svg, 40, 60, 4, 4, 22, Brend.SHKALA.slice(0, 3), function (x, y) { return x + y > 4; });
+  Brend.sotyPole(svg, 40, 560, 5, 4, 22, Brend.SHKALA.slice(0, 3), function (x, y) { return x - y > 1 || y + x < 2; });
+  document.getElementById('znak').appendChild(Brend.znak(150));
+  Brend.tekst('nazva', d.kanal);
+  Brend.tekst('gaslo', d.gaslo);
+  Brend.tekst('dzherelo', d.dzherelo);
+  if (d.pokazaty_zonu) document.getElementById('p').classList.add('pokazaty-zonu');
+};
+</script></body></html>

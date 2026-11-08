@@ -83,3 +83,7 @@ site/hra/koloda.json
 # Збирач сайту й спільні файли сторінок — у git; зібраний сайт (_site/) — ні.
 !site/zibraty_sait.py
 !site/sait/
+# === РОЛИКИ (ZAVDANNYA-11) ===
+# Готові .mp4 у git не кладемо: їх завжди можна відрендерити заново (video/rendery.py).
+video/vyhid/
+*.mp4

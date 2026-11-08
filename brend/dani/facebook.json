@@ -1,0 +1,18 @@
+{
+  "shablon": "facebook",
+  "posty": [
+    {
+      "kanal": "Моя вулиця",
+      "gaslo": "Що відбувається на вашій вулиці.",
+      "dzherelo": "За даними судів.",
+      "nazva": "facebook-1640x624"
+    },
+    {
+      "kanal": "Моя вулиця",
+      "gaslo": "Що відбувається на вашій вулиці.",
+      "dzherelo": "За даними судів.",
+      "nazva": "facebook-z-zonoyu",
+      "pokazaty_zonu": true
+    }
+  ]
+}
