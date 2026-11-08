@@ -72,3 +72,9 @@ private/
 site/*
 !site/zahlushka/
 site/zahlushka/config.js
+
+# === ГРА (ZAVDANNYA-07) ===
+# Вихідні файли гри «Вгадай, де це було» зберігаються в git; справжня колода
+# (koloda.json з конвеєра) — лише під час збирання, у git не потрапляє.
+!site/hra/
+site/hra/koloda.json

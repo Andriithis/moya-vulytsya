@@ -653,7 +653,8 @@ class Zavdannya06Tests(unittest.TestCase):
         faily = json.loads(re.search(r'var FAILY = (\[.*?\]);', sw).group(1))
         zibrani = sorted(str(p.relative_to(self.tmp / 'z')).replace(os.sep, '/')
                          for p in (self.tmp / 'z').rglob('*') if p.is_file() and p.name != 'sw.js')
-        self.assertEqual(sorted(f for f in faily if f != './'), zibrani)
+        # './' і 'hra/' — адреси тек (головна і гра ZAVDANNYA-07), а не окремі файли.
+        self.assertEqual(sorted(f for f in faily if f not in ('./', 'hra/')), zibrani)
         for storinka in STORINKY_06:
             self.assertIn(storinka, faily)
         versiya = re.search(r"VERSIYA = 'mv-zahlushka-' \+ \"([0-9a-f]{12})\"", sw).group(1)

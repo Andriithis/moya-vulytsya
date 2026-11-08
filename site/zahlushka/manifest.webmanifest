@@ -14,5 +14,14 @@
     { "src": "ikony/ikona-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "ikony/ikona-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
     { "src": "ikony/ikona-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Грати: Вгадай, де це було",
+      "short_name": "Грати",
+      "description": "Гра на карті Києва: опис події — і вгадайте, де це було.",
+      "url": "hra/?dzherelo=dodatok",
+      "icons": [{ "src": "ikony/ikona-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
   ]
 }
