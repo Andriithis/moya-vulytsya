@@ -1,0 +1,18 @@
+{
+  "shablon": "youtube",
+  "posty": [
+    {
+      "kanal": "Моя вулиця",
+      "gaslo": "Що відбувається на вашій вулиці.",
+      "dzherelo": "За даними судів.",
+      "nazva": "youtube-2560x1440"
+    },
+    {
+      "kanal": "Моя вулиця",
+      "gaslo": "Що відбувається на вашій вулиці.",
+      "dzherelo": "За даними судів.",
+      "nazva": "youtube-z-zonoyu",
+      "pokazaty_zonu": true
+    }
+  ]
+}

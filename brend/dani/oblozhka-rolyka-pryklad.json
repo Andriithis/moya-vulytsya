@@ -1,0 +1,30 @@
+{
+  "shablon": "oblozhka-rolyka",
+  "posty": [
+    {
+      "nazva": "vhadai",
+      "seriya": "Вгадай, де це було",
+      "zahalovok": "Ви впізнаєте цю вулицю?",
+      "pidzahalovok": "Історія з рішення суду. Пауза — і ваша відповідь."
+    },
+    {
+      "nazva": "tur-raionu",
+      "seriya": "Тур району",
+      "zahalovok": "Район за хвилину",
+      "pidzahalovok": "Події з судових рішень — на карті."
+    },
+    {
+      "nazva": "vulytsya-v-tsyfrakh",
+      "seriya": "Вулиця в цифрах",
+      "zahalovok": "Кадетський Гай",
+      "pidzahalovok": "Три числа про вашу вулицю. За даними судів."
+    },
+    {
+      "nazva": "vhadai-z-zonoyu",
+      "pokazaty_zonu": true,
+      "seriya": "Вгадай, де це було",
+      "zahalovok": "Ви впізнаєте цю вулицю?",
+      "pidzahalovok": "Історія з рішення суду. Пауза — і ваша відповідь."
+    }
+  ]
+}

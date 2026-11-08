@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="uk"><head><meta charset="utf-8"><title>Аватар — Моя вулиця</title>
+<link rel="stylesheet" href="brend.css">
+<style>
+/* Макет 512×512, рендер ×2 = 1024×1024. Знак займає 66 % висоти — усі кути соти
+   всередині кола (радіус до кута ≈ 35 % сторони), тож мережа може обрізати колом. */
+.polotno { width: 512px; height: 512px; display: flex; align-items: center; justify-content: center; }
+.polotno.akcent { background: var(--accent); }
+</style></head>
+<body><div class="polotno" id="p"></div>
+<script src="brend.js"></script>
+<script>
+window.pokazaty = function (d) {
+  var p = document.getElementById('p');
+  var v = Math.round(512 * (d.chastka || 0.66));
+  if (d.varianty === 'akcent') {
+    /* Варіант на бірюзовому тлі: ті самі дві соти, кольори навпаки. */
+    p.classList.add('akcent');
+    p.appendChild(Brend.znak(v, '#FFFFFF', 'var(--accent)'));
+  } else {
+    p.appendChild(Brend.znak(v));
+  }
+};
+</script></body></html>
