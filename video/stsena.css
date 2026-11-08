@@ -1,0 +1,66 @@
+/* Сцена ролика (ZAVDANNYA-11). Кольори й шрифти — система дизайну «Моєї вулиці» (docs/STYL.md),
+   лише світла тема. Розміри — для кадру 1080×1920 (це телефон 540 px ×2, тому все вдвічі більше).
+   Безпечна зона TikTok: нічого важливого нижче 1536 px (нижні 20 %) і правіше 918 px (праві 15 %). */
+@font-face { font-family: 'Inter'; font-weight: 400; src: url(../site/zahlushka/shryfty/inter-cyrillic-400-normal.woff2) format('woff2'); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
+@font-face { font-family: 'Inter'; font-weight: 400; src: url(../site/zahlushka/shryfty/inter-latin-400-normal.woff2) format('woff2'); unicode-range: U+0000-00FF,U+2000-206F; }
+@font-face { font-family: 'Inter'; font-weight: 600; src: url(../site/zahlushka/shryfty/inter-cyrillic-600-normal.woff2) format('woff2'); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
+@font-face { font-family: 'Inter'; font-weight: 600; src: url(../site/zahlushka/shryfty/inter-latin-600-normal.woff2) format('woff2'); unicode-range: U+0000-00FF,U+2000-206F; }
+@font-face { font-family: 'Manrope'; font-weight: 800; src: url(../site/zahlushka/shryfty/manrope-cyrillic-800-normal.woff2) format('woff2'); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
+@font-face { font-family: 'Manrope'; font-weight: 800; src: url(../site/zahlushka/shryfty/manrope-latin-800-normal.woff2) format('woff2'); unicode-range: U+0000-00FF,U+2000-206F; }
+
+:root {
+  --ground: #F7F6F2; --surface: #FFFFFF; --surface-tint: #F1F7F6;
+  --ink: #1B1F24; --ink-2: #3D434C; --muted: #5B616B;
+  --line: #E3E1DA; --line-strong: #C9C6BD;
+  --accent: #0B6B6B; --accent-strong: #064848; --accent-soft: #D7EBEA; --on-accent: #FFFFFF;
+  --attention: #B45309;
+  --data-1: #F1F7F6; --data-2: #D7EBEA; --data-3: #9CCBC7; --data-4: #4FA39D; --data-5: #0B6B6B;
+  --karta-voda: #DCE5E5; --karta-zelen: #ECEEE3; --karta-zabudova: #EEECE6;
+  --karta-vulytsia: #FFFFFF; --karta-vulytsia-ramka: #E3E1DA; --karta-za-mezhamy: #ECEAE4;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: var(--ground); }
+body { font-family: Inter, sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+#kadr { position: relative; width: 1080px; height: 1920px; overflow: hidden; }
+#karta { position: absolute; inset: 0; }
+.maplibregl-ctrl-attrib { font: 400 22px/1.3 Inter, sans-serif; }
+.shar { position: absolute; will-change: opacity, transform; }
+
+/* Знак: шестикутна сота accent з білою сотою всередині + «Моя вулиця» Manrope 800 */
+#znak { left: 64px; top: 150px; display: flex; align-items: center; gap: 18px;
+  background: var(--surface); border: 2px solid var(--line); border-radius: 999px; padding: 14px 32px 14px 18px; }
+#znak svg { width: 60px; height: 60px; }
+#znak .z1 { fill: var(--accent); }
+#znak .z2 { fill: var(--surface); }
+#znak span { font: 800 40px/1 Manrope, sans-serif; letter-spacing: -0.01em; }
+
+#kroky { left: 64px; top: 262px; font: 600 30px/1 Inter, sans-serif; color: var(--muted);
+  background: var(--surface); border: 2px solid var(--line); border-radius: 999px; padding: 12px 24px; }
+#kroky:empty { display: none; }
+
+/* Картка — рамка 2 px (1 px ×2), без тіней, кути 28 px (14 ×2). Права межа ≤ 896 px. */
+#kartka { left: 56px; width: 840px; bottom: 510px; background: var(--surface); border: 2px solid var(--line);
+  border-radius: 28px; padding: 40px 44px 44px; }
+/* низ картки — не нижче 1410 px: під нею ще рядок джерела, а нижче 1536 px — інтерфейс TikTok */
+#kartka:empty { display: none; }
+.mitka { font: 600 30px/1.2 Inter, sans-serif; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
+.zahol { font: 800 92px/1.04 Manrope, sans-serif; letter-spacing: -0.02em; margin-top: 18px; }
+.pidtekst { font: 400 38px/1.35 Inter, sans-serif; color: var(--ink-2); margin-top: 22px; }
+.istoriia { font: 800 54px/1.2 Manrope, sans-serif; letter-spacing: -0.01em; margin-top: 18px; }
+.adresa { display: flex; align-items: center; gap: 16px; margin-top: 26px; font: 600 36px/1.25 Inter, sans-serif; color: var(--ink-2); }
+.adresa::before { content: ''; flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); border: 5px solid var(--accent-soft); }
+.vidpovid .adresa { font: 800 58px/1.15 Manrope, sans-serif; color: var(--accent); margin-top: 18px; }
+.chyslo { font: 800 150px/1 Manrope, sans-serif; letter-spacing: -0.03em; color: var(--accent); margin-top: 10px; }
+.chyslo-tekst { font: 800 50px/1.22 Manrope, sans-serif; margin-top: 16px; }
+.prymitka { font: 400 30px/1.35 Inter, sans-serif; color: var(--muted); margin-top: 24px; }
+
+/* «Ваш варіант?» — пауза з відліком */
+.pauza { text-align: center; }
+.pauza .zahol { font-size: 84px; }
+.vidlik { display: inline-flex; align-items: center; justify-content: center; width: 200px; height: 200px; margin-top: 30px;
+  border-radius: 50%; border: 6px solid var(--accent); font: 800 120px/1 Manrope, sans-serif; color: var(--accent); }
+
+/* Підпис джерела: внизу, але над безпечною лінією 1536 px — дрібний, не головний */
+#dzherelo { left: 64px; bottom: 400px; max-width: 830px; font: 600 26px/1.3 Inter, sans-serif; color: var(--muted);
+  background: var(--surface); border: 2px solid var(--line); border-radius: 999px; padding: 10px 24px; }
+

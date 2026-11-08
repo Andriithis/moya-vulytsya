@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<!-- Сцена ролика «Моєї вулиці» (ZAVDANNYA-11). Кадр 1080×1920.
+     Відкривається лише рендером (video/rendery.py): ?s=stsenarii/<файл>.json&rezhym=skhema|pidkladka
+     Кадри малює функція window.kadr(t) — час у секундах; ніяких анімацій у реальному часі. -->
+<title>Моя вулиця — сцена ролика</title>
+<link rel="stylesheet" href="../site/hra/biblioteka/maplibre-gl.css">
+<link rel="stylesheet" href="stsena.css">
+</head>
+<body>
+<div id="kadr">
+  <div id="karta"></div>
+  <div id="znak" class="shar"><svg viewBox="0 0 48 48" aria-hidden="true"><path class="z1" d="M24 2 43 13v22L24 46 5 35V13z"/><path class="z2" d="M24 15 32 19.5v9L24 33l-8-4.5v-9z"/></svg><span>Моя вулиця</span></div>
+  <div id="kroky" class="shar"></div>
+  <div id="kartka" class="shar"></div>
+  <div id="dzherelo" class="shar">Дані: судові рішення ЄДРСР · темніше — більше подій у даних</div>
+</div>
+<script src="../site/hra/biblioteka/maplibre-gl-csp.js"></script>
+<script src="stsena.js"></script>
+</body>
+</html>

@@ -78,3 +78,8 @@ site/zahlushka/config.js
 # (koloda.json з конвеєра) — лише під час збирання, у git не потрапляє.
 !site/hra/
 site/hra/koloda.json
+
+# === РОЛИКИ (ZAVDANNYA-11) ===
+# Готові .mp4 у git не кладемо: їх завжди можна відрендерити заново (video/rendery.py).
+video/vyhid/
+*.mp4
