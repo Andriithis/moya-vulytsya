@@ -78,3 +78,8 @@ site/zahlushka/config.js
 # (koloda.json з конвеєра) — лише під час збирання, у git не потрапляє.
 !site/hra/
 site/hra/koloda.json
+
+# === САЙТ (ZAVDANNYA-10) ===
+# Збирач сайту й спільні файли сторінок — у git; зібраний сайт (_site/) — ні.
+!site/zibraty_sait.py
+!site/sait/
