@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="uk"><head><meta charset="utf-8"><title>Сторіз «Вгадай, де це було» — Моя вулиця</title>
+<link rel="stylesheet" href="brend.css">
+<style>
+/* Макет 540×960, рендер ×2 = 1080×1920. Верхні 125 і нижні 170 px макета (250 і 340 px
+   картинки) закривають кнопки Instagram і Facebook — там лише тло. */
+.polotno { width: 540px; height: 960px; }
+#soty { position: absolute; inset: 0; }
+.vmist { position: absolute; left: 32px; right: 32px; top: 132px; bottom: 178px; display: flex; flex-direction: column; }
+.verkh { display: flex; justify-content: space-between; align-items: center; }
+.zavdannya { margin-top: 20px; padding: 24px; }
+.zavdannya p.tekst { font: 400 28px/40px Inter, sans-serif; margin: 0; }
+.zavdannya.dovge p.tekst { font-size: 23px; line-height: 34px; }
+#mapa { flex: 1; min-height: 0; margin: 12px 0; }
+#mapa svg { display: block; width: 100%; height: 100%; }
+.pidkazka { margin-top: 12px; color: var(--ink-2); }
+.pytannya { text-align: center; }
+.pytannya .display { color: var(--accent); }
+.pytannya .body-l { color: var(--ink-2); margin-top: 8px; }
+.vidpovid { padding: 22px 24px; border-color: var(--accent); border-width: 2px; }
+.vidpovid .micro { color: var(--accent); }
+.vidpovid .title-1 { margin-top: 6px; }
+.ramka { position: absolute; left: 0; right: 0; top: 125px; bottom: 170px; outline: 1px dashed var(--attention); display: none; }
+.pokazaty-zonu .ramka { display: block; }
+</style></head>
+<body><div class="polotno" id="p">
+<svg id="soty" width="540" height="960" viewBox="0 0 540 960" aria-hidden="true"></svg>
+<div class="vmist">
+<div class="verkh"><span class="znak" id="znak"><b>Моя вулиця</b></span><span class="micro" id="nomer"></span></div>
+<div class="kartka zavdannya" id="zavd"><p class="tekst" id="tekst"></p><p class="body-s pidkazka" id="pidkazka"></p></div>
+<div id="mapa"></div>
+<div class="pytannya" id="pytannya"><p class="display">Де це було?</p>
+<p class="body-l">Пишіть свій варіант у відповідь.<br>Відповідь — у наступній сторіз.</p></div>
+<div class="kartka vidpovid" id="vidpovid" hidden><span class="micro">Відповідь</span>
+<p class="title-1" id="v-mistse"></p><p class="body-s" id="v-rik" style="color:var(--ink-2);margin-top:4px"></p>
+<p class="caption" id="v-dzherelo" style="margin-top:10px"></p></div>
+</div>
+<div class="ramka"></div>
+</div>
+<script src="brend.js"></script>
+<script>
+window.pokazaty = function (d) {
+  var svg = document.getElementById('soty');
+  /* Соти — лише в зонах під кнопками мережі, де нічого важливого бути не може. */
+  Brend.sotyPole(svg, 330, 14, 8, 4, 20, Brend.SHKALA.slice(0, 3), function (x, y) { return x < 3 - y; });
+  Brend.sotyPole(svg, 0, 820, 16, 6, 20, Brend.SHKALA.slice(0, 4), function (x, y) { return y < 2 && x > 6 + y * 3; });
+  document.getElementById('znak').prepend(Brend.znak(26));
+  Brend.tekst('nomer', 'Вгадай, де це було' + (d.nomer ? ' · ' + d.nomer : ''));
+  Brend.tekst('tekst', d.tekst);
+  Brend.tekst('pidkazka', d.pidkazka ? 'Підказка: ' + d.pidkazka : '');
+  if (d.vidpovid) {
+    document.getElementById('pytannya').hidden = true;
+    document.getElementById('vidpovid').hidden = false;
+    Brend.tekst('v-mistse', d.vidpovid.mistse);
+    Brend.tekst('v-rik', [d.vidpovid.misto || 'Київ', d.vidpovid.rik].filter(Boolean).join(' · '));
+    Brend.tekst('v-dzherelo', 'Джерело: рішення суду № ' + d.vidpovid.rishennya_nomer + ', ЄДРСР. Грайте далі на сайті.');
+  }
+  if ((d.tekst || '').length > 130) document.getElementById('zavd').classList.add('dovge');
+  var m = document.getElementById('mapa'), r = m.getBoundingClientRect();
+  var ms = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  ms.setAttribute('viewBox', '0 0 ' + r.width + ' ' + r.height); ms.setAttribute('aria-hidden', 'true');
+  m.appendChild(ms);
+  Brend.klaster(ms, r.width, r.height, 26, d.vidpovid ? 'tochka' : '?');
+  if (d.pokazaty_zonu) document.getElementById('p').classList.add('pokazaty-zonu');
+  Brend.maket(d);
+};
+</script></body></html>

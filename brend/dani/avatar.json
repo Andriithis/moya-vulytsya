@@ -1,0 +1,8 @@
+{
+  "shablon": "avatar",
+  "posty": [
+    {"nazva": "avatar-1024", "chastka": 0.66},
+    {"nazva": "telegram-kanal-1024", "chastka": 0.66},
+    {"nazva": "avatar-akcent-1024", "chastka": 0.66, "varianty": "akcent"}
+  ]
+}

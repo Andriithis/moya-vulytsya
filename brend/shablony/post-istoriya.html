@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="uk"><head><meta charset="utf-8"><title>Пост «Історія з рішення» — Моя вулиця</title>
+<link rel="stylesheet" href="brend.css">
+<style>
+/* Макет 540×675, рендер ×2 = 1080×1350. Текст — з рішення суду, без вигаданих деталей;
+   місце — лише вулиця, без номера будинку (MV-3). */
+.polotno { width: 540px; height: 675px; padding: 32px 32px 24px; display: flex; flex-direction: column; }
+.verkh { display: flex; justify-content: space-between; align-items: center; }
+.mitky { display: flex; gap: 8px; margin-top: 28px; flex-wrap: wrap; }
+.istoriya { margin-top: 18px; padding: 24px; flex: 1; display: flex; flex-direction: column; }
+.istoriya p.tekst { font: 400 30px/42px Inter, sans-serif; color: var(--ink); margin: 0; }
+.istoriya.serednya p.tekst { font-size: 26px; line-height: 37px; }
+.istoriya.dovga p.tekst { font-size: 22px; line-height: 32px; }
+#mapa { flex: 1; min-height: 0; margin-top: 16px; }
+#mapa svg { display: block; width: 100%; height: 100%; }
+.mistse { padding-top: 12px; display: flex; align-items: center; gap: 12px; }
+.mistse svg { flex: none; }
+.mistse .title-3 { color: var(--ink); }
+.niz { margin-top: 16px; display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; }
+.niz .caption { max-width: 360px; }
+</style></head>
+<body><div class="polotno" id="p">
+<div class="verkh"><span class="znak" id="znak"><b>Моя вулиця</b></span><span class="micro">Історія з рішення</span></div>
+<div class="mitky"><span class="mitka" id="vyd"></span><span class="mitka" id="rik" style="background:var(--surface);border:1px solid var(--line);color:var(--ink-2)"></span></div>
+<div class="kartka istoriya" id="kartka">
+<p class="tekst" id="tekst"></p>
+<div id="mapa"></div>
+<div class="mistse"><svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true" id="mini"></svg>
+<div><p class="title-3" id="mistse"></p><p class="caption" id="misto"></p></div></div>
+</div>
+<div class="niz"><p class="caption" id="dzherelo"></p><span class="mitka" id="adresa-saitu"></span></div>
+</div>
+<script src="brend.js"></script>
+<script>
+window.pokazaty = function (d) {
+  document.getElementById('znak').prepend(Brend.znak(26));
+  Brend.tekst('vyd', d.vyd);
+  Brend.tekst('rik', d.rik);
+  Brend.tekst('tekst', d.tekst);
+  var dov = (d.tekst || '').length;
+  if (dov > 180) document.getElementById('kartka').classList.add('dovga');
+  else if (dov > 120) document.getElementById('kartka').classList.add('serednya');
+  var mini = document.getElementById('mini'), p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  p.setAttribute('d', Brend.hex(17, 17, 16)); p.style.fill = 'var(--accent)'; mini.appendChild(p);
+  var c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  c.setAttribute('cx', 17); c.setAttribute('cy', 17); c.setAttribute('r', 5); c.style.fill = '#FFFFFF'; mini.appendChild(c);
+  Brend.tekst('mistse', d.mistse);
+  Brend.tekst('misto', d.misto || 'Київ');
+  Brend.tekst('dzherelo', 'Джерело: рішення суду № ' + d.rishennya_nomer + ', Єдиний державний реєстр судових рішень. Повний текст — за посиланням в описі.');
+  Brend.tekst('adresa-saitu', d.adresa_saitu);
+  /* Соти малюємо після тексту — коли відомо, скільки місця лишилося. */
+  var m = document.getElementById('mapa'), r = m.getBoundingClientRect();
+  if (r.height > 60) {
+    var ms = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    ms.setAttribute('viewBox', '0 0 ' + r.width + ' ' + r.height); ms.setAttribute('aria-hidden', 'true');
+    m.appendChild(ms);
+    Brend.klaster(ms, r.width, r.height, Math.min(22, r.height / 5), 'tochka');
+  }
+  Brend.maket(d);
+};
+</script></body></html>

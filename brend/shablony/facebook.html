@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="uk"><head><meta charset="utf-8"><title>Обкладинка Facebook — Моя вулиця</title>
+<link rel="stylesheet" href="brend.css">
+<style>
+/* Макет 820×312, рендер ×2 = 1640×624. На телефоні Facebook обрізає боки до 16:9 —
+   лишається середина ≈ 555 px макета (з 132 до 687). Текст — у ній. */
+.polotno { width: 820px; height: 312px; }
+#soty { position: absolute; inset: 0; }
+.tekst { position: absolute; left: 140px; top: 0; bottom: 0; width: 520px;
+  display: flex; flex-direction: column; justify-content: center; gap: 10px; }
+.ryadok { display: flex; align-items: center; gap: 14px; }
+.nazva { font: 800 46px/1 Manrope, sans-serif; color: var(--ink); margin: 0; letter-spacing: -0.01em; }
+.gaslo { font: 400 16px/24px Inter, sans-serif; color: var(--ink-2); margin: 0; }
+.gaslo b { font-weight: 600; color: var(--accent); }
+.ramka { position: absolute; left: 132px; top: 0; width: 555px; height: 312px; outline: 1px dashed var(--attention); display: none; }
+.pokazaty-zonu .ramka { display: block; }
+</style></head>
+<body><div class="polotno" id="p">
+<svg id="soty" width="820" height="312" viewBox="0 0 820 312" aria-hidden="true"></svg>
+<div class="tekst"><div class="ryadok"><span id="znak"></span><p class="nazva" id="nazva"></p></div>
+<p class="gaslo"><span id="gaslo"></span> <b id="dzherelo"></b></p></div>
+<div class="ramka"></div>
+</div>
+<script src="brend.js"></script>
+<script>
+window.pokazaty = function (d) {
+  var svg = document.getElementById('soty');
+  var slab = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  slab.setAttribute('x', 600); slab.setAttribute('y', -10); slab.setAttribute('width', 230); slab.setAttribute('height', 340);
+  slab.style.fill = 'var(--accent)'; svg.appendChild(slab);
+  Brend.sotyPole(svg, 620, 26, 6, 8, 20, Brend.SHKALA.slice(0, 4).concat(['var(--ground)']));
+  var kv = [['var(--data-3)', 548, 30, 36], ['var(--data-1)', 540, 236, 44]];
+  kv.forEach(function (k) {
+    var r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    r.setAttribute('x', k[1]); r.setAttribute('y', k[2]); r.setAttribute('width', k[3]); r.setAttribute('height', k[3]);
+    r.setAttribute('rx', 7); r.style.fill = k[0]; svg.appendChild(r);
+  });
+  document.getElementById('znak').appendChild(Brend.znak(52));
+  Brend.tekst('nazva', d.kanal);
+  Brend.tekst('gaslo', d.gaslo);
+  Brend.tekst('dzherelo', d.dzherelo);
+  if (d.pokazaty_zonu) document.getElementById('p').classList.add('pokazaty-zonu');
+};
+</script></body></html>
