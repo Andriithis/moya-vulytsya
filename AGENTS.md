@@ -9,7 +9,7 @@
 > продукт (сайт, оплата, платний звіт) — тут. Рішення з 06.11 — у журналі [`RISHENNYA.md`](RISHENNYA.md) (MV-1, MV-2…).
 > Де план і журнал суперечать старим документам — діють вони.
 
-**Порядок читання:** цей файл → план передачі → [`RISHENNYA.md`](RISHENNYA.md) →
+**Порядок читання:** цей файл → [`docs/STRUKTURA.md`](docs/STRUKTURA.md) (загальна структура) → план передачі → [`RISHENNYA.md`](RISHENNYA.md) →
 [`docs/08-stan.md`](docs/08-stan.md). Повна концепція — [`docs/00-viziya.md`](docs/00-viziya.md);
 що можна показувати — [`docs/03-dani-i-etyka.md`](docs/03-dani-i-etyka.md);
 право — [`docs/02-pravo.md`](docs/02-pravo.md).
