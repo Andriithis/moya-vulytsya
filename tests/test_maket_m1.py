@@ -45,10 +45,21 @@ class StorinkaMaketa(unittest.TestCase):
         for tekst in ('Мало даних', 'Година-пік', 'Повторюється тут', 'Насильство', 'типовій соті Києва', 'За роками'):
             self.assertIn(tekst, self.html)
 
-    def test_dva_varianty_starshykh_rokiv(self):
-        self.assertIn('data-v="a"', self.html)
-        self.assertIn('data-v="b"', self.html)
-        self.assertIn('років історії — у підписці', self.html)
+    def test_starshi_roky_lyshe_variant_a(self):
+        self.assertNotIn('data-v="a"', self.html)
+        self.assertNotIn('років історії — у підписці', self.html)
+        self.assertIn('неповний рік', self.html)
+
+    def test_try_vyhlyady(self):
+        for v in '123':
+            self.assertIn(f'data-vyh="{v}"', self.html)
+        self.assertIn('tiles.openfreemap.org/styles/dark', self.html)
+        for kolir in ('#F1F7F6', '#0B6B6B', '#1C2A2B', '#6FC9BF'):
+            self.assertIn(kolir, self.html)
+
+    def test_paliatra_hrup_lyshe_u_v3(self):
+        self.assertIn("VID==='3'?HRUPY[b.gi][2]:SHKALA", self.html)
+        self.assertIn("VID==='3'?HRUPY[i][2]:'var(--line-strong)'", self.html)
 
     def test_kartka_vuzka_i_bez_pereletu(self):
         self.assertIn('--shyryna:320px', self.html)
@@ -73,9 +84,10 @@ class DaniMaketa(unittest.TestCase):
     def test_lyshe_dvi_sitky(self):
         self.assertEqual(sorted(self.d['soty']), ['L', 'S'])
 
-    def test_try_roky_i_sim_starshykh(self):
-        self.assertEqual(len(self.d['meta']['roky']), 3)
-        self.assertEqual(len(self.d['meta']['stari']), 7)
+    def test_vikno_rokiv(self):
+        self.assertEqual(self.d['meta']['roky'], [2024, 2025, 2026])
+        self.assertEqual(self.d['meta']['stari'], list(range(2016, 2024)))
+        self.assertEqual(self.d['meta']['nepovnyi'], 2026)
 
     def test_sumy_skhodiatsia(self):
         for riven, soty in self.d['soty'].items():

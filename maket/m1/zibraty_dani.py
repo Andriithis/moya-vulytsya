@@ -30,10 +30,10 @@ MX = 111320 * math.cos(50.45 * math.pi / 180)
 MY = 111320
 RIVNI = {'L': 330, 'S': 130}
 
-# Кольори — палітра «Графітова» навчальної карти (src/paleta.py), 7 груп за MV-28.
-HRUPY = [['dtp', 'ДТП', '#417341'], ['dor', 'Дороги', '#8a7e9c'], ['hp', 'Громадський порядок', '#A54D09'],
-         ['mai', 'Майно', '#3C74C2'], ['nar', 'Наркотики', '#5056B0'], ['alk', 'Алкоголь', '#009178'],
-         ['nas', 'Насильство', '#BD5460']]
+# Сім груп (MV-28). Кольори — приглушені тони, узгоджені з брендом; вживаються лише у вигляді В3 (М2).
+HRUPY = [['dtp', 'ДТП', '#5F7F78'], ['dor', 'Дороги', '#A9A296'], ['hp', 'Громадський порядок', '#B98B5E'],
+         ['mai', 'Майно', '#5E7FA3'], ['nar', 'Наркотики', '#7F749E'], ['alk', 'Алкоголь', '#3F8F88'],
+         ['nas', 'Насильство', '#A8716F']]
 HRUPA_VYDU = {'ДТП': 0, 'ДОР': 1, 'ГП': 2, 'МАЙ': 3, 'НАР': 4, 'АЛК': 5, 'НАС': 6}
 INDEKS_NASYLSTVA = 6
 
@@ -113,7 +113,7 @@ def vulytsia(nazva: str) -> str | None:
     return v or None
 
 
-def zibraty(baza: Path, osm: Path, roky: list[int], stari: list[int]) -> dict:
+def zibraty(baza: Path, osm: Path, roky: list[int], stari: list[int], nepovnyi: int) -> dict:
     c = sqlite3.connect(f'file:{baza.as_posix()}?mode=ro', uri=True)
     rows = c.execute('''SELECT e.event_id, e.data_podii, e.chas, e.vyd, l.lat, l.lon FROM event e
                         JOIN location l ON l.location_id = e.location_id''').fetchall()
@@ -202,7 +202,7 @@ def zibraty(baza: Path, osm: Path, roky: list[int], stari: list[int]) -> dict:
     lat = [q[0] for k in kilca for q in k]
     lon = [q[1] for k in kilca for q in k]
     return {
-        'meta': {'vypusk': '2026-11-08', 'podii': len(podii), 'roky': roky, 'stari': stari, 'period': f'{roky[0]}–{roky[-1]}',
+        'meta': {'vypusk': '2026-11-08', 'podii': len(podii), 'roky': roky, 'stari': stari, 'nepovnyi': nepovnyi, 'period': f'{roky[0]}–{roky[-1]}',
                  'mediana130': med, 'centr': [50.45, 30.52], 'mezhi': [[min(lon), min(lat)], [max(lon), max(lat)]]},
         'hrupy': HRUPY,
         'rayony': sorted(slovnyk_ray, key=slovnyk_ray.get),
@@ -216,10 +216,11 @@ def main() -> None:
     a = argparse.ArgumentParser()
     a.add_argument('--baza', type=Path, required=True)
     a.add_argument('--osm', type=Path, required=True)
-    a.add_argument('--roky', default='2023,2024,2025')
-    a.add_argument('--stari', default='2016,2017,2018,2019,2020,2021,2022')
+    a.add_argument('--roky', default='2024,2025,2026')
+    a.add_argument('--stari', default='2016,2017,2018,2019,2020,2021,2022,2023')
+    a.add_argument('--nepovnyi', type=int, default=2026, help='рік, за який дані ще неповні')
     p = a.parse_args()
-    d = zibraty(p.baza, p.osm, [int(x) for x in p.roky.split(',')], [int(x) for x in p.stari.split(',')])
+    d = zibraty(p.baza, p.osm, [int(x) for x in p.roky.split(',')], [int(x) for x in p.stari.split(',')], p.nepovnyi)
     VYKHID.write_text(json.dumps(d, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
     print('Записано', VYKHID, VYKHID.stat().st_size, 'байт; медіана 130 м:', d['meta']['mediana130'])
 
