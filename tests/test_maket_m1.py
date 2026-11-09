@@ -50,16 +50,22 @@ class StorinkaMaketa(unittest.TestCase):
         self.assertNotIn('років історії — у підписці', self.html)
         self.assertIn('неповний рік', self.html)
 
-    def test_try_vyhlyady(self):
-        for v in '123':
-            self.assertIn(f'data-vyh="{v}"', self.html)
+    def test_temy_i_kharakter_mistsia(self):
         self.assertIn('tiles.openfreemap.org/styles/dark', self.html)
         for kolir in ('#F1F7F6', '#0B6B6B', '#1C2A2B', '#6FC9BF'):
             self.assertIn(kolir, self.html)
+        self.assertIn('Характер місця', self.html)
+        self.assertIn('у підписці', self.html)
+        self.assertNotIn('data-vyh', self.html)
 
-    def test_paliatra_hrup_lyshe_u_v3(self):
-        self.assertIn("VID==='3'?HRUPY[b.gi][2]:SHKALA", self.html)
-        self.assertIn("VID==='3'?HRUPY[i][2]:'var(--line-strong)'", self.html)
+    def test_tema_za_systemoyu_i_pamiat_z_try_catch(self):
+        self.assertIn("prefers-color-scheme: dark", self.html)
+        self.assertIn("try{TEMA=localStorage.getItem('mv-tema')}catch(e){}", self.html)
+        self.assertIn("try{localStorage.setItem('mv-tema',t)}catch(e){}", self.html)
+
+    def test_paliatra_hrup_lyshe_v_kharakteri(self):
+        self.assertIn("KHARAKTER?HRUPY[b.gi][2]:SHKALA", self.html)
+        self.assertIn("KHARAKTER?HRUPY[i][2]:'var(--line-strong)'", self.html)
 
     def test_kartka_vuzka_i_bez_pereletu(self):
         self.assertIn('--shyryna:320px', self.html)
