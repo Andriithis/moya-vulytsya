@@ -270,7 +270,7 @@ const N = ctx.window.MvNadsylannya;
 '''
 
     def test_modul(self):
-        with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False) as f:
+        with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False, encoding='utf-8') as f:
             f.write(self.SKRYPT)
         try:
             vyvid = subprocess.check_output(['node', f.name, str(SAIT / 'nadsylannya.js')], timeout=30)
@@ -689,7 +689,7 @@ ZVERNENNYA_JS = r"""
 class ModulZvernennyaTests(unittest.TestCase):
     def test_bez_zghody_ne_vidpravliaietsia(self):
         skrypt = ModulVidpravkyTests.SKRYPT.split('(async () => {')[0] + ZVERNENNYA_JS
-        with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False) as f:
+        with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False, encoding='utf-8') as f:
             f.write(skrypt)
         try:
             r = json.loads(subprocess.check_output(['node', f.name, str(SAIT / 'nadsylannya.js')], timeout=30))
