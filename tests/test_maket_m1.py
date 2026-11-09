@@ -50,6 +50,11 @@ class StorinkaMaketa(unittest.TestCase):
         self.assertIn('data-v="b"', self.html)
         self.assertIn('років історії — у підписці', self.html)
 
+    def test_kartka_vuzka_i_bez_pereletu(self):
+        self.assertIn('--shyryna:320px', self.html)
+        self.assertNotIn('flyTo', self.html)
+        self.assertIn('duration:TYKHO?0:700', self.html)
+
     def test_lokalni_fajly_ye(self):
         for shlyakh in re.findall(r'(?:href|url\()=?"?((?:vendor|shryfty)/[^")\s]+)', self.html):
             self.assertTrue((MAKET / shlyakh).is_file(), shlyakh)

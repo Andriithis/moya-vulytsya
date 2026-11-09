@@ -20,7 +20,7 @@
  --line:#E3E1DA;--line-strong:#C9C6BD;--accent:#0B6B6B;--accent-soft:#D7EBEA;--on-accent:#FFFFFF;
  --attention:#B45309;--attention-soft:#FBEBDD;--data-city:#A9ADB4;
  --radius-s:4px;--radius-m:10px;--radius-l:14px;--radius-pill:999px;
- --disp:Manrope,Inter,system-ui,sans-serif;--sans:Inter,system-ui,sans-serif;--shyryna:396px}
+ --disp:Manrope,Inter,system-ui,sans-serif;--sans:Inter,system-ui,sans-serif;--shyryna:320px}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--ground);color:var(--ink);font:400 15px/22px var(--sans)}
 #map{position:fixed;inset:0;background:#f4f4f2}
@@ -45,45 +45,50 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
 #lehenda li{display:flex;align-items:center;gap:6px;font:400 13px/18px var(--sans);color:var(--ink-2)}
 .krap{flex:none;width:10px;height:10px;border-radius:50%}
 #lehenda p{margin:6px 0 0;font:400 13px/18px var(--sans);color:var(--muted)}
-#kartka{position:absolute;z-index:6;left:12px;top:76px;bottom:12px;width:var(--shyryna);padding:16px 20px 16px;overflow-y:auto;overscroll-behavior:contain;border-radius:var(--radius-l)}
+/* На ноутбуці картка без вкладеної прокрутки: висота — скільки треба (рішення 25 карти Києва). */
+#kartka{position:absolute;z-index:6;left:12px;top:76px;max-height:calc(100% - 88px);width:var(--shyryna);padding:10px 14px;overflow-y:auto;overscroll-behavior:contain;border-radius:var(--radius-l)}
+.k-ruchka{display:none}
 .k-shap{display:flex;align-items:flex-start;gap:8px}
 .k-shap>div{flex:1;min-width:0}
-.k-shap h2{margin:0;font:800 20px/26px var(--disp)}
-.k-shap p{margin:2px 0 0;font:400 13px/18px var(--sans);color:var(--muted)}
-.k-x{flex:none;width:44px;height:44px;margin:-8px -10px 0 0;border:0;background:none;font-size:24px;line-height:24px;color:var(--muted)}
-.velyke{margin-top:12px;font:800 52px/56px var(--disp);letter-spacing:-.5px}
-.pid{font:600 14px/20px var(--sans);color:var(--ink-2)}
-.por{margin:4px 0 0;font:400 15px/22px var(--sans);color:var(--ink)}
-.malo{margin-top:16px;padding:16px;background:var(--surface-tint);border-radius:var(--radius-m)}
-.malo b{display:block;font:800 20px/26px var(--disp)}
-.malo span{font:400 15px/22px var(--sans);color:var(--ink-2)}
-.blok{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
-.blok h3{margin:0 0 8px;font:600 14px/20px var(--sans);color:var(--muted)}
-.hr{display:grid;grid-template-columns:10px 1fr auto;align-items:center;column-gap:8px;min-height:28px}
-.hr b{font:800 16px/20px var(--disp)}
-.hr i{grid-column:2/4;display:block;height:4px;border-radius:2px;margin:-1px 0 7px}
-.nas{display:flex;justify-content:space-between;align-items:center;min-height:32px;margin-top:6px;padding-top:6px;border-top:1px dashed var(--line);color:var(--ink-2)}
-.nas b{font:800 16px/20px var(--disp);color:var(--ink)}
-.roky{display:flex;align-items:flex-end;gap:4px}
-.r{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:112px}
-.r em{font:600 12px/16px var(--sans);font-style:normal;color:var(--ink-2)}
-.r u{display:block;width:100%;max-width:44px;margin:2px 0 4px;background:var(--accent);border-radius:var(--radius-s) var(--radius-s) 0 0;text-decoration:none}
-.r span{font:400 12px/16px var(--sans);color:var(--muted);font-variant-numeric:tabular-nums}
+.k-shap h2{margin:0;font:700 18px/22px var(--disp)}
+.k-shap p{margin:0;font:400 12px/16px var(--sans);color:var(--muted)}
+.k-x{flex:none;width:36px;height:36px;margin:-6px -8px 0 0;border:0;background:none;font-size:24px;line-height:24px;color:var(--muted)}
+.chyslo{display:flex;align-items:baseline;gap:8px;margin-top:4px}
+.velyke{font:800 34px/40px var(--disp);letter-spacing:-.5px}
+.pid{font:600 13px/18px var(--sans);color:var(--ink-2)}
+.por{margin:0;font:400 13px/18px var(--sans);color:var(--ink)}
+.malo{margin-top:8px;padding:12px;background:var(--surface-tint);border-radius:var(--radius-m)}
+.malo b{display:block;font:800 18px/24px var(--disp)}
+.malo span{font:400 13px/18px var(--sans);color:var(--ink-2)}
+.blok{margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
+.blok h3{margin:0 0 4px;font:600 13px/18px var(--sans);color:var(--muted)}
+.hr{display:grid;grid-template-columns:10px 1fr auto;align-items:center;column-gap:8px;min-height:22px;font:400 13px/18px var(--sans)}
+.hr b{font:800 14px/18px var(--disp)}
+.nas{display:flex;justify-content:space-between;align-items:center;min-height:24px;margin-top:3px;padding-top:3px;font:400 13px/18px var(--sans);border-top:1px dashed var(--line);color:var(--ink-2)}
+.nas b{font:800 14px/18px var(--disp);color:var(--ink)}
+.roky{display:flex;align-items:flex-end;gap:3px}
+.r{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:68px}
+.r em{font:600 11px/14px var(--sans);font-style:normal;color:var(--ink-2)}
+.r u{display:block;width:100%;max-width:44px;margin:1px 0 2px;background:var(--accent);border-radius:var(--radius-s) var(--radius-s) 0 0;text-decoration:none}
+.r span{font:400 11px/14px var(--sans);color:var(--muted);font-variant-numeric:tabular-nums}
 .r.zamok u{background:var(--data-city);opacity:.55}
 .r.zamok svg{color:var(--muted)}
-.zamok-ryadok{display:flex;align-items:center;gap:8px;margin-top:10px;padding:10px 12px;border-radius:var(--radius-m);background:#ECEBE6;color:var(--muted);font:400 13px/18px var(--sans)}
-.pidpys-sir{margin:6px 0 0;font:400 13px/18px var(--sans);color:var(--muted)}
-.pik b{font:800 20px/26px var(--disp)}
-.pik span{display:block;font:400 13px/18px var(--sans);color:var(--muted)}
+.zamok-ryadok{display:flex;align-items:center;gap:8px;margin-top:6px;padding:5px 10px;border-radius:var(--radius-m);background:#ECEBE6;color:var(--muted);font:400 13px/18px var(--sans)}
+.pidpys-sir{margin:3px 0 0;font:400 12px/16px var(--sans);color:var(--muted)}
+.pik b{font:800 16px/20px var(--disp)}
+.pik span{margin-left:8px;font:400 12px/16px var(--sans);color:var(--muted)}
+.pik span:first-child{margin-left:0}
 .povt{margin:0;padding:0;list-style:none}
-.povt li{padding:8px 12px;margin-top:6px;border-radius:var(--radius-m);background:var(--attention-soft);font:400 15px/22px var(--sans)}
-.mezha{margin:18px 0 0;font:400 13px/18px var(--sans);color:var(--muted)}
+.povt li{padding:3px 8px;margin-top:3px;border-radius:var(--radius-s);background:var(--attention-soft);font:400 13px/18px var(--sans)}
+.povt li:first-child{margin-top:0}
+.mezha{margin:8px 0 0;font:400 12px/16px var(--sans);color:var(--muted)}
 .k-tip .maplibregl-popup-content{padding:6px 10px;border-radius:var(--radius-m);border:1px solid var(--line);box-shadow:none;font:400 13px/18px var(--sans)}
 .k-tip .maplibregl-popup-tip{display:none}
 .maplibregl-ctrl-attrib{font:400 11px/16px var(--sans);background:rgba(255,255,255,.86)!important}
 .maplibregl-ctrl-attrib a{color:var(--ink-2)}
 .k-atr-i{display:none;background:none;border:0;color:var(--muted);font-size:15px;min-width:44px;min-height:44px}
-@media (min-width:701px){body.k-vidkr #lehenda{left:424px;bottom:40px}}
+@media (min-width:701px){body.k-vidkr #lehenda{left:344px;bottom:40px}}
+@media (prefers-reduced-motion:reduce){#kartka{transition:none!important}}
 @media (max-width:700px){
  #verkh{left:8px;right:68px;top:8px;gap:8px;padding:2px 4px 2px 10px;justify-content:space-between}
  .znak span.nazva{display:none}
@@ -95,11 +100,21 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
  #lehenda li,#lehenda p{font-size:12px;line-height:16px}
  body.k-vidkr #lehenda{display:none}
  /* Шторка — як у карті Києва (S-К.21): пів екрана, гортається вся картка; дотик до шапки — на весь екран. */
- #kartka{left:0;right:0;top:auto;bottom:0;width:auto;height:50vh;font-size:14px;border-radius:var(--radius-l) var(--radius-l) 0 0;border-width:1px 0 0;padding:14px 20px calc(16px + env(safe-area-inset-bottom))}
+ #kartka{left:0;right:0;top:auto;bottom:0;width:auto;height:50vh;max-height:none;font-size:14px;border-radius:var(--radius-l) var(--radius-l) 0 0;border-width:1px 0 0;padding:0 20px calc(16px + env(safe-area-inset-bottom));transition:height .2s}
+ #kartka.tyagnu{transition:none}
  #kartka.vysoka{height:calc(100% - 8px)}
- .velyke{font-size:34px;line-height:40px;margin-top:6px}
- .por{font-size:14px;line-height:20px}
- .k-shap{cursor:pointer}
+ .k-ruchka{display:block;height:20px;margin:0 -20px;touch-action:none;cursor:grab;position:relative}
+ .k-ruchka::after{content:'';position:absolute;left:50%;top:8px;width:40px;height:4px;margin-left:-20px;border-radius:2px;background:var(--line-strong)}
+ .k-shap{touch-action:none;cursor:grab}
+ .k-shap h2{font-size:20px;line-height:26px}
+ .k-shap p{font-size:13px;line-height:18px}
+ .k-x{width:44px;height:44px;margin:-8px -10px 0 0}
+ .por,.hr,.nas,.povt li{font-size:14px;line-height:20px}
+ .hr{min-height:30px}
+ .hr b,.nas b{font-size:16px;line-height:20px}
+ .blok{margin-top:12px;padding-top:10px}
+ .r em,.r span{font-size:12px;line-height:16px}
+ .r{height:76px}
  .k-atr-i{display:inline-block}
  .maplibregl-ctrl-attrib:not(.k-atr-vidkr) .maplibregl-ctrl-attrib-inner{display:none}
  .maplibregl-ctrl-attrib:not(.k-atr-vidkr){background:none!important}
@@ -200,8 +215,7 @@ function patchStyle(s){
    txt('metro','poi',13,['all',['==',['get','class'],'railway'],['in',['get','subclass'],['literal',['station','subway']]]],11,{'text-max-width':8,'text-offset':[0,.2]}))}
  return {...s,layers}}
 
-// Камера як у турі (S-К.30, MV-30): нахил 45–55°, плавна дуга, довгий переліт.
-const LIT_MS=3800, DUHA=1.6;
+// Нахил як у турі (S-К.30, MV-30): 45–55°.
 const pitch3d=(z=map.getZoom())=>Math.round(45+10*Math.min(1,Math.max(0,(z-10.6)/2.4)));
 const map=new maplibregl.Map({container:'map',center:[D.meta.centr[1],D.meta.centr[0]],zoom:telefon()?8.9:10,pitch:45,maxZoom:19,maxPitch:60,attributionControl:false});
 map.touchPitch.enable();
@@ -265,7 +279,7 @@ document.querySelector('.seg').addEventListener('click',e=>{const b=e.target.clo
 varianty();
 
 // ---- Картка соти за MV-32 ----
-const ZAMOK='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+const ZAMOK='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
 const koma=x=>String(x).replace('.',',');
 // База — медіана сот 130 м (MV-36). Сота 330 м більша за площею, тож база для неї множиться на різницю площ.
 function porivnyannya(n,G){const baza=D.meta.mediana130*(G.R/130)**2, r=n/baza;
@@ -274,10 +288,10 @@ function porivnyannya(n,G){const baza=D.meta.mediana130*(G.R/130)**2, r=n/baza;
  const bilshe=r>1, x=bilshe?r:1/r, ok=x<10?Math.round(x*10)/10:Math.round(x), cile=Number.isInteger(ok);
  const slovo=!cile?'раза':pl(ok,'раз','рази','разів');
  return `у ${koma(ok)} ${slovo} ${bilshe?'більше':'менше'}, ${de}`}
-function stovpchyky(b){const r=D.meta.roky, mx=Math.max(1,...b.y), H=70;
+function stovpchyky(b){const r=D.meta.roky, mx=Math.max(1,...b.y), H=36, korotko=V==='a', pidp=y=>korotko?'’'+String(y).slice(2):y;
  const vilni=r.map((y,i)=>{const v=b.y[i], h=v?Math.max(4,Math.round(H*v/mx)):2;
-  return `<div class="r"><em>${fmt(v)}</em><u style="height:${h}px;${v?'':'background:var(--line-strong)'}"></u><span>${y}</span></div>`}).join('');
- if(V==='a'){const star=D.meta.stari.map(y=>`<div class="r zamok">${ZAMOK}<u style="height:34px"></u><span>${y}</span></div>`).join('');
+  return `<div class="r"><em>${fmt(v)}</em><u style="height:${h}px;${v?'':'background:var(--line-strong)'}"></u><span>${pidp(y)}</span></div>`}).join('');
+ if(V==='a'){const star=D.meta.stari.map(y=>`<div class="r zamok">${ZAMOK}<u style="height:18px"></u><span>${pidp(y)}</span></div>`).join('');
   return `<div class="roky">${star}${vilni}</div><p class="pidpys-sir">${D.meta.stari[0]}–${D.meta.stari[D.meta.stari.length-1]} — у підписці</p>`}
  return `<div class="roky">${vilni}</div><div class="zamok-ryadok">${ZAMOK}<span>ще ${D.meta.stari.length} років історії — у підписці</span></div>`}
 function namalyuvatyKartku(){const {G,b}=ZARAZ, el=$('#kartka'), m=D.meta;
@@ -288,40 +302,56 @@ function namalyuvatyKartku(){const {G,b}=ZARAZ, el=$('#kartka'), m=D.meta;
  }else{
   const NAS=HRUPY.findIndex(h=>h[0]==='nas');
   const top=b.g.map((v,i)=>[v,i]).filter(x=>x[1]!==NAS&&x[0]>0).sort((x,y)=>y[0]-x[0]).slice(0,3);
-  const ryadky=top.map(([v,i])=>`<div class="hr"><span class="krap" style="background:${HRUPY[i][2]}"></span><span>${esc(HRUPY[i][1])}</span><b>${fmt(v)}</b><i style="width:${Math.max(2,Math.round(100*v/b.n))}%;background:${HRUPY[i][2]}"></i></div>`).join('');
+  const ryadky=top.map(([v,i])=>`<div class="hr"><span class="krap" style="background:${HRUPY[i][2]}"></span><span>${esc(HRUPY[i][1])}</span><b>${fmt(v)}</b></div>`).join('');
   const nas=b.g[NAS]>0?`<div class="nas"><span>Насильство</span><b>${fmt(b.g[NAS])}</b></div>`:'';
   const pik=b.chasN>=5
    ?`<div class="pik"><b>${String(b.pik).padStart(2,'0')}:00–${String((b.pik+1)%24).padStart(2,'0')}:00</b><span>${fmt(b.pikN)} з ${fmt(b.chasN)} ${pl(b.chasN,'події','подій','подій')}, де суд указав час</span></div>`
    :`<div class="pik"><span>Мало даних про час</span></div>`;
   const povt=b.pr.length?`<section class="blok"><h3>Повторюється тут</h3><ul class="povt">${b.pr.map(i=>`<li>${esc(D.problemy[i])}</li>`).join('')}</ul></section>`:'';
-  tilo=`<div class="velyke">${fmt(b.n)}</div><div class="pid">${pl(b.n,'подія','події','подій')} за ${esc(m.period)}</div>
+  tilo=`<div class="chyslo"><div class="velyke">${fmt(b.n)}</div><div class="pid">${pl(b.n,'подія','події','подій')} за ${esc(m.period)}</div></div>
    <p class="por">${porivnyannya(b.n,G)}</p>
    <section class="blok"><h3>Найбільше тут</h3>${ryadky}${nas}</section>
    <section class="blok"><h3>За роками</h3>${stovpchyky(b)}</section>
    <section class="blok"><h3>Година-пік</h3>${pik}</section>${povt}`;
  }
- el.innerHTML=`<div class="k-shap"><div><h2>${esc(nazva)}</h2>${rayon?`<p>${esc(rayon)}</p>`:''}</div><button class="k-x" type="button" aria-label="Закрити">×</button></div>${tilo}
+ el.innerHTML=`<div class="k-ruchka"></div><div class="k-shap"><div><h2>${esc(nazva)}</h2>${rayon?`<p>${esc(rayon)}</p>`:''}</div><button class="k-x" type="button" aria-label="Закрити">×</button></div>${tilo}
   <p class="mezha">Лише те, що дійшло до суду. Пробний випуск даних.</p>`;
 }
 function zakryty(){ if(!ZARAZ) return;
  map.setFeatureState({source:'k-col-'+ZARAZ.G.id,id:ZARAZ.b.k},{sel:false});
  map.getSource('k-hexsel').setData({type:'FeatureCollection',features:[]});
  ZARAZ=null; const el=$('#kartka'); el.hidden=true; el.classList.remove('vysoka'); document.body.classList.remove('k-vidkr')}
-function vidkryty(G,b,polit=true){zakryty(); ZARAZ={G,b};
+// Сота під карткою — карта зсувається рівно настільки, щоб вийшла з-під неї; зум і нахил не міняються (Андрій, 09.11).
+// Зсув рахуємо по землі: на нахиленій карті той самий рух у пікселях зсував би край соти інакше.
+function zPidKartky(G,b){const el=$('#kartka'), m=map.getContainer().getBoundingClientRect(), k=el.getBoundingClientRect(), ZAZOR=16;
+ const v=hexPoly(b.cx,b.cy,G.R,1)[0].map(p=>map.project(p)), xs=v.map(q=>q.x), ys=v.map(q=>q.y);
+ let A,B;
+ if(telefon()){const verh=k.top-m.top, nyz=Math.max(...ys); if(nyz<=verh) return;
+  const x=(Math.min(...xs)+Math.max(...xs))/2; A=[x,nyz]; B=[x,verh-ZAZOR]}
+ else{const prav=k.right-m.left, liv=Math.min(...xs), y=(Math.min(...ys)+Math.max(...ys))/2;
+  if(liv>=prav||Math.min(...ys)>=k.bottom-m.top||Math.max(...ys)<=k.top-m.top) return;
+  A=[liv,y]; B=[prav+ZAZOR,y]}
+ const a=map.unproject(A), c=map.unproject(B), o=map.getCenter();
+ map.easeTo({center:[o.lng+a.lng-c.lng,o.lat+a.lat-c.lat],duration:TYKHO?0:700,essential:true})}
+function vidkryty(G,b){zakryty(); ZARAZ={G,b};
  const el=$('#kartka'); el.hidden=false; el.scrollTop=0; document.body.classList.add('k-vidkr'); namalyuvatyKartku();
  map.setFeatureState({source:'k-col-'+G.id,id:b.k},{sel:true});
  map.getSource('k-hexsel').setData({type:'Feature',geometry:{type:'LineString',coordinates:hexPoly(b.cx,b.cy,G.R,1)[0]}});
- if(!polit) return;
- // S-К.18, S-К.21: сота не під карткою — збоку на ПК, над шторкою на телефоні.
- // Переліт лишається в межах зуму цієї соти: 330 м не ближче за поріг, де з'являються 130 м.
- const z0=map.getZoom(), zz=G.id==='L'?Math.min(POROH-.4,Math.max(z0,11.7)):Math.max(z0,14);
- const zsuv=telefon()?[0,-Math.round(innerHeight*.25)]:[Math.round((el.offsetWidth+12)/2),0];
- map.flyTo({center:[b.cx/MX_,b.cy/MY_],zoom:zz,pitch:MODE==='stovp'?pitch3d(zz):0,offset:zsuv,duration:TYKHO?0:LIT_MS,curve:DUHA,essential:true})}
-MAKET.vidkryty=(id,k,polit)=>vidkryty(HEXG.find(G=>G.id===id),HEXB[id].get(k),polit);
+ zPidKartky(G,b)}
+MAKET.vidkryty=(id,k)=>vidkryty(HEXG.find(G=>G.id===id),HEXB[id].get(k));
 MAKET.zakryty=zakryty;
+MAKET.varianty=v=>{V=v; varianty()};
+// Шторка на телефоні: відкривається до половини, тягнеться вгору за ручку чи шапку; дотик — на весь екран і назад.
+{const el=$('#kartka'); let st=null;
+ el.addEventListener('pointerdown',e=>{if(!telefon()||e.target.closest('.k-x')||!e.target.closest('.k-ruchka,.k-shap')) return;
+  st={y:e.clientY,h:el.offsetHeight,rukh:false}; el.setPointerCapture(e.pointerId); el.classList.add('tyagnu')});
+ el.addEventListener('pointermove',e=>{if(!st) return; const dy=st.y-e.clientY; if(Math.abs(dy)>4) st.rukh=true;
+  if(st.rukh) el.style.height=Math.min(innerHeight-8,Math.max(innerHeight*.5,st.h+dy))+'px'});
+ const kin=()=>{if(!st) return; const vys=st.rukh?el.offsetHeight>innerHeight*.75:!el.classList.contains('vysoka');
+  st=null; el.classList.remove('tyagnu'); el.style.height=''; el.classList.toggle('vysoka',vys)};
+ el.addEventListener('pointerup',kin); el.addEventListener('pointercancel',kin)}
 $('#kartka').addEventListener('click',e=>{
- if(e.target.closest('.k-x')) return zakryty();
- if(telefon()&&e.target.closest('.k-shap')) $('#kartka').classList.toggle('vysoka')});
+ if(e.target.closest('.k-x')) zakryty()});
 addEventListener('keydown',e=>{if(e.key==='Escape') zakryty()});
 
 // ---- Клік і наведення; дотик — найближче в 20 px (S-К.21) ----
