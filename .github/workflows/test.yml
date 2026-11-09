@@ -18,7 +18,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Бібліотеки для збирання сайту (ZAVDANNYA-10)
-        run: python -m pip install 'h3>=4,<5' 'html5lib>=1.1'
+        run: python -m pip install 'h3>=4,<5' 'html5lib>=1.1' 'pillow>=10'
       - name: Unit tests
         run: python -m unittest discover -s tests -v
 

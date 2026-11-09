@@ -24,7 +24,7 @@
 
 - [0005-pipeline-edrsr](0005-pipeline-edrsr.md) — фундамент імпорту та PostgreSQL.
 - [0006-geocode-gate](0006-geocode-gate.md) — допуск координат.
-- Рішення 0007–0009 з незлитої гілки — [навігація та межі чинності](../10-spilna-baza.md).
+- Рішення 0007–0009 з незлитої гілки — [навігація та межі чинності](../../arkhiv/docs/10-spilna-baza.md).
 - [0010](0010-dopusk-epizodu.md) — допуск підтвердженого епізоду.
 - [0011](0011-dani-api-analohy.md) — окремий B2B-напрям даних та API.
 - [0012](0012-adresa-first-monetyzatsiya.md) — address-first consumer UX і разовий повний аналіз місця як перший платний тест.
