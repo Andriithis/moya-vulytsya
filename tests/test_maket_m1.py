@@ -72,6 +72,15 @@ class StorinkaMaketa(unittest.TestCase):
         self.assertNotIn('flyTo', self.html)
         self.assertIn('duration:TYKHO?0:700', self.html)
 
+    def test_stovpchyky_m3(self):
+        # один шар у кожен момент: межі зуму двох сіток сходяться на порозі
+        self.assertIn('const COL_ZUM={L:[0,POROH],S:[POROH,24]};', self.html)
+        self.assertIn('const KLITYNKA=.85;', self.html)
+        self.assertIn('VYSOTA=G.R*3.5', self.html)
+        self.assertIn('Math.floor(ns.length*.95)', self.html)
+        self.assertIn("'fill-extrusion-opacity':.9", self.html)
+        self.assertIn('const MAKS_KANAL=236;', self.html)
+
     def test_lokalni_fajly_ye(self):
         for shlyakh in re.findall(r'(?:href|url\()=?"?((?:vendor|shryfty)/[^")\s]+)', self.html):
             self.assertTrue((MAKET / shlyakh).is_file(), shlyakh)

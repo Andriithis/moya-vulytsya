@@ -181,15 +181,16 @@ const MX_=111320*Math.cos(50.45*Math.PI/180), MY_=111320;
 // 30 м у безкоштовній карті немає (MV-36): соти 130 м лишаються й на наближенні.
 const HEXG=[{id:'L',R:330},{id:'S',R:130}];
 const HRUPY=D.hrupy, GN=HRUPY.length;
-const HEX_FADE={L:[[0,1],[12.3,1],[12.8,0]],S:[[12.0,0],[12.4,1]]};
+// Один шар у кожен момент (S-К.4, М3): у смузі ±0,4 навколо порогу стара сітка сходить нанівець до порогу, нова виростає після нього.
+const HEX_FADE={L:[[0,1],[11.9,1],[12.3,0]],S:[[12.3,0],[12.7,1]]};
 const fadeBy=(id,v)=>['interpolate',['linear'],['zoom'],...HEX_FADE[id].flatMap(([z,f])=>[z,f?v:0])];
 const POROH=12.3, SMUHA=.4, ZUM_BUDYNKIV=14.5;
 const colG=(z=map.getZoom())=>z<POROH?'L':'S';
-const COL_ZUM={L:[0,POROH+SMUHA],S:[POROH-SMUHA,24]};
+const COL_ZUM={L:[0,POROH],S:[POROH,24]};
 // Стовпчик 130 м на зумах, де в карті Києва вже 30 м, стає нижчим: інакше він закривав би квартал.
-function colVysota(id){const h=['get','h'];
- if(id==='L') return ['interpolate',['linear'],['zoom'],0,h,POROH-SMUHA,h,POROH+SMUHA,0];
- return ['interpolate',['linear'],['zoom'],POROH-SMUHA,0,POROH+SMUHA,h,14,['*',.5,h],15,['*',.2,h],16.5,['*',.08,h]]}
+const MNOZHNYK={L:[[0,1],[POROH-SMUHA,1],[POROH,0]],S:[[POROH,0],[POROH+SMUHA,1],[14,.5],[15,.2],[16.5,.08]]};
+// Висота й основа — частка висоти соти (H) плюс стала надбавка (E) для тонких шарів даху.
+function colVysota(id,H,E){return ['interpolate',['linear'],['zoom'],...MNOZHNYK[id].flatMap(([z,m])=>[z,['max',0,['+',['*',m,['get',H]],['get',E]]]])]}
 // S-К.6: вид, якого тут найбільше проти Києва (≥ max(3, 10%) подій), інакше найчисленніший.
 function kolirMisca(g,mg,mn){let best=null,bn=0,n=0;
  for(let i=0;i<GN;i++){const v=g[i]||0; n+=v; if(v>bn){bn=v;best=i}}
@@ -201,8 +202,14 @@ function kolirMisca(g,mg,mn){let best=null,bn=0,n=0;
 function hexPoly(cx,cy,R,k=1){const out=[];
  for(let a=0;a<6;a++){const t=Math.PI/180*(60*a+30); out.push([(cx+k*R*Math.cos(t))/MX_,(cy+k*R*Math.sin(t))/MY_])}
  out.push(out[0]); return [out]}
-function svitlishe(c){const v=parseInt(c.slice(1),16), f=x=>Math.round(x+(255-x)*.45);
- return '#'+[v>>16,(v>>8)&255,v&255].map(f).map(x=>x.toString(16).padStart(2,'0')).join('')}
+const rgb=c=>{const v=parseInt(c.slice(1),16); return [v>>16,(v>>8)&255,v&255]};
+const hexK=a=>'#'+a.map(x=>Math.round(x).toString(16).padStart(2,'0')).join('');
+// Без чисто білого: найсвітліший канал обмежено, відтінок лишається.
+const MAKS_KANAL=236;
+function zmishaty(c,tsil,k){const a=rgb(c).map((x,i)=>x+(tsil[i]-x)*k), m=Math.max(...a); return hexK(m>MAKS_KANAL?a.map(x=>x*MAKS_KANAL/m):a)}
+const svitlishe=c=>zmishaty(c,[255,255,255],.45);
+const KLITYNKA=.85;   // шестикутник — 85 % клітинки, між сотами видно проміжок
+
 const HEXB={L:new Map(),S:new Map()};
 for(const G of HEXG){
  HEXB[G.id]=new Map(D.soty[G.id].map(r=>[r[0],{k:r[0],cx:r[1],cy:r[2],n:r[3],g:r[4],y:r[5],pik:r[6],pikN:r[7],chasN:r[8],rayon:D.rayony[r[9]]||'',oriyentyr:D.oriyentyry[r[10]]||'',pr:r[11],nf:r[3],gf:r[4],gi:0,a:0,kr:0}]));
@@ -231,14 +238,24 @@ function pererakhuvaty(){const MG=new Array(GN).fill(0); let TOT=0;
   const por=[.2,.4,.6,.8].map(q=>L_?zi[Math.min(L_-1,Math.floor(L_*q))].nf:0);
   zi.forEach((b,i)=>{b.gi=kolirMisca(b.gf,MG,TOT); b.kr=por.filter(x=>b.nf>=x).length; const rank=L_>1?i/(L_-1):1; b.a=TEMA==='temna'?Math.min(.6,.1+.6*rank*rank):Math.min(.42,.04+.42*rank*rank)});
   if(G.id==='S'){const ns=zi.map(b=>b.nf); MEDIANA=L_?(L_%2?ns[(L_-1)/2]:(ns[L_/2-1]+ns[L_/2])/2):0}}}
+// Стовпчик — три частини в одному шарі (спільна глибина, без просвічування дахів крізь сусідів):
+// тіло темнішого тону, тонкий світлий кант і дах світліший за колір шкали.
 function hexData(G,cols){const B=[...HEXB[G.id].values()].filter(b=>b.nf>0);
  const ns=B.map(b=>b.nf).sort((a,b)=>a-b), med=ns.length?ns[ns.length>>1]:0;
+ // Висота — від 95-го перцентиля групи, а не від найбільшої соти (S-К.4).
  const mx=Math.max(1,ns.length?ns[Math.min(ns.length-1,Math.floor(ns.length*.95))]:1);
- // Шкала: стовпчики всіх сот, інакше нижні кроки в 3D не було б видно. «Характер місця» — від медіани, як у карті Києва.
- const vsi=!KHARAKTER, a0=TEMA==='temna'?.85:.78;
- return {type:'FeatureCollection',features:B.filter(b=>!cols||vsi||b.nf>=med).map(b=>({type:'Feature',
-  geometry:{type:'Polygon',coordinates:hexPoly(b.cx,b.cy,G.R,cols?.62:1)},
-  properties:{k:b.k,c:kolirSoty(b),cl:vsi?kolirSoty(b):svitlishe(kolirSoty(b)),a:vsi?a0:b.a,n:b.nf,h:G.R*7*(.12+.88*Math.sqrt(Math.min(1,b.nf/mx)))}}))}}
+ const vsi=!KHARAKTER, tem=TEMA==='temna', a0=tem?.85:.78;
+ const poly=(b,k)=>({type:'Polygon',coordinates:hexPoly(b.cx,b.cy,G.R,k)});
+ if(!cols) return {type:'FeatureCollection',features:B.map(b=>({type:'Feature',geometry:poly(b,KLITYNKA),
+  properties:{k:b.k,c:kolirSoty(b),a:vsi?a0:b.a,n:b.nf}}))};
+ const KANT=G.R/40, E1=1.5, E2=1.5, VYSOTA=G.R*3.5;
+ const barvy=c=>({tilo:zmishaty(c,[0,0,0],tem?.3:.22),kant:zmishaty(c,[255,255,255],.42),dakh:zmishaty(c,[255,255,255],.14)});
+ const chastyna=(b,k,c,bh,eb,eh,h)=>({type:'Feature',geometry:poly(b,k),properties:{k:b.k,c,cl:vsi?c:svitlishe(c),n:b.nf,h,bh,eb,eh}});
+ return {type:'FeatureCollection',features:B.filter(b=>vsi||b.nf>=med).flatMap(b=>{
+  const h=VYSOTA*(.12+.88*Math.sqrt(Math.min(1,b.nf/mx))), c=barvy(kolirSoty(b));
+  return [chastyna(b,KLITYNKA,c.tilo,0,0,0,h),
+   chastyna(b,KLITYNKA,c.kant,h,-KANT,E1,h),
+   chastyna(b,KLITYNKA*.93,c.dakh,h,E1,E1+E2,h)]})}}
 pererakhuvaty();
 
 // ---- Підкладка — gl_map.js карти Києва (S-К.1, S-К.20) ----
@@ -289,7 +306,7 @@ const cssv=n=>getComputedStyle(document.body).getPropertyValue(n).trim();
 function zafarbuvaty(){ if(!map.getSource('k-hex-L')) return; const tem=TEMA==='temna', v3=KHARAKTER;
  for(const G of HEXG){map.getSource('k-hex-'+G.id).setData(hexData(G,false)); map.getSource('k-col-'+G.id).setData(hexData(G,true));
   map.setPaintProperty('k-hexl-'+G.id,'line-color',v3?'rgba(255,255,255,.4)':tem?'rgba(255,255,255,.14)':'rgba(11,107,107,.22)');
-  map.setPaintProperty('k-col-'+G.id,'fill-extrusion-opacity',v3?(tem?.7:.55):.88)}
+  }
  map.setPaintProperty('k-hexsel','line-color',cssv(v3?'--accent':'--ink'));
  map.setPaintProperty('k-hexselh','line-color',cssv('--surface'));
  namalyuvaty()}
@@ -298,11 +315,11 @@ map.on('style.load',()=>{
  for(const G of HEXG){const id=G.id;
   map.addSource('k-hex-'+id,{type:'geojson',data:hexData(G,false)});
   map.addSource('k-col-'+id,{type:'geojson',promoteId:'k',data:hexData(G,true)});
-  map.addLayer({id:'k-hex-'+id,type:'fill',source:'k-hex-'+id,paint:{'fill-color':['get','c'],'fill-opacity':fadeBy(id,['get','a'])}},before);
-  map.addLayer({id:'k-hexl-'+id,type:'line',source:'k-hex-'+id,paint:{'line-color':'rgba(255,255,255,.4)','line-width':.6,'line-opacity':fadeBy(id,1)}},before);
+  map.addLayer({id:'k-hex-'+id,type:'fill',source:'k-hex-'+id,minzoom:COL_ZUM[id][0],maxzoom:COL_ZUM[id][1],paint:{'fill-color':['get','c'],'fill-opacity':fadeBy(id,['get','a'])}},before);
+  map.addLayer({id:'k-hexl-'+id,type:'line',source:'k-hex-'+id,minzoom:COL_ZUM[id][0],maxzoom:COL_ZUM[id][1],paint:{'line-color':'rgba(255,255,255,.4)','line-width':.6,'line-opacity':fadeBy(id,1)}},before);
   map.addLayer({id:'k-col-'+id,type:'fill-extrusion',source:'k-col-'+id,minzoom:COL_ZUM[id][0],maxzoom:COL_ZUM[id][1],paint:{
    'fill-extrusion-color':['case',['boolean',['feature-state','sel'],false],['get','cl'],['get','c']],
-   'fill-extrusion-height':colVysota(id),'fill-extrusion-opacity':.55}})}
+   'fill-extrusion-base':colVysota(id,'bh','eb'),'fill-extrusion-height':colVysota(id,'h','eh'),'fill-extrusion-opacity':.9}})}
  map.addSource('k-hexsel',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
  map.addLayer({id:'k-hexselh',type:'line',source:'k-hexsel',paint:{'line-color':'#fff','line-width':5}});
  map.addLayer({id:'k-hexsel',type:'line',source:'k-hexsel',paint:{'line-color':'#1B1F24','line-width':2.5}});
@@ -403,7 +420,7 @@ function zakryty(){ if(!ZARAZ) return;
  ZARAZ=null; const el=$('#kartka'); el.hidden=true; el.classList.remove('vysoka'); document.body.classList.remove('k-vidkr')}
 function vydilyty(G,b){ if(!map.getSource('k-hexsel')) return;
  map.setFeatureState({source:'k-col-'+G.id,id:b.k},{sel:true});
- map.getSource('k-hexsel').setData({type:'Feature',geometry:{type:'LineString',coordinates:hexPoly(b.cx,b.cy,G.R,1)[0]}})}
+ map.getSource('k-hexsel').setData({type:'Feature',geometry:{type:'LineString',coordinates:hexPoly(b.cx,b.cy,G.R,KLITYNKA)[0]}})}
 // Сота під карткою — карта зсувається рівно настільки, щоб вийшла з-під неї; зум і нахил не міняються (Андрій, 09.11).
 // Зсув рахуємо по землі: на нахиленій карті той самий рух у пікселях зсував би край соти інакше.
 function zPidKartky(G,b){const el=$('#kartka'), m=map.getContainer().getBoundingClientRect(), k=el.getBoundingClientRect(), ZAZOR=16;
