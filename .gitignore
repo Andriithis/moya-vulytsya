@@ -6,8 +6,7 @@
 data/*
 !data/README.md
 !data/.gitkeep
-!data/fixtures/
-!data/fixtures/**
+!data/borders.json
 
 # === ПИТОН ===
 __pycache__/
