@@ -119,7 +119,7 @@ d ≥ 5 км  → 0 очок
 Карта — MapLibre GL 5.16.0 (ліцензія BSD-3), файлом із сайту: `site/hra/biblioteka/`
 (збірка для суворої політики безпеки сторінки, без `eval` і без `blob:`).
 Межа Києва — власний файл `site/hra/mezha-kyieva.geojson` (OpenStreetMap, ODbL; з
-`config/geocoding/kyiv_boundary.geojson`). Межу видно навіть без підкладки.
+колишнього `config/geocoding/kyiv_boundary.geojson`, видаленого 11.11.2026). Межу видно навіть без підкладки.
 
 | | **Зараз: OpenFreeMap** | **Потім: власні тайли (PMTiles)** |
 |---|---|---|
