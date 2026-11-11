@@ -46,8 +46,9 @@ Android, публікація заглушки. Зроблене лежить у
 Андрію — `dani-edrsr/ZVIT-20.md`; там же список гілок, які Андрій видаляє вручну.
 
 Прибирання 11.11 (доручення Андрія): на GitHub видалено гілки, злиті в `main` або старші за 01.11 (26 у `dani-edrsr`,
-38 тут); лишились `main`, `ispyt`, `server-stan`, `maket-m1`, `maket-m3` і незлиті свіжі — `dani-edrsr`: `zavdannya-03`,
-`-08`, `-13`; тут: `zavdannya-07`, `-10`, `-11`, `-12`, `zberezhennya-2026-10-08` (чекають рішення Андрія).
+38 тут); потім за «так» Андрія — і незлиті свіжі (`dani-edrsr`: `zavdannya-03`, `-08`, `-13`; тут: `zavdannya-07`,
+`-10`, `-11`, `-12`, `zberezhennya-2026-10-08`, `pravyla-roboty`). Лишились: `dani-edrsr` — `main`, `ispyt`, `server-stan`;
+тут — `main`, `maket-m1`, `maket-m3`.
 Видалено `docs/znimky/` (80 знімків до завдань 02–12): скрипти `tests/znimky_*` тепер пишуть у `tmp/znimky/` (не в git).
 У `dani-edrsr` видалено `dovidnyky/pereimenuvannya-kyiv.csv` — уся таблиця в `config/pereimenuvannia-kyiv.csv`, її ж бере
 `site/zibraty_sait.py --pereimenuvannya`. `site_src/` і збирач карти в `dani-edrsr` лишено: код їх використовує.
