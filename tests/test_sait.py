@@ -3,7 +3,7 @@
 Запуск: python -m unittest tests.test_sait -v
 Сайт збирається з маленької штучної бази (без справжніх даних). Щоб прогнати ті самі
 перевірки на справжньому випуску: MV_VYPUSK=/шлях/events-<дата>.db
-(і за бажанням MV_PEREIMENUVANNYA=/шлях/pereimenuvannya-kyiv.csv).
+(і за бажанням MV_PEREIMENUVANNYA=/шлях/dani-edrsr/config/pereimenuvannia-kyiv.csv).
 
 Потрібна бібліотека h3 (pip install h3) — без неї перевірки пропускаються з поясненням.
 """
@@ -111,9 +111,10 @@ def stvoryty_bazu(shlyakh: Path) -> None:
 
 
 def stvoryty_pereimenuvannya(shlyakh: Path) -> None:
-    shlyakh.write_text('stara_nazva,nova_nazva,typ,rayon,data,pidstava,dzherelo\n'
-                       'Червоноармійська,Велика Васильківська,вулиця,,,тест,https://example.org\n'
-                       'Червонозоряний,Валерія Лобановського,проспект,,,тест,https://example.org\n', encoding='utf-8')
+    # шапка — як у dani-edrsr/config/pereimenuvannia-kyiv.csv
+    shlyakh.write_text('stara_nazva,nova_nazva,typ,rayon,nomer_rishennia,data_rishennia,posylannia,perelik_kmda,prymitka\n'
+                       'Червоноармійська,Велика Васильківська,вулиця,,,,https://example.org,так,тест\n'
+                       'Червонозоряний,Валерія Лобановського,проспект,,,,https://example.org,так,тест\n', encoding='utf-8')
 
 
 class PerevirkaHtml(html.parser.HTMLParser):

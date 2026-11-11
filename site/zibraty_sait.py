@@ -609,7 +609,7 @@ def main(argv=None) -> int:
     p = argparse.ArgumentParser(description='Зібрати сайт «Моя вулиця» з випуску бази.')
     p.add_argument('baza', type=Path, help='events-<дата>.db')
     p.add_argument('vykhid', type=Path, help='тека, куди зібрати сайт (буде перезаписана)')
-    p.add_argument('--pereimenuvannya', type=Path, help='dani-edrsr/dovidnyky/pereimenuvannya-kyiv.csv')
+    p.add_argument('--pereimenuvannya', type=Path, help='dani-edrsr/config/pereimenuvannia-kyiv.csv')
     p.add_argument('--mezhi-rayoniv', type=Path, default=KORIN / 'data' / 'borders.json')
     p.add_argument('--adresa-saitu', default=ADRESA_SAITU, help='адреса сайту для sitemap.xml і canonical')
     p.add_argument('--koloda', type=Path, help='справжня колода гри (без неї — демо-колода)')

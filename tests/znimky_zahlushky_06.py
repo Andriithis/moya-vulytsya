@@ -1,7 +1,7 @@
 """Знімки екрана для ZAVDANNYA-06, 1280 px і 390 px — так само, як znimky_zahlushky.py.
 
 Запуск: python tests/znimky_zahlushky_06.py [тека-для-знімків]
-За замовчуванням знімки йдуть у docs/znimky/zavdannya-06/.
+За замовчуванням знімки йдуть у tmp/znimky/zavdannya-06/.
 Сховище — локальна підміна (tests/zahlushka_pidmina.py), нічого не надсилається назовні.
 
 Знімки: оферта; звернення порожнє, з підказкою про помилку, після відправки і без мережі;
@@ -36,7 +36,7 @@ def main() -> int:
     if not CHROME:
         print('Немає Chrome / Chromium — знімків не буде.')
         return 1
-    teka = Path(sys.argv[1]) if len(sys.argv) > 1 else KORIN / 'docs' / 'znimky' / 'zavdannya-06'
+    teka = Path(sys.argv[1]) if len(sys.argv) > 1 else KORIN / 'tmp' / 'znimky' / 'zavdannya-06'
     teka.mkdir(parents=True, exist_ok=True)
     tmp = Path(tempfile.mkdtemp())
     server, skh, url = zahlushka_pidmina.zapustyty(str(tmp))

@@ -1,7 +1,7 @@
 """Знімки екрана гри «Вгадай, де це було» (ZAVDANNYA-07), 390 px і 1280 px.
 
 Запуск: python tests/znimky_hry.py [тека-для-знімків]
-За замовчуванням знімки йдуть у docs/znimky/zavdannya-07/.
+За замовчуванням знімки йдуть у tmp/znimky/zavdannya-07/.
 Сайт збирається з демо-колодою; сховище — локальна підміна (tests/zahlushka_pidmina.py),
 нічого не надсилається назовні. Запити до підкладки карти (tiles.openfreemap.org)
 у знімках ВИМКНЕНО навмисно: знімки однакові незалежно від мережі, на них видно
@@ -64,7 +64,7 @@ def main() -> int:
     if not CHROME:
         print('Немає Chrome / Chromium — знімків не буде.')
         return 1
-    teka = Path(sys.argv[1]) if len(sys.argv) > 1 else KORIN / 'docs' / 'znimky' / 'zavdannya-07'
+    teka = Path(sys.argv[1]) if len(sys.argv) > 1 else KORIN / 'tmp' / 'znimky' / 'zavdannya-07'
     teka.mkdir(parents=True, exist_ok=True)
     tmp = Path(tempfile.mkdtemp())
     server, skh, url = zahlushka_pidmina.zapustyty(str(tmp))

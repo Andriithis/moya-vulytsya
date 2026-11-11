@@ -1,7 +1,7 @@
 """Знімки екрана заглушки 1280 px і 390 px (ZAVDANNYA-02, п. 11).
 
 Запуск: python tests/znimky_zahlushky.py [тека-для-знімків]
-За замовчуванням знімки йдуть у docs/znimky/zavdannya-02/.
+За замовчуванням знімки йдуть у tmp/znimky/zavdannya-02/.
 Потрібні Playwright (pip install playwright) і Chrome / Chromium.
 Сховище — локальна підміна (tests/zahlushka_pidmina.py), нічого не надсилається назовні.
 """
@@ -26,7 +26,7 @@ def main() -> int:
     if not CHROME:
         print('Немає Chrome / Chromium — знімків не буде.')
         return 1
-    teka_znimkiv = Path(sys.argv[1]) if len(sys.argv) > 1 else KORIN / 'docs' / 'znimky' / 'zavdannya-02'
+    teka_znimkiv = Path(sys.argv[1]) if len(sys.argv) > 1 else KORIN / 'tmp' / 'znimky' / 'zavdannya-02'
     teka_znimkiv.mkdir(parents=True, exist_ok=True)
     tmp = Path(tempfile.mkdtemp())
     server, skh, url = zahlushka_pidmina.zapustyty(str(tmp))

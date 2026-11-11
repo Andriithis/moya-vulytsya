@@ -31,7 +31,7 @@ STORINKY = [
 def main(argv: list[str]) -> int:
     from playwright.sync_api import sync_playwright
     sait = Path(argv[0]).resolve()
-    teka = Path(argv[1]) if len(argv) > 1 else KORIN / 'docs' / 'znimky' / 'zavdannya-10'
+    teka = Path(argv[1]) if len(argv) > 1 else KORIN / 'tmp' / 'znimky' / 'zavdannya-10'
     teka.mkdir(parents=True, exist_ok=True)
     obrobnyk = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(sait))
     http.server.SimpleHTTPRequestHandler.log_message = lambda *a: None

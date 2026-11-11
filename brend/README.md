@@ -96,4 +96,4 @@ brend/
 ```
 
 Перевірки: `python -m unittest tests/test_brend.py`. Знімок аватара в колі 110 px:
-`python tests/znimky_brend.py` → `docs/znimky/zavdannya-12/avatar-kolo-110.png`.
+`python tests/znimky_brend.py` → `tmp/znimky/zavdannya-12/avatar-kolo-110.png`.

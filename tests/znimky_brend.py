@@ -2,7 +2,7 @@
 
 Запуск: python tests/znimky_brend.py   (спершу python brend/zrobyty.py --vse)
 Бере brend/hotovi/avatar/*.png, обрізає колом 110 px (так показують Instagram, TikTok,
-YouTube) і кладе поруч на світлому й темному тлі -> docs/znimky/zavdannya-12/avatar-kolo-110.png.
+YouTube) і кладе поруч на світлому й темному тлі -> tmp/znimky/zavdannya-12/avatar-kolo-110.png.
 Також показує, як аватар виглядає в списку каналів Telegram (коло 54 px).
 """
 from __future__ import annotations
@@ -13,7 +13,7 @@ from PIL import Image, ImageDraw
 
 KORIN = Path(__file__).resolve().parents[1]
 AVATARY = KORIN / 'brend' / 'hotovi' / 'avatar'
-KUDY = KORIN / 'docs' / 'znimky' / 'zavdannya-12' / 'avatar-kolo-110.png'
+KUDY = KORIN / 'tmp' / 'znimky' / 'zavdannya-12' / 'avatar-kolo-110.png'
 
 
 def kolo(img: Image.Image, d: int) -> Image.Image:

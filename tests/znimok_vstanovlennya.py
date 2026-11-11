@@ -15,7 +15,7 @@ from playwright.sync_api import sync_playwright
 tmp = Path(tempfile.mkdtemp())
 server, skh, url = zahlushka_pidmina.zapustyty(str(tmp))
 zibraty.zibraty(tmp / 'zahlushka', url, zahlushka_pidmina.PUBLICHNYI, {}, False)
-vykhid = sys.argv[1] if len(sys.argv) > 1 else str(KORIN / 'docs' / 'znimky' / 'zavdannya-06' / 'holovna-knopka-vstanovlennya-1280.png')
+vykhid = sys.argv[1] if len(sys.argv) > 1 else str(KORIN / 'tmp' / 'znimky' / 'zavdannya-06' / 'holovna-knopka-vstanovlennya-1280.png')
 with sync_playwright() as pw:
     k = pw.chromium.launch_persistent_context(tempfile.mkdtemp(), executable_path=CHROME, headless=False,
         args=['--no-sandbox', '--window-size=1280,900', '--window-position=0,0', '--disable-features=Translate', '--lang=uk'], no_viewport=True)
