@@ -50,10 +50,11 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .plashka{position:absolute;z-index:5;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-m)}
 /* ---- Перемикач порівняння (лише для макета) ---- */
 #porivn{top:12px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:12px;padding:4px 6px;z-index:7}
-#porivn .gr{display:flex;align-items:center;gap:2px}
+#porivn .gr{display:flex;align-items:center;gap:8px}
 #porivn .gr>span{font:600 12px/16px var(--sans);color:var(--muted);margin:0 6px 0 4px}
 #porivn button{min-width:44px;min-height:44px;padding:0 10px;border:0;border-radius:var(--radius-s);background:none;font:600 14px/20px var(--sans);color:var(--ink-2);white-space:nowrap}
 #porivn button[aria-pressed=true]{background:var(--accent);color:var(--on-accent)}
+body:not([data-t=temna]) #porivn .mitka{color:#924305}
 #porivn .mitka{font:600 12px/16px var(--sans);color:var(--attention);background:var(--attention-soft);padding:2px 8px;border-radius:var(--radius-pill)}
 /* ---- Верх: знак і пошук адреси (головна дія) ---- */
 #verkh{top:76px;left:12px;display:flex;align-items:center;gap:10px;padding:0 4px 0 12px;width:360px;min-height:52px}
@@ -143,6 +144,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 @media (max-width:700px){
  #porivn{top:8px;left:8px;right:8px;transform:none;justify-content:space-between;gap:4px;padding:2px 4px}
  #porivn .gr>span,#porivn .mitka,#porivn .dov{display:none}
+ #porivn .gr{gap:8px}
  #porivn button{min-width:44px;padding:0 6px;font-size:13px}
  #verkh{top:64px;left:8px;right:68px;width:auto;padding-left:10px}
  #pidkazky{left:8px;right:8px;top:120px;width:auto}
@@ -586,13 +588,13 @@ addEventListener('keydown',e=>{if(e.key==='Escape') zakryty()});
 // ---- Клік: у 3D — найближчий до камери стовпчик під пальцем; повз стовпчики — сота на землі під точкою ----
 function zoLayers(){return HEXG.flatMap(G=>MODE==='soty'?['k-hex-'+G.id]:['k-col-'+G.id,'k-col-slab-'+G.id]).filter(id=>map.getLayer(id)&&map.getLayoutProperty(id,'visibility')!=='none')}
 function zKlyucha(x){const G=HEXG.find(g=>x.layer.id.endsWith('-'+g.id)), b=G&&HEXB[G.id].get(x.properties.k); return b&&b.nf?{G,b}:null}
-function naZemli(p){const id=colG(), G=HEXG.find(g=>g.id===id), ll=map.unproject(p), x=ll.lng*MX_, y=ll.lat*MY_;
+function naZemli(p){const id=colG(), G=HEXG.find(g=>g.id===id), ll=map.unproject([p.x,p.y]), x=ll.lng*MX_, y=ll.lat*MY_;
  let best=null,bd=(G.R*1.05)**2;
  for(const b of HEXB[id].values()){if(!b.nf) continue; const d=(b.cx-x)**2+(b.cy-y)**2; if(d<bd){bd=d;best={G,b}}}
  return best}
-function vluchannya(p,dotyk){const shary=zoLayers(); if(!shary.length) return null;
+function vluchannya(p0,dotyk){const shary=zoLayers(); if(!shary.length) return null; const p={x:p0.x,y:p0.y};
  // точка: MapLibre повертає стовпчики від найближчого до камери
- const f=map.queryRenderedFeatures(p,{layers:shary}).map(zKlyucha).filter(Boolean).filter(h=>h.G.id===colG());
+ const f=map.queryRenderedFeatures([p.x,p.y],{layers:shary}).map(zKlyucha).filter(Boolean).filter(h=>h.G.id===colG());
  if(f.length) return f[0];
  if(dotyk){const r=16, ff=map.queryRenderedFeatures([[p.x-r,p.y-r],[p.x+r,p.y+r]],{layers:shary}).map(zKlyucha).filter(Boolean);
   let best=null,bd=1e30;
