@@ -1,0 +1,683 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Макет М6 — К3 «Київ + вершини» · Моя вулиця</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="../m1/vendor/maplibre-gl-6.10.0/maplibre-gl.css">
+<style>
+/* М6 (ZAVDANNYA-36, MV-55): доводимо К3 з М5. Одна бірюзова шкала: колір = скільки подій у даних, не небезпека.
+   Шкала частками: класи кольору, прозорість і вершини — за місцем соти серед сот поточного рівня, а не за сталими числами. */
+/* Шрифти: Fixel (MacPaw, SIL OFL 1.1; MV-52) — за замовчуванням; IBM Plex Sans (IBM, SIL OFL 1.1) і Arsenal
+   (Андрій Шевченко, Київ, SIL OFL 1.1) — для порівняння. Файли Plex і Arsenal — з @fontsource 5.3.0, ліцензії поруч. */
+@font-face{font-family:Fixel;font-weight:400;font-display:swap;src:url(../m4/shryfty/FixelText-Regular.woff2) format('woff2')}
+@font-face{font-family:Fixel;font-weight:600;font-display:swap;src:url(../m4/shryfty/FixelText-SemiBold.woff2) format('woff2')}
+@font-face{font-family:Fixel;font-weight:700;font-display:swap;src:url(../m4/shryfty/FixelDisplay-Bold.woff2) format('woff2')}
+@font-face{font-family:Fixel;font-weight:800;font-display:swap;src:url(../m4/shryfty/FixelDisplay-ExtraBold.woff2) format('woff2')}
+@font-face{font-family:Plex;font-weight:400;font-display:swap;src:url(shryfty/ibm-plex-sans-cyrillic-400-normal.woff2) format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:Plex;font-weight:400;font-display:swap;src:url(shryfty/ibm-plex-sans-latin-400-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+2000-206F,U+20AC,U+2212}
+@font-face{font-family:Plex;font-weight:600;font-display:swap;src:url(shryfty/ibm-plex-sans-cyrillic-600-normal.woff2) format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:Plex;font-weight:600;font-display:swap;src:url(shryfty/ibm-plex-sans-latin-600-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+2000-206F,U+20AC,U+2212}
+@font-face{font-family:Plex;font-weight:700 800;font-display:swap;src:url(shryfty/ibm-plex-sans-cyrillic-700-normal.woff2) format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:Plex;font-weight:700 800;font-display:swap;src:url(shryfty/ibm-plex-sans-latin-700-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+2000-206F,U+20AC,U+2212}
+@font-face{font-family:Arsenal;font-weight:400 600;font-display:swap;src:url(shryfty/arsenal-cyrillic-400-normal.woff2) format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:Arsenal;font-weight:400 600;font-display:swap;src:url(shryfty/arsenal-latin-400-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+2000-206F,U+20AC,U+2212}
+@font-face{font-family:Arsenal;font-weight:700 800;font-display:swap;src:url(shryfty/arsenal-cyrillic-700-normal.woff2) format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:Arsenal;font-weight:700 800;font-display:swap;src:url(shryfty/arsenal-latin-700-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+2000-206F,U+20AC,U+2212}
+/* --mezha: межі плашок і кнопок — ≥ 3:1 до тла, поверхні, парку й води (як у М5). */
+:root{--ground:#F7F6F2;--surface:#FFFFFF;--surface-tint:#F1F7F6;--ink:#1B1F24;--ink-2:#3D434C;--muted:#5B616B;
+ --line:#E3E1DA;--line-strong:#C9C6BD;--mezha:#7F7C75;--accent:#0B6B6B;--accent-soft:#D7EBEA;--on-accent:#FFFFFF;
+ --attention:#B45309;--attention-soft:#FBEBDD;--data-city:#A9ADB4;--data-3:#068784;
+ --radius-s:4px;--radius-m:10px;--radius-l:14px;--radius-pill:999px;
+ --disp:Fixel,system-ui,sans-serif;--sans:Fixel,system-ui,sans-serif;--shyryna:320px}
+body[data-f=plex]{--disp:Plex,system-ui,sans-serif;--sans:Plex,system-ui,sans-serif}
+body[data-f=arsenal]{--disp:Arsenal,system-ui,sans-serif;--sans:Arsenal,system-ui,sans-serif}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--ground);color:var(--ink);font:400 15px/22px var(--sans)}
+#map{position:fixed;inset:0;background:var(--ground)}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+/* Темна тема — «світлодіодна»: нічна підкладка В2 (М5), пласкі соти притемнені, вершини найяскравіші. */
+body[data-t=temna]{--ground:#0C1012;--surface:#141A1D;--surface-tint:#182B2A;--ink:#ECEEEA;--ink-2:#CDD1CC;--muted:#9AA1A8;
+ --line:#252D31;--line-strong:#3C464B;--mezha:#828B90;--accent:#5CB8AF;--accent-soft:#1E3A38;--on-accent:#0B1414;
+ --attention:#F0A257;--attention-soft:#3A2A18;--data-city:#6B737B;--data-3:#2F9B98}
+body[data-t=temna] .maplibregl-ctrl-group{background:var(--surface)}
+body[data-t=temna] .maplibregl-ctrl-group button+button{border-top-color:var(--line)}
+body[data-t=temna] .maplibregl-ctrl-icon{filter:invert(1)}
+.maplibregl-ctrl-group{border:1px solid var(--mezha);box-shadow:none!important}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.plashka{position:absolute;z-index:5;background:var(--surface);border:1px solid var(--mezha);border-radius:var(--radius-m)}
+/* ---- Перемикачі макета (лише для вибору) ---- */
+#porivn{top:12px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;padding:4px 6px;z-index:7;max-width:calc(100vw - 24px)}
+#porivn .gr{display:flex;align-items:center;gap:8px}
+#porivn .gr>span{font:600 12px/16px var(--sans);color:var(--muted);margin:0 2px 0 6px}
+#porivn button{min-width:44px;min-height:44px;padding:0 10px;border:0;border-radius:var(--radius-s);background:none;font:600 14px/20px var(--sans);color:var(--ink-2);white-space:nowrap}
+#porivn button[aria-pressed=true]{background:var(--accent);color:var(--on-accent)}
+#porivn .mitka{font:600 12px/16px var(--sans);color:#924305;background:var(--attention-soft);padding:2px 8px;border-radius:var(--radius-pill);white-space:nowrap}
+body[data-t=temna] #porivn .mitka{color:var(--attention)}
+/* ---- Верх: знак і пошук (головна дія) ---- */
+#verkh{top:76px;left:12px;display:flex;align-items:center;gap:10px;padding:0 4px 0 12px;width:360px;min-height:52px}
+.znak{flex:none;display:flex}
+#poshuk{flex:1;min-width:0;height:48px;border:0;background:none;font:400 16px/24px var(--sans);color:var(--ink);outline:none}
+#poshuk::placeholder{color:var(--muted)}
+#pidkazky{position:absolute;z-index:8;left:12px;top:132px;width:360px;margin:0;padding:4px;list-style:none}
+#pidkazky[hidden]{display:none}
+#pidkazky li{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;padding:0 10px;border-radius:var(--radius-s);font:400 16px/22px var(--sans);color:var(--ink-2);cursor:pointer}
+#pidkazky li b{font-weight:600;color:var(--ink)}
+#pidkazky li small{flex:none;font:400 13px/18px var(--sans);color:var(--muted)}
+#pidkazky li[aria-selected=true]{background:var(--accent-soft)}
+#pidkazky .porozh{color:var(--muted);cursor:default}
+/* ---- Кнопки праворуч: 2D/3D і тема ---- */
+.kruh{position:absolute;z-index:5;right:12px;width:52px;height:52px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:1px solid var(--mezha);background:var(--surface);color:var(--ink)}
+#f3d{top:76px;font:800 15px/20px var(--disp)}
+#ftema{top:136px}
+#tykha{position:absolute;z-index:4;left:50%;top:140px;transform:translateX(-50%);padding:4px 12px;border-radius:var(--radius-pill);
+ background:var(--surface);border:1px solid var(--mezha);color:var(--muted);font:400 13px/18px var(--sans);white-space:nowrap;pointer-events:none}
+#tykha[hidden],#kartka[hidden]{display:none}
+/* ---- Легенда й фільтри видів: на ПК стоїть на місці завжди (картка — праворуч і її не перекриває) ---- */
+#lehenda{left:12px;bottom:12px;padding:10px 12px;max-width:360px}
+#lehenda ul{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
+#lehenda li button{display:flex;align-items:center;min-height:44px;padding:0 12px;border:1px solid var(--mezha);border-radius:var(--radius-pill);background:none;font:400 14px/20px var(--sans);color:var(--muted)}
+#lehenda li button[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent);color:var(--ink)}
+.shkala{margin-top:10px;font:400 13px/18px var(--sans);color:var(--muted)}
+.shkala .ryad{display:flex;align-items:flex-start;gap:8px}
+.shkala .ryad>span:not(.zr){white-space:nowrap}
+.shkala .zr{display:flex;gap:3px}
+.shkala .kl{display:flex;flex-direction:column;align-items:center;width:34px}
+.shkala .kl i{display:block;width:30px;height:16px;clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%)}
+.shkala .kl small{font:400 12px/16px var(--sans);font-variant-numeric:tabular-nums;color:var(--muted)}
+.shkala .vershyna{display:flex;align-items:center;gap:8px;margin-top:6px;color:var(--ink-2)}
+.shkala .vershyna svg{flex:none}
+#hr-vidkr{display:none;min-height:44px;width:100%;border:0;background:none;padding:0;text-align:left;font:600 14px/20px var(--sans);color:var(--ink-2)}
+/* ---- Відгук на дотик ---- */
+.khvylya{position:absolute;z-index:4;width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;border:2px solid var(--accent);pointer-events:none;animation:khv .3s ease-out forwards}
+@keyframes khv{from{transform:scale(.3);opacity:.9}to{transform:scale(1);opacity:0}}
+#pidkazka{position:absolute;z-index:6;left:50%;bottom:24px;transform:translateX(-50%);padding:8px 14px;border-radius:var(--radius-pill);background:var(--ink);color:var(--ground);font:400 14px/20px var(--sans);pointer-events:none;opacity:0;transition:opacity .15s}
+#pidkazka.vyd{opacity:1;transition-duration:.2s}
+/* ---- Картка соти: на ПК — праворуч, під кнопками нічого не перекриває; на телефоні — шторка ---- */
+#kartka{position:absolute;z-index:6;right:76px;top:76px;max-height:calc(100% - 88px);width:var(--shyryna);padding:10px 14px;overflow-y:auto;overscroll-behavior:contain;border-radius:var(--radius-l)}
+.k-ruchka{display:none}
+.k-shap{display:flex;align-items:flex-start;gap:8px}
+.k-shap>div{flex:1;min-width:0}
+.k-shap h2{margin:0;font:700 18px/22px var(--disp)}
+.k-shap p{margin:0;font:400 12px/16px var(--sans);color:var(--muted)}
+.k-x{flex:none;width:44px;height:44px;margin:-8px -10px 0 0;border:0;background:none;font-size:24px;line-height:24px;color:var(--muted)}
+.chyslo{display:flex;align-items:baseline;gap:8px;margin-top:4px}
+.velyke{font:800 34px/40px var(--disp);letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+.pid{font:600 13px/18px var(--sans);color:var(--ink-2)}
+.por{margin:0;font:400 13px/18px var(--sans);color:var(--ink)}
+.malo{margin-top:8px;padding:12px;background:var(--surface-tint);border-radius:var(--radius-m)}
+.malo b{display:block;font:800 18px/24px var(--disp)}
+.malo span{font:400 13px/18px var(--sans);color:var(--ink-2)}
+.blok{margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
+.blok h3{margin:0 0 4px;font:600 13px/18px var(--sans);color:var(--muted)}
+.hr{display:grid;grid-template-columns:1fr auto;align-items:center;column-gap:8px;min-height:22px;font:400 13px/18px var(--sans)}
+.hr b{font:800 14px/18px var(--disp);font-variant-numeric:tabular-nums}
+.nas{display:flex;justify-content:space-between;align-items:center;min-height:24px;margin-top:3px;padding-top:3px;font:400 13px/18px var(--sans);border-top:1px dashed var(--line);color:var(--ink-2)}
+.nas b{font:800 14px/18px var(--disp);color:var(--ink)}
+.roky{display:flex;align-items:flex-end;gap:3px}
+.r{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:68px}
+.r em{font:600 12px/14px var(--sans);font-style:normal;color:var(--ink-2)}
+.r u{display:block;width:100%;max-width:44px;margin:1px 0 2px;background:var(--accent);border-radius:var(--radius-s) var(--radius-s) 0 0;text-decoration:none}
+.r span{font:400 12px/14px var(--sans);color:var(--muted);font-variant-numeric:tabular-nums}
+.r.zamok u{background:var(--data-city);opacity:.55}
+.r.zamok svg{color:var(--muted)}
+.r.nepovnyi u{background:var(--data-3)}
+.pidpys-sir{margin:3px 0 0;font:400 12px/16px var(--sans);color:var(--muted)}
+.pik b{font:800 16px/20px var(--disp)}
+.pik span{margin-left:8px;font:400 12px/16px var(--sans);color:var(--muted)}
+.pik span:first-child{margin-left:0}
+.povt{margin:0;padding:0;list-style:none}
+.povt li{padding:3px 8px;margin-top:3px;border-radius:var(--radius-s);background:var(--attention-soft);font:400 13px/18px var(--sans)}
+.povt li:first-child{margin-top:0}
+.mezha{margin:8px 0 0;font:400 12px/16px var(--sans);color:var(--muted)}
+.k-tip .maplibregl-popup-content{background:var(--surface);color:var(--ink);padding:6px 10px;border-radius:var(--radius-m);border:1px solid var(--mezha);box-shadow:none;font:400 13px/18px var(--sans)}
+.k-tip .maplibregl-popup-tip{display:none}
+.maplibregl-ctrl-group button{width:44px;height:44px}
+.maplibregl-ctrl-attrib{font:400 11px/16px var(--sans);color:var(--ink-2);background:var(--surface)!important}
+.maplibregl-ctrl-attrib a{color:var(--ink-2)}
+.k-atr-i{display:none;background:none;border:0;color:var(--muted);font-size:15px;min-width:44px;min-height:44px}
+@media (prefers-reduced-motion:reduce){#kartka,#pidkazka{transition:none!important}.khvylya{animation:none;display:none}}
+@media (max-width:700px){
+ /* На телефоні перемикачі макета гортаються вбік. */
+ #porivn{top:8px;left:8px;right:8px;transform:none;max-width:none;overflow-x:auto;scrollbar-width:none;padding:2px 4px}
+ #porivn::-webkit-scrollbar{display:none}
+ #porivn .mitka{display:none}
+ #porivn button{padding:0 8px;font-size:13px}
+ #verkh{top:64px;left:8px;right:68px;width:auto;padding-left:10px}
+ #pidkazky{left:8px;right:8px;top:120px;width:auto}
+ .kruh{right:8px}
+ #f3d{top:64px}
+ #ftema{top:124px}
+ #tykha{top:124px}
+ #lehenda{left:8px;right:60px;bottom:8px;max-width:none;padding:8px 10px}
+ #lehenda ul{display:none;padding-bottom:6px}
+ #lehenda.vidkr ul{display:flex}
+ #hr-vidkr{display:block}
+ .shkala{margin-top:0}
+ /* Під шторкою легенда й кнопки +/− ховаються на своїх місцях і повертаються після закриття — нічого не з'їжджає. */
+ body.k-vidkr #lehenda,body.k-vidkr .maplibregl-ctrl-bottom-right{visibility:hidden}
+ body.shukayu #lehenda,body.shukayu .kruh,body.shukayu #tykha,body.shukayu .maplibregl-ctrl-bottom-right{display:none}
+ /* Шторка — як у М5 (S-К.21): 45 % екрана, дотик до шапки — на весь екран; «Назад» телефона її закриває. */
+ #kartka{left:0;right:0;top:auto;bottom:0;width:auto;height:45vh;max-height:none;font-size:14px;border-radius:var(--radius-l) var(--radius-l) 0 0;border-width:1px 0 0;padding:0 20px calc(16px + env(safe-area-inset-bottom));transition:height .2s}
+ #kartka.tyagnu{transition:none}
+ #kartka.vysoka{height:calc(100% - 8px)}
+ .k-ruchka{display:block;height:20px;margin:0 -20px;touch-action:none;cursor:grab;position:relative}
+ .k-ruchka::after{content:'';position:absolute;left:50%;top:8px;width:40px;height:4px;margin-left:-20px;border-radius:2px;background:var(--mezha)}
+ .k-shap{touch-action:none;cursor:grab}
+ .k-shap h2{font-size:20px;line-height:26px}
+ .k-shap p{font-size:13px;line-height:18px}
+ .por,.hr,.nas,.povt li{font-size:14px;line-height:20px}
+ .hr{min-height:30px}
+ .hr b,.nas b{font-size:16px;line-height:20px}
+ .blok{margin-top:12px;padding-top:10px}
+ .r{height:76px}
+ .k-atr-i{display:inline-block}
+ .maplibregl-ctrl-attrib:not(.k-atr-vidkr) .maplibregl-ctrl-attrib-inner{display:none}
+ .maplibregl-ctrl-attrib:not(.k-atr-vidkr){background:none!important}
+ .maplibregl-ctrl-attrib.k-atr-vidkr{max-width:calc(100vw - 24px)}
+ .maplibregl-ctrl-bottom-right{bottom:0}
+ #pidkazka{bottom:96px}
+}
+</style>
+</head>
+<body data-f="fixel">
+<div id="map" aria-label="Карта Києва сотами"></div>
+<div id="porivn" class="plashka" role="group" aria-label="Перемикачі макета">
+ <span class="mitka">МАКЕТ М6 · К3</span>
+ <div class="gr"><span>Шрифт</span>
+  <button type="button" data-shr="fixel" title="Fixel (MacPaw)">Fixel</button>
+  <button type="button" data-shr="plex" title="IBM Plex Sans">Plex</button>
+  <button type="button" data-shr="arsenal" title="Arsenal">Arsenal</button></div>
+ <div class="gr"><span>Вау</span>
+  <button type="button" data-vau="khvylya" title="Вершини виростають хвилею від центру при першому відкритті">Хвиля</button>
+  <button type="button" data-vau="svitlo" title="М'яке світло: верх вершин світліший, боки в тіні">Світло</button>
+  <button type="button" data-vau="perelit" title="Повільний переліт камери до міста при першому відкритті">Переліт</button></div>
+ <div class="gr"><span>Дані</span>
+  <button type="button" data-dani="" title="Випуск даних 2024–2026">2024–26</button>
+  <button type="button" data-dani="x5" title="Перевірка шкали: кожна сота × 5 із розкидом">×5</button>
+  <button type="button" data-dani="x20" title="Перевірка шкали: кожна сота × 20 із розкидом">×20</button>
+  <button type="button" data-dani="nerivni" title="Перевірка шкали: дуже нерівні дані — густі соти ще густіші">нерівні</button></div>
+</div>
+<div id="verkh" class="plashka" role="search">
+ <span class="znak"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5 21.1 6.75V17.25L12 22.5 2.9 17.25V6.75Z" fill="var(--accent)"/><path d="M12 8 15.5 10V14L12 16 8.5 14V10Z" fill="var(--surface)"/></svg></span>
+ <input id="poshuk" type="search" autocomplete="off" spellcheck="false" placeholder="Вулиця, місце або район" aria-label="Пошук місця на карті" aria-controls="pidkazky" aria-autocomplete="list">
+</div>
+<ul id="pidkazky" class="plashka" role="listbox" hidden></ul>
+<button id="f3d" class="kruh" type="button" aria-label="Перемкнути 3D і 2D">3D</button>
+<button id="ftema" class="kruh" type="button"></button>
+<div id="tykha" hidden>будинки — у підписці</div>
+<div id="lehenda" class="plashka"><button id="hr-vidkr" type="button" aria-expanded="false">Види подій</button><ul></ul><div class="shkala"></div></div>
+<aside id="kartka" class="plashka" hidden aria-label="Картка соти"></aside>
+<div id="pidkazka" role="status" aria-live="polite"></div>
+
+<script type="module">
+function bezKarty(t){document.getElementById('map').innerHTML='<div style="padding:96px 24px;text-align:center">'+t+'</div>'}
+{let ok=false; try{const c=document.createElement('canvas'); ok=!!(c.getContext('webgl2')||c.getContext('webgl'))}catch(e){}
+ if(!ok){bezKarty('Цей браузер не показує карту: потрібен WebGL.'); throw new Error('немає WebGL')}}
+let maplibregl;
+try{const m_=await import('../m1/vendor/maplibre-gl-6.10.0/maplibre-gl.mjs'); maplibregl=m_.default||m_}
+catch(e){bezKarty('Карта не завантажилася. Оновіть сторінку.'); throw e}
+const D=await (await fetch('../m1/dani.json')).json();
+
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt=n=>String(n).replace(/\B(?=(\d{3})+$)/g,' ');
+const pl=(n,a,b,c)=>{const d=n%10,s=n%100; return s>=11&&s<=14?c:d===1?a:d>=2&&d<=4?b:c};
+const telefon=()=>innerWidth<=700;
+const TYKHO=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+
+// ==== Перемикачі макета: шрифт, «вау», дані для перевірки шкали ====
+const parU=new URLSearchParams(location.search);
+const SHR=['plex','arsenal'].includes(parU.get('f'))?parU.get('f'):'fixel';
+document.body.dataset.f=SHR;
+const VAU=new Set((parU.get('vau')||'').split(',').filter(x=>['khvylya','svitlo','perelit'].includes(x)));
+const DANI=['x5','x20','nerivni'].includes(parU.get('dani'))?parU.get('dani'):'';
+const zAdresy=(p,bezKamery)=>location.pathname+'?'+p+(bezKamery?'':location.hash);
+document.querySelectorAll('[data-shr]').forEach(b=>{b.setAttribute('aria-pressed',String(b.dataset.shr===SHR));
+ b.onclick=()=>{document.body.dataset.f=b.dataset.shr; const p=new URLSearchParams(location.search); p.set('f',b.dataset.shr);
+  history.replaceState(history.state,'',zAdresy(p));
+  document.querySelectorAll('[data-shr]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)))}});
+document.querySelectorAll('[data-vau]').forEach(b=>{b.setAttribute('aria-pressed',String(VAU.has(b.dataset.vau)));
+ b.onclick=()=>{const k=b.dataset.vau; VAU.has(k)?VAU.delete(k):VAU.add(k);
+  const p=new URLSearchParams(location.search); VAU.size?p.set('vau',[...VAU].join(',')):p.delete('vau');
+  b.setAttribute('aria-pressed',String(VAU.has(k)));
+  // «Світло» — одразу; «Хвиля» й «Переліт» — це перше відкриття, тож показуємо його заново (без камери в адресі).
+  if(k==='svitlo'){history.replaceState(history.state,'',zAdresy(p)); zafarbuvaty(); svitlo()}
+  else if(VAU.has(k)) location.href=zAdresy(p,true); else history.replaceState(history.state,'',zAdresy(p))}});
+document.querySelectorAll('[data-dani]').forEach(b=>{b.setAttribute('aria-pressed',String(b.dataset.dani===DANI));
+ b.onclick=()=>{if(b.dataset.dani===DANI) return; const p=new URLSearchParams(location.search);
+  b.dataset.dani?p.set('dani',b.dataset.dani):p.delete('dani'); location.href=zAdresy(p)}});
+
+// ==== СОТИ: три рівні й плавний перехід (механіка карти Києва) ====
+const MX_=111320*Math.cos(50.45*Math.PI/180), MY_=111320;
+const HEXG=[{id:'XL',R:800},{id:'L',R:330},{id:'S',R:130}];
+const GI=Object.fromEntries(HEXG.map(G=>[G.id,G]));
+const HRUPY=D.hrupy, GN=HRUPY.length, ZUM_BUDYNKIV=14.5;
+// Пласкі соти: старий рівень згасає, новий проростає, смуги перекриваються (як у карті Києва) — без провалу.
+const FADE={XL:[[0,1],[9.6,1],[10.0,0]],L:[[9.45,0],[9.85,1],[12.3,1],[12.8,0]],S:[[12.0,0],[12.4,1]]};
+// Стовпчики — без «привидів»: старий рівень спершу осідає й гасне, і лише потім виростає новий. Два рівні стовпчиків
+// ніколи не видно одночасно: межа між ними (ZMINA) — там, де старий уже нульовий.
+const ZMINA=[9.75,12.4];
+// З зуму 14 стовпчики нижчають — на кварталі видно вулиці й назви.
+const MN={XL:[[0,1],[9.45,1],[9.75,0]],L:[[9.75,0],[10.1,1],[12.0,1],[12.4,0]],S:[[12.4,0],[12.8,1],[13.6,1],[14,.6],[14.6,.32],[15.5,.15],[17,.05]]};
+const OPS={XL:[[0,1],[9.6,1],[9.75,0]],L:[[9.75,0],[9.9,1],[12.25,1],[12.4,0]],S:[[12.4,0],[12.55,1]]};
+const MEZHI={XL:[0,10.05],L:[9.4,12.85],S:[11.95,24]};               // пласкі соти
+const MEZHI_ST={XL:[0,ZMINA[0]],L:[ZMINA[0],ZMINA[1]],S:[ZMINA[1],24]};  // стовпчики
+const colG=(z=map.getZoom())=>z<ZMINA[0]?'XL':z<ZMINA[1]?'L':'S';
+function hexPoly(cx,cy,R,k=1){const out=[];
+ for(let a=0;a<6;a++){const t=Math.PI/180*(60*a+30); out.push([(cx+k*R*Math.cos(t))/MX_,(cy+k*R*Math.sin(t))/MY_])}
+ out.push(out[0]); return [out]}
+function hexAtM(x,y,R){const w=Math.sqrt(3)*R,h=1.5*R,r0=Math.round(y/h); let best=null,bd=1e30;
+ for(let dr=-1;dr<=1;dr++){const row=r0+dr,c0=Math.round((x-(row&1)*w/2)/w);
+  for(let dc=-1;dc<=1;dc++){const col=c0+dc,cx=col*w+(row&1)*w/2,cy=row*h,d=(cx-x)**2+(cy-y)**2; if(d<bd){bd=d;best=[row+':'+col,cx,cy]}}}
+ return best}
+const rgb=c=>{const v=parseInt(c.slice(1),16); return [v>>16,(v>>8)&255,v&255]};
+const hexK=a=>'#'+a.map(x=>Math.round(clamp(x,0,255)).toString(16).padStart(2,'0')).join('');
+const zmishaty=(c,tsil,k)=>hexK(rgb(c).map((x,i)=>x+(rgb(tsil)[i]-x)*k));
+
+// Одна бірюзова шкала (М4, OKLCH, h ≈ 192°). Темна тема: пласкі соти — приглушені тони, вершини — найсвітліші.
+const SHKALA={svitla:['#76BBB8','#41A29F','#068784','#026A68','#034E4D'],temna:['#1F5A57','#256B68','#2B7E7A','#33918C','#3AA19C']};
+// Вершини (стовпчики): від нижньої до найвищої — колір трохи густішає; у темній — найяскравіші на карті.
+const VERSH={svitla:['#026A68','#023F3E'],temna:['#43C2BC','#8AEDE7']};
+// Прозорість пласкої соти: lo + (hi − lo) · частка², де частка — місце соти серед сот рівня (0…1).
+const PROZ={svitla:[.14,.62],temna:[.28,.52]};
+// Межі класів кольору й вершин — частками сот рівня: 20 / 20 / 20 / 28 / 12 %; стовпчиком — верхні 12 %.
+const KVANT=[.2,.4,.6,.88], VERSHYNA=.88, H_VERSH=1.6;
+let TEMA=SHKALA[parU.get('tema')]?parU.get('tema'):'svitla';
+document.body.dataset.t=TEMA;
+const AKTYVNI=new Set(HRUPY.map((h,i)=>i));
+let MEDIANA=D.meta.mediana130;
+const POR={XL:[],L:[],S:[]}, HEXB={XL:new Map(),L:new Map(),S:new Map()}, POR_V={XL:1,L:1,S:1};
+const C0=[D.meta.centr[1]*MX_,D.meta.centr[0]*MY_];
+for(const id of ['L','S']){
+ HEXB[id]=new Map(D.soty[id].map(r=>[r[0],{k:r[0],cx:r[1],cy:r[2],n:r[3],g:r[4],y:r[5],pik:r[6],pikN:r[7],chasN:r[8],rayon:D.rayony[r[9]]||'',oriyentyr:D.oriyentyry[r[10]]||'',pr:r[11]}]))}
+// Дані для перевірки шкали (лише макет): ×5 і ×20 — кожен вид у соті множиться, плюс випадковий розкид (як більше даних);
+// «нерівні» — густі соти стають ще густішими (степінь 2,2): хвіст розподілу довшає в рази.
+if(DANI){let s=36; const vyp=()=>{s=(s*1103515245+12345)%2147483648; return s/2147483648};
+ const zminy=DANI==='nerivni'?(v=>Math.round(v**2.2)):(k=>v=>v?v*k+Math.floor(vyp()*k):0)(DANI==='x5'?5:20);
+ for(const id of ['L','S']) for(const b of HEXB[id].values()){
+  const n0=b.n; b.g=b.g.map(zminy); b.n=b.g.reduce((x,y)=>x+y,0);
+  const k=n0?b.n/n0:1; b.y=b.y.map(v=>Math.round(v*k)); b.pikN=Math.round(b.pikN*k); b.chasN=Math.round(b.chasN*k)}
+ const zi=[...HEXB.S.values()].map(b=>b.n).filter(n=>n>0).sort((a,b)=>a-b); MEDIANA=zi[zi.length>>1]||1}
+// 800 м — суми сот 330 м за їхніми центрами (лише суми, як і решта безкоштовного).
+{const B=new Map(), ray=new Map();
+ for(const s of HEXB.L.values()){const [k,cx,cy]=hexAtM(s.cx,s.cy,800);
+  let b=B.get(k); if(!b){b={k,cx,cy,n:0,g:new Array(GN).fill(0),y:new Array(D.meta.roky.length).fill(0),pik:0,pikN:0,chasN:0,rayon:'',oriyentyr:'',pr:[],xl:true}; B.set(k,b); ray.set(k,new Map())}
+  b.n+=s.n; s.g.forEach((v,i)=>b.g[i]+=v); s.y.forEach((v,i)=>b.y[i]+=v); for(const p of s.pr) if(!b.pr.includes(p)) b.pr.push(p);
+  if(s.rayon){const m=ray.get(k); m.set(s.rayon,(m.get(s.rayon)||0)+s.n)}}
+ for(const [k,b] of B){const m=[...ray.get(k)].sort((a,c)=>c[1]-a[1]); b.rayon=m.length?m[0][0]:''}
+ HEXB.XL=B}
+for(const G of HEXG){let dmax=1; for(const b of HEXB[G.id].values()) dmax=Math.max(dmax,Math.hypot(b.cx-C0[0],b.cy-C0[1]));
+ for(const b of HEXB[G.id].values()){b.nf=b.n; b.gf=b.g; b.kr=0; b.q=0; b.d=Math.min(1,Math.hypot(b.cx-C0[0],b.cy-C0[1])/dmax)}}
+// Шкала частками. Частка соти q — її місце серед непорожніх сот рівня: (скільки сот менші + половина рівних) / усіх.
+// Однакове число → однакова частка → однаковий колір, прозорість і висота. Від обсягу даних вигляд не залежить:
+// множення всіх чисел у 5 чи 20 разів частки не змінює. Рахується наново після фільтра видів (і періоду, коли з'явиться).
+function pererakhuvaty(){
+ for(const G of HEXG){const bs=[...HEXB[G.id].values()];
+  for(const b of bs){b.gf=b.g.map((v,i)=>AKTYVNI.has(i)?v:0); b.nf=b.gf.reduce((x,y)=>x+y,0); b.kr=0; b.q=0}
+  const zi=bs.filter(b=>b.nf>0).sort((a,b)=>a.nf-b.nf), L_=zi.length;
+  for(let i=0;i<L_;){let j=i; while(j<L_&&zi[j].nf===zi[i].nf) j++;
+   const q=(i+(j-i)/2)/L_; for(let t=i;t<j;t++){zi[t].q=q; zi[t].kr=KVANT.filter(x=>q>=x).length} i=j}
+  // Межі для легенди — найменше число в кожному класі (числа поточних даних).
+  POR[G.id]=SHKALA.svitla.map((c,k)=>{const b=zi.find(x=>x.kr===k); return b?b.nf:null});
+  {const v=zi.find(b=>b.q>=VERSHYNA); POR_V[G.id]=v?v.nf:0}
+  G.p95=Math.max(1,zi.length?zi[Math.min(L_-1,Math.floor(L_*.95))].nf:1);
+  if(G.id==='S'){const ns=zi.map(b=>b.nf); MEDIANA=L_?(L_%2?ns[(L_-1)/2]:(ns[L_/2-1]+ns[L_/2])/2):0}}}
+const vershyna=b=>b.nf>0&&b.q>=VERSHYNA;
+// Висота вершини — теж за часткою: найнижча вершина — 0,2 найвищої, далі за коренем. Висота дублює колір.
+const chastkaVysoty=b=>.2+.8*Math.sqrt(clamp((b.q-VERSHYNA)/(1-VERSHYNA),0,1));
+const prozPlaskoi=b=>{const [lo,hi]=PROZ[TEMA]; return lo+(hi-lo)*b.q*b.q};
+function hexData(G){const B=[...HEXB[G.id].values()].filter(b=>b.nf>0);
+ return {type:'FeatureCollection',features:B.map(b=>({type:'Feature',geometry:{type:'Polygon',coordinates:hexPoly(b.cx,b.cy,G.R,1)},
+  properties:{k:b.k,c:SHKALA[TEMA][b.kr],a:prozPlaskoi(b),n:b.nf}}))}}
+// Стовпчик = тіло + тонка світла кромка зверху (сусідні вершини не зливаються). «Світло» робить верх ще світлішим.
+const K_ST=.8;
+function koloryVershyny(b){const [c0,c1]=VERSH[TEMA], t=Math.sqrt(clamp((b.q-VERSHYNA)/(1-VERSHYNA),0,1)), tem=TEMA==='temna';
+ const tilo=zmishaty(c0,c1,t), sv=VAU.has('svitlo');
+ return {tilo,kant:zmishaty(tilo,'#FFFFFF',tem?(sv?.6:.5):(sv?.45:.3))}}
+function colData(G){const B=[...HEXB[G.id].values()].filter(vershyna), VYSOTA=G.R*H_VERSH, KANT=G.R/10;
+ const poly=k=>b=>({type:'Polygon',coordinates:hexPoly(b.cx,b.cy,G.R,k)});
+ const ch=(b,c,bh,eb,eh,h)=>({type:'Feature',geometry:poly(K_ST)(b),properties:{k:b.k,c,cl:zmishaty(c,'#FFFFFF',.45),n:b.nf,h,bh,eb,eh,d:b.d}});
+ return {type:'FeatureCollection',features:B.flatMap(b=>{const h=VYSOTA*chastkaVysoty(b), k=koloryVershyny(b);
+  return [ch(b,k.tilo,0,0,-KANT,h),ch(b,k.kant,h,-KANT,0,h)]})}}
+pererakhuvaty();
+
+// ==== Вирази за зумом ====
+const interp=(st,z)=>{if(z<=st[0][0]) return st[0][1]; for(let i=1;i<st.length;i++){const [z1,v1]=st[i],[z0,v0]=st[i-1]; if(z<=z1) return v0+(v1-v0)*(z-z0)/(z1-z0)} return st[st.length-1][1]};
+function zaZumom(tochky,f){const t=[...new Set(tochky)].sort((a,b)=>a-b); return ['interpolate',['linear'],['zoom'],...t.flatMap(z=>[z,f(z)])]}
+const TOCHKY=Object.fromEntries(HEXG.map(G=>[G.id,[...FADE[G.id],...MN[G.id],...OPS[G.id]].map(x=>x[0]).concat(MEZHI[G.id],MEZHI_ST[G.id]).filter(z=>z<24)]));
+// «Хвиля» (вау а): при першому відкритті вершини виростають від центру назовні, 1,1 с, один раз.
+let ROST=1;
+const PERSHE=!location.hash;                   // перше відкриття: камери в адресі ще немає
+const KHVYLYA=VAU.has('khvylya')&&PERSHE&&!TYKHO, PERELIT=VAU.has('perelit')&&PERSHE&&!TYKHO;
+if(KHVYLYA) ROST=0;
+const rostVyraz=()=>{if(ROST>=1) return 1; const x=['min',1,['max',0,['/',['-',ROST,['*',.45,['get','d']]],.55]]]; return ['*',x,['-',2,x]]};
+function proz2d(id){return zaZumom(TOCHKY[id],z=>['*',['get','a'],interp(FADE[id],z)])}
+function vysota(id,H,E){const r=rostVyraz();
+ return zaZumom(TOCHKY[id],z=>['max',0,['*',interp(MN[id],z),r,['+',['get',H],['get',E]]]])}   // кромка нижчає разом зі стовпчиком
+const OP_STOVP=()=>TEMA==='temna'?.95:.88;
+const opStovp=id=>zaZumom(TOCHKY[id],z=>+(OP_STOVP()*interp(OPS[id],z)).toFixed(3));
+function zastosuvatyRist(){for(const G of HEXG){const id=G.id;
+ if(!map.getLayer('k-col-'+id)) continue;
+ map.setPaintProperty('k-col-'+id,'fill-extrusion-base',vysota(id,'bh','eb'));
+ map.setPaintProperty('k-col-'+id,'fill-extrusion-height',vysota(id,'h','eh'))}}
+function vyrosty(){if(!KHVYLYA||ROST>=1){ROST=1; MAKET.stan.vyrosly=true; return} const t0=performance.now(), T=1100;
+ const krok=t=>{ROST=Math.min(1,(t-t0)/T); zastosuvatyRist(); if(ROST<1) requestAnimationFrame(krok); else {MAKET.stan.vyrosly=true; zastosuvatyRist(); zaslony()}};
+ requestAnimationFrame(krok)}
+
+// ==== Підкладка OpenFreeMap: світла — positron карти Києва; темна — нічна з В2 (М5) ====
+const STYLI={svitla:'https://tiles.openfreemap.org/styles/positron',temna:'https://tiles.openfreemap.org/styles/dark'};
+const NICH_V={background:'#0C1012',water:'#111A1C',landuse_park:'#121816',landcover_wood:'#121816',park:'#121816',building:'#0F1416'};
+const UK_NAME=['coalesce',['get','name:uk'],['get','name']];
+const NAZVY_MISTS=l=>l.type==='symbol'&&(['place','water_name','mountain_peak'].includes(l['source-layer'])||/^base-/.test(l.id));
+function patchStyle(s,t){
+ const layers=s.layers.filter(l=>!(l.type==='symbol'&&(/shield/.test(l.id)||l['source-layer']==='poi')));
+ let font=null,tc='#888',th='#fff';
+ for(const l of layers){ if(l.type!=='symbol'||!l.layout) continue;
+  const tf=l.layout['text-field']; if(tf&&JSON.stringify(tf).includes('name')) l.layout['text-field']=UK_NAME;
+  if(!font&&l['source-layer']==='transportation_name'&&l.layout['text-font']){font=l.layout['text-font']; const p=l.paint||{};
+   if(typeof p['text-color']==='string') tc=p['text-color']; if(typeof p['text-halo-color']==='string') th=p['text-halo-color']}}
+ const src=Object.keys(s.sources).find(k=>s.sources[k].type==='vector');
+ if(src&&font){const txt=(id,sl,minzoom,filter,size,extra)=>({id:'base-'+id,type:'symbol',source:src,'source-layer':sl,minzoom,filter,
+   layout:{'text-field':UK_NAME,'text-font':font,'text-size':size,...extra},paint:{'text-color':tc,'text-halo-color':th,'text-halo-width':1.2}});
+  layers.push(txt('park','poi',14,['==',['get','class'],'park'],11,{'text-max-width':8}),
+   txt('metro','poi',13,['all',['==',['get','class'],'railway'],['in',['get','subclass'],['literal',['station','subway']]]],11,{'text-max-width':8,'text-offset':[0,.2]}))}
+ if(t==='temna') for(const l of layers){const c=NICH_V[l.id];
+  if(c){const k=l.type==='background'?'background-color':l.type==='fill'?'fill-color':null; if(k) l.paint={...(l.paint||{}),[k]:c}}
+  if(l.id==='building') l.paint={...(l.paint||{}),'fill-outline-color':NICH_V.building,'fill-opacity':.5};
+  if(l.type==='line'&&l['source-layer']==='transportation') l.paint={...(l.paint||{}),'line-opacity':.55};
+  if(l.type==='symbol') l.paint={...(l.paint||{}),'text-opacity':.75}}
+ return {...s,layers}}
+
+// ==== Камера: місто цілим без стрибка на старті; адреса камери — своя (не hash MapLibre) ====
+const pikselivNaMetr=z=>512*2**z/(40075016*Math.cos(50.45*Math.PI/180));
+function chytatyKameru(){const m=location.hash.match(/^#([\d.]+)\/([-\d.]+)\/([-\d.]+)(?:\/([-\d.]+))?(?:\/([-\d.]+))?/);
+ return m?{zoom:+m[1],center:[+m[3],+m[2]],bearing:+(m[4]||0),pitch:+(m[5]||0)}:null}
+const PITCH=40;
+function kameraMista(){let w=180,s=90,e=-180,n=-90;
+ for(const c of HEXB.L.values()){const lo=c.cx/MX_,la=c.cy/MY_; if(lo<w)w=lo; if(lo>e)e=lo; if(la<s)s=la; if(la>n)n=la}
+ const W=innerWidth, H=innerHeight, pad=telefon()?{t:130,b:90,l:0,r:0}:{t:140,b:72,l:48,r:48};
+ const my=la=>Math.log(Math.tan(Math.PI/4+la*Math.PI/360));
+ const dx=(e-w)/360*512, dy=(my(n)-my(s))/(2*Math.PI)*512;
+ const z=Math.log2(Math.min((W-pad.l-pad.r)/dx,(H-pad.t-pad.b)/dy));
+ const cy=(my(n)+my(s))/2, la=(2*Math.atan(Math.exp(cy))-Math.PI/2)*180/Math.PI;
+ return {zoom:z+(telefon()?.3:.35),center:[(w+e)/2,la],bearing:0,pitch:PITCH}}
+const KAM=chytatyKameru()||kameraMista();
+// «Переліт» (вау в): старт трохи здалеку, згори й під кутом, далі — повільно до міста з легким нахилом.
+const START=PERELIT?{zoom:KAM.zoom-1.5,center:KAM.center,bearing:-24,pitch:0}:KAM;
+let D3=KAM.pitch>8;
+const map=new maplibregl.Map({container:'map',...START,maxZoom:19,maxPitch:60,attributionControl:false,fadeDuration:300});
+map.touchPitch.enable();
+function zapysatyKameru(){if(!MAKET.stan.pryletily) return; const c=map.getCenter();
+ history.replaceState(history.state,'',location.pathname+location.search+`#${map.getZoom().toFixed(2)}/${c.lat.toFixed(4)}/${c.lng.toFixed(4)}/${Math.round(map.getBearing())}/${Math.round(map.getPitch())}`)}
+map.on('moveend',zapysatyKameru);
+const attrEl=document.createElement('div'); attrEl.className='maplibregl-ctrl maplibregl-ctrl-attrib';
+const A=(u,t)=>`<a href="${u}" target="_blank" rel="noopener">${t}</a>`;
+attrEl.innerHTML='<button class="k-atr-i" aria-label="Джерела даних" title="Джерела даних">ⓘ</button><div class="maplibregl-ctrl-attrib-inner">Підкладка: '+A('https://openfreemap.org','OpenFreeMap')+' © '+A('https://openmaptiles.org','OpenMapTiles')+' · дані © '+A('https://www.openstreetmap.org/copyright','OpenStreetMap')+' (ODbL) · події: '+A('https://reyestr.court.gov.ua','ЄДРСР')+', ДСА України ('+A('https://creativecommons.org/licenses/by/4.0/deed.uk','CC BY')+')</div>';
+attrEl.addEventListener('click',e=>{if(e.target.closest('.k-atr-i')) attrEl.classList.toggle('k-atr-vidkr')});
+map.addControl(new maplibregl.NavigationControl({showCompass:false}),'bottom-right');
+map.addControl({onAdd:()=>attrEl,onRemove(){}},'bottom-right');
+map.setMissingStyleImageResolver(id=>{if(!map.hasImage(id)) map.addImage(id,{width:1,height:1,data:new Uint8Array(4)})});
+map.setStyle(STYLI[TEMA],{diff:false,transformStyle:(prev,next)=>patchStyle(next,TEMA)});
+window.MAKET={map,HEXB,HEXG,POR,POR_V,VAU,DANI,stan:{pidkladka:false,plytky:0,pomylky:[],vyrosly:!KHVYLYA,pryletily:!PERELIT,zaslony:0}};
+map.on('error',e=>MAKET.stan.pomylky.push(String(e&&e.error&&e.error.message)));
+map.on('sourcedata',e=>{if(e.tile&&e.sourceId==='openmaptiles'){MAKET.stan.pidkladka=true; MAKET.stan.plytky++}});
+
+const cssv=n=>getComputedStyle(document.body).getPropertyValue(n).trim();
+function zafarbuvaty(){ if(!map.getSource('k-hex-L')) return;
+ for(const G of HEXG){map.getSource('k-hex-'+G.id).setData(hexData(G)); map.getSource('k-col-'+G.id).setData(colData(G))}
+ map.setPaintProperty('k-hexsel','line-color',cssv('--ink')); map.setPaintProperty('k-hexselh','line-color',cssv('--surface'));
+ zaslony()}
+// М'яке світло (вау б): верх вершин світліший, боки — у тіні. Без нього — рівне розсіяне світло.
+function svitlo(){map.setLight(VAU.has('svitlo')?{anchor:'viewport',position:[1.15,200,32],intensity:.6,color:'#ffffff'}
+ :{anchor:'map',position:[1.2,210,40],intensity:.3,color:'#ffffff'})}
+
+// ==== Назви вулиць не лягають на стовпчики; назви місць — над стовпчиками ====
+// Над кожним стовпчиком — невидимий значок завбільшки з його обрис. Назви вулиць, що на нього налазять, MapLibre не ставить.
+// Назви місць (райони, вода, парки, метро) підняті над значками: їх ставлять першими, і вони малюються поверх стовпчиків.
+const ZASL_W=32, ZASL_R=[];
+for(let r=1;r<=14;r+=.5) ZASL_R.push(r);
+function dodatyZaslony(){for(const r of ZASL_R){const id='k-zasl-'+r; if(!map.hasImage(id)) map.addImage(id,{width:ZASL_W,height:Math.round(ZASL_W*r),data:new Uint8Array(ZASL_W*Math.round(ZASL_W*r)*4)})}}
+function zaslony(){const src=map.getSource('k-zasl'); if(!src) return;
+ const p=map.getPitch()*Math.PI/180, id=colG(), G=GI[id], z=map.getZoom();
+ if(p<.14){src.setData({type:'FeatureCollection',features:[]}); MAKET.stan.zaslony=0; return}
+ const mn=interp(MN[id],z)*ROST, s0=Math.sqrt(3)*G.R*K_ST*pikselivNaMetr(0)/ZASL_W*1.12;
+ const f=[...HEXB[id].values()].filter(vershyna).map(b=>{
+  const hm=G.R*H_VERSH*chastkaVysoty(b)*mn; if(hm<G.R*.6) return null;
+  const r=(2*K_ST*Math.cos(p)+hm/G.R*Math.sin(p))/(Math.sqrt(3)*K_ST);
+  const im=ZASL_R.find(x=>x>=r)||ZASL_R[ZASL_R.length-1];
+  return {type:'Feature',geometry:{type:'Point',coordinates:[b.cx/MX_,b.cy/MY_]},properties:{im:'k-zasl-'+im,s0}}}).filter(Boolean);
+ src.setData({type:'FeatureCollection',features:f});
+ map.setLayoutProperty('k-zasl','icon-offset',[0,ZASL_W*Math.cos(p)/Math.sqrt(3)]);
+ MAKET.stan.zaslony=f.length}
+map.on('zoomend',zaslony); map.on('pitchend',zaslony);
+
+map.on('style.load',()=>{
+ const layers=map.getStyle().layers;
+ const ostLiniya=layers.map(l=>l.type!=='symbol').lastIndexOf(true), nadSymbol=(layers[ostLiniya+1]||{}).id;
+ const tem=TEMA==='temna';
+ for(const G of HEXG){const id=G.id, mz=MEZHI[id], ms=MEZHI_ST[id];
+  map.addSource('k-hex-'+id,{type:'geojson',data:hexData(G)});
+  map.addSource('k-col-'+id,{type:'geojson',promoteId:'k',data:colData(G)});
+  map.addLayer({id:'k-hex-'+id,type:'fill',source:'k-hex-'+id,minzoom:mz[0],maxzoom:mz[1],paint:{'fill-color':['get','c'],'fill-opacity':proz2d(id)}},nadSymbol);
+  map.addLayer({id:'k-hexl-'+id,type:'line',source:'k-hex-'+id,minzoom:mz[0],maxzoom:mz[1],paint:{'line-color':tem?'rgba(0,0,0,.5)':'rgba(255,255,255,.45)','line-width':.6,'line-opacity':zaZumom(TOCHKY[id],z=>interp(FADE[id],z))}},nadSymbol);
+  map.addLayer({id:'k-col-'+id,type:'fill-extrusion',source:'k-col-'+id,minzoom:ms[0],maxzoom:ms[1],paint:{
+   'fill-extrusion-color':['case',['boolean',['feature-state','sel'],false],['get','cl'],['get','c']],
+   'fill-extrusion-base':vysota(id,'bh','eb'),'fill-extrusion-height':vysota(id,'h','eh'),'fill-extrusion-opacity':opStovp(id),'fill-extrusion-vertical-gradient':true}},nadSymbol)}
+ if(tem&&map.getLayer('building')) map.setLayoutProperty('building','visibility','none');
+ svitlo();
+ map.addSource('k-hexsel',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
+ map.addLayer({id:'k-hexselh',type:'line',source:'k-hexsel',paint:{'line-color':'#fff','line-width':5}});
+ map.addLayer({id:'k-hexsel',type:'line',source:'k-hexsel',paint:{'line-color':'#1B1F24','line-width':2.5}});
+ dodatyZaslony();
+ map.addSource('k-zasl',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
+ map.addLayer({id:'k-zasl',type:'symbol',source:'k-zasl',layout:{'icon-image':['get','im'],'icon-anchor':'bottom','icon-allow-overlap':true,'icon-ignore-placement':false,
+  'icon-pitch-alignment':'viewport','icon-rotation-alignment':'viewport',
+  'icon-size':['interpolate',['exponential',2],['zoom'],6,['*',['get','s0'],2**6],17,['*',['get','s0'],2**17]]},paint:{'icon-opacity':0}});
+ // Назви місць — над стовпчиками, тож їм власний контраст: світлий текст із темною обвідкою в темній темі й навпаки.
+ for(const l of map.getStyle().layers) if(NAZVY_MISTS(l)){map.moveLayer(l.id);
+  map.setPaintProperty(l.id,'text-color',tem?'#E6ECEB':'#2F343B'); map.setPaintProperty(l.id,'text-halo-color',tem?'#0C1012':'#FFFFFF');
+  map.setPaintProperty(l.id,'text-halo-width',1.6); map.setPaintProperty(l.id,'text-opacity',1)}
+ zafarbuvaty(); pidpysZumu(); zastosuvatyRist();
+ if(ZARAZ) vydilyty(ZARAZ.G,ZARAZ.b)});
+map.once('load',()=>{
+ if(!PERELIT) return vyrosty();
+ const e=t=>t<.5?4*t*t*t:1-(-2*t+2)**3/2;
+ map.easeTo({...KAM,duration:2800,easing:e,essential:true});
+ map.once('moveend',()=>{MAKET.stan.pryletily=true; zapysatyKameru(); vyrosty()})});
+
+// ==== 2D/3D: лише нахил камери; стовпчики-вершини видно завжди ====
+function d3Tekst(){const b=$('#f3d'); b.textContent=D3?'2D':'3D'; b.setAttribute('aria-pressed',String(D3))}
+$('#f3d').onclick=()=>{D3=!D3; prybraty(); d3Tekst(); map.easeTo({pitch:D3?PITCH:0,duration:TYKHO?0:600})};
+d3Tekst();
+map.on('pitchend',()=>{const d=map.getPitch()>8; if(d!==D3&&MAKET.stan.pryletily){D3=d; d3Tekst()}});
+map.on('zoomend',()=>{if(ZARAZ&&ZARAZ.G.id!==colG()) zakryty()});
+function pidpysZumu(){$('#tykha').hidden=map.getZoom()<ZUM_BUDYNKIV}
+map.on('zoom',pidpysZumu);
+
+// ==== Легенда й фільтр видів ====
+const IKONA_VERSH=c=>`<svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><path d="M6 8 11 5.5 16 8V17L11 19.5 6 17Z" fill="${c}"/><path d="M6 8 11 5.5 16 8 11 10.5Z" fill="${zmishaty(c,'#FFFFFF',.4)}"/></svg>`;
+function namalyuvatyLehendu(){const id=colG(), p=POR[id];
+ $('#lehenda ul').innerHTML=HRUPY.map((h,i)=>`<li><button type="button" data-g="${i}" aria-pressed="${AKTYVNI.has(i)}">${esc(h[1])}</button></li>`).join('');
+ const vidsotok=Math.round((1-VERSHYNA)*100);
+ $('.shkala').innerHTML=`<div class="ryad"><span>менше</span><span class="zr" title="Від скількох подій у соті починається крок (на цьому масштабі)">${SHKALA[TEMA].map((c,i)=>`<span class="kl"><i style="background:${c}"></i><small>${p[i]==null?'—':fmt(p[i])+'+'}</small></span>`).join('')}</span><span>більше подій<br>у даних</span></div>`
+  +`<div class="vershyna">${IKONA_VERSH(VERSH[TEMA][1])}<span>Стовпчиком — найгустіші ${vidsotok} % сот (від ${fmt(POR_V[id])} подій). Вище — більше.</span></div>`}
+namalyuvatyLehendu();
+map.on('zoomend',()=>namalyuvatyLehendu());
+function pislyaFiltra(){pererakhuvaty(); zafarbuvaty(); namalyuvatyLehendu();
+ if(ZARAZ){if(ZARAZ.b.nf>0) namalyuvatyKartku(); else zakryty()}}
+$('#lehenda').addEventListener('click',e=>{
+ if(e.target.closest('#hr-vidkr')){const v=$('#lehenda').classList.toggle('vidkr'); $('#hr-vidkr').setAttribute('aria-expanded',String(v)); return}
+ const b=e.target.closest('[data-g]'); if(!b) return; const i=+b.dataset.g;
+ if(AKTYVNI.has(i)){if(AKTYVNI.size>1) AKTYVNI.delete(i)} else AKTYVNI.add(i);
+ pislyaFiltra()});
+const IK=b=>`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${b}</svg>`;
+const SONTSE=IK('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>');
+const MISYATS=IK('<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/>');
+function knopkaTemy(){const b=$('#ftema'), tem=TEMA==='temna', t=tem?'Увімкнути світлу тему':'Увімкнути темну тему';
+ b.innerHTML=tem?SONTSE:MISYATS; b.setAttribute('aria-label',t); b.title=t}
+function postavytyTemu(t){if(!SHKALA[t]||t===TEMA) return;
+ const p=new URLSearchParams(location.search); p.set('tema',t); location.href=zAdresy(p)}
+$('#ftema').onclick=()=>postavytyTemu(TEMA==='temna'?'svitla':'temna');
+knopkaTemy();
+MAKET.tema=postavytyTemu;
+
+// Частки для звіту (п. 1 завдання): скільки сот майже прозорі, якого тону і скільки — вершини, на кожному рівні.
+MAKET.chastky=()=>Object.fromEntries(HEXG.map(G=>{const zi=[...HEXB[G.id].values()].filter(b=>b.nf>0), N=zi.length||1;
+ const ch=f=>Math.round(1000*zi.filter(f).length/N)/10;
+ return [G.id,{sot:zi.length,max:Math.max(0,...zi.map(b=>b.nf)),prozori:ch(b=>prozPlaskoi(b)<.2),
+  tony:[0,1,2,3,4].map(k=>ch(b=>b.kr===k)),vershyny:ch(vershyna),mezhi:POR[G.id],vid:POR_V[G.id]}]}));
+
+// ==== Пошук: назви місць і районів із даних (без геокодера) ====
+const MISTSIA=[];
+{const kr=new Map();
+ for(const b of HEXB.S.values()) if(b.oriyentyr){const s=kr.get(b.oriyentyr); if(!s||b.n>s.b.n) kr.set(b.oriyentyr,{b,rayon:b.rayon})}
+ for(const [nazva,{b,rayon}] of kr) MISTSIA.push({nazva,dod:rayon?rayon+' район':'',G:GI.S,b});
+ const ry=new Map(); for(const b of HEXB.L.values()) if(b.rayon){const s=ry.get(b.rayon)||{w:180,s:90,e:-180,n:-90};
+  const lo=b.cx/MX_,la=b.cy/MY_; s.w=Math.min(s.w,lo); s.e=Math.max(s.e,lo); s.s=Math.min(s.s,la); s.n=Math.max(s.n,la); ry.set(b.rayon,s)}
+ for(const [r,m] of ry) MISTSIA.push({nazva:r+' район',dod:'район',mezhi:[[m.w,m.s],[m.e,m.n]]})}
+const norm=s=>s.toLowerCase().replace(/[’'ʼ`]/g,"'").replace(/ё/g,'е');
+let PIDK=[], VYBR=-1;
+function pokazatyPidkazky(){const q=norm($('#poshuk').value.trim()), ul=$('#pidkazky');
+ if(q.length<2){ul.hidden=true; PIDK=[]; return}
+ const maks=telefon()?6:8;
+ PIDK=MISTSIA.map(m=>{const n=norm(m.nazva), i=n.indexOf(q); return i<0?null:{m,i,poch:i===0||n[i-1]===' '?0:1}}).filter(Boolean)
+  .sort((a,b)=>a.poch-b.poch||(a.m.mezhi?-1:0)-(b.m.mezhi?-1:0)||a.m.nazva.length-b.m.nazva.length).slice(0,maks);
+ VYBR=-1;
+ ul.innerHTML=PIDK.length?PIDK.map(({m,i},j)=>{const t=m.nazva, l=q.length;
+  return `<li role="option" id="pk${j}" data-j="${j}" aria-selected="false"><span><b>${esc(t.slice(0,i))}</b>${esc(t.slice(i,i+l))}<b>${esc(t.slice(i+l))}</b></span><small>${esc(m.dod)}</small></li>`}).join('')
+  :'<li class="porozh">Такої назви немає в даних макета</li>';
+ ul.hidden=false}
+function vybraty(j){const p=PIDK[j]; if(!p) return; const m=p.m; $('#pidkazky').hidden=true; $('#poshuk').value=m.nazva; $('#poshuk').blur();
+ document.body.classList.remove('shukayu'); zakryty();
+ const pt=D3?PITCH:0;
+ if(m.mezhi){map.fitBounds(m.mezhi,{padding:telefon()?{top:140,bottom:120,left:20,right:20}:{top:160,bottom:80,left:80,right:80},pitch:pt,duration:TYKHO?0:1000}); return}
+ map.flyTo({center:[m.b.cx/MX_,m.b.cy/MY_],zoom:13.4,pitch:pt,duration:TYKHO?0:1200,essential:true});
+ map.once('moveend',()=>{const b=HEXB.S.get(m.b.k); if(b&&b.nf>0) vidkryty(GI.S,b)})}
+$('#poshuk').addEventListener('input',pokazatyPidkazky);
+$('#poshuk').addEventListener('focus',()=>{document.body.classList.add('shukayu'); zakryty(); pokazatyPidkazky()});
+$('#poshuk').addEventListener('blur',()=>setTimeout(()=>{document.body.classList.remove('shukayu'); $('#pidkazky').hidden=true},150));
+$('#poshuk').addEventListener('keydown',e=>{const n=PIDK.length;
+ if(e.key==='ArrowDown'||e.key==='ArrowUp'){if(!n) return; e.preventDefault(); VYBR=(VYBR+(e.key==='ArrowDown'?1:-1)+n)%n;
+  document.querySelectorAll('#pidkazky li').forEach((li,j)=>li.setAttribute('aria-selected',String(j===VYBR)));
+  $('#poshuk').setAttribute('aria-activedescendant','pk'+VYBR)}
+ else if(e.key==='Enter'){e.preventDefault(); vybraty(VYBR>=0?VYBR:0)}
+ else if(e.key==='Escape'){$('#pidkazky').hidden=true}});
+$('#pidkazky').addEventListener('pointerdown',e=>{const li=e.target.closest('[data-j]'); if(li){e.preventDefault(); vybraty(+li.dataset.j)}});
+MAKET.poshuk=t=>{$('#poshuk').value=t; pokazatyPidkazky(); return PIDK.map(p=>p.m.nazva)};
+MAKET.vybraty=vybraty;
+
+// ==== Картка соти за MV-32 (як у М5); число соти — тут і в підказці при наведенні, на карті цифр немає ====
+const ZAMOK='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+const koma=x=>String(x).replace('.',',');
+function porivnyannya(n,G){const baza=MEDIANA*(G.R/130)**2, r=n/baza, plosha=G.id!=='S';
+ const de=plosha?'ніж на такій самій площі в типовій соті Києва':'ніж у типовій соті Києва';
+ if(r>=.9&&r<=1.1) return plosha?'приблизно як на такій самій площі в типовій соті Києва':'приблизно як у типовій соті Києва';
+ const bilshe=r>1, x=bilshe?r:1/r, ok=x<10?Math.round(x*10)/10:Math.round(x), cile=Number.isInteger(ok);
+ const slovo=!cile?'раза':pl(ok,'раз','рази','разів');
+ return `у ${koma(ok)} ${slovo} ${bilshe?'більше':'менше'}, ${de}`}
+const pidp=y=>'’'+String(y).slice(2);
+function stovpchyky(b){const r=D.meta.roky, st=D.meta.stari, mx=Math.max(1,...b.y), H=36;
+ const vilni=r.map((y,i)=>{const v=b.y[i], h=v?Math.max(4,Math.round(H*v/mx)):2;
+  return `<div class="r${y===D.meta.nepovnyi?' nepovnyi':''}"><em>${fmt(v)}</em><u style="height:${h}px;${v?'':'background:var(--line-strong)'}"></u><span>${pidp(y)}</span></div>`}).join('');
+ const star=st.map(y=>`<div class="r zamok">${ZAMOK}<u style="height:18px"></u><span>${pidp(y)}</span></div>`).join('');
+ return `<div class="roky">${star}${vilni}</div><p class="pidpys-sir">${st[0]}–${st[st.length-1]} — у підписці · ${D.meta.nepovnyi} — неповний рік</p>`}
+function namalyuvatyKartku(){const {G,b}=ZARAZ, el=$('#kartka'), m=D.meta, n=b.nf, filtr=AKTYVNI.size<GN;
+ const rn=b.rayon?b.rayon+' район':'', nazva=b.oriyentyr||rn||'Київ', rayon=b.oriyentyr?rn:'';
+ const dop=filtr?' · усі групи':'';
+ let tilo;
+ if(n<5){
+  tilo=`<div class="malo"><b>Мало даних</b><span>Менше 5 подій за ${esc(m.period)}</span></div>`;
+ }else{
+  const NAS=HRUPY.findIndex(h=>h[0]==='nas');
+  const top=b.gf.map((v,i)=>[v,i]).filter(x=>x[1]!==NAS&&x[0]>0).sort((x,y)=>y[0]-x[0]).slice(0,3);
+  const ryadky=top.map(([v,i])=>`<div class="hr"><span>${esc(HRUPY[i][1])}</span><b>${fmt(v)}</b></div>`).join('');
+  const nas=b.gf[NAS]>0?`<div class="nas"><span>Насильство</span><b>${fmt(b.gf[NAS])}</b></div>`:'';
+  const pik=b.xl?`<div class="pik"><span>Година-пік — на ближчому масштабі</span></div>`
+   :b.chasN>=5?`<div class="pik"><b>${String(b.pik).padStart(2,'0')}:00–${String((b.pik+1)%24).padStart(2,'0')}:00</b><span>${fmt(b.pikN)} з ${fmt(b.chasN)} ${pl(b.chasN,'події','подій','подій')}, де суд указав час</span></div>`
+   :`<div class="pik"><span>Мало даних про час</span></div>`;
+  const povt=b.pr.length?`<section class="blok"><h3>Повторюється тут</h3><ul class="povt">${b.pr.slice(0,4).map(i=>`<li>${esc(D.problemy[i])}</li>`).join('')}</ul></section>`:'';
+  tilo=`<div class="chyslo"><div class="velyke">${fmt(n)}</div><div class="pid">${pl(n,'подія','події','подій')} за ${esc(m.period)}</div></div>
+   <p class="por">${porivnyannya(n,G)}</p>
+   <section class="blok"><h3>Найбільше тут</h3>${ryadky}${nas}</section>
+   <section class="blok"><h3>За роками${dop}</h3>${stovpchyky(b)}</section>
+   <section class="blok"><h3>Година-пік${dop}</h3>${pik}</section>${povt}`;
+ }
+ el.innerHTML=`<div class="k-ruchka"></div><div class="k-shap"><div><h2>${esc(nazva)}</h2>${rayon?`<p>${esc(rayon)}</p>`:''}</div><button class="k-x" type="button" aria-label="Закрити">×</button></div>${tilo}
+  <p class="mezha">Лише те, що дійшло до суду. Пробний випуск даних.</p>`;
+}
+// «Назад» телефона чи браузера закриває картку: відкриття додає крок в історію.
+let KROK=false;
+function prybraty(){ if(!ZARAZ) return;
+ if(map.getSource('k-col-'+ZARAZ.G.id)) map.setFeatureState({source:'k-col-'+ZARAZ.G.id,id:ZARAZ.b.k},{sel:false});
+ if(map.getSource('k-hexsel')) map.getSource('k-hexsel').setData({type:'FeatureCollection',features:[]});
+ ZARAZ=null; const el=$('#kartka'); el.hidden=true; el.classList.remove('vysoka'); document.body.classList.remove('k-vidkr')}
+function zakryty(){const bulo=!!ZARAZ; prybraty(); if(bulo&&KROK){KROK=false; history.back()}}
+addEventListener('popstate',()=>{if(KROK){KROK=false; prybraty()}});
+function vydilyty(G,b){ if(!map.getSource('k-hexsel')) return;
+ if(map.getSource('k-col-'+G.id)) map.setFeatureState({source:'k-col-'+G.id,id:b.k},{sel:true});
+ map.getSource('k-hexsel').setData({type:'Feature',geometry:{type:'LineString',coordinates:hexPoly(b.cx,b.cy,G.R,1)[0]}})}
+// Карта рухається лише тоді, коли картка справді закрила вибрану соту, і лише настільки, щоб її відкрити.
+// Плашки (пошук, легенда, кнопки) при цьому не рухаються ніколи.
+function zPidKartky(G,b){const el=$('#kartka'), m=map.getContainer().getBoundingClientRect(), k=el.getBoundingClientRect(), ZAZOR=16;
+ const v=hexPoly(b.cx,b.cy,G.R,1)[0].map(p=>map.project(p)), xs=v.map(q=>q.x), ys=v.map(q=>q.y);
+ let A_,B_;
+ if(telefon()){const verh=k.top-m.top, nyz=Math.max(...ys); if(nyz<=verh) return;
+  const x=(Math.min(...xs)+Math.max(...xs))/2; A_=[x,nyz]; B_=[x,verh-ZAZOR]}
+ else{const liv=k.left-m.left, prav=Math.max(...xs), y=(Math.min(...ys)+Math.max(...ys))/2;
+  if(prav<=liv||Math.min(...ys)>=k.bottom-m.top||Math.max(...ys)<=k.top-m.top) return;
+  A_=[prav,y]; B_=[liv-ZAZOR,y]}
+ map.panBy([A_[0]-B_[0],A_[1]-B_[1]],{duration:TYKHO?0:400,essential:true})}
+let ZARAZ=null;
+function vidkryty(G,b){prybraty(); ZARAZ={G,b};
+ const el=$('#kartka'); el.hidden=false; el.scrollTop=0; document.body.classList.add('k-vidkr'); namalyuvatyKartku();
+ if(!KROK){history.pushState({kartka:1},'',location.href); KROK=true}
+ vydilyty(G,b); zPidKartky(G,b)}
+MAKET.vidkryty=(id,k)=>vidkryty(GI[id],HEXB[id].get(k));
+MAKET.zakryty=zakryty;
+{const el=$('#kartka'); let st=null;
+ el.addEventListener('pointerdown',e=>{if(!telefon()||e.target.closest('.k-x')||!e.target.closest('.k-ruchka,.k-shap')) return;
+  st={y:e.clientY,h:el.offsetHeight,rukh:false}; el.setPointerCapture(e.pointerId); el.classList.add('tyagnu')});
+ el.addEventListener('pointermove',e=>{if(!st) return; const dy=st.y-e.clientY; if(Math.abs(dy)>4) st.rukh=true;
+  if(st.rukh) el.style.height=Math.min(innerHeight-8,Math.max(innerHeight*.45,st.h+dy))+'px'});
+ const kin=()=>{if(!st) return; const vys=st.rukh?el.offsetHeight>innerHeight*.72:!el.classList.contains('vysoka');
+  st=null; el.classList.remove('tyagnu'); el.style.height=''; el.classList.toggle('vysoka',vys)};
+ el.addEventListener('pointerup',kin); el.addEventListener('pointercancel',kin)}
+$('#kartka').addEventListener('click',e=>{if(e.target.closest('.k-x')) zakryty()});
+addEventListener('keydown',e=>{if(e.key==='Escape') zakryty()});
+
+// ==== Клік: у 3D — найближчий до камери стовпчик під пальцем; повз стовпчики — сота на землі під точкою ====
+function zKlyucha(x){const id=x.layer.id.split('-').pop(), G=GI[id], b=G&&HEXB[id].get(x.properties.k); return b&&b.nf?{G,b}:null}
+function naZemli(p){const id=colG(), G=GI[id], ll=map.unproject([p.x,p.y]), x=ll.lng*MX_, y=ll.lat*MY_;
+ let best=null,bd=(G.R*1.05)**2;
+ for(const b of HEXB[id].values()){if(!b.nf) continue; const d=(b.cx-x)**2+(b.cy-y)**2; if(d<bd){bd=d;best={G,b}}}
+ return best}
+function vluchannya(p,dotyk){const kol=['k-col-'+colG()].filter(x=>map.getLayer(x));
+ if(kol.length&&map.getPitch()>8){const f=map.queryRenderedFeatures([p.x,p.y],{layers:kol}).map(zKlyucha).filter(Boolean);
+  if(f.length) return f[0];
+  if(dotyk){const r=16, ff=map.queryRenderedFeatures([[p.x-r,p.y-r],[p.x+r,p.y+r]],{layers:kol}).map(zKlyucha).filter(Boolean);
+   let best=null,bd=1e30;
+   for(const h of ff){const q=map.project([h.b.cx/MX_,h.b.cy/MY_]), d=(q.x-p.x)**2+(q.y-p.y)**2; if(d<bd){bd=d;best=h}}
+   if(best) return best}}
+ return naZemli(p)}
+MAKET.vluchannya=vluchannya;
+let tPidk=0;
+function pidkazka(t){const el=$('#pidkazka'); el.textContent=t; el.classList.add('vyd'); clearTimeout(tPidk); tPidk=setTimeout(()=>el.classList.remove('vyd'),1400)}
+function khvylya(p){if(TYKHO) return; const d=document.createElement('div'); d.className='khvylya'; d.style.left=p.x+'px'; d.style.top=p.y+'px';
+ document.body.appendChild(d); setTimeout(()=>d.remove(),350)}
+const TIP=new maplibregl.Popup({closeButton:false,closeOnClick:false,className:'k-tip',offset:14,maxWidth:'320px'});
+map.on('click',e=>{const h=vluchannya(e.point,telefon()); khvylya(e.point);
+ if(h){TIP.remove(); vidkryty(h.G,h.b)} else {zakryty(); pidkazka('Тут немає подій у даних')}});
+// Число соти — у підказці при наведенні (ПК).
+map.on('mousemove',e=>{ if(telefon()) return; const h=vluchannya(e.point,false);
+ map.getCanvas().style.cursor=h?'pointer':'';
+ if(!h) return TIP.remove();
+ const t=h.b.nf<5?'Мало даних':`${fmt(h.b.nf)} ${pl(h.b.nf,'подія','події','подій')}`;
+ TIP.setLngLat(e.lngLat).setHTML(`<b>${t}</b>${vershyna(h.b)?' · вершина':''}`).addTo(map)});
+map.on('mouseout',()=>TIP.remove());
+</script>
+</body>
+</html>
