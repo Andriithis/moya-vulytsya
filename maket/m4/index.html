@@ -450,7 +450,7 @@ function namalyuvatyLehendu(){const id=colG(), p=POR[id];
  $('#lehenda ul').innerHTML=HRUPY.map((h,i)=>`<li><button type="button" data-g="${i}" aria-pressed="${AKTYVNI.has(i)}">${esc(h[1])}</button></li>`).join('');
  const mezhi=[1,...p];
  $('.shkala').innerHTML=`<div class="ryad"><span>менше</span><span class="zr" title="Від скількох подій у соті починається крок">${SHKALA[TEMA].map((c,i)=>`<span class="kl"><i style="background:${c}"></i><small>${fmt(mezhi[i])}+</small></span>`).join('')}</span><span>більше подій<br>у даних</span></div>`
-  +(MODE==='stovp'?'<div class="vyshche">вище й темніше — те саме число подій</div>':'')}
+  +(MODE==='stovp'?`<div class="vyshche">вище й ${TEMA==='temna'?'світліше':'темніше'} — те саме число подій</div>`:'')}
 namalyuvatyLehendu();
 map.on('zoomend',()=>namalyuvatyLehendu());
 function pislyaFiltra(){pererakhuvaty(); zafarbuvaty(); namalyuvatyLehendu();
