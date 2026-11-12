@@ -10,7 +10,7 @@
 /* М6 (ZAVDANNYA-36, MV-55): доводимо К3 з М5. Одна бірюзова шкала: колір = скільки подій у даних, не небезпека.
    Шкала частками: класи кольору, прозорість і вершини — за місцем соти серед сот поточного рівня, а не за сталими числами. */
 /* Шрифти: Fixel (MacPaw, SIL OFL 1.1; MV-52) — за замовчуванням; IBM Plex Sans (IBM, SIL OFL 1.1) і Arsenal
-   (Андрій Шевченко, Київ, SIL OFL 1.1) — для порівняння. Файли Plex і Arsenal — з @fontsource 5.3.0, ліцензії поруч. */
+   (Andrij Shevchenko, SIL OFL 1.1) — для порівняння. Файли Plex і Arsenal — з @fontsource 5.3.0, ліцензії поруч. */
 @font-face{font-family:Fixel;font-weight:400;font-display:swap;src:url(../m4/shryfty/FixelText-Regular.woff2) format('woff2')}
 @font-face{font-family:Fixel;font-weight:600;font-display:swap;src:url(../m4/shryfty/FixelText-SemiBold.woff2) format('woff2')}
 @font-face{font-family:Fixel;font-weight:700;font-display:swap;src:url(../m4/shryfty/FixelDisplay-Bold.woff2) format('woff2')}
@@ -156,6 +156,10 @@ body[data-t=temna] #porivn .mitka{color:var(--attention)}
  #lehenda.vidkr ul{display:flex}
  #hr-vidkr{display:block}
  .shkala{margin-top:0}
+ /* Шкала влазить у ширину телефона: менші шестикутники, підпис праворуч переноситься. */
+ .shkala .kl{width:28px}
+ .shkala .kl i{width:24px;height:14px}
+ .shkala .ryad>span:last-child{white-space:normal}
  /* Під шторкою легенда й кнопки +/− ховаються на своїх місцях і повертаються після закриття — нічого не з'їжджає. */
  body.k-vidkr #lehenda,body.k-vidkr .maplibregl-ctrl-bottom-right{visibility:hidden}
  body.shukayu #lehenda,body.shukayu .kruh,body.shukayu #tykha,body.shukayu .maplibregl-ctrl-bottom-right{display:none}
@@ -199,6 +203,9 @@ body[data-t=temna] #porivn .mitka{color:var(--attention)}
   <button type="button" data-dani="x5" title="Перевірка шкали: кожна сота × 5 із розкидом">×5</button>
   <button type="button" data-dani="x20" title="Перевірка шкали: кожна сота × 20 із розкидом">×20</button>
   <button type="button" data-dani="nerivni" title="Перевірка шкали: дуже нерівні дані — густі соти ще густіші">нерівні</button></div>
+ <div class="gr"><span>Вершини в темній</span>
+  <button type="button" data-yaskr="spokiyno" title="Вершини на 1 крок світліші за найгустіші пласкі соти">спокійніше</button>
+  <button type="button" data-yaskr="yaskravo" title="Вершини на 2 кроки світліші за найгустіші пласкі соти">яскравіше</button></div>
 </div>
 <div id="verkh" class="plashka" role="search">
  <span class="znak"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5 21.1 6.75V17.25L12 22.5 2.9 17.25V6.75Z" fill="var(--accent)"/><path d="M12 8 15.5 10V14L12 16 8.5 14V10Z" fill="var(--surface)"/></svg></span>
@@ -235,6 +242,7 @@ const SHR=['plex','arsenal'].includes(parU.get('f'))?parU.get('f'):'fixel';
 document.body.dataset.f=SHR;
 const VAU=new Set((parU.get('vau')||'').split(',').filter(x=>['khvylya','svitlo','perelit'].includes(x)));
 const DANI=['x5','x20','nerivni'].includes(parU.get('dani'))?parU.get('dani'):'';
+let YASKR=parU.get('yaskr')==='yaskravo'?'yaskravo':'spokiyno';
 const zAdresy=(p,bezKamery)=>location.pathname+'?'+p+(bezKamery?'':location.hash);
 document.querySelectorAll('[data-shr]').forEach(b=>{b.setAttribute('aria-pressed',String(b.dataset.shr===SHR));
  b.onclick=()=>{document.body.dataset.f=b.dataset.shr; const p=new URLSearchParams(location.search); p.set('f',b.dataset.shr);
@@ -247,6 +255,10 @@ document.querySelectorAll('[data-vau]').forEach(b=>{b.setAttribute('aria-pressed
   // «Світло» — одразу; «Хвиля» й «Переліт» — це перше відкриття, тож показуємо його заново (без камери в адресі).
   if(k==='svitlo'){history.replaceState(history.state,'',zAdresy(p)); zafarbuvaty(); svitlo()}
   else if(VAU.has(k)) location.href=zAdresy(p,true); else history.replaceState(history.state,'',zAdresy(p))}});
+document.querySelectorAll('[data-yaskr]').forEach(b=>{b.setAttribute('aria-pressed',String(b.dataset.yaskr===YASKR));
+ b.onclick=()=>{YASKR=b.dataset.yaskr; const p=new URLSearchParams(location.search); p.set('yaskr',YASKR);
+  history.replaceState(history.state,'',zAdresy(p)); document.querySelectorAll('[data-yaskr]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+  zafarbuvaty(); namalyuvatyLehendu()}});
 document.querySelectorAll('[data-dani]').forEach(b=>{b.setAttribute('aria-pressed',String(b.dataset.dani===DANI));
  b.onclick=()=>{if(b.dataset.dani===DANI) return; const p=new URLSearchParams(location.search);
   b.dataset.dani?p.set('dani',b.dataset.dani):p.delete('dani'); location.href=zAdresy(p)}});
@@ -281,11 +293,16 @@ const zmishaty=(c,tsil,k)=>hexK(rgb(c).map((x,i)=>x+(rgb(tsil)[i]-x)*k));
 // Одна бірюзова шкала (М4, OKLCH, h ≈ 192°). Темна тема: пласкі соти — приглушені тони, вершини — найсвітліші.
 const SHKALA={svitla:['#76BBB8','#41A29F','#068784','#026A68','#034E4D'],temna:['#1F5A57','#256B68','#2B7E7A','#33918C','#3AA19C']};
 // Вершини (стовпчики): від нижньої до найвищої — колір трохи густішає; у темній — найяскравіші на карті.
-const VERSH={svitla:['#026A68','#023F3E'],temna:['#43C2BC','#8AEDE7']};
+// Темна (Андрій, 12.11.2026): не білі «шматки цукру», а насичена бірюза — верх лише на 1 («спокійніше») або 2
+// («яскравіше») кроки світліший за найгустіші пласкі соти (#3AA19C); бічні грані помітно темніші за верх.
+const VERSH_T={spokiyno:['#3CAAA5','#42B6B0'],yaskravo:['#45BCB5','#4FCBC3']};
+const VERSH={svitla:['#026A68','#023F3E'],get temna(){return VERSH_T[YASKR]}};
 // Прозорість пласкої соти: lo + (hi − lo) · частка², де частка — місце соти серед сот рівня (0…1).
-const PROZ={svitla:[.14,.62],temna:[.28,.52]};
+const PROZ={svitla:[.14,.62],temna:[.32,.52]};
 // Межі класів кольору й вершин — частками сот рівня: 20 / 20 / 20 / 28 / 12 %; стовпчиком — верхні 12 %.
-const KVANT=[.2,.4,.6,.88], VERSHYNA=.88, H_VERSH=1.6;
+const KVANT=[.2,.4,.6,.88], VERSHYNA=.88;
+// Форма стовпчика за рівнем: на рівні всього міста — тонші й нижчі (частка ширини соти, висота в радіусах соти).
+const FORMA={XL:{k:.55,H:.9},L:{k:.64,H:1.1},S:{k:.8,H:1.6}};
 let TEMA=SHKALA[parU.get('tema')]?parU.get('tema'):'svitla';
 document.body.dataset.t=TEMA;
 const AKTYVNI=new Set(HRUPY.map((h,i)=>i));
@@ -334,11 +351,12 @@ function hexData(G){const B=[...HEXB[G.id].values()].filter(b=>b.nf>0);
  return {type:'FeatureCollection',features:B.map(b=>({type:'Feature',geometry:{type:'Polygon',coordinates:hexPoly(b.cx,b.cy,G.R,1)},
   properties:{k:b.k,c:SHKALA[TEMA][b.kr],a:prozPlaskoi(b),n:b.nf}}))}}
 // Стовпчик = тіло + тонка світла кромка зверху (сусідні вершини не зливаються). «Світло» робить верх ще світлішим.
-const K_ST=.8;
-function koloryVershyny(b){const [c0,c1]=VERSH[TEMA], t=Math.sqrt(clamp((b.q-VERSHYNA)/(1-VERSHYNA),0,1)), tem=TEMA==='temna';
- const tilo=zmishaty(c0,c1,t), sv=VAU.has('svitlo');
- return {tilo,kant:zmishaty(tilo,'#FFFFFF',tem?(sv?.6:.5):(sv?.45:.3))}}
-function colData(G){const B=[...HEXB[G.id].values()].filter(vershyna), VYSOTA=G.R*H_VERSH, KANT=G.R/10;
+function koloryVershyny(b){const [c0,c1]=VERSH[TEMA], t=Math.sqrt(clamp((b.q-VERSHYNA)/(1-VERSHYNA),0,1)), sv=VAU.has('svitlo');
+ const c=zmishaty(c0,c1,t);
+ // Темна: верх (і тонка кромка) — колір вершини, боки — помітно темніші. Світла: тіло — колір, кромка світліша.
+ if(TEMA==='temna') return {tilo:zmishaty(c,'#000000',sv?.45:.38),kant:sv?zmishaty(c,'#FFFFFF',.08):c};
+ return {tilo:c,kant:zmishaty(c,'#FFFFFF',sv?.45:.3)}}
+function colData(G){const B=[...HEXB[G.id].values()].filter(vershyna), K_ST=FORMA[G.id].k, VYSOTA=G.R*FORMA[G.id].H, KANT=G.R/10;
  const poly=k=>b=>({type:'Polygon',coordinates:hexPoly(b.cx,b.cy,G.R,k)});
  const ch=(b,c,bh,eb,eh,h)=>({type:'Feature',geometry:poly(K_ST)(b),properties:{k:b.k,c,cl:zmishaty(c,'#FFFFFF',.45),n:b.nf,h,bh,eb,eh,d:b.d}});
  return {type:'FeatureCollection',features:B.flatMap(b=>{const h=VYSOTA*chastkaVysoty(b), k=koloryVershyny(b);
@@ -444,9 +462,9 @@ function dodatyZaslony(){for(const r of ZASL_R){const id='k-zasl-'+r; if(!map.ha
 function zaslony(){const src=map.getSource('k-zasl'); if(!src) return;
  const p=map.getPitch()*Math.PI/180, id=colG(), G=GI[id], z=map.getZoom();
  if(p<.14){src.setData({type:'FeatureCollection',features:[]}); MAKET.stan.zaslony=0; return}
- const mn=interp(MN[id],z)*ROST, s0=Math.sqrt(3)*G.R*K_ST*pikselivNaMetr(0)/ZASL_W*1.12;
+ const K_ST=FORMA[id].k, mn=interp(MN[id],z)*ROST, s0=Math.sqrt(3)*G.R*K_ST*pikselivNaMetr(0)/ZASL_W*1.12;
  const f=[...HEXB[id].values()].filter(vershyna).map(b=>{
-  const hm=G.R*H_VERSH*chastkaVysoty(b)*mn; if(hm<G.R*.6) return null;
+  const hm=G.R*FORMA[id].H*chastkaVysoty(b)*mn; if(hm<G.R*.6) return null;
   const r=(2*K_ST*Math.cos(p)+hm/G.R*Math.sin(p))/(Math.sqrt(3)*K_ST);
   const im=ZASL_R.find(x=>x>=r)||ZASL_R[ZASL_R.length-1];
   return {type:'Feature',geometry:{type:'Point',coordinates:[b.cx/MX_,b.cy/MY_]},properties:{im:'k-zasl-'+im,s0}}}).filter(Boolean);

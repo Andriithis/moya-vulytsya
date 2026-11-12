@@ -73,15 +73,22 @@ class StorinkaM6(unittest.TestCase):
         self.assertRegex(self.html, r'#kartka\{position:absolute;z-index:6;right:76px')
 
     def test_temna_svitlodiodna(self):
+        """Вершини — насичена бірюза на 1–2 кроки світліша за найгустіші пласкі соти, не біла (Андрій, 12.11.2026)."""
         self.assertIn("background:'#0C1012'", self.html)                      # нічна підкладка В2
-        temni = re.search(r"temna:\['(#\w{6})','#\w{6}'\]\};\n// Прозорість", self.html)
-        self.assertIsNotNone(temni)
         svitlota = lambda c: sum(int(c[i:i + 2], 16) for i in (1, 3, 5))
         plaski = re.search(r"SHKALA=\{svitla:\[[^\]]+\],temna:\[([^\]]+)\]", self.html).group(1)
-        najsvitlisha_plaska = max(svitlota(c.strip("'")) for c in plaski.split(','))
-        self.assertGreater(svitlota(temni.group(1)), najsvitlisha_plaska)     # вершини світліші за будь-яку пласку
+        najgustisha = svitlota(plaski.split(',')[-1].strip("'"))
+        vt = re.search(r"const VERSH_T=\{spokiyno:\['(#\w{6})','(#\w{6})'\],yaskravo:\['(#\w{6})','(#\w{6})'\]\}", self.html)
+        self.assertIsNotNone(vt)
+        for c in vt.groups():
+            self.assertGreater(svitlota(c), najgustisha, c)                    # світліша за пласкі
+            self.assertLess(max(int(c[i:i + 2], 16) for i in (1, 3, 5)), 215, c)  # не біла
+            self.assertGreater(int(c[3:5], 16) - int(c[1:3], 16), 100, c)       # насичена бірюза
+        self.assertIn('data-yaskr="spokiyno"', self.html)
+        self.assertIn('data-yaskr="yaskravo"', self.html)
+        self.assertIn("tilo:zmishaty(c,'#000000'", self.html)                 # боки темніші за верх
+        self.assertIn("FORMA={XL:{k:.55,H:.9}", self.html)                     # місто: тонші й нижчі
         self.assertNotRegex(self.html, r'filter:\s*blur|backdrop-filter')
-        self.assertNotIn('box-shadow:0', self.html)
 
     def test_try_vau_okremo_i_tykhyi_rezhym(self):
         for k in ('khvylya', 'svitlo', 'perelit'):

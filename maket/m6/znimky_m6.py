@@ -109,6 +109,11 @@ def osnovni(pw):
             zvit[pref] = s.evaluate('({pomylky:MAKET.stan.pomylky, zaslony:MAKET.stan.zaslony})') | {
                 'kartka': ok, 'nazad_zakryv': s.evaluate('document.getElementById("kartka").hidden'),
                 'zsunulys': zsuv, 'skhovani_pid_kartkoyu': ukryti, 'povernulys': povernulos}
+        # темна тема: друга яскравість вершин («яскравіше»; основні знімки — «спокійніше»)
+        for i, kam in ((1, ''), (2, KAMERY['podil'][ekran])):
+            ity(s, f'{ADRESA}?tema=temna&yaskr=yaskravo' + kam)
+            chekaty(s)
+            s.screenshot(path=str(TEKA / f'k3-{ekran}-temna-yaskravo-{i}{"misto" if i == 1 else "podil"}.png'))
         # шрифти: місто з картою, щоб порівняти Plex і Arsenal з Fixel
         for f in ('plex', 'arsenal'):
             ity(s, f'{ADRESA}?f={f}' + KAMERY['podil'][ekran])
