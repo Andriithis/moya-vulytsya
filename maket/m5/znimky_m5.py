@@ -37,6 +37,16 @@ VARIANTY = {'k1': (['svitla', 'temna'], 0), 'k2': (['svitla', 'temna'], 0), 'k3'
 ZUMY = [9.3, 9.6, 9.8, 10.0, 10.4, 11.4, 12.0, 12.2, 12.4, 12.6, 12.8, 13.6, 14.6]
 
 
+_N = [0]
+
+
+def ity(s, adresa: str) -> None:
+    """Перехід із перезавантаженням: адреса, що відрізняється лише камерою після #, сторінку не перезавантажує."""
+    _N[0] += 1
+    zapyt, _, kamera = adresa.partition('#')
+    s.goto(f'{zapyt}&n={_N[0]}' + (f'#{kamera}' if kamera else ''))
+
+
 def chekaty(s, sek=1.5):
     s.wait_for_function('window.MAKET && MAKET.map && MAKET.map.loaded() && MAKET.stan.vyrosly', timeout=90000)
     s.wait_for_timeout(int(sek * 1000))
@@ -64,14 +74,14 @@ def osnovni(pw, tilky):
             s = kont.new_page()
             for tema in temy:
                 pref = f'{v}-{ekran}-{tema}'
-                s.goto(f'{ADRESA}?v={v}&tema={tema}')
+                ity(s, f'{ADRESA}?v={v}&tema={tema}')
                 chekaty(s)
                 s.screenshot(path=str(TEKA / f'{pref}-1misto.png'))
                 for i, (nazva, kam) in enumerate(KAMERY.items(), 2):
-                    s.goto(f'{ADRESA}?v={v}&tema={tema}' + kam[ekran].format(p=p))
+                    ity(s, f'{ADRESA}?v={v}&tema={tema}' + kam[ekran].format(p=p))
                     chekaty(s)
                     s.screenshot(path=str(TEKA / f'{pref}-{i}{nazva}.png'))
-                s.goto(f'{ADRESA}?v={v}&tema={tema}' + KAMERY['podil'][ekran].format(p=p))
+                ity(s, f'{ADRESA}?v={v}&tema={tema}' + KAMERY['podil'][ekran].format(p=p))
                 chekaty(s)
                 ok = kartka(s, w, h, ekran)
                 s.screenshot(path=str(TEKA / f'{pref}-4kartka.png'))
@@ -94,7 +104,7 @@ def zum(pw):
         kont = b.new_context(viewport={'width': 1440, 'height': 900}, reduced_motion='reduce')
         s = kont.new_page()
         for i, z in enumerate(ZUMY, 1):
-            s.goto(f'{ADRESA}?v={v}#{z}/50.4600/30.5170/0/{p}')
+            ity(s, f'{ADRESA}?v={v}#{z}/50.4600/30.5170/0/{p}')
             chekaty(s, 1.2)
             s.screenshot(path=str(TEKA / f'zum-{v}-{i:02d}-z{z}.png'))
         kont.close()
@@ -103,7 +113,7 @@ def zum(pw):
         kont = b.new_context(viewport={'width': 1280, 'height': 800}, record_video_dir=str(vid),
                              record_video_size={'width': 1280, 'height': 800})
         s = kont.new_page()
-        s.goto(f'{ADRESA}?v={v}#9.6/50.4600/30.5170/0/{p}')
+        ity(s, f'{ADRESA}?v={v}#9.6/50.4600/30.5170/0/{p}')
         chekaty(s, 2)
         s.evaluate('MAKET.map.easeTo({zoom:14.6,center:[30.5170,50.4600],duration:10000,easing:t=>t})')
         s.wait_for_timeout(11500)
