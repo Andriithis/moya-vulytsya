@@ -50,8 +50,8 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .plashka{position:absolute;z-index:5;background:var(--surface);border:1px solid var(--mezha);border-radius:var(--radius-m)}
 /* ---- Перемикачі макета (лише для вибору) ---- */
 #porivn{top:12px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;padding:4px 6px;z-index:7;max-width:calc(100vw - 24px)}
-#porivn .gr{display:flex;align-items:center;gap:8px}
-#porivn .gr>span{font:600 12px/16px var(--sans);color:var(--muted);margin:0 2px 0 6px}
+#porivn .gr{display:flex;align-items:center;gap:8px;flex:none}
+#porivn .gr>span{font:600 12px/16px var(--sans);color:var(--muted);margin:0 2px 0 6px;white-space:nowrap}
 #porivn button{min-width:44px;min-height:44px;padding:0 10px;border:0;border-radius:var(--radius-s);background:none;font:600 14px/20px var(--sans);color:var(--ink-2);white-space:nowrap}
 #porivn button[aria-pressed=true]{background:var(--accent);color:var(--on-accent)}
 #porivn .mitka{font:600 12px/16px var(--sans);color:#924305;background:var(--attention-soft);padding:2px 8px;border-radius:var(--radius-pill);white-space:nowrap}
@@ -203,7 +203,7 @@ body[data-t=temna] #porivn .mitka{color:var(--attention)}
   <button type="button" data-dani="x5" title="Перевірка шкали: кожна сота × 5 із розкидом">×5</button>
   <button type="button" data-dani="x20" title="Перевірка шкали: кожна сота × 20 із розкидом">×20</button>
   <button type="button" data-dani="nerivni" title="Перевірка шкали: дуже нерівні дані — густі соти ще густіші">нерівні</button></div>
- <div class="gr"><span>Вершини в темній</span>
+ <div class="gr"><span title="Яскравість вершин у темній темі">Темна</span>
   <button type="button" data-yaskr="spokiyno" title="Вершини на 1 крок світліші за найгустіші пласкі соти">спокійніше</button>
   <button type="button" data-yaskr="yaskravo" title="Вершини на 2 кроки світліші за найгустіші пласкі соти">яскравіше</button></div>
 </div>
@@ -542,6 +542,8 @@ function postavytyTemu(t){if(!SHKALA[t]||t===TEMA) return;
 $('#ftema').onclick=()=>postavytyTemu(TEMA==='temna'?'svitla':'temna');
 knopkaTemy();
 MAKET.tema=postavytyTemu;
+// Для знімків «хвилі» посередині: поставити стан виростання вручну (0…1).
+MAKET.rist=v=>{ROST=v; zastosuvatyRist()};
 
 // Частки для звіту (п. 1 завдання): скільки сот майже прозорі, якого тону і скільки — вершини, на кожному рівні.
 MAKET.chastky=()=>Object.fromEntries(HEXG.map(G=>{const zi=[...HEXB[G.id].values()].filter(b=>b.nf>0), N=zi.length||1;

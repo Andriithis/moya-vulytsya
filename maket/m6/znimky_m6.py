@@ -143,8 +143,16 @@ def vau(pw):
             for v, sered in (('khvylya', 450), ('perelit', 1400)):
                 ity(s, f'{ADRESA}?tema={tema}&vau={v}')
                 s.wait_for_function('window.MAKET && MAKET.map && MAKET.map.loaded()', timeout=90000)
-                s.wait_for_timeout(sered)
+                if v == 'khvylya':
+                    # програмний браузер малює повільно й «середину» хвилі пропускає — ставимо її вручну (як у відео)
+                    chekaty(s, .5)
+                    s.evaluate('MAKET.rist(.5)')
+                    s.wait_for_timeout(800)
+                else:
+                    s.wait_for_timeout(sered)
                 s.screenshot(path=str(TEKA / f'vau-{v}-{ekran}-{tema}-1seredyna.png'))
+                if v == 'khvylya':
+                    s.evaluate('MAKET.rist(1)')
                 chekaty(s, 1)
                 s.screenshot(path=str(TEKA / f'vau-{v}-{ekran}-{tema}-2kinets.png'))
             kont.close()
