@@ -1,7 +1,7 @@
 /* Гра «Вгадай, де це було» (ZAVDANNYA-07). Вигляд — за docs/STYL.md і MV-58 (переведено в ZAVDANNYA-47):
    «Індиго й м'ята» (значення — ті самі, що дає збирач сайту з site/sait/kolory.json; перевіряє tests/test_hra.py),
    IBM Plex Sans, кнопки — як клавіші (межа 1,5 px і суцільний бортик знизу), кути 12/16 px.
-   attention — колір «приціл» (vyd), помаранчевого більше немає; error лишився для помилок.
+   attention і error — колір «приціл» (vyd): ні помаранчевого, ні червоного (MV-58).
    Шрифти — файлами з сайту (../shryfty/, ліцензія SIL OFL 1.1), без сторонніх запитів. */
 
 /* ---------- Шрифти ---------- */
@@ -33,7 +33,7 @@
   --on-accent: #FFFFFF;
   --attention: #3C3CA1;
   --attention-soft: #E8E8F4;
-  --error: #A1281C;
+  --error: #3C3CA1;
   --data-1: #9CA1E3;
   --data-2: #7E84CE;
   --data-3: #6066C1;
@@ -86,7 +86,7 @@
     --on-accent: #11142A;
     --attention: #B37BFF;
     --attention-soft: #36305D;
-    --error: #F08C80;
+    --error: #B37BFF;
     --data-1: #444885;
     --data-2: #5357A3;
     --data-3: #6466BB;

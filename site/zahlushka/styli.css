@@ -96,8 +96,8 @@ h2.rozdil { margin: 0; font-family: Plex, system-ui, sans-serif; font-size: 32px
 .forma__knopka { font: inherit; font-weight: 600; background: #4447A6; color: #FFFFFF; border: 0; padding: 14px; border-radius: 12px; min-height: 48px; cursor: pointer; }
 .forma__knopka:hover { background: #33357C; }
 .forma__knopka[disabled] { opacity: 0.7; cursor: progress; }
-.pomylka { font-size: 14px; color: #A1281C; font-weight: 600; }
-.forma--pomylka input[aria-invalid=true] { border-color: #A1281C; }
+.pomylka { font-size: 14px; color: #3C3CA1; font-weight: 600; }
+.forma--pomylka input[aria-invalid=true] { border-color: #3C3CA1; }
 .povidomlennya { display: flex; flex-direction: column; gap: 12px; }
 .povidomlennya__holovne { font-family: Plex, system-ui, sans-serif; font-size: 22px; font-weight: 800; }
 .povidomlennya p { margin: 0; color: #3E4155; }
@@ -180,7 +180,7 @@ h2.rozdil { margin: 0; font-family: Plex, system-ui, sans-serif; font-size: 32px
 .storinka .vstup--dribno { font-size: 15px; color: #5F6275; margin-bottom: 24px; }
 .forma--storinka { margin-top: 8px; }
 .forma textarea { font: inherit; padding: 12px; border: 1px solid #B5B7C4; border-radius: 12px; background: #FFFFFF; color: #1C1E2D; resize: vertical; min-height: 110px; }
-.forma--pomylka textarea[aria-invalid=true] { border-color: #A1281C; }
+.forma--pomylka textarea[aria-invalid=true] { border-color: #3C3CA1; }
 .vybir { margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 10px; }
 .vybir legend { padding: 0; margin-bottom: 10px; }
 .vybir label { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; color: #1C1E2D; cursor: pointer; }
@@ -209,7 +209,7 @@ h2.rozdil { margin: 0; font-family: Plex, system-ui, sans-serif; font-size: 32px
 .poshuk__knopka:active, .knopka-povna:active, .knopka-kontur:active, .forma__knopka:not([disabled]):active { transform: translateY(2px); box-shadow: 0 1px 0 #585B69; }
 .knopka-kontur { background: #FFFFFF; }
 .knopka-kontur:hover { background: #EDEFFE; color: #33357C; }
-.forma--pomylka input[aria-invalid=true], .forma--pomylka textarea[aria-invalid=true] { border-color: #A1281C; }
+.forma--pomylka input[aria-invalid=true], .forma--pomylka textarea[aria-invalid=true] { border-color: #3C3CA1; }
 /* На комп'ютері поле адреси сидить усередині плашки пошуку — плашка і є клавіша. */
 .poshuk { border: 1.5px solid #76798C; box-shadow: 0 3px 0 #585B69; }
 @media (min-width: 601px) { .poshuk__adresa { border: 0; box-shadow: none; } }
