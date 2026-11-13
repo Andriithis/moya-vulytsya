@@ -6,7 +6,7 @@
 > **Порядок читання (MV-31 — бережемо ліміти):** цей файл → [`docs/YAK-PRATSIUIEMO.md`](docs/YAK-PRATSIUIEMO.md)
 > (як працює центральний чат; основа — карта Києва) → [`docs/08-stan.md`](docs/08-stan.md)
 > (один аркуш: що зараз і що далі) → записи [`RISHENNYA.md`](RISHENNYA.md) лише за потрібними
-> номерами (останні — MV-43…MV-60). Решту — вибірково, коли треба: структура
+> номерами (останні — MV-43…MV-61). Решту — вибірково, коли треба: структура
 > [`docs/STRUKTURA.md`](docs/STRUKTURA.md), план передачі
 > [`docs/PEREDACHA-Z-KARTY-2026-11-06.md`](docs/PEREDACHA-Z-KARTY-2026-11-06.md), що можна
 > показувати — [`docs/03-dani-i-etyka.md`](docs/03-dani-i-etyka.md), право — [`docs/02-pravo.md`](docs/02-pravo.md).
