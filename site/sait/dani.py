@@ -29,6 +29,16 @@ except ImportError:  # pragma: no cover — без h3 немає лише кар
 
 RIVEN_H3 = 9
 ROKY = list(range(2016, 2027))      # MV-2: Київ, 2016–2026
+OSTANNI_ROKY = 3
+# MV-32: безкоштовно — лише останні 3 роки. Числа за старші роки (і за події без року) не потрапляють
+# у публічні файли сайту взагалі: лише прапорець «є дані — у підписці» (ZAVDANNYA-46).
+VIDKRYTI_ROKY = ROKY[-OSTANNI_ROKY:]
+STARI_ROKY = ROKY[:-OSTANNI_ROKY]
+
+
+def vidkryta(p) -> bool:
+    """Подія за останні 3 роки — її можна рахувати в безкоштовних числах (MV-32)."""
+    return bool(p.rik) and VIDKRYTI_ROKY[0] <= p.rik <= VIDKRYTI_ROKY[-1]
 
 # Додатково до прапорця chutlyva: статті, що стосуються домашнього насильства й дітей, але
 # не позначені у випуску (MV-4). На сайті вони — лише числом у шестикутнику.
@@ -204,7 +214,8 @@ class Vulytsia:
     dzherelo: str                  # osm | tekst
     varianty: Counter = field(default_factory=Counter)   # як ця вулиця записана в місцях подій
     rayony: Counter = field(default_factory=Counter)
-    podii: list = field(default_factory=list)            # індекси подій
+    podii: list = field(default_factory=list)            # індекси подій (усі роки — для зведення назв)
+    nedavni: list = field(default_factory=list)          # індекси подій за останні 3 роки (MV-32) — лише їх рахуємо на сайті
 
 
 @dataclass
@@ -554,6 +565,8 @@ def zibraty_dani(baza: Path, pereimenuvannia: Path | None, mezhi_rayoniv: Path |
                 continue
             bachyly.add(slug)
             vulytsi[slug].podii.append(i)
+            if vidkryta(p):
+                vulytsi[slug].nedavni.append(i)
             r = rayony.rayon(p.lat, p.lon)
             if r:
                 vulytsi[slug].rayony[r] += 1
@@ -571,7 +584,8 @@ def zibraty_dani(baza: Path, pereimenuvannia: Path | None, mezhi_rayoniv: Path |
     pereim_spysok = sorted((f'{t} {n}', sorted(s)) for (t, n), s in pereim_vykhid.items())
 
     # 6. Місто: види (для коефіцієнта локалізації) і соти.
-    misto_vydy = Counter(vyd_lyudskoyu(p.stattia, p.vyd) for p in podii if p.lat is not None and not p.chutlyva)
+    misto_vydy = Counter(vyd_lyudskoyu(p.stattia, p.vyd) for p in podii
+                         if p.lat is not None and not p.chutlyva and vidkryta(p))
     problemy = con.execute('SELECT problem_id, vyd, mekhanizm, status, lat, lon, podii FROM problem '
                            'WHERE lat IS NOT NULL ORDER BY podii DESC, problem_id').fetchall()
     soty = {}
@@ -590,7 +604,6 @@ def zibraty_dani(baza: Path, pereimenuvannia: Path | None, mezhi_rayoniv: Path |
 HRUPY = [('dtp', 'ДТП'), ('dor', 'Дороги'), ('hp', 'Громадський порядок'), ('mai', 'Майно'),
          ('nar', 'Наркотики'), ('alk', 'Алкоголь'), ('nas', 'Насильство')]
 HRUPA_VYDU = {'ДТП': 'dtp', 'ДОР': 'dor', 'ГП': 'hp', 'МАЙ': 'mai', 'НАР': 'nar', 'АЛК': 'alk', 'НАС': 'nas'}
-OSTANNI_ROKY = 3
 
 # «Що страждає» по групах — пошуком слів у фабулі. Окремого поля цілі у випуску немає, тому
 # це наближення; у картці показуємо лише те, що трапляється щонайменше в 5 подіях соти.
@@ -651,9 +664,10 @@ def hodyna_pik(hodyny: Counter) -> str | None:
 
 def soty_rivnia(podii: list, vulytsi_podii: list, varianty_slug: dict, problemy: list, riven: int) -> dict:
     """Соти одного рівня H3. Чутливі справи (MV-4) — лише у великих сотах (рівні 7 і 8) і лише числом
-    у групі «Насильство»."""
-    ostannii = ROKY[-1] - OSTANNI_ROKY + 1
+    у групі «Насильство». Лише події за останні 3 роки (MV-32); старші — лише прапорець «stari» у соті,
+    де є й нові події (сота лише зі старими подіями на безкоштовну карту не потрапляє)."""
     soty = {}
+    stari_k = set()
     for i, p in enumerate(podii):
         if p.chutlyva:
             if riven not in (7, 8):
@@ -670,16 +684,15 @@ def soty_rivnia(podii: list, vulytsi_podii: list, varianty_slug: dict, problemy:
         else:
             lat, lon = p.lat, p.lon
         k = h3.latlng_to_cell(lat, lon, riven)
-        s = soty.setdefault(k, {'chysla': Counter(), 'roky': Counter(), 'hodyny': Counter(),
+        if not vidkryta(p):
+            stari_k.add(k)
+            continue
+        s = soty.setdefault(k, {'chysla': Counter(), 'roky': Counter(), 'hodyny': Counter(), 'stari': False,
                                 'tsili': defaultdict(Counter), 'vulytsi': Counter(), 'z_adresoyu': 0, 'problemy': []})
         hrupa = 'nas' if p.chutlyva else HRUPA_VYDU.get(p.vyd)
-        nedavno = bool(p.rik and p.rik >= ostannii)
         for h in ((hrupa, 'all') if hrupa else ('all',)):
-            s['chysla'][f'{h}A'] += 1
-            if nedavno:
-                s['chysla'][f'{h}3'] += 1
-        if p.rik:
-            s['roky'][p.rik] += 1
+            s['chysla'][f'{h}3'] += 1
+        s['roky'][p.rik] += 1
         if p.chutlyva:
             continue                      # далі — лише відкриті події
         s['z_adresoyu'] += 1
@@ -691,6 +704,8 @@ def soty_rivnia(podii: list, vulytsi_podii: list, varianty_slug: dict, problemy:
                     s['tsili'][hrupa][nazva] += 1
         for (t, n, _) in vulytsi_podii[i]:
             s['vulytsi'][varianty_slug[(t, n)]] += 1
+    for k in stari_k & soty.keys():
+        soty[k]['stari'] = True
     for (pid, vyd, mekh, status, lat, lon, n) in problemy:
         if vyd == 'НАС':
             continue                      # насильство — лише числом
@@ -709,12 +724,13 @@ DNI = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'нд']
 
 
 def profil_vulytsi(dani: Dani, v: Vulytsia) -> dict:
-    """Узагальнене для безкоштовної сторінки: без адрес подій і описів, крім однієї чернетки історії."""
+    """Узагальнене для безкоштовної сторінки: без адрес подій і описів, крім однієї чернетки історії
+    (MV-27, MV-25). Лише події за останні 3 роки (MV-32); про старші — лише прапорець «stari»."""
     import datetime
-    podii = [dani.podii[i] for i in v.podii]
+    podii = [dani.podii[i] for i in v.nedavni]
     vidkryti = [p for p in podii if not p.chutlyva]
-    roky = Counter(p.rik for p in podii if p.rik)
-    poza_rokamy = sum(1 for p in podii if not p.rik or p.rik < ROKY[0])
+    roky = Counter(p.rik for p in podii)
+    stari = len(v.podii) > len(v.nedavni)
 
     # Що вирізняє вулицю: коефіцієнт локалізації = частка виду на вулиці / частка по місту.
     vydy = Counter(vyd_lyudskoyu(p.stattia, p.vyd) for p in vidkryti)
@@ -760,9 +776,9 @@ def profil_vulytsi(dani: Dani, v: Vulytsia) -> dict:
             break
 
     return {
-        'vsogo': len(podii), 'roky': {r: roky.get(r, 0) for r in ROKY}, 'poza_rokamy': poza_rokamy,
+        'vsogo': len(podii), 'roky': {r: roky.get(r, 0) for r in VIDKRYTI_ROKY}, 'stari': stari,
         'vyriznennia': vyriznennia, 'rytm': rytm, 'z_chasom': z_chasom,
         'soty': sorted(soty.items()), 'mists': mists, 'istoriia': istoriia,
-        'pershyi_rik': min((r for r in roky if r >= ROKY[0]), default=None),
+        'pershyi_rik': min(roky, default=None),
         'ostannii_rik': max(roky, default=None),
     }

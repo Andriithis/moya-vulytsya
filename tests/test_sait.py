@@ -105,6 +105,18 @@ def stvoryty_bazu(shlyakh: Path) -> None:
     con.execute('INSERT INTO event VALUES (?,?,?,?,?,?,?,?,?,?,?)',
                 (f'{n}-1', str(n), 1, '2025-04-04', None, 'НАС', 'ст.390-1 КК · невиконання обмежувальних приписів',
                  'ОСОБА_9 порушив припис', 0, '11210:4360', n))
+    # Старші роки (MV-32): 7 подій 2019 року і 1 без дати на Хрещатику, 6 подій 2018 року на вулиці, де нових немає.
+    # На сайті — лише прапорець «у підписці», жодного числа (ZAVDANNYA-46).
+    for vul, lat, lon, data in ([('вул. Хрещатик', 50.4476, 30.5231, f'2019-05-0{1 + j}') for j in range(7)]
+                                + [('вул. Хрещатик', 50.4476, 30.5231, None)]
+                                + [('вул. Інститутська', 50.4460, 30.5300, f'2018-06-0{1 + j}') for j in range(6)]):
+        n += 1
+        con.execute('INSERT INTO document VALUES (?,?,?,?,?,?,?)',
+                    (str(n), 'суд', data or '2020-01-01', 'постанова', '41080', f'{n}/19', f'https://reyestr.court.gov.ua/Review/{n}'))
+        con.execute('INSERT INTO location VALUES (?,?,?,?,?,?)', (n, f'{vul}, 7', 'house', lat, lon, 'osm'))
+        con.execute('INSERT INTO event VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+                    (f'{n}-1', str(n), 1, data, '12:30', 'ДТП', 'ст.124 КУпАП · ДТП з пошкодженням майна',
+                     FABULA_CHYSTA.format(d='01.05.2019', b='7', v=vul), 0, '11216:4344', n))
     con.execute("INSERT INTO release VALUES ('2026-11-08', ?, 'x')", (n,))
     con.commit()
     con.close()
@@ -321,7 +333,7 @@ class Sait(unittest.TestCase):
         suma = {}
         for riven in (7, 8, 9):
             soty = json.loads((self.sait / 'karta' / f'soty-{riven}.json').read_text(encoding='utf-8'))
-            suma[riven] = sum(f['properties'].get('nasA', 0) for f in soty['soty']['features'])
+            suma[riven] = sum(f['properties'].get('nas3', 0) for f in soty['soty']['features'])
         self.assertEqual(suma[7], 3)          # великі соти (≈ 5 км²) — так само, лише числом
         self.assertEqual(suma[8], 3)          # 2 позначені чутливі + 1 за ст. 390-1
         self.assertEqual(suma[9], 0)
@@ -403,6 +415,48 @@ class Sait(unittest.TestCase):
         khr = (self.sait / 'vulytsia' / 'khreshchatyk' / 'index.html').read_text(encoding='utf-8')
         self.assertIn('8 подій', khr)
         self.assertNotIn('порушив припис', khr)
+
+    def test_lyshe_ostanni_try_roky(self):
+        """MV-32 (ZAVDANNYA-46): у публічних файлах немає чисел за роки поза останніми трьома —
+        лише прапорець «у підписці»; немає адрес і описів."""
+        vidkryti = D.VIDKRYTI_ROKY
+        self.assertEqual(len(vidkryti), 3)
+        for riven in (7, 8, 9):
+            d = json.loads((self.sait / 'karta' / f'soty-{riven}.json').read_text(encoding='utf-8'))
+            for f in d['soty']['features']:
+                vl = f['properties']
+                self.assertFalse([k for k in vl if re.fullmatch(r'[a-z]+A', k)], f'числа «усі роки» у соті {vl["id"]}')
+                self.assertEqual(len(vl['y']), 3, vl['id'])
+                self.assertEqual(sum(vl['y']), vl['all3'], vl['id'])
+                self.assertIn(vl.get('o', 1), (1,))
+        for f in self.nashi_storinky():
+            t = f.read_text(encoding='utf-8')
+            for rik in D.STARI_ROKY:          # у таблиці років старші роки — без чисел
+                self.assertIsNone(re.search(rf'<th scope="row">{rik}</th><td>\d', t), f'{f.relative_to(self.sait)}: {rik}')
+            self.assertNotIn('data-period="A"', t)
+        if self.spravzhnii:
+            return
+        # Хрещатик: 8 подій за 2025 + 7 за 2019 + 1 без дати — на сайті лише 8 і замок на 2016–2023.
+        khr = (self.sait / 'vulytsia' / 'khreshchatyk' / 'index.html').read_text(encoding='utf-8')
+        self.assertIn('8 подій у даних судів за 2024–2026', khr)
+        self.assertIn('rik--zamok', khr)
+        self.assertIn('<th scope="row">2016–2023</th><td>у підписці</td>', khr)
+        for zayve in ('16 подій', '15 подій', '>16<', '>15<', '>7<'):
+            self.assertNotIn(zayve, khr)
+        # Покажчик і пошук — теж лише за останні 3 роки.
+        pk = {r[0]: r[3] for r in json.loads((self.sait / 'vulytsi' / 'pokazhchyk.json').read_text(encoding='utf-8'))}
+        self.assertEqual(pk['khreshchatyk'], 8)
+        self.assertEqual(pk.get('instytutska', 0), 0)
+        # Соти: прапорець «є старші» без чисел; сота лише зі старими подіями на карту не потрапляє.
+        d9 = json.loads((self.sait / 'karta' / 'soty-9.json').read_text(encoding='utf-8'))['soty']['features']
+        kh = h3.latlng_to_cell(50.4476, 30.5231, 9)
+        ins = h3.latlng_to_cell(50.4460, 30.5300, 9)
+        za_id = {f['properties']['id']: f['properties'] for f in d9}
+        self.assertEqual(za_id[kh].get('o'), 1)
+        self.assertNotIn(ins, za_id)
+        vsogo8 = sum(f['properties']['all3'] for f in
+                     json.loads((self.sait / 'karta' / 'soty-8.json').read_text(encoding='utf-8'))['soty']['features'])
+        self.assertEqual(vsogo8, 51)        # 48 відкритих + 3 чутливі, усі за 2025; старих 14 — не враховано
 
 
 def brauzer_dlya_karty() -> str | None:

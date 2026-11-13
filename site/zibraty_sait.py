@@ -39,6 +39,13 @@ MEZHA_FAILIV = 20000            # межа Cloudflare Pages
 # Вулиці з 1–2 подіями: сторінка є (на неї ведуть покажчик і карта), але пошуку Google її не даємо
 # і в sitemap.xml не пишемо — «тонкі» сторінки шкодять усьому сайту в пошуку.
 MIN_PODII_DLYA_POSHUKU = 3
+# MV-32: безкоштовно — останні 3 роки; старші — у підписці (сірі стовпчики з замком, без чисел).
+PERIOD_VIDKRYTYI = f'{D.VIDKRYTI_ROKY[0]}–{D.VIDKRYTI_ROKY[-1]}'
+PERIOD_ZAMKNENYI = f'{D.STARI_ROKY[0]}–{D.STARI_ROKY[-1]}'
+VYSOTA_ZAMKNENOHO = 36
+ZAMOK_SVG = ('<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" '
+             'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect>'
+             '<path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>')
 NBSP = ' '
 
 CSP = ("default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data: blob:; "
@@ -241,13 +248,11 @@ def storinka_vulytsi(dn: D.Dani, v: D.Vulytsia, pr: dict, adresa_saitu: str, sus
     rayon = v.rayony.most_common(1)[0][0] if v.rayony else None
     inshi_rayony = [r for r, _ in v.rayony.most_common()[1:] if v.rayony[r] >= 3]
     vsogo = pr['vsogo']
-    roky_t = (f'{pr["pershyi_rik"]}–{pr["ostannii_rik"]}' if pr['pershyi_rik'] and pr['ostannii_rik'] and pr['pershyi_rik'] != pr['ostannii_rik']
-              else str(pr['ostannii_rik'] or ''))
+    roky_t = PERIOD_VIDKRYTYI
     rayon_t = f'{rayon} район' if rayon else 'Київ'
-    title = f'{v.nazva}, Київ — {podii_slovo(vsogo)} у даних судів | Моя вулиця'
+    title = f'{v.nazva}, Київ — {podii_slovo(vsogo)} за {roky_t} у даних судів | Моя вулиця'
     vydy_t = ', '.join(x['vyd'].lower() for x in pr['vyriznennia'][:2])
-    opys = (f'{v.nazva} ({rayon_t}): {podii_slovo(vsogo)} з судових рішень'
-            + (f' за {roky_t}' if roky_t else '') + '. Роки, дні й години' + (f', що вирізняє вулицю: {vydy_t}' if vydy_t else '') + '.')
+    opys = (f'{v.nazva} ({rayon_t}): {podii_slovo(vsogo)} з судових рішень за {roky_t}. Роки, дні й години' + (f', що вирізняє вулицю: {vydy_t}' if vydy_t else '') + '.')
 
     chastyny = []
     kryhty = [f'<a href="/">Головна</a><span aria-hidden="true">›</span><a href="/vulytsi/">Вулиці</a>']
@@ -258,13 +263,12 @@ def storinka_vulytsi(dn: D.Dani, v: D.Vulytsia, pr: dict, adresa_saitu: str, sus
     chastyny.append(f'''<section class="zaholovok">
 <span class="mitka">{e(rayon_t)}</span>
 <h1>{e(v.nazva)}</h1>
-<p>{podii_slovo(vsogo)} у даних судів{(" за " + roky_t) if roky_t else ""}.{dodatkovi_rayony}</p>
+<p>{podii_slovo(vsogo)} у даних судів за {roky_t}.{dodatkovi_rayony}</p>
 </section>''')
 
     # Коротко: числа
-    vsogo_rokiv = sum(pr['roky'].values())
     ostannii = pr['roky'].get(D.ROKY[-1], 0)
-    chysla = [(chyslo(vsogo), 'подій у даних'), (chyslo(pr['mists']), 'різних місць на вулиці')]
+    chysla = [(chyslo(vsogo), f'подій за {roky_t}'), (chyslo(pr['mists']), 'різних місць на вулиці')]
     if pr['z_chasom']:
         chysla.append((chyslo(pr['z_chasom']), 'з відомим днем і годиною'))
     chysla.append((chyslo(ostannii), f'у {D.ROKY[-1]} році (рік ще триває)'))
@@ -282,19 +286,24 @@ def storinka_vulytsi(dn: D.Dani, v: D.Vulytsia, pr: dict, adresa_saitu: str, sus
                         '<p class="rozdil__pidpys">Помітних відмінностей у видах подій немає: розподіл схожий на київський '
                         'або подій кожного виду менше 5.</p></section>')
 
-    # Роки
-    maks = max(pr['roky'].values()) or 1
+    # Роки: останні 3 — з числами; старші — сірі стовпчики з замком, без чисел (MV-32, макет М7).
+    maks = max(pr['roky'].values(), default=0) or 1
     stovpchyky = ''.join(
+        f'<div class="rik rik--zamok"><span class="rik__chyslo">{ZAMOK_SVG}</span>'
+        f'<span class="rik__stovpchyk" data-vys="{VYSOTA_ZAMKNENOHO}"></span><span>{r}</span></div>'
+        for r in D.STARI_ROKY) if pr['stari'] else ''
+    stovpchyky += ''.join(
         f'<div class="rik"><span class="rik__chyslo">{chyslo(n) if n else ""}</span>'
         f'<span class="rik__stovpchyk" data-vys="{max(2, round(n / maks * 140))}"></span><span>{r}</span></div>'
         for r, n in pr['roky'].items())
-    pidpys_rokiv = 'Більшість рішень за 2016–2023 ще завантажується, тому старі роки поки неповні.'
-    if pr['poza_rokamy']:
-        pidpys_rokiv += f' Ще {podii_slovo(pr["poza_rokamy"])} — без дати або раніше 2016.'
-    roky_tablytsia = ''.join(f'<tr><th scope="row">{r}</th><td>{n}</td></tr>' for r, n in pr['roky'].items())
+    pidpys_rokiv = f'Безкоштовно — {roky_t}; {D.ROKY[-1]} — неповний рік.'
+    if pr['stari']:
+        pidpys_rokiv += f' Події за {PERIOD_ZAMKNENYI} на цій вулиці теж є — у підписці.'
+    roky_tablytsia = (f'<tr><th scope="row">{PERIOD_ZAMKNENYI}</th><td>у підписці</td></tr>' if pr['stari'] else '') + ''.join(
+        f'<tr><th scope="row">{r}</th><td>{n}</td></tr>' for r, n in pr['roky'].items())
     chastyny.append(f'''<section class="rozdil"><h2>Події за роками</h2>
 <p class="rozdil__pidpys">{pidpys_rokiv}</p>
-<div class="kartka"><div class="roky" aria-hidden="true">{stovpchyky}</div>
+<div class="kartka"><div class="roky{' roky--usi' if pr['stari'] else ''}" aria-hidden="true">{stovpchyky}</div>
 <table class="prykhovano"><caption>Події за роками</caption><tbody>{roky_tablytsia}</tbody></table></div></section>''')
 
     # Ритм
@@ -405,7 +414,7 @@ def holovne_slovo(v: D.Vulytsia) -> str:
 
 def spysok_vulyts(vs: list) -> str:
     return '<ul class="spysok-vulyts">' + ''.join(
-        f'<li><a href="/vulytsia/{v.slug}/">{e(v.nazva)}</a><small>{chyslo(len(v.podii))}</small></li>' for v in vs) + '</ul>'
+        f'<li><a href="/vulytsia/{v.slug}/">{e(v.nazva)}</a><small>{chyslo(len(v.nedavni))}</small></li>' for v in vs) + '</ul>'
 
 
 def storinka_pokazhchyka(vulytsi: list, rayony: list, adresa_saitu: str, rayon: str | None = None) -> str:
@@ -425,7 +434,7 @@ def storinka_pokazhchyka(vulytsi: list, rayony: list, adresa_saitu: str, rayon: 
     shlyakh = f'/vulytsi/{slug_rayonu(rayon)}/' if rayon else '/vulytsi/'
     tilo = f'''<nav class="kryhty" aria-label="Де ви"><a href="/">Головна</a><span aria-hidden="true">›</span>{"<a href='/vulytsi/'>Вулиці</a>" if rayon else "Вулиці"}</nav>
 <section class="zaholovok"><h1>{e(nazva)}</h1>
-<p>{chyslo(len(vs))} {vidminok(len(vs), ("вулиця", "вулиці", "вулиць"))} з подіями в даних судів. Поруч із назвою — скільки подій.</p></section>
+<p>{chyslo(len(vs))} {vidminok(len(vs), ("вулиця", "вулиці", "вулиць"))} з подіями в даних судів. Поруч із назвою — скільки подій за {PERIOD_VIDKRYTYI}.</p></section>
 <form class="poshuk" role="search" action="/vulytsi/"><label class="prykhovano" for="poshuk-vulytsi">Назва вулиці</label>
 <input id="poshuk-vulytsi" type="search" autocomplete="off" placeholder="Назва вулиці, наприклад: Хрещатик">
 <ul class="poshuk__spysok" id="poshuk-spysok" hidden></ul></form>
@@ -444,7 +453,7 @@ def holovna(dn: D.Dani, vulytsi: list, rayony: list, adresa_saitu: str) -> str:
     tilo = f'''<section class="vstup-ryad">
 <div><h1 class="h-mala">Що суди розповіли про вашу вулицю</h1>
 <p class="prymitka">{chyslo(len(vulytsi))} вулиць Києва зі своєю сторінкою: скільки подій, коли, яких видів. Дані станом на {e(dn.versiia)};
-рішення за 2016–2023 ще завантажуються.</p></div>
+безкоштовно — {PERIOD_VIDKRYTYI}, {PERIOD_ZAMKNENYI} — у підписці.</p></div>
 </section>
 <section class="vkhody" aria-label="Куди далі">
 <a class="vkhid" href="/vulytsi/"><span class="mikro">Покажчик</span><b>Усі вулиці</b><span>за абеткою й районами</span></a>
@@ -462,8 +471,8 @@ def holovna(dn: D.Dani, vulytsi: list, rayony: list, adresa_saitu: str) -> str:
 def soty_geojson(dn: D.Dani, riven: int) -> dict:
     """Файл сот одного рівня для карти. Колір і шкалу рахує сторінка під обрану групу й період.
 
-    Властивості: id; числа груп «<група><період>» (dor3, dorA … allA; 3 — останні 3 роки, A — усі);
-    y — події за роками 2016–2026; h — година-пік; p — чинні проблеми (назва сценарію, без адреси);
+    Властивості: id; числа груп за останні 3 роки (dor3 … all3; MV-32: чисел за старші роки тут немає);
+    y — події за кожен з останніх 3 років; o — 1, якщо в соті є й старші події (лише прапорець «у підписці»); h — година-пік; p — чинні проблеми (назва сценарію, без адреси);
     t — «що страждає» по групах ({група: [[що, скільки]]}, лише ≥ 5 подій); a — скільки подій з адресами й описами (для рядка про підписку);
     r — район, у якому центр соти; u — вулиці (лише на рівні 9)."""
     features = []
@@ -472,7 +481,9 @@ def soty_geojson(dn: D.Dani, riven: int) -> dict:
         vl = {'id': k}
         for kl, n in sorted(s['chysla'].items()):
             vl[kl] = n
-        vl['y'] = [s['roky'].get(r, 0) for r in D.ROKY]
+        vl['y'] = [s['roky'].get(r, 0) for r in D.VIDKRYTI_ROKY]
+        if s['stari']:
+            vl['o'] = 1
         pik = D.hodyna_pik(s['hodyny'])
         if pik:
             vl['h'] = pik
@@ -528,7 +539,6 @@ def ekran_karty(dn: D.Dani) -> str:
     """Карта на весь екран у вигляді макета М7 (MV-58): угорі ліворуч — рядок пошуку зі значками 3D/2D, день/ніч і «ⓘ»,
     під ним — фільтр «Усі події ▾»; картка соти — «в повітрі» праворуч (телефон — шторка); джерела — правий нижній кут
     (телефон — у «ⓘ»). Легенди й «+/−» немає. Поведінка зуму — як у карті Києва (S-К.4, S-К.6, S-К.13, S-К.18, S-К.21)."""
-    ostannii = D.ROKY[-1] - D.OSTANNI_ROKY + 1
     hrupy = ''.join(
         f'<li><label><input type="checkbox" data-hrupa="{k}" checked>{svg_html(IK_HRUP[k])}<span>{e(n)}</span></label></li>'
         for k, n in D.HRUPY)
@@ -559,7 +569,7 @@ def ekran_karty(dn: D.Dani) -> str:
 {hrupy}
 </ul>
 <div class="f-period" role="group" aria-label="Період">
-<button type="button" class="seg" data-period="3" aria-pressed="true">{ostannii}–{D.ROKY[-1]}</button><button type="button" class="seg" data-period="A" aria-pressed="false">Усі роки</button>
+<button type="button" class="seg" data-period="3" aria-pressed="true">{PERIOD_VIDKRYTYI}</button><button type="button" class="seg seg--zamok" disabled title="Усі роки — у підписці">{ZAMOK_SVG} Усі роки</button>
 </div>
 </div>
 </div>
@@ -570,7 +580,7 @@ def ekran_karty(dn: D.Dani) -> str:
 <h3>Колір соти (на цьому масштабі)</h3>
 <div class="shkala" id="shkala"></div>
 <p>Число подій — у підказці при наведенні й у картці соти (натисніть на соту). Великі соти — близько 5 і 0,7 км², при наближенні — близько 0,1 км².</p>
-<p>Безкоштовно — лише числа по сотах, без адрес і описів. Справи про домашнє насильство, статеві злочини й справи щодо дітей входять лише в число великих сот у групі «Насильство».</p>
+<p>Безкоштовно — лише числа по сотах за {PERIOD_VIDKRYTYI}, без адрес і описів; {PERIOD_ZAMKNENYI} — у підписці. Справи про домашнє насильство, статеві злочини й справи щодо дітей входять лише в число великих сот у групі «Насильство».</p>
 <h3>Як рухатись</h3>
 <p>Коліщатко або два пальці — ближче й далі; подвійний клік — ближче; клавіші + і −. Права кнопка або два пальці вгору-вниз — нахил.</p>
 <h3>Джерела</h3>
@@ -593,14 +603,14 @@ def poshuk_karty(dn: D.Dani, vulytsi: list, tsentry: dict) -> dict:
         for s in tsili:
             stari[s].append(stara)
     vs, buly = [], set()
-    for v in sorted(vulytsi, key=lambda v: (-len(v.podii), v.slug)):
+    for v in sorted(vulytsi, key=lambda v: (-len(v.nedavni), v.slug)):
         # Дві сторінки з однаковою назвою (зведення назв не певне) — у пошуку лише та, де більше подій;
         # інша лишається в покажчику вулиць.
         if v.slug not in tsentry or v.nazva in buly:
             continue
         buly.add(v.nazva)
         inshi = sorted(set(v.varianty) | set(stari.get(v.slug, [])))
-        vs.append([v.nazva, v.rayony.most_common(1)[0][0] if v.rayony else '', v.slug, *tsentry[v.slug], len(v.podii),
+        vs.append([v.nazva, v.rayony.most_common(1)[0][0] if v.rayony else '', v.slug, *tsentry[v.slug], len(v.nedavni),
                    ' '.join(inshi)])
     rayony = []
     if dn.rayony is not None:
@@ -684,9 +694,9 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
             kandydaty = sorted(za_rayonom[rayon], key=lambda x: (kliuch_abetky(x.korotka), x.slug))
             i = kandydaty.index(v)
             vikno = kandydaty[max(0, i - 4):i] + kandydaty[i + 1:i + 5]
-            susidy = [(x.slug, x.nazva, len(x.podii)) for x in vikno]
+            susidy = [(x.slug, x.nazva, len(x.nedavni)) for x in vikno]
         zapysaty(vykhid / 'vulytsia' / v.slug / 'index.html', storinka_vulytsi(dn, v, pr, adresa_saitu, susidy))
-        if len(v.podii) >= MIN_PODII_DLYA_POSHUKU:
+        if len(v.nedavni) >= MIN_PODII_DLYA_POSHUKU:
             adresy.append(f'/vulytsia/{v.slug}/')
 
     # Переадресації зі старих назв.
@@ -706,7 +716,7 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
     for r in rayony:
         zapysaty(vykhid / 'vulytsi' / slug_rayonu(r) / 'index.html', storinka_pokazhchyka(za_rayonom[r], rayony, adresa_saitu, r))
         adresy.append(f'/vulytsi/{slug_rayonu(r)}/')
-    pokazhchyk = [[v.slug, v.nazva, v.rayony.most_common(1)[0][0] if v.rayony else '', len(v.podii),
+    pokazhchyk = [[v.slug, v.nazva, v.rayony.most_common(1)[0][0] if v.rayony else '', len(v.nedavni),
                    ' '.join(sorted(v.varianty))] for v in sorted(vulytsi, key=lambda v: (kliuch_abetky(v.korotka), v.slug))]
     zapysaty(vykhid / 'vulytsi' / 'pokazhchyk.json', json.dumps(pokazhchyk, ensure_ascii=False, separators=(',', ':')))
 
