@@ -46,7 +46,7 @@ window.pokazaty = function (d) {
   c.setAttribute('cx', 17); c.setAttribute('cy', 17); c.setAttribute('r', 5); c.style.fill = '#FFFFFF'; mini.appendChild(c);
   Brend.tekst('mistse', d.mistse);
   Brend.tekst('misto', d.misto || 'Київ');
-  Brend.tekst('dzherelo', 'Джерело: рішення суду № ' + d.rishennya_nomer + ', Єдиний державний реєстр судових рішень. Повний текст — за посиланням в описі.');
+  Brend.tekst('dzherelo', 'Джерело: рішення суду № ' + d.rishennya_nomer + ', Єдиний державний реєстр судових рішень. Лише те, що дійшло до суду. Повний текст — за посиланням в описі.');
   Brend.tekst('adresa-saitu', d.adresa_saitu);
   /* Соти малюємо після тексту — коли відомо, скільки місця лишилося. */
   var m = document.getElementById('mapa'), r = m.getBoundingClientRect();

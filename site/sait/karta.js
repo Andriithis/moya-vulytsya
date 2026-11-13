@@ -660,6 +660,10 @@
         tilo += '<p class="zamok" aria-disabled="true"><span>' + ZAMOK + ' ' + chyslo(Number(p.a)) + ' ' + slovo(Number(p.a), ['подія', 'події', 'подій']) +
           ' з адресами й описами — у підписці</span></p>';
       }
+      // MV-60: тихий шлях до платного — на сторінки заглушки, що вже є
+      tilo += '<nav class="k-dali" aria-label="Більше про це місце">' +
+        '<a class="klav" href="' + KOREN + 'zahlushka/?dzherelo=sota-pidpyska#tsiny">Що саме тут було → підписка</a>' +
+        '<a class="klav" href="' + KOREN + 'zahlushka/?dzherelo=sota-analiz#tsiny">Аналіз адреси</a></nav>';
       var mezha = 'Лише те, що дійшло до суду' + (G.id === 'S' ? ' · справи про домашнє насильство й щодо дітей — лише у великих сотах' : '') +
         (VERSIIA ? ' · дані станом на ' + esc(VERSIIA) : '');
       el.innerHTML = '<div class="k-ruchka"></div><div class="k-shap"><div><h2>' + esc(nazva) + '</h2><p>' + esc(pidnazva) + '</p></div>' +

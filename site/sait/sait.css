@@ -306,6 +306,11 @@ body.z-kartoyu .shapka__vnutri { max-width: none; padding: 6px 16px; min-height:
 .k-vulytsi { margin: 0; font: 400 13px/20px var(--sans); }
 .k-vulytsi a { color: var(--ink); }
 .kartka-soty .zamok { margin-top: 10px; font-size: 13px; padding: 8px 12px; }
+/* MV-60: тихі кнопки до платного — нейтральні клавіші, без кольору акценту */
+.k-dali { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.k-dali a { flex: 1 1 auto; padding: 7px 12px; border-radius: var(--radius-m); background: var(--surface); color: var(--ink-2);
+  font: 600 13px/18px var(--sans); text-align: center; text-decoration: none; }
+.k-dali a:hover { color: var(--ink); border-color: var(--accent); }
 .mezha { margin: 8px 0 0; font: 400 12px/16px var(--sans); color: var(--muted); }
 
 @media (max-width: 700px) {

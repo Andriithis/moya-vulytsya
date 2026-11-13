@@ -8,7 +8,10 @@
 - немає слідів імен і номерів із рішень (ОСОБА_, НОМЕР_, «кв.»), немає категорій MV-4;
 - точка — у межах Києва; є посилання на рішення (для подій);
 - загальна тривалість 20–35 с; «Тур» — 4–5 подій; «Вгадай» — пауза 3 с; «Цифри» — 3 факти.
-З --koloda: подія є в колоді, координати збігаються, категорія не з MV-4.
+- MV-60: номер будинку на екрані — лише для публічного місця (поле typ_mistsia, правило —
+  brend/adresa_pokazu.py); кожна подія — з номером рішення; рендер показує лише підготовлений
+  сценарій (pidhotuvaty), тож номер прибирається кодом, а не вручну.
+З --koloda: подія є в колоді, координати й номер рішення збігаються, категорія не з MV-4.
 """
 from __future__ import annotations
 
@@ -18,6 +21,9 @@ import sys
 from pathlib import Path
 
 KORIN = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(KORIN / 'brend'))
+from adresa_pokazu import PUBLICHNI, adresa_dlia_pokazu, chutlyva, nevidomyi_typ  # noqa: E402
+
 MEZHA = KORIN / 'site' / 'hra' / 'mezha-kyieva.geojson'
 
 ZABORONENI = re.compile(r'небезпеч|безпечн|рейтинг|страшн|кримінальн\w* район', re.I)
@@ -48,6 +54,28 @@ def u_kyievi(lon, lat, _p=[]):
         if vseredyni:
             return True
     return False
+
+
+def nomer_rishennya(p):
+    """Номер рішення в ЄДРСР: поле rishennya_nomer або перша частина id події («128041647-1»)."""
+    n = str(p.get('rishennya_nomer') or str(p.get('id', '')).split('-')[0])
+    return n if n.isdigit() else ''
+
+
+def pidhotuvaty(S):
+    """Сценарій, як його побачить людина (MV-60): адреса — за правилом номера будинку,
+    у кожної події — номер рішення. Лише такий сценарій віддає сцені рендер."""
+    S = json.loads(json.dumps(S))
+    for p in S.get('tochky', []):
+        if p.get('adresa'):
+            p['adresa'] = adresa_dlia_pokazu(p['adresa'], p.get('typ_mistsia'), chutlyva(p.get('vyd'), p.get('tekst')))
+        if S.get('shablon') != 'tsyfry':
+            p['rishennya_nomer'] = nomer_rishennya(p)
+    c = S.get('tsentr')
+    if c and c.get('adresa'):
+        c['adresa'] = adresa_dlia_pokazu(c['adresa'], c.get('typ_mistsia'))
+    S['pidhotovano'] = True
+    return S
 
 
 def _teksty(S):
@@ -88,6 +116,9 @@ def pereviryty(S, imia='', koloda=None):
         if MV4_SLOVA.search(t):
             zauv(f'{d}: категорія MV-4 — {t!r}')
     tochky = S.get('tochky', [])
+    for i, p in enumerate(tochky + [S.get('tsentr') or {}]):
+        if nevidomyi_typ(p.get('typ_mistsia')):
+            zauv(f'typ_mistsia «{p["typ_mistsia"]}» невідомий; публічні: {", ".join(PUBLICHNI)}')
     for i, p in enumerate(tochky):
         if len(p.get('tekst', '')) > MAKS_TEKST:
             zauv(f'tochky[{i}].tekst: {len(p["tekst"])} знаків, можна до {MAKS_TEKST}')
@@ -102,6 +133,8 @@ def pereviryty(S, imia='', koloda=None):
                 zauv(f'tochky[{i}]: немає посилання на рішення')
             if not p.get('adresa'):
                 zauv(f'tochky[{i}]: немає адреси')
+            if not nomer_rishennya(p):
+                zauv(f'tochky[{i}]: немає номера рішення (rishennya_nomer)')
     t = tryvalist(S)
     if not 20 <= t <= 35:
         zauv(f'тривалість {t:.1f} с, треба 20–35 с')
@@ -134,6 +167,8 @@ def pereviryty(S, imia='', koloda=None):
                 zauv(f'tochky[{i}]: категорія MV-4 {e["kategoriia"]}')
             if e.get('rishennya_url') != p.get('rishennya_url'):
                 zauv(f'tochky[{i}]: посилання на рішення не збігається з колодою')
+            if e.get('rishennya_nomer') and str(e['rishennya_nomer']) != nomer_rishennya(p):
+                zauv(f'tochky[{i}]: номер рішення не збігається з колодою')
     return z
 
 

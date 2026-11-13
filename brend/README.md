@@ -36,7 +36,7 @@ python brend/zrobyty.py brend/dani/мій-файл.json
 змінній `MV_CHROME`). Шрифти — файлами з `shryfty/`, без інтернету.
 
 **Скрипт сам не пропустить:** «безпечно / небезпечно», «рейтинг», «страх…», емодзі;
-схоже на чутливі категорії (MV-4); номер будинку в місці події (MV-3 — у пості лише вулиця);
+схоже на чутливі категорії (MV-4); номер будинку в місці події (MV-60 — лише для публічних місць, прибирається сам, `adresa_pokazu.py`);
 історію без номера рішення; задовгий текст; текст, що після малювання вилазить за картку
 чи картинку. Помилка — картинки немає, пояснення в консолі.
 
@@ -58,7 +58,7 @@ python brend/zrobyty.py brend/dani/мій-файл.json
 ### `post-istoriya` — «Історія з рішення», 1080×1350
 Приклад: [`dani/post-istoriya-pryklad.json`](dani/post-istoriya-pryklad.json).
 - `tekst` (до 230; шрифт сам меншає для довших), `vyd` (вид події), `rik`
-- `mistse` — **лише вулиця, без номера**; `misto` (за замовчуванням Київ)
+- `mistse` — адреса; номер будинку покажеться лише для публічного місця (`typ_mistsia`: `tts`, `mahazyn`, `vokzal`, `parkovka`, `perekhrestia`, `zaklad`), інакше — лише вулиця (MV-60); `misto` (за замовчуванням Київ)
 - `rishennya_nomer` — обов'язково; повне посилання на рішення — в описі поста
 
 Текст — з рішення, нічого не додаючи: ні мотиву, ні віку, ні статі, ні деталей, яких там немає.
@@ -66,7 +66,7 @@ python brend/zrobyty.py brend/dani/мій-файл.json
 ### `storis-vhadai` — сторіз «Вгадай, де це було», 1080×1920
 Приклад: [`dani/storis-vhadai-pryklad.json`](dani/storis-vhadai-pryklad.json) — пара «питання → відповідь».
 - `tekst` (до 200), `nomer` (наприклад «№ 1»), `pidkazka` (необов'язково, до 60, без номерів)
-- `vidpovid` — якщо є, малюється сторіз-відповідь: `mistse` (вулиця без номера), `rik`, `rishennya_nomer`
+- `vidpovid` — якщо є, малюється сторіз-відповідь: `mistse` і `typ_mistsia` (як вище), `rik`, `rishennya_nomer`
 
 Верхні 250 і нижні 340 px — під кнопками Instagram і Facebook, там лише тло.
 
@@ -90,7 +90,7 @@ brend/
   teksty-profiliv.md    тексти профілів (до 80 і до 150 знаків)
   zrobyty.py            JSON -> PNG, перевірка текстів
   shablony/             HTML-шаблони, brend.css (кольори, шрифти системи), brend.js (знак, соти)
-  shryfty/              IBM Plex Sans (SIL OFL 1.1) — ті самі файли, що на сайті (site/sait/shryfty); старі Manrope/Inter більше не використовуються
+  shryfty/              IBM Plex Sans (SIL OFL 1.1) — ті самі файли, що на сайті (site/sait/shryfty); старі Manrope/Inter видалено (ZAVDANNYA-50)
   dani/                 приклади JSON
   hotovi/               готові PNG
 ```

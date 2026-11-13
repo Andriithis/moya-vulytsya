@@ -12,8 +12,9 @@
 (або в теку з ключем -o).
 
 Перед малюванням дані перевіряються: заборонені слова («безпечно», «рейтинг»…), емодзі,
-чутливі категорії (MV-4), номер будинку в місці події (MV-3), довжина текстів, номер
-рішення для історій. Після малювання — що жоден текст не вилазить за межі картинки.
+чутливі категорії (MV-4), номер будинку в місці події (MV-60: лише для публічних місць —
+поле typ_mistsia, правило в brend/adresa_pokazu.py), довжина текстів, номер рішення для історій.
+Номер будинку прибирається сам (pidhotuvaty) — вручну в даних його стирати не треба. Після малювання — що жоден текст не вилазить за межі картинки.
 Потрібні: Python-бібліотека playwright і Chrome (google-chrome або chromium).
 """
 from __future__ import annotations
@@ -25,6 +26,10 @@ import re
 import shutil
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from adresa_pokazu import (PUBLICHNI, adresa_dlia_pokazu, chutlyva, maie_nomer,  # noqa: E402
+                           mozhna_nomer, nevidomyi_typ)
 
 TEKA = Path(__file__).resolve().parent
 SHABLONY = TEKA / 'shablony'
@@ -69,6 +74,24 @@ def ryadky(o, shlyakh=''):
     elif isinstance(o, list):
         for i, v in enumerate(o):
             yield from ryadky(v, f'{shlyakh}[{i}]')
+
+
+def pidhotuvaty(shablon: str, d: dict) -> dict:
+    """Дані, як їх побачить людина: номер будинку — лише для публічного місця (MV-60)."""
+    d = json.loads(json.dumps(d))
+    if shablon == 'post-istoriya' and d.get('mistse'):
+        d['mistse'] = adresa_dlia_pokazu(d['mistse'], d.get('typ_mistsia'), chutlyva(d.get('vyd'), d.get('tekst')))
+    if shablon == 'storis-vhadai' and (d.get('vidpovid') or {}).get('mistse'):
+        v = d['vidpovid']
+        v['mistse'] = adresa_dlia_pokazu(v['mistse'], v.get('typ_mistsia'), chutlyva(d.get('tekst')))
+    return d
+
+
+def _nomer_budynku(p: list[str], kde: str, mistse: str | None, typ: str | None, sprava: bool) -> None:
+    if nevidomyi_typ(typ):
+        p.append(f'{kde}: невідомий typ_mistsia «{typ}»; публічні: {", ".join(PUBLICHNI)}')
+    if mistse and maie_nomer(mistse) and not mozhna_nomer(typ, sprava):
+        p.append(f'{kde}: лише вулиця, без номера будинку — номер лише для публічних місць (MV-60)')
 
 
 def perevirka(shablon: str, d: dict) -> list[str]:
@@ -121,8 +144,7 @@ def perevirka(shablon: str, d: dict) -> list[str]:
         for k in ('tekst', 'mistse', 'rishennya_nomer'):
             if not d.get(k):
                 p.append(f'{k}: обов\'язкове поле')
-        if d.get('mistse') and NOMER_BUDYNKU.search(d['mistse']):
-            p.append('mistse: лише вулиця, без номера будинку (MV-3)')
+        _nomer_budynku(p, 'mistse', d.get('mistse'), d.get('typ_mistsia'), chutlyva(d.get('vyd'), d.get('tekst')))
         if d.get('rishennya_nomer') and not str(d['rishennya_nomer']).isdigit():
             p.append('rishennya_nomer: лише цифри номера рішення в ЄДРСР')
     elif shablon == 'storis-vhadai':
@@ -134,8 +156,7 @@ def perevirka(shablon: str, d: dict) -> list[str]:
         if v is not None:
             if not v.get('mistse') or not v.get('rishennya_nomer'):
                 p.append('vidpovid: потрібні mistse і rishennya_nomer')
-            if v.get('mistse') and NOMER_BUDYNKU.search(v['mistse']):
-                p.append('vidpovid.mistse: лише вулиця, без номера будинку (MV-3)')
+            _nomer_budynku(p, 'vidpovid.mistse', v.get('mistse'), v.get('typ_mistsia'), chutlyva(d.get('tekst')))
             dovzhyna('vidpovid.mistse', v.get('mistse'), m['mistse'])
         if d.get('pidkazka') and NOMER_BUDYNKU.search(d['pidkazka']):
             p.append('pidkazka: без номерів будинків')
@@ -220,7 +241,8 @@ def zavantazhyty(shlyakh: Path) -> tuple[str, list[dict]]:
 def zrobyty_fail(m: Malyar | None, shlyakh: Path, teka: Path | None) -> int:
     shablon, posty = zavantazhyty(shlyakh)
     pomylok = 0
-    for d in posty:
+    for i, d in enumerate(posty):
+        d = posty[i] = pidhotuvaty(shablon, d)
         p = perevirka(shablon, d)
         if p:
             pomylok += 1
