@@ -274,7 +274,7 @@ for(const t of ['svitla','temna']){const p=NAPRYAMY[NAPR][t]; KOL[t]={};
  for(const [k,v] of Object.entries(p)) KOL[t][k]=v==null?null:Array.isArray(v[0])?v.map(oklch):oklch(v)}
 // Етап Б: варіанти фільтра й виділеної соти (лише для вибору).
 const FILTR=parU.get('filtr')==='znachky'?'znachky':'spysok';
-const VYD=['a','b','v'].includes(parU.get('vyd'))?parU.get('vyd'):'a';
+const VYD=['a','b','v'].includes(parU.get('vyd'))?parU.get('vyd'):'v';   // за замовчуванням — обраний оцінювачем «приціл»
 document.querySelectorAll('[data-filtr]').forEach(b=>{b.setAttribute('aria-pressed',String(b.dataset.filtr===FILTR));
  b.onclick=()=>{if(b.dataset.filtr===FILTR) return; const p=new URLSearchParams(location.search); p.set('filtr',b.dataset.filtr); location.href=zAdresy(p)}});
 document.querySelectorAll('[data-vyd]').forEach(b=>{b.setAttribute('aria-pressed',String(b.dataset.vyd===VYD));
