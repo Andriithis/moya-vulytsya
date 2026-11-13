@@ -1,7 +1,7 @@
 # brend/ — оформлення каналів «Моєї вулиці»
 
 Усе для TikTok, YouTube, Instagram, Телеграм-каналу й сторінки Facebook (MV-24), у системі
-дизайну (MV-15, [`docs/STYL.md`](../docs/STYL.md)). У день створення облікових записів —
+дизайну (MV-15, [`docs/STYL.md`](../docs/STYL.md); вигляд MV-58 — «Індиго й м'ята», IBM Plex Sans, з ZAVDANNYA-47). У день створення облікових записів —
 лише завантажити файли з `hotovi/` і вставити тексти з [`teksty-profiliv.md`](teksty-profiliv.md).
 
 ## Що завантажувати
@@ -10,7 +10,7 @@
 |---|---|---|
 | Аватар у всіх мережах | `hotovi/avatar/avatar-1024.png` | 1024×1024 |
 | Аватар Телеграм-каналу | `hotovi/avatar/telegram-kanal-1024.png` (той самий знак) | 1024×1024 |
-| Запасний аватар (на бірюзовому тлі) | `hotovi/avatar/avatar-akcent-1024.png` | 1024×1024 |
+| Запасний аватар (на тлі accent) | `hotovi/avatar/avatar-akcent-1024.png` | 1024×1024 |
 | Обкладинка YouTube | `hotovi/youtube/youtube-2560x1440.png` | 2560×1440 |
 | Обкладинка сторінки Facebook | `hotovi/facebook/facebook-1640x624.png` | 1640×624 |
 | Тексти профілів | [`teksty-profiliv.md`](teksty-profiliv.md) | до 80 і до 150 знаків |
@@ -42,7 +42,7 @@ python brend/zrobyty.py brend/dani/мій-файл.json
 
 ## Шаблони й поля
 
-Спільні необов'язкові поля: `nazva` — ім'я файлу; `maket: true` — помаранчева стрічка «МАКЕТ»
+Спільні необов'язкові поля: `nazva` — ім'я файлу; `maket: true` — стрічка «МАКЕТ» кольору «приціл»
 (для чернеток і даних, ще не перевірених для публікації); `pokazaty_zonu: true` — пунктир
 безпечної зони; `adresa_saitu` — коли буде домен.
 
@@ -90,7 +90,7 @@ brend/
   teksty-profiliv.md    тексти профілів (до 80 і до 150 знаків)
   zrobyty.py            JSON -> PNG, перевірка текстів
   shablony/             HTML-шаблони, brend.css (кольори, шрифти системи), brend.js (знак, соти)
-  shryfty/              Manrope і Inter (ліцензія OFL) — ті самі файли, що на сайті
+  shryfty/              IBM Plex Sans (SIL OFL 1.1) — ті самі файли, що на сайті (site/sait/shryfty); старі Manrope/Inter більше не використовуються
   dani/                 приклади JSON
   hotovi/               готові PNG
 ```

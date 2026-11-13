@@ -62,7 +62,7 @@
     if (znak === '?') {
       var t = document.createElementNS(NS, 'text');
       t.setAttribute('x', cx); t.setAttribute('y', cy + r * 0.36); t.setAttribute('text-anchor', 'middle');
-      t.style.font = '800 ' + Math.round(r) + 'px Manrope, sans-serif'; t.style.fill = '#FFFFFF';
+      t.style.font = '800 ' + Math.round(r) + 'px Plex, system-ui, sans-serif'; t.style.fill = '#FFFFFF';
       t.textContent = '?'; svg.appendChild(t);
     } else {
       var c = document.createElementNS(NS, 'circle');

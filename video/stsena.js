@@ -262,7 +262,7 @@
         // підкладка недоступна (немає мережі) — кажемо прямо, а не чекаємо вічно
         karta.on('error', function (e) { if (!karta.loaded()) ni(new Error('Карта не завантажилась' + (REZHYM === 'pidkladka' ? ' (підкладка OpenFreeMap недоступна? спробуйте --rezhym skhema)' : '') + ': ' + (e && e.error && e.error.message || e))); });
       })
-        .then(function () { return Promise.all([document.fonts.load('800 50px Manrope', 'Київ'), document.fonts.load('400 30px Inter', 'Київ'), document.fonts.load('600 30px Inter', 'Київ')]); })
+        .then(function () { return Promise.all([document.fonts.load('800 50px Plex', 'Київ'), document.fonts.load('400 30px Plex', 'Київ'), document.fonts.load('600 30px Plex', 'Київ')]); })
         .then(function () { return { tryvalist: SHKALA.tryvalist, nazva: S.nazva, rezhym: REZHYM }; });
     });
 })();

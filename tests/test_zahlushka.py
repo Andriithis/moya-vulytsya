@@ -85,10 +85,11 @@ class StorinkyTests(unittest.TestCase):
         css = (SAIT / 'styli.css').read_text(encoding='utf-8')
         for shryft in re.findall(r'url\(([^)]+)\)', css):
             self.assertTrue((SAIT / shryft).is_file(), shryft)
-        self.assertIn("font-family: 'Inter'", css)
-        self.assertIn("font-family: 'Manrope'", css)
-        self.assertTrue((SAIT / 'shryfty' / 'OFL-Inter.txt').is_file())
-        self.assertTrue((SAIT / 'shryfty' / 'OFL-Manrope.txt').is_file())
+        # MV-58 (ZAVDANNYA-47): лише IBM Plex Sans, ліцензія SIL OFL 1.1 — поруч із файлами.
+        self.assertIn('font-family: Plex', css)
+        self.assertNotIn('Manrope', css)
+        self.assertNotIn('Inter', css)
+        self.assertTrue((SAIT / 'shryfty' / 'OFL-IBM-Plex-Sans.txt').is_file())
 
     def test_tsiny_yak_u_mv3(self):
         """Ціни на сторінці: 690 грн аналіз, 299 грн/міс підписка (MV-11) — і жодних інших."""
@@ -491,8 +492,8 @@ class BrauzerTests(unittest.TestCase):
     def test_shryfty_zavantazheni(self):
         kontekst, s = self.vidkryty()
         s.evaluate('document.fonts.ready')
-        self.assertTrue(s.evaluate("document.fonts.check('800 52px Manrope', 'Що')"))
-        self.assertTrue(s.evaluate("document.fonts.check('400 16px Inter', 'Що')"))
+        self.assertTrue(s.evaluate("document.fonts.check('700 52px Plex', 'Що')"))
+        self.assertTrue(s.evaluate("document.fonts.check('400 16px Plex', 'Що')"))
         self.assertEqual(self.zovnishni, [])
         kontekst.close()
 
@@ -786,7 +787,7 @@ class Brauzer06Tests(BrauzerTests):
             s.goto(f'{self.url}/zahlushka/{nazva}?dzherelo=telegram')
             s.evaluate('document.fonts.ready')
             self.assertIn('Моя вулиця', s.inner_text('body'), nazva)
-            self.assertTrue(s.evaluate("document.fonts.check('400 16px Inter', 'Що')"), nazva)
+            self.assertTrue(s.evaluate("document.fonts.check('400 16px Plex', 'Що')"), nazva)
         # Звернення без мережі: зрозуміле повідомлення, введене лишилося.
         s.goto(f'{self.url}/zahlushka/zvernennya.html')
         self.zapovnyty(s)
