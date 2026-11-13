@@ -44,8 +44,10 @@ def chekaty(s, sek: float = 2.5) -> None:
 
 def natysnuty_sotu(s, ekran: str) -> bool:
     """Клік у середину однієї з вершин (як людина), доки не відкриється картка."""
-    for k in s.evaluate('''() => { const id = MvKarta.colG(); return MvKarta.vershyny(id).slice(0, 40).map(k => {
-            const c = MvKarta.tsentr(id, k), p = MvKarta.karta.project(c); return [p.x, p.y]; }); }'''):
+    # Найближчі до середини вільної частини карти (ліворуч від картки) — як у знімках М7.
+    for k in s.evaluate('''(pk) => { const id = MvKarta.colG(), W = innerWidth - (pk ? 400 : 0), H = innerHeight * (pk ? 0.55 : 0.35);
+            return MvKarta.vershyny(id).map(k => { const p = MvKarta.karta.project(MvKarta.tsentr(id, k)); return [p.x, p.y]; })
+              .sort((a, b) => Math.hypot(a[0] - W / 2, a[1] - H) - Math.hypot(b[0] - W / 2, b[1] - H)).slice(0, 40); }''', ekran == 'pk'):
         x, y = k
         w, h = s.viewport_size['width'], s.viewport_size['height']
         if not (40 < x < w - (420 if ekran == 'pk' else 40) and 150 < y < h * (0.9 if ekran == 'pk' else 0.5)):
