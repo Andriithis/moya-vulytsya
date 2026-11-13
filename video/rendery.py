@@ -70,6 +70,10 @@ def rendery(brauzer, port, stsenarii: Path, rezhym, vykhid: Path, znimky: Path |
     pomylky = []
     s.on('pageerror', lambda e: pomylky.append(str(e)))
     vidn = stsenarii.resolve().relative_to(TUT).as_posix()
+    # сцена отримує лише підготовлений сценарій: номер будинку прибрано за правилом MV-60
+    import perevirka
+    hotovyi = json.dumps(perevirka.pidhotuvaty(S), ensure_ascii=False)
+    s.route(f'**/video/{vidn}', lambda route: route.fulfill(status=200, content_type='application/json; charset=utf-8', body=hotovyi))
     s.goto(f'http://127.0.0.1:{port}/video/stsena.html?s={vidn}&rezhym={rezhym}')
     try:
         info = s.evaluate('() => window.gotovo')

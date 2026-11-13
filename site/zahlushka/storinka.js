@@ -41,6 +41,7 @@
     if (!adresa) { $('adresa').focus(); return; }
     N.nadislatyPodiyu('adresa', dzherelo);
     $('adresa2').value = adresa;
+    $('shcho').value = 'analiz';   // результат за адресою — платний аналіз (MV-60)
     var misto = $('misto');
     if (!telefon.matches && misto.value === '') {
       $('misto2').value = '';

@@ -126,9 +126,10 @@
     return '<div class="mitka">' + esc(v.mitka || '') + '</div><div class="zahol">' + esc(v.tekst) + '</div>' +
       (v.pidtekst ? '<div class="pidtekst">' + esc(v.pidtekst) + '</div>' : '');
   }
+  function rishennya(p) { return 'Рішення суду № ' + esc(p.rishennya_nomer) + ' · ЄДРСР'; }
   function kartkaPodii(p, zAdresoyu) {
     return '<div class="mitka">' + esc(p.koly + ' · ' + p.vyd) + '</div><div class="istoriia">' + esc(p.tekst) + '</div>' +
-      (zAdresoyu ? '<div class="adresa">' + esc(p.adresa) + '</div>' : '');
+      (zAdresoyu ? '<div class="adresa">' + esc(p.adresa) + '</div>' : '') + '<div class="prymitka">' + rishennya(p) + '</div>';
   }
 
   function zibraty(S) {
@@ -164,7 +165,7 @@
         // відповідь: летимо до точки, адреса великим
         var c = kamZupynky(p, i), d = p.tryvalist;
         dodaty({ tryv: d, kam: zlyty(polit(m3, c, t, LIT), t + LIT, dreif(c, t + LIT, d - LIT, 6, 0.12)),
-          kartka: '<div class="vidpovid"><div class="mitka">Відповідь</div><div class="adresa">' + esc(p.adresa) + '</div><div class="prymitka">Київ · ' + esc(p.koly) + '</div></div>',
+          kartka: '<div class="vidpovid"><div class="mitka">Відповідь</div><div class="adresa">' + esc(p.adresa) + '</div><div class="prymitka">Київ · ' + esc(p.koly) + '<br>' + rishennya(p) + '</div></div>',
           kartkaVid: LIT * 0.6, kroky: nm, tochka: [p.lon, p.lat], tochkaVid: LIT * 0.7 });
         kam = { center: c.center, zoom: c.zoom + 0.12, pitch: c.pitch, bearing: c.bearing + 6 };
       });
@@ -247,10 +248,12 @@
   window.gotovo = Promise.all([vantazhyty(STSENARII), vantazhyty('../site/hra/mezha-kyieva.geojson'), vantazhyty('dani/soty-kyiv.geojson'), document.fonts.ready])
     .then(function (r) {
       var S = r[0];
+      // MV-60: адресу й номер рішення готує video/perevirka.py (pidhotuvaty) — сирий сценарій не показуємо
+      if (!S.pidhotovano) throw new Error('Сценарій не підготовлено — відкривайте сцену через video/rendery.py (MV-60)');
       SHKALA = zibraty(S);
       el.kartka = document.getElementById('kartka');
       el.kroky = document.getElementById('kroky');
-      document.getElementById('dzherelo').textContent = 'Дані: судові рішення ЄДРСР · темніше — більше подій у даних · карта: © OpenStreetMap' + (REZHYM === 'pidkladka' ? ', OpenFreeMap' : '');
+      document.getElementById('dzherelo').textContent = 'Дані: судові рішення ЄДРСР — лише те, що дійшло до суду · темніше — більше подій у даних · карта: © OpenStreetMap' + (REZHYM === 'pidkladka' ? ', OpenFreeMap' : '');
       maplibregl.setWorkerUrl('../site/hra/biblioteka/maplibre-gl-csp-worker.js');
       karta = new maplibregl.Map({
         container: 'karta', style: styl(r[1], r[2]), center: MISTO.center, zoom: MISTO.zoom,

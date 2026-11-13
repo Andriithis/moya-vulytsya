@@ -274,6 +274,9 @@ svg { stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: roun
 .spysok-raundu .skilky small { display: block; font: 400 13px/18px Plex, system-ui, sans-serif; color: var(--muted); }
 .kinets__dii { display: flex; gap: var(--space-3); margin-top: var(--space-3); }
 .kinets__dii .knopka { flex: 1; }
+/* MV-60: тихе посилання до підписки — текстом, без кольору акценту */
+.kinets__pidpyska { align-self: center; color: var(--ink-2); font-weight: 600; text-underline-offset: 3px; }
+.kinets__pidpyska:hover { color: var(--ink); }
 .podilytysia-stan { min-height: 18px; font-size: 13px; line-height: 18px; color: var(--muted); }
 
 .zavantazhennya { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); color: var(--muted); font-size: 15px; }

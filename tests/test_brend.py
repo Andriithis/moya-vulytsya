@@ -69,6 +69,37 @@ class Perevirka(unittest.TestCase):
         self.assertTrue(any('номера будинку' in x for x in p))
 
 
+class NomerBudynkuMV60(unittest.TestCase):
+    """MV-60: у пості номер будинку — лише для публічного місця; прибирає код, а не людина."""
+
+    def test_istoriya_zhytlo_bez_nomera(self):
+        d = zrobyty.pidhotuvaty('post-istoriya', {'tekst': 'т', 'mistse': 'вул. Антоновича, 176', 'rishennya_nomer': '1'})
+        self.assertEqual(d['mistse'], 'вул. Антоновича')
+        self.assertEqual(zrobyty.perevirka('post-istoriya', d), [])
+
+    def test_istoriya_mahazyn_z_nomerom(self):
+        d = zrobyty.pidhotuvaty('post-istoriya', {'tekst': 'У магазині взяли худі', 'mistse': 'вул. Антоновича, 176',
+                                                  'typ_mistsia': 'mahazyn', 'rishennya_nomer': '1'})
+        self.assertEqual(d['mistse'], 'вул. Антоновича, 176')
+        self.assertEqual(zrobyty.perevirka('post-istoriya', d), [])
+
+    def test_storis_vidpovid(self):
+        d = zrobyty.pidhotuvaty('storis-vhadai', {'tekst': 'т', 'vidpovid': {'mistse': 'вул. Богомольця, 7',
+                                                                            'rishennya_nomer': '1'}})
+        self.assertEqual(d['vidpovid']['mistse'], 'вул. Богомольця')
+
+    def test_nevidomyi_typ(self):
+        d = {'tekst': 'т', 'mistse': 'вул. А', 'typ_mistsia': 'kvartyra', 'rishennya_nomer': '1'}
+        self.assertTrue(any('typ_mistsia' in x for x in zrobyty.perevirka('post-istoriya', d)))
+
+    def test_lyshe_te_shcho_diishlo_do_sudu(self):
+        for f in ('post-istoriya', 'storis-vhadai', 'post-tsyfry'):
+            html = (KORIN / 'brend' / 'shablony' / f'{f}.html').read_text(encoding='utf-8')
+            self.assertIn('Лише те, що дійшло до суду', html, f)
+        for f in ('post-istoriya', 'storis-vhadai'):
+            self.assertIn('рішення суду № ', (KORIN / 'brend' / 'shablony' / f'{f}.html').read_text(encoding='utf-8'), f)
+
+
 class TekstyProfiliv(unittest.TestCase):
     def test_dovzhyna_i_slova(self):
         md = (KORIN / 'brend' / 'teksty-profiliv.md').read_text(encoding='utf-8')
