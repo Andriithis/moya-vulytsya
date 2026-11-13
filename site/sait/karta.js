@@ -204,7 +204,7 @@
     var $ = function (s) { return ekran.querySelector(s); };
     var K = paleta(), TEMA = K.t;
     var AKTYVNI = {}; HRUPY.forEach(function (h) { AKTYVNI[h[0]] = true; });
-    var PERIOD = '3';
+    var PERIOD = '3';   // MV-32: безкоштовно лише останні 3 роки; «Усі роки» — у підписці (чисел за них у файлах немає)
     var ROKY = [], VERSIIA = konteiner.getAttribute('data-versiia') || '';
     var HEXB = { XL: new Map(), L: new Map(), S: new Map() };
     var POR = { XL: [], L: [], S: [] }, POR_V = { XL: 0, L: 0, S: 0 }, MEDIANA = { XL: 0, L: 0, S: 0 };
@@ -217,7 +217,7 @@
       if (vsiAktyvni()) return Number(p['all' + PERIOD] || 0);
       var n = 0; HRUPY.forEach(function (h) { if (AKTYVNI[h[0]]) n += chysloG(p, h[0]); }); return n;
     }
-    function nazvaPeriodu() { return PERIOD === '3' ? (ROKY[ROKY.length - 3] + '–' + ROKY[ROKY.length - 1]) : (ROKY[0] + '–' + ROKY[ROKY.length - 1]); }
+    function nazvaPeriodu() { return ROKY[ROKY.length - 3] + '–' + ROKY[ROKY.length - 1]; }
 
     // Шкала частками: частка соти q — її місце серед непорожніх сот рівня (скільки менші + половина рівних) / усіх.
     function pererakhuvaty() {
@@ -501,7 +501,7 @@
       });
     });
     function pislyaFiltra() {
-      $('#f-pidpys').textContent = pidpysFiltra() + (PERIOD === 'A' ? ' · усі роки' : '');
+      $('#f-pidpys').textContent = pidpysFiltra();
       pererakhuvaty(); zafarbuvaty(); if (!$('#info').hidden) namalyuvatyInfo();
       if (ZARAZ) { if (ZARAZ.b.nf > 0) namalyuvatyKartku(); else zakryty(); }
     }
@@ -615,13 +615,18 @@
       return 'у ' + String(ok).replace('.', ',') + ' ' + sl + ' ' + (bilshe ? 'більше' : 'менше') + ' за типову соту';
     }
     function masyv(x) { return typeof x === 'string' ? JSON.parse(x) : (x || []); }
+    // Останні 3 роки — з числами; старші (MV-32, макет М7) — сірі стовпчики з замком без чисел, лише якщо в соті є старші події (o).
     function stovpchyky(p) {
       var y = masyv(p.y), mx = Math.max.apply(null, y.concat([1])), H = 36, ost = ROKY[ROKY.length - 1];
-      return '<div class="k-roky">' + y.map(function (v, i) {
-        var h = v ? Math.max(4, Math.round(H * v / mx)) : 2, r = ROKY[i];
+      var vidkr = ROKY.slice(-y.length), stari = p.o ? ROKY.slice(0, ROKY.length - y.length) : [];
+      var zam = stari.map(function (r) {
+        return '<div class="r zamk" title="' + r + ': у підписці"><em>' + ZAMOK + '</em><u data-vys="' + Math.round(H * 0.6) + '"></u><span>’' + String(r).slice(2) + '</span></div>';
+      }).join('');
+      return '<div class="k-roky">' + zam + y.map(function (v, i) {
+        var h = v ? Math.max(4, Math.round(H * v / mx)) : 2, r = vidkr[i];
         return '<div class="r' + (r === ost ? ' nepovnyi' : '') + '" title="' + r + ': ' + v + '"><em>' + (v ? chyslo(v) : '') + '</em><u data-vys="' + h + '"' +
           (v ? '' : ' class="nul"') + '></u><span>’' + String(r).slice(2) + '</span></div>';
-      }).join('') + '</div><p class="pidpys-sir">' + ost + ' — неповний рік · рішення за 2016–2023 ще завантажуються</p>';
+      }).join('') + '</div><p class="pidpys-sir">' + (stari.length ? stari[0] + '–' + stari[stari.length - 1] + ' — у підписці · ' : '') + ost + ' — неповний рік</p>';
     }
     function namalyuvatyKartku() {
       var G = ZARAZ.G, b = ZARAZ.b, p = b.p, n = b.nf, el = $('#kartka'), filtr = !vsiAktyvni();
@@ -635,7 +640,7 @@
         var top = HRUPY.filter(function (h) { return h[0] !== 'nas' && AKTYVNI[h[0]] && chysloG(p, h[0]) > 0; })
           .map(function (h) { return [chysloG(p, h[0]), h[1]]; }).sort(function (x, y) { return y[0] - x[0]; }).slice(0, 3);
         var nas = AKTYVNI.nas && chysloG(p, 'nas') > 0 ? '<div class="nas"><span>Насильство</span><b>' + chyslo(chysloG(p, 'nas')) + '</b></div>' : '';
-        var pik = p.h ? '<div class="pik"><b>Пік: ' + esc(p.h.replace(/ (\d)/, ', $1')) + ' год</b><span>усі роки, де відомий час</span></div>'
+        var pik = p.h ? '<div class="pik"><b>Пік: ' + esc(p.h.replace(/ (\d)/, ', $1')) + ' год</b><span>за ' + nazvaPeriodu() + ', де відомий час</span></div>'
           : '<div class="pik"><span>Мало даних про час</span></div>';
         var povt = masyv(p.p);
         tilo = '<div class="k-chyslo"><div class="velyke">' + chyslo(n) + '</div><div class="pid">' + slovo(n, ['подія', 'події', 'подій']) + ' за ' + nazvaPeriodu() +
