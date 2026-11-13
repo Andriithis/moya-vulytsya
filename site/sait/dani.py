@@ -431,8 +431,9 @@ class Dani:
     vulytsi: dict
     zvedennia: Zvedennia
     misto_vydy: Counter
-    soty: dict                                  # рівень H3 (8, 9) → {клітинка: дані соти}
+    soty: dict                                  # рівень H3 (7, 8, 9) → {клітинка: дані соти}
     vulytsi_podii: list = field(default_factory=list)
+    rayony: object = None                       # межі районів (Rayony) — для назви району соти й пошуку
 
 
 def ochyshchena_istoriia(fabula: str | None, mezha: int = 300) -> str | None:
@@ -575,12 +576,12 @@ def zibraty_dani(baza: Path, pereimenuvannia: Path | None, mezhi_rayoniv: Path |
                            'WHERE lat IS NOT NULL ORDER BY podii DESC, problem_id').fetchall()
     soty = {}
     if h3 is not None:
-        for riven in (8, 9):
+        for riven in (7, 8, 9):
             soty[riven] = soty_rivnia(podii, vulytsi_podii, varianty_slug, problemy, riven)
 
     zv = Zvedennia(vulytsi, varianty_slug, sumnivni, neodnoz, pereim_spysok)
     con.close()
-    return Dani(versiia, podii, vulytsi, zv, misto_vydy, soty, vulytsi_podii)
+    return Dani(versiia, podii, vulytsi, zv, misto_vydy, soty, vulytsi_podii, rayony)
 
 
 # ---------------------------------------------------------------- соти головної карти
@@ -649,12 +650,13 @@ def hodyna_pik(hodyny: Counter) -> str | None:
 
 
 def soty_rivnia(podii: list, vulytsi_podii: list, varianty_slug: dict, problemy: list, riven: int) -> dict:
-    """Соти одного рівня H3. Чутливі справи (MV-4) — лише на рівні 8 і лише числом у групі «Насильство»."""
+    """Соти одного рівня H3. Чутливі справи (MV-4) — лише у великих сотах (рівні 7 і 8) і лише числом
+    у групі «Насильство»."""
     ostannii = ROKY[-1] - OSTANNI_ROKY + 1
     soty = {}
     for i, p in enumerate(podii):
         if p.chutlyva:
-            if riven != 8:
+            if riven not in (7, 8):
                 continue
             if p.lat is not None:
                 lat, lon = p.lat, p.lon

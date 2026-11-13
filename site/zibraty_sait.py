@@ -5,7 +5,7 @@
 
 Що збирає (лише файли, без сервера — під Cloudflare Pages):
   /                         головна: пошук вулиці, входи в карту, покажчик, гру, звіт
-  /karta/                   карта Києва шестикутниками H3 рівня 9 (soty.json поруч)
+  /karta/                   карта Києва шестикутниками H3 рівнів 7, 8, 9 (soty-<рівень>.json, poshuk.json поруч)
   /vulytsi/                 покажчик вулиць за абеткою; /vulytsi/<район>/ — за районами
   /vulytsia/<slug>/         сторінка кожної вулиці (узагальнене, безкоштовне)
   /vulytsia/<стара-назва>/  переадресація зі старої назви на нову (довідник перейменувань)
@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 import argparse
+import functools
 import html
 import json
 import shutil
@@ -44,11 +45,79 @@ CSP = ("default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'
        "worker-src 'self' blob:; child-src 'self' blob:; connect-src 'self' https://tiles.openfreemap.org; "
        "form-action 'self'; base-uri 'none'")
 
+SONTSE = ('<svg class="ik-sontse" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" '
+          'stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4'
+          'M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg>')
+MISYATS = ('<svg class="ik-misyats" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" '
+           'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"></path></svg>')
+# День/ніч: значок показує, що буде (місяць — увімкнути ніч); підпис ставить sait/tema.js.
+KNOPKA_TEMY = f'<button type="button" class="znachok klav" data-tema-perem aria-label="Нічна тема">{MISYATS}{SONTSE}</button>'
 ZNAK = ('<svg aria-hidden="true" width="26" height="28" viewBox="0 0 26 28"><path class="lohotyp__soty" '
         'd="M13 1 L25 8 L25 20 L13 27 L1 20 L1 8 Z"></path><path class="lohotyp__vnutr" '
         'd="M13 9 L18 12 L18 17 L13 20 L8 17 L8 12 Z"></path></svg>')
 
 RODOVYI_RAYONU = {}   # «Голосіївський» → «Голосіївський район»
+
+# ---------------------------------------------------------------- кольори «Індиго й м'ята» (MV-58)
+
+def oklch_hex(c) -> str:
+    """OKLCH [L, C, h] → #RRGGBB (ті самі формули, що й у макеті М7)."""
+    import math
+    L, C, h = c
+    a, b = C * math.cos(math.radians(h)), C * math.sin(math.radians(h))
+    l_ = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3
+    m_ = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3
+    s_ = (L - 0.0894841775 * a - 1.291485548 * b) ** 3
+    rgb = (4.0767416621 * l_ - 3.3077115913 * m_ + 0.2309699292 * s_,
+           -1.2684380046 * l_ + 2.6097574011 * m_ - 0.3413193965 * s_,
+           -0.0041960863 * l_ - 0.7034186147 * m_ + 1.707614701 * s_)
+
+    def f(x):
+        x = 12.92 * x if x <= 0.0031308 else 1.055 * x ** (1 / 2.4) - 0.055
+        return f'{round(min(1, max(0, x)) * 255):02X}'
+    return '#' + ''.join(f(x) for x in rgb)
+
+
+def zmishaty(a: str, b: str, k: float) -> str:
+    ra, rb = [int(a[i:i + 2], 16) for i in (1, 3, 5)], [int(b[i:i + 2], 16) for i in (1, 3, 5)]
+    return '#' + ''.join(f'{round(x + (y - x) * k):02X}' for x, y in zip(ra, rb))
+
+
+@functools.lru_cache(maxsize=1)
+def kolory_tem() -> dict:
+    """Кольори обох тем з site/sait/kolory.json (напрям «Індиго й м'ята» макета М7) — уже в sRGB."""
+    dzh = json.loads((DZHERELO / 'sait' / 'kolory.json').read_text(encoding='utf-8'))
+    tem = {}
+    for t in ('svitla', 'temna'):
+        k = {n: (None if v is None else [oklch_hex(x) for x in v] if isinstance(v[0], list) else oklch_hex(v))
+             for n, v in dzh[t].items()}
+        tem[t] = k
+    return tem
+
+
+def kolory_css() -> str:
+    """CSS-змінні обох тем. Світла — за замовчуванням; темна — html[data-t="temna"] (ставить sait/tema.js)."""
+    tem = kolory_tem()
+    blok = {}
+    for t, k in tem.items():
+        temna = t == 'temna'
+        v = {
+            'ground': k['ground'], 'surface': k['surface'], 'surface-tint': k['tint'], 'ink': k['ink'], 'ink-2': k['ink2'],
+            'muted': k['muted'], 'line': k['line'], 'line-strong': zmishaty(k['line'], k['mezha'], 0.4), 'mezha': k['mezha'],
+            'bort': zmishaty(k['ground'], '#000000', 0.55) if temna else zmishaty(k['mezha'], '#000000', 0.25),
+            'accent': k['accent'], 'accent-strong': zmishaty(k['accent'], '#FFFFFF' if temna else '#000000', 0.25),
+            'accent-soft': k['accentSoft'], 'on-accent': k['onAccent'], 'data-city': k['muted'],
+            'vyd': k['vyd'], 'pk-1': k['pk'][0], 'pk-2': k['pk'][1],
+            'karta-tlo': k['bg'], 'karta-park': k['park'], 'karta-voda': k['water'], 'karta-budynky': k['building'],
+            'karta-doroha': k['road'] or 'none', 'karta-pidpys': k['label'], 'karta-oreol': k['halo'],
+        }
+        for i, c in enumerate(k['sc'], 1):
+            v[f'sc-{i}'] = c
+            v[f'data-{i}'] = c          # шкала сторінок вулиць — та сама, що й на карті
+        blok[t] = ''.join(f'--{n}:{c};' for n, c in v.items())
+    return ('/* Кольори — напрям «Індиго й м’ята» (MV-58), з site/sait/kolory.json; збирач пише їх сюди. */\n'
+            f':root{{color-scheme:light;{blok["svitla"]}}}\n'
+            f'html[data-t="temna"]{{color-scheme:dark;{blok["temna"]}}}\n')
 
 
 def e(t) -> str:
@@ -111,17 +180,19 @@ def storinka(*, shlyakh: str, title: str, opys: str, tilo: str, adresa_saitu: st
 <meta property="og:title" content="{e(title)}">
 <meta property="og:description" content="{e(opys)}">
 <meta property="og:url" content="{e(adresa_saitu + shlyakh)}">
-<meta name="theme-color" content="#0B6B6B">
+<meta name="theme-color" content="{kolory_tem()['svitla']['ground']}">
 <link rel="icon" type="image/png" sizes="192x192" href="/zahlushka/ikony/ikona-192.png">
-<link rel="preload" href="/sait/shryfty/manrope-cyrillic-800-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="/sait/shryfty/inter-cyrillic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/sait/shryfty/ibm-plex-sans-cyrillic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/sait/shryfty/ibm-plex-sans-cyrillic-700-normal.woff2" as="font" type="font/woff2" crossorigin>
+<script src="/sait/tema.js"></script>
 {css_mapy}<link rel="stylesheet" href="/sait/sait.css">
 {dodatkovo_head}</head>
-<body>
+<body{' class="z-kartoyu"' if pered_main else ''}>
 <header class="shapka">
 <div class="shapka__vnutri">
 <a class="lohotyp" href="/">{ZNAK}<span class="lohotyp__nazva">Моя вулиця</span></a>
 <nav class="menyu" aria-label="Розділи">{''.join(punkty)}</nav>
+{'' if pered_main else KNOPKA_TEMY}
 </div>
 </header>
 {pered_main}<main class="storinka">
@@ -139,12 +210,6 @@ def storinka(*, shlyakh: str, title: str, opys: str, tilo: str, adresa_saitu: st
 '''
 
 
-def lehenda() -> str:
-    klitynky = ''.join(f'<i class="d{i}"></i>' for i in range(1, 6))
-    return (f'<div class="lehenda"><span>менше</span><span class="lehenda__shkala" aria-hidden="true">{klitynky}</span>'
-            f'<span>більше подій</span><span>Темніше — більше подій у даних, не «небезпечніше».</span></div>')
-
-
 # ---------------------------------------------------------------- сторінка вулиці
 
 def ryadok_vydu(x: dict) -> str:
@@ -155,8 +220,8 @@ def ryadok_vydu(x: dict) -> str:
     raz_t = f'{raz:.1f}'.replace('.', ',')
     return f'''<div class="kartka vyd">
 <div class="vyd__nazva">{e(x['vyd'])}</div>
-<div class="vyd__ryad"><span>ця вулиця</span><span class="vyd__smuha vyd__smuha--tut"><i style="width:{tut / shkala * 100:.0f}%"></i></span><b>{vidsotok(tut)}</b></div>
-<div class="vyd__ryad"><span>Київ</span><span class="vyd__smuha vyd__smuha--misto"><i style="width:{misto / shkala * 100:.0f}%"></i></span><b>{vidsotok(misto)}</b></div>
+<div class="vyd__ryad"><span>ця вулиця</span><span class="vyd__smuha vyd__smuha--tut"><i data-shyr="{tut / shkala * 100:.0f}"></i></span><b>{vidsotok(tut)}</b></div>
+<div class="vyd__ryad"><span>Київ</span><span class="vyd__smuha vyd__smuha--misto"><i data-shyr="{misto / shkala * 100:.0f}"></i></span><b>{vidsotok(misto)}</b></div>
 <p class="prymitka">{podii_slovo(x['n'])} на вулиці. Частка серед подій вулиці в {raz_t} раза більша, ніж по Києву.</p>
 </div>'''
 
@@ -221,7 +286,7 @@ def storinka_vulytsi(dn: D.Dani, v: D.Vulytsia, pr: dict, adresa_saitu: str, sus
     maks = max(pr['roky'].values()) or 1
     stovpchyky = ''.join(
         f'<div class="rik"><span class="rik__chyslo">{chyslo(n) if n else ""}</span>'
-        f'<span class="rik__stovpchyk" style="height:{max(2, round(n / maks * 140))}px"></span><span>{r}</span></div>'
+        f'<span class="rik__stovpchyk" data-vys="{max(2, round(n / maks * 140))}"></span><span>{r}</span></div>'
         for r, n in pr['roky'].items())
     pidpys_rokiv = 'Більшість рішень за 2016–2023 ще завантажується, тому старі роки поки неповні.'
     if pr['poza_rokamy']:
@@ -390,8 +455,8 @@ def holovna(dn: D.Dani, vulytsi: list, rayony: list, adresa_saitu: str) -> str:
 <nav class="rayony" aria-label="Райони">{"".join(f'<a href="/vulytsi/{slug_rayonu(r)}/">{e(r)}</a>' for r in rayony)}</nav></section>'''
     return storinka(shlyakh='/', title='Моя вулиця — що суди розповіли про вашу вулицю у Києві',
                     opys='Карта Києва з подіями із судових рішень: скільки, коли, яких видів — на кожній вулиці. Покажчик вулиць, гра.',
-                    tilo=tilo, adresa_saitu=adresa_saitu, mapa=True, pered_main=ekran_karty(dn, True),
-                    skrypty=('/sait/biblioteka/maplibre-gl-csp.js', '/sait/karta.js', '/sait/poshuk.js'))
+                    tilo=tilo, adresa_saitu=adresa_saitu, mapa=True, pered_main=ekran_karty(dn),
+                    skrypty=('/sait/biblioteka/maplibre-gl-csp.js', '/sait/karta.js'))
 
 
 def soty_geojson(dn: D.Dani, riven: int) -> dict:
@@ -400,7 +465,7 @@ def soty_geojson(dn: D.Dani, riven: int) -> dict:
     Властивості: id; числа груп «<група><період>» (dor3, dorA … allA; 3 — останні 3 роки, A — усі);
     y — події за роками 2016–2026; h — година-пік; p — чинні проблеми (назва сценарію, без адреси);
     t — «що страждає» по групах ({група: [[що, скільки]]}, лише ≥ 5 подій); a — скільки подій з адресами й описами (для рядка про підписку);
-    u — вулиці (лише на рівні 9)."""
+    r — район, у якому центр соти; u — вулиці (лише на рівні 9)."""
     features = []
     for k in sorted(dn.soty[riven]):
         s = dn.soty[riven][k]
@@ -421,6 +486,11 @@ def soty_geojson(dn: D.Dani, riven: int) -> dict:
         if tsili:
             vl['t'] = tsili
         vl['a'] = s['z_adresoyu']
+        if dn.rayony is not None:
+            lat, lon = D.h3.cell_to_latlng(k)
+            r = dn.rayony.rayon(lat, lon)
+            if r:
+                vl['r'] = r
         if riven == 9:
             vl['u'] = [[sl, dn.vulytsi[sl].nazva] for sl, n in sorted(s['vulytsi'].items(), key=lambda x: (-x[1], x[0]))[:4]
                        if sl in dn.vulytsi and dn.vulytsi[sl].podii]
@@ -428,54 +498,127 @@ def soty_geojson(dn: D.Dani, riven: int) -> dict:
     return {'type': 'FeatureCollection', 'features': features}
 
 
-def ekran_karty(dn: D.Dani, z_poshukom: bool) -> str:
-    """Карта на весь екран: панель керування праворуч (телефон — смуга внизу), картка соти ліворуч
-    (телефон — шторка на пів екрана). Поведінка — як у навчальній карті Києва (S-К.4, S-К.6, S-К.13,
-    S-К.18, S-К.21); вигляд — лише наш."""
-    vsogo = sum(s['chysla']['allA'] for s in dn.soty[8].values())
+IK_HRUP = {   # значки видів подій з макета М7 (лінійні, 24×24); для насильства — долоня, не кров і не зброя
+    'dtp': '<path d="M5 15v-3l2-5h10l2 5v3"/><path d="M4 15h16v3H4z"/><circle cx="7.5" cy="18" r="1.3"/><circle cx="16.5" cy="18" r="1.3"/>',
+    'dor': '<path d="M8 3 5 21M16 3l3 18M12 4v3M12 11v3M12 18v2"/>',
+    'hp': '<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.3"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6M15.5 14.3c2.9.2 5 2.3 5 5.2"/>',
+    'mai': '<path d="M4 10 12 4l8 6v10H4Z"/><path d="M10 20v-5h4v5"/>',
+    'nar': '<rect x="3" y="9" width="18" height="6" rx="3" transform="rotate(-35 12 12)"/><path d="m9.6 8.6 4.8 6.8"/>',
+    'alk': '<path d="M10 2.5h4M10.5 2.5v4.5L8 10v11h8V10l-2.5-3V2.5"/><path d="M8 14h8"/>',
+    'nas': '<path d="M8 12V5.5a1.5 1.5 0 0 1 3 0V11M11 10V4.5a1.5 1.5 0 0 1 3 0V11M14 10.5V6a1.5 1.5 0 0 1 3 0v8a7 7 0 0 1-12.5 4.3L3 15.5a1.5 1.5 0 0 1 2.4-1.8L8 16"/>',
+}
+
+
+def svg_html(vmist: str, r: int = 18, sh: float = 1.75) -> str:
+    """Лінійний значок; самозакривні теги SVG розгортаємо — так сторінку пропускає суворий розбір HTML."""
+    import re as _re
+    vmist = _re.sub(r'<(\w+)([^<>]*?)/>', r'<\1\2></\1>', vmist)
+    return (f'<svg width="{r}" height="{r}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="{sh}" '
+            f'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{vmist}</svg>')
+
+
+DZHERELA_KARTY = ('Підкладка: <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> © '
+                  '<a href="https://openmaptiles.org" target="_blank" rel="noopener">OpenMapTiles</a> · дані © '
+                  '<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> (ODbL) · події: '
+                  '<a href="https://reyestr.court.gov.ua" target="_blank" rel="noopener">ЄДРСР</a>, ДСА України '
+                  '(<a href="https://creativecommons.org/licenses/by/4.0/deed.uk" target="_blank" rel="noopener">CC BY</a>)')
+
+
+def ekran_karty(dn: D.Dani) -> str:
+    """Карта на весь екран у вигляді макета М7 (MV-58): угорі ліворуч — рядок пошуку зі значками 3D/2D, день/ніч і «ⓘ»,
+    під ним — фільтр «Усі події ▾»; картка соти — «в повітрі» праворуч (телефон — шторка); джерела — правий нижній кут
+    (телефон — у «ⓘ»). Легенди й «+/−» немає. Поведінка зуму — як у карті Києва (S-К.4, S-К.6, S-К.13, S-К.18, S-К.21)."""
     ostannii = D.ROKY[-1] - D.OSTANNI_ROKY + 1
     hrupy = ''.join(
-        f'<li><button type="button" class="vyd-perem" data-hrupa="{k}" aria-pressed="true">'
-        f'<i class="vyd-krapka vyd-{k}" aria-hidden="true"></i><span>{e(n)}</span><b data-chyslo="{k}"></b></button></li>'
+        f'<li><label><input type="checkbox" data-hrupa="{k}" checked>{svg_html(IK_HRUP[k])}<span>{e(n)}</span></label></li>'
         for k, n in D.HRUPY)
-    poshuk = ''
-    if z_poshukom:
-        poshuk = ('<form class="poshuk poshuk--karta" role="search" action="/vulytsi/"><label class="prykhovano" for="poshuk-vulytsi">Назва вулиці</label>'
-                  '<input id="poshuk-vulytsi" type="search" autocomplete="off" placeholder="Знайти вулицю">'
-                  '<ul class="poshuk__spysok" id="poshuk-spysok" hidden></ul></form>')
+    znak = ('<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path class="lohotyp__soty" '
+            'd="M12 1.5 21.1 6.75V17.25L12 22.5 2.9 17.25V6.75Z"></path><path class="lohotyp__vnutr" d="M12 8 15.5 10V14L12 16 8.5 14V10Z"></path></svg>')
+    filtr_ik = svg_html('<path d="M4 6h16M7 12h10M10 18h4"/>', 18, 2)
+    info_ik = svg_html('<circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><circle cx="12" cy="7.6" r=".6" fill="currentColor"/>', 22)
+    kub = svg_html('<path d="M12 3 20 7.5V16.5L12 21 4 16.5V7.5Z"/><path d="M4 7.5 12 12 20 7.5M12 12V21"/>', 20)
     return f'''<section class="ekran-karty" aria-label="Карта Києва">
-<div id="karta-mista" class="karta-povna" data-soty-8="/karta/soty-8.json" data-soty-9="/karta/soty-9.json"></div>
+<div id="karta-mista" class="karta-povna" data-soty-7="/karta/soty-7.json" data-soty-8="/karta/soty-8.json" data-soty-9="/karta/soty-9.json" data-poshuk="/karta/poshuk.json" data-versiia="{e(dn.versiia)}"></div>
 <noscript><p class="karta-bez-js">Щоб побачити карту, увімкніть JavaScript. Без нього — <a href="/vulytsi/">покажчик вулиць</a>.</p></noscript>
-<p class="karta__zboi" hidden>Підкладка карти не завантажилася — видно межу Києва й соти.</p>
-<aside class="keruvannia" id="keruvannia" aria-label="Що показати">
-<p class="mikro">Київ · події з рішень судів</p>
-<p class="keruvannia__vsogo"><b class="chyslo-velyke" id="vsogo-podii">{chyslo(vsogo)}</b> <span id="vsogo-pidpys">подій на карті</span></p>
-{poshuk}
-<div class="keruvannia__period" role="group" aria-label="Період">
+<p class="karta__zboi" hidden>Підкладка карти не завантажилася — видно соти й межу Києва.</p>
+<div class="verkh-ryad">
+<form class="plashka verkh" role="search" action="/vulytsi/"><span class="znak">{znak}</span>
+<label class="prykhovano" for="poshuk-karty">Вулиця або район</label>
+<input id="poshuk-karty" type="search" autocomplete="off" spellcheck="false" placeholder="Вулиця або район" aria-controls="pidkazky" aria-autocomplete="list" aria-expanded="false" role="combobox">
+</form>
+<button id="f3d" class="znachok klav" type="button" aria-label="Зараз 3D (об’ємно). Натисніть — пласка карта 2D"><span class="zn-v">{kub}<small>3D</small></span></button>
+<button id="ftema" class="znachok klav" type="button" data-tema-perem aria-label="Нічна тема">{MISYATS}{SONTSE}</button>
+<button id="finfo" class="znachok klav" type="button" aria-label="Як читати карту" title="Як читати карту" aria-expanded="false" aria-controls="info">{info_ik}</button>
+</div>
+<ul id="pidkazky" class="plashka" role="listbox" aria-label="Знайдені місця" hidden></ul>
+<div id="filtr" class="filtr">
+<button type="button" class="f-knopka klav" aria-expanded="false" aria-controls="f-spysok">{filtr_ik}<span id="f-pidpys">Усі події</span><span aria-hidden="true">▾</span></button>
+<div id="f-spysok" class="f-spysok plashka" hidden>
+<ul aria-label="Види подій">
+<li class="f-usi"><label><input type="checkbox" data-usi checked><span>Усі події</span></label></li>
+{hrupy}
+</ul>
+<div class="f-period" role="group" aria-label="Період">
 <button type="button" class="seg" data-period="3" aria-pressed="true">{ostannii}–{D.ROKY[-1]}</button><button type="button" class="seg" data-period="A" aria-pressed="false">Усі роки</button>
 </div>
-<button type="button" class="keruvannia__rozgornuty" id="vydy-rozgornuty" aria-expanded="false" aria-controls="vydy">Види подій</button>
-<ul class="vydy" id="vydy" aria-label="Види подій">{hrupy}</ul>
-<p class="keruvannia__poiasnennia">Колір — вид, якого в соті помітно більше, ніж у середньому по Києву. Прозоріше — менше подій у даних, не «небезпечніше».</p>
-</aside>
-<button type="button" class="knopka-3d" id="knopka-3d" aria-pressed="false" aria-label="Показати стовпчиками">3D</button>
-<aside class="kartka-soty" id="panel" hidden aria-live="polite" aria-label="Шестикутник">
-<button class="kartka-soty__zakryty" id="panel-zakryty" type="button" aria-label="Закрити">×</button>
-<div id="panel-vmist"></div>
-</aside>
-<div class="pidkazka-soty" id="pidkazka" hidden></div>
+</div>
+</div>
+<section id="info" class="plashka" hidden aria-label="Як читати карту">
+<button class="i-x" type="button" aria-label="Закрити">×</button>
+<h2>Як читати карту</h2>
+<p>Кожна сота — ділянка міста. Колір показує, <b>скільки подій є в даних</b>, — а не те, наскільки тут «страшно». Лише те, що дійшло до суду, а не всі події.</p>
+<h3>Колір соти (на цьому масштабі)</h3>
+<div class="shkala" id="shkala"></div>
+<p>Число подій — у підказці при наведенні й у картці соти (натисніть на соту). Великі соти — близько 5 і 0,7 км², при наближенні — близько 0,1 км².</p>
+<p>Безкоштовно — лише числа по сотах, без адрес і описів. Справи про домашнє насильство, статеві злочини й справи щодо дітей входять лише в число великих сот у групі «Насильство».</p>
+<h3>Як рухатись</h3>
+<p>Коліщатко або два пальці — ближче й далі; подвійний клік — ближче; клавіші + і −. Права кнопка або два пальці вгору-вниз — нахил.</p>
+<h3>Джерела</h3>
+<p>{DZHERELA_KARTY}</p>
+</section>
+<div id="tykha" class="tykha" hidden>будинки — у підписці</div>
+<div id="dzherela" class="dzherela">{DZHERELA_KARTY}</div>
+<aside id="kartka" class="plashka kartka-soty" hidden aria-label="Картка соти"></aside>
+<div id="pidkazka" class="pidkazka-toast" role="status" aria-live="polite"></div>
 </section>
 '''
 
 
+def poshuk_karty(dn: D.Dani, vulytsi: list, tsentry: dict) -> dict:
+    """Пошук на карті — з даних сайту, без геокодера (MV-58): вулиці зі своєю сторінкою (назва, варіанти назв і старі
+    назви з довідника перейменувань, центр соти вулиці з найбільшою кількістю подій) і райони (межі).
+    Ні адрес, ні описів подій тут немає — лише назви вулиць і центри сот."""
+    stari = defaultdict(list)
+    for stara, tsili in dn.zvedennia.pereimenuvannia:
+        for s in tsili:
+            stari[s].append(stara)
+    vs, buly = [], set()
+    for v in sorted(vulytsi, key=lambda v: (-len(v.podii), v.slug)):
+        # Дві сторінки з однаковою назвою (зведення назв не певне) — у пошуку лише та, де більше подій;
+        # інша лишається в покажчику вулиць.
+        if v.slug not in tsentry or v.nazva in buly:
+            continue
+        buly.add(v.nazva)
+        inshi = sorted(set(v.varianty) | set(stari.get(v.slug, [])))
+        vs.append([v.nazva, v.rayony.most_common(1)[0][0] if v.rayony else '', v.slug, *tsentry[v.slug], len(v.podii),
+                   ' '.join(inshi)])
+    rayony = []
+    if dn.rayony is not None:
+        for nazva in sorted(dn.rayony.mezhi, key=kliuch_abetky):
+            r = dn.rayony.mezhi[nazva]
+            rayony.append([nazva, round(min(x[1][2] for x in r), 4), round(min(x[1][0] for x in r), 4),
+                           round(max(x[1][3] for x in r), 4), round(max(x[1][1] for x in r), 4)])
+    return {'versiia': dn.versiia, 'vulytsi': vs, 'rayony': rayony}
+
+
 def storinka_karty(dn: D.Dani, adresa_saitu: str) -> str:
     tilo = '''<section class="rozdil vuzko"><h1 class="h-mala">Карта Києва: події з судових рішень</h1>
-<p class="prymitka">Великі соти — близько 0,7 км², при наближенні — близько 0,1 км². Безкоштовно — лише числа по сотах, без адрес і описів.
+<p class="prymitka">Великі соти — близько 5 і 0,7 км², при наближенні — близько 0,1 км². Безкоштовно — лише числа по сотах, без адрес і описів.
 Справи про домашнє насильство, статеві злочини й справи щодо дітей входять лише в число великих сот у групі «Насильство».
 Насильство показуємо лише числом. Дані — це те, що дійшло до суду, а не всі події.</p></section>'''
     return storinka(shlyakh='/karta/', title='Карта Києва — події з судових рішень | Моя вулиця',
                     opys='Карта Києва шестикутниками: скільки подій із судових рішень у кожній частині міста, яких видів і коли.',
-                    tilo=tilo, adresa_saitu=adresa_saitu, aktyvne='karta/', mapa=True, pered_main=ekran_karty(dn, False),
+                    tilo=tilo, adresa_saitu=adresa_saitu, aktyvne='karta/', mapa=True, pered_main=ekran_karty(dn),
                     skrypty=('/sait/biblioteka/maplibre-gl-csp.js', '/sait/karta.js'))
 
 
@@ -496,9 +639,11 @@ def zapysaty(shlyakh: Path, tekst: str) -> None:
 def kopiyuvaty_spilne(vykhid: Path) -> None:
     sait = vykhid / 'sait'
     (sait / 'shryfty').mkdir(parents=True, exist_ok=True)
-    for f in ('sait.css', 'karta.js', 'poshuk.js'):
+    for f in ('karta.js', 'poshuk.js', 'tema.js'):
         shutil.copyfile(DZHERELO / 'sait' / f, sait / f)
-    for f in sorted((DZHERELO / 'zahlushka' / 'shryfty').iterdir()):
+    # Кольори обох тем — на початок стилів (одна сторінка стилів, без зайвого запиту).
+    zapysaty(sait / 'sait.css', kolory_css() + (DZHERELO / 'sait' / 'sait.css').read_text(encoding='utf-8'))
+    for f in sorted((DZHERELO / 'sait' / 'shryfty').iterdir()):   # IBM Plex Sans і ліцензія OFL поруч
         shutil.copyfile(f, sait / 'shryfty' / f.name)
     (sait / 'biblioteka').mkdir(exist_ok=True)
     for f in sorted((DZHERELO / 'hra' / 'biblioteka').iterdir()):
@@ -525,8 +670,14 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
             za_rayonom[v.rayony.most_common(1)[0][0]].append(v)
 
     adresy = ['/', '/karta/', '/vulytsi/']
+    tsentry_vulyts = {}
     for v in vulytsi:
         pr = D.profil_vulytsi(dn, v)
+        if pr['soty']:
+            # Куди летіти з пошуку: центр соти вулиці, де найбільше подій (центр соти, не адреса).
+            k = max(pr['soty'], key=lambda x: (x[1], x[0]))[0]
+            lat, lon = D.h3.cell_to_latlng(k)
+            tsentry_vulyts[v.slug] = (round(lon, 5), round(lat, 5))
         rayon = v.rayony.most_common(1)[0][0] if v.rayony else None
         susidy = []
         if rayon:
@@ -562,10 +713,12 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
     # Карта і головна.
     if D.h3 is None:
         raise SystemExit('Немає бібліотеки h3 (pip install h3) — карту шестикутників не зібрати.')
-    for riven in (8, 9):
+    for riven in (7, 8, 9):
         zapysaty(vykhid / 'karta' / f'soty-{riven}.json',
                  json.dumps({'versiia': dn.versiia, 'riven': riven, 'roky': D.ROKY, 'soty': soty_geojson(dn, riven)},
                             ensure_ascii=False, separators=(',', ':'), sort_keys=True))
+    zapysaty(vykhid / 'karta' / 'poshuk.json', json.dumps(poshuk_karty(dn, vulytsi, tsentry_vulyts), ensure_ascii=False,
+                                                          separators=(',', ':')))
     zapysaty(vykhid / 'karta' / 'index.html', storinka_karty(dn, adresa_saitu))
     zapysaty(vykhid / 'index.html', holovna(dn, vulytsi, rayony, adresa_saitu))
     zapysaty(vykhid / '404.html', storinka_404(adresa_saitu))

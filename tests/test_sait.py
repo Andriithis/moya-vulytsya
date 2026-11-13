@@ -308,22 +308,65 @@ class Sait(unittest.TestCase):
         self.assertIn('<meta name="description"', t)
 
     def test_karta_bez_chutlyvykh_vydiv(self):
-        for riven in (8, 9):
+        for riven in (7, 8, 9):
             soty = json.loads((self.sait / 'karta' / f'soty-{riven}.json').read_text(encoding='utf-8'))
             tekst = json.dumps(soty, ensure_ascii=False)
             for slovo in ('домашнє насильство', 'обмежувальних приписів', 'статев', 'зґвалтування'):
                 self.assertNotIn(slovo, tekst)
             self.assertTrue(soty['soty']['features'])
 
-    def test_chutlyvi_lyshe_na_rivni_8(self):
+    def test_chutlyvi_lyshe_u_velykykh_sotakh(self):
         if self.spravzhnii:
             self.skipTest('лише для штучної бази')
         suma = {}
-        for riven in (8, 9):
+        for riven in (7, 8, 9):
             soty = json.loads((self.sait / 'karta' / f'soty-{riven}.json').read_text(encoding='utf-8'))
             suma[riven] = sum(f['properties'].get('nasA', 0) for f in soty['soty']['features'])
+        self.assertEqual(suma[7], 3)          # великі соти (≈ 5 км²) — так само, лише числом
         self.assertEqual(suma[8], 3)          # 2 позначені чутливі + 1 за ст. 390-1
         self.assertEqual(suma[9], 0)
+
+    def test_publichni_faily_karty_bez_adres_i_opysiv(self):
+        """Безкоштовно — лише числа по сотах (AGENTS.md, розд. 8): у файлах карти й пошуку немає номерів будинків,
+        описів подій і посилань на рішення."""
+        faily = sorted((self.sait / 'karta').glob('*.json')) + [self.sait / 'vulytsi' / 'pokazhchyk.json']
+        self.assertEqual({f.name for f in faily}, {'soty-7.json', 'soty-8.json', 'soty-9.json', 'poshuk.json', 'pokazhchyk.json'})
+        opys = re.compile(r'керуючи|зіткнення|порушив|визнав|reyestr\.court\.gov\.ua/Review|doc_url|fabula', re.I)
+        for f in faily:
+            tekst = f.read_text(encoding='utf-8')
+            self.assertIsNone(D.NOMER_BUDYNKU.search(tekst), f.name)
+            self.assertIsNone(opys.search(tekst), f.name)
+            self.assertIsNone(re.search(r'[А-ЯІЇЄҐа-яіїєґ.]\s*,\s*\d+[а-я]?["\]]', tekst), f'{f.name}: схоже на адресу з номером')
+
+    def test_poshuk_znakhodyt_vulytsiu_z_danykh(self):
+        """Пошук на карті — з даних сайту: вулиця зі сторінкою, її старі назви, центр соти; райони — межами."""
+        p = json.loads((self.sait / 'karta' / 'poshuk.json').read_text(encoding='utf-8'))
+        storinky = {d.name for d in (self.sait / 'vulytsia').iterdir()}
+        for v in p['vulytsi']:
+            self.assertIn(v[2], storinky)
+            self.assertTrue(30.2 < v[3] < 30.9 and 50.2 < v[4] < 50.6, v)
+        nazvy = {v[0]: v for v in p['vulytsi']}
+        khr = [v for n, v in nazvy.items() if 'Хрещатик' in n]
+        self.assertTrue(khr, 'Хрещатика немає в пошуку')
+        self.assertEqual(khr[0][2], 'khreshchatyk')
+        self.assertEqual(len(nazvy), len(p['vulytsi']), 'назви в пошуку не повторюються')
+        self.assertTrue(p['rayony'] and all(len(r) == 5 for r in p['rayony']))
+        if not self.spravzhnii:
+            vv = [v for v in p['vulytsi'] if v[2] == 'velyka-vasylkivska'][0]
+            self.assertIn('Червоноармійська', vv[6])      # стара назва з довідника перейменувань
+
+    def test_kolory_i_shryft_m7(self):
+        css = (self.sait / 'sait' / 'sait.css').read_text(encoding='utf-8')
+        self.assertIn('html[data-t="temna"]', css)
+        for zm in ('--sc-1', '--sc-5', '--pk-1', '--pk-2', '--vyd', '--karta-park', '--karta-voda'):
+            self.assertIn(zm + ':#', css)
+        self.assertIn('font-family: Plex', css)
+        self.assertTrue((self.sait / 'sait' / 'shryfty' / 'OFL-IBM-Plex-Sans.txt').is_file())
+        holovna = (self.sait / 'index.html').read_text(encoding='utf-8')
+        for id_ in ('poshuk-karty', 'f3d', 'ftema', 'finfo', 'filtr', 'kartka', 'dzherela'):
+            self.assertIn(f'id="{id_}"', holovna)
+        for f in self.nashi_storinky():                    # CSP style-src 'self' не пускає атрибутів style
+            self.assertNotIn(' style="', f.read_text(encoding='utf-8'), str(f.relative_to(self.sait)))
 
     def test_nemaye_budynkiv_na_storintsi_vulytsi(self):
         bud = re.compile(r'біля буд\.|буд\.\s*№?\s*\d|будинку\s*№?\s*\d|(вул|просп|бульв)\.\s+[^,<]{1,50},\s*\d')
@@ -360,6 +403,111 @@ class Sait(unittest.TestCase):
         khr = (self.sait / 'vulytsia' / 'khreshchatyk' / 'index.html').read_text(encoding='utf-8')
         self.assertIn('8 подій', khr)
         self.assertNotIn('порушив припис', khr)
+
+
+def brauzer_dlya_karty() -> str | None:
+    """Chrome чи Edge для перевірки карти (потрібен WebGL; програмний — swiftshader)."""
+    import shutil
+    try:
+        import playwright.sync_api  # noqa: F401
+    except ImportError:
+        return None
+    for p in (os.environ.get('MV_CHROME'), shutil.which('google-chrome'), shutil.which('chromium'),
+              r'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe', r'C:\Program Files\Microsoft\Edge\Application\msedge.exe'):
+        if p and Path(p).is_file():
+            return p
+    return None
+
+
+BRAUZER = brauzer_dlya_karty() if YE_H3 else None
+ZNIMOK = '''() => { const r = s => { const b = document.querySelector(s).getBoundingClientRect(); return [b.x, b.y, b.width, b.height]; };
+    const k = MvKarta.karta, c = k.getCenter();
+    return { verkh: r('.verkh-ryad'), filtr: r('#filtr'), dzherela: r('#dzherela'), karta: r('#karta-mista'),
+             kamera: [c.lng.toFixed(6), c.lat.toFixed(6), k.getZoom().toFixed(4), k.getPitch().toFixed(2)] }; }'''
+
+
+@unittest.skipUnless(BRAUZER, 'немає Playwright або Chrome/Edge, або h3 — перевірку карти в браузері пропущено')
+class KartaUBrauzeri(unittest.TestCase):
+    """Карта у вигляді М7 (ZAVDANNYA-45): нічого не рухається, коли картка відкривається й закривається; пошук
+    знаходить вулицю з даних і відкриває її соту. Підкладку не вантажимо — перевірка не залежить від мережі."""
+
+    @classmethod
+    def setUpClass(cls):
+        import functools
+        import http.server
+        import threading
+        import zibraty_sait
+        from playwright.sync_api import sync_playwright
+        cls.tmp = tempfile.TemporaryDirectory()
+        tmp = Path(cls.tmp.name)
+        stvoryty_bazu(tmp / 'events.db')
+        stvoryty_pereimenuvannya(tmp / 'pereim.csv')
+        zibraty_sait.zibraty_sait(tmp / 'events.db', tmp / 'sait', tmp / 'pereim.csv', KORIN / 'data' / 'borders.json')
+        http.server.SimpleHTTPRequestHandler.log_message = lambda *a: None
+        cls.server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), functools.partial(
+            http.server.SimpleHTTPRequestHandler, directory=str(tmp / 'sait')))
+        threading.Thread(target=cls.server.serve_forever, daemon=True).start()
+        cls.url = f'http://127.0.0.1:{cls.server.server_address[1]}'
+        cls.pw = sync_playwright().start()
+        cls.b = cls.pw.chromium.launch(executable_path=BRAUZER, args=[
+            '--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'])
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.b.close()
+        cls.pw.stop()
+        cls.server.shutdown()
+        cls.tmp.cleanup()
+
+    def storinka(self, shyryna=1280, vysota=800):
+        k = self.b.new_context(viewport={'width': shyryna, 'height': vysota}, reduced_motion='reduce',
+                               is_mobile=shyryna < 700, has_touch=shyryna < 700)
+        k.route('https://tiles.openfreemap.org/**', lambda r: r.abort())
+        self.addCleanup(k.close)
+        s = k.new_page()
+        pomylky = []
+        s.on('pageerror', lambda e: pomylky.append(str(e)))
+        s.goto(self.url + '/#14.5/50.4477/30.5231/0/40')
+        s.wait_for_function('() => window.MvKarta && MvKarta.gotovo', timeout=60000)
+        s.wait_for_timeout(500)
+        return s, pomylky
+
+    def test_nichoho_ne_zsuvayetsya_pry_kartsi(self):
+        for shyryna, vysota in ((1280, 800), (390, 844)):
+            s, pomylky = self.storinka(shyryna, vysota)
+            do = s.evaluate(ZNIMOK)
+            k = s.evaluate("() => { const id = MvKarta.colG(); const v = MvKarta.vershyny(id); return [id, v[0]]; }")
+            self.assertTrue(k[1], 'немає жодної вершини')
+            s.evaluate('([id, k]) => MvKarta.vidkryty(id, k)', k)
+            s.wait_for_timeout(400)
+            self.assertFalse(s.evaluate('document.getElementById("kartka").hidden'))
+            self.assertEqual(s.evaluate(ZNIMOK), do, f'{shyryna}: щось зсунулося при відкритті картки')
+            s.click('.k-x')
+            s.wait_for_timeout(300)
+            self.assertTrue(s.evaluate('document.getElementById("kartka").hidden'))
+            self.assertEqual(s.evaluate(ZNIMOK), do, f'{shyryna}: щось зсунулося при закритті картки')
+            self.assertEqual(pomylky, [])
+
+    def test_poshuk_vulytsi_z_danykh(self):
+        s, pomylky = self.storinka()
+        znaideno = s.evaluate("() => MvKarta.poshuk('хрещ')")
+        self.assertTrue(any('Хрещатик' in n for n in znaideno), znaideno)
+        s.fill('#poshuk-karty', '')
+        s.click('#poshuk-karty')
+        s.keyboard.type('хрещ')
+        s.wait_for_selector('#pidkazky li[data-j]')
+        s.keyboard.press('Enter')
+        s.wait_for_function('() => !document.getElementById("kartka").hidden', timeout=15000)
+        self.assertIn('Хрещатик', s.inner_text('#kartka h2'))
+        self.assertIn('под', s.inner_text('#kartka'))
+        self.assertEqual(pomylky, [])
+        # Без подій у даних — так і кажемо.
+        s.click('.k-x')
+        s.evaluate("() => MvKarta.karta.jumpTo({center: [30.30, 50.30], zoom: 14})")
+        s.wait_for_timeout(300)
+        s.mouse.click(640, 500)
+        s.wait_for_timeout(300)
+        self.assertEqual(s.inner_text('#pidkazka'), 'Тут немає подій у даних')
 
 
 if __name__ == '__main__':
