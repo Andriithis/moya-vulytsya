@@ -535,6 +535,10 @@ class KartaUBrauzeri(unittest.TestCase):
             s.evaluate('([id, k]) => MvKarta.vidkryty(id, k)', k)
             s.wait_for_timeout(400)
             self.assertFalse(s.evaluate('document.getElementById("kartka").hidden'))
+            # MV-60: тихий шлях до платного — дві кнопки на сторінки заглушки
+            dali = s.evaluate("() => [...document.querySelectorAll('#kartka .k-dali a')].map(a => [a.textContent, a.getAttribute('href')])")
+            self.assertEqual(dali, [['Що саме тут було → підписка', '/zahlushka/?dzherelo=sota-pidpyska#tsiny'],
+                                    ['Аналіз адреси', '/zahlushka/?dzherelo=sota-analiz#tsiny']])
             self.assertEqual(s.evaluate(ZNIMOK), do, f'{shyryna}: щось зсунулося при відкритті картки')
             s.click('.k-x')
             s.wait_for_timeout(300)

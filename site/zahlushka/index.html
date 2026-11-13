@@ -6,9 +6,9 @@
 <meta name="referrer" content="no-referrer">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://*.supabase.co; form-action 'none'; base-uri 'none'">
 <title>Моя вулиця — що суди розповіли про вашу вулицю</title>
-<meta name="description" content="Карта подій із судових рішень за 2016–2026 роки. Київ відкривається незабаром — залиште контакт на передзамовлення.">
-<link rel="preload" href="shryfty/manrope-cyrillic-800-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="shryfty/inter-cyrillic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<meta name="description" content="Карта подій із судових рішень. Київ відкривається незабаром — залиште контакт на передзамовлення.">
+<link rel="preload" href="shryfty/ibm-plex-sans-cyrillic-700-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="shryfty/ibm-plex-sans-cyrillic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <meta name="theme-color" content="#4447A6">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="ikony/ikona-192.png">
@@ -33,9 +33,9 @@
 <main>
 <section class="pershyi">
 <div class="pershyi__tekst">
-<span class="znachok"><span class="lyshe-komp">Київ відкривається незабаром · 10 років рішень суду</span><span class="lyshe-telefon">Київ незабаром · 10 років</span></span>
+<span class="znachok"><span class="lyshe-komp">Київ відкривається незабаром</span><span class="lyshe-telefon">Київ незабаром</span></span>
 <h1>Що суди розповіли про вашу вулицю</h1>
-<p class="pershyi__opys"><span class="lyshe-komp">Карта подій із судових рішень за 2016–2026 роки: ДТП, п'яні за кермом, крадіжки, бійки. Подивіться, що ставалося біля дому, який орендуєте чи купуєте.</span><span class="lyshe-telefon">Події з судових рішень за 2016–2026: ДТП, п'яні за кермом, крадіжки, бійки — біля дому, який орендуєте чи купуєте.</span></p>
+<p class="pershyi__opys"><span class="lyshe-komp">Карта подій із судових рішень: ДТП, п'яні за кермом, крадіжки, бійки. Безкоштовно — числа по сотах, без адрес. Що було біля дому, який орендуєте чи купуєте, — в аналізі адреси.</span><span class="lyshe-telefon">Події з судових рішень: ДТП, п'яні за кермом, крадіжки, бійки. Біля конкретного дому — в аналізі адреси.</span></p>
 <form class="poshuk" id="poshuk" novalidate>
 <label for="adresa" class="poshuk__mitka"><span class="lyshe-komp">Адреса</span><span class="lyshe-telefon">Ваша адреса</span></label>
 <input id="adresa" class="poshuk__adresa" type="text" autocomplete="street-address" maxlength="200" placeholder="Вулиця і номер будинку, наприклад: Хрещатик, 1" data-korotko="Хрещатик, 1">
@@ -43,7 +43,7 @@
 <select id="misto" class="poshuk__misto"><option value="Київ">Київ</option><option value="">Інше місто</option></select>
 <button type="submit" class="poshuk__knopka">Перевірити адресу</button>
 </form>
-<span class="pidkazka">Поки карта готується — залиште адресу, і ми надішлемо результат першими.</span>
+<span class="pidkazka">Результат за адресою — платний аналіз адреси. Залиште адресу — повідомимо першими, коли він запрацює.</span>
 </div>
 <div class="pershyi__soty">
 <svg role="img" aria-label="Соти карти: темніше — більше подій у даних" width="340" height="320" viewBox="0 0 340 320">
@@ -83,7 +83,7 @@
 
 <div class="kartka">
 <span class="kartka__nazva">Підписка</span>
-<span class="kartka__tsina" data-tsina="pidpyska">299 грн <small>/ місяць</small></span>
+<span class="kartka__tsina" data-tsina="pidpyska">399 грн <small>/ місяць</small></span>
 <ul>
 <li>адреси й події зі стислим описом</li>
 <li>сповіщення про нові події біля ваших адрес</li>
@@ -119,7 +119,7 @@
 </div>
 <div class="ryadok">
 <div class="ryadok__liva"><b>Підписка</b><span>адреси, події, сповіщення</span></div>
-<span class="ryadok__tsina" data-tsina="pidpyska">299 грн/міс</span>
+<span class="ryadok__tsina" data-tsina="pidpyska">399 грн/міс</span>
 </div>
 <div class="ryadok ryadok--holovnyi">
 <div class="ryadok__verkh">
@@ -143,7 +143,7 @@
 <label for="shcho">Що цікавить</label>
 <select id="shcho" name="shcho">
 <option value="analiz" data-korotko="Аналіз адреси — 690 грн">Аналіз адреси — 690 грн</option>
-<option value="pidpyska" data-korotko="Підписка — 299 грн / міс">Підписка — 299 грн / місяць</option>
+<option value="pidpyska" data-korotko="Підписка — 399 грн / міс">Підписка — 399 грн / місяць</option>
 <option value="povidomyty" data-korotko="Лише повідомити">Лише повідомити про запуск</option>
 <option value="kompaniya" data-korotko="Для компанії">Для компанії</option>
 </select>

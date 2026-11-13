@@ -30,7 +30,7 @@
 <div class="kartka zavdannya" id="zavd"><p class="tekst" id="tekst"></p><p class="body-s pidkazka" id="pidkazka"></p></div>
 <div id="mapa"></div>
 <div class="pytannya" id="pytannya"><p class="display">Де це було?</p>
-<p class="body-l">Пишіть свій варіант у відповідь.<br>Відповідь — у наступній сторіз.</p></div>
+<p class="body-l">Пишіть свій варіант у відповідь.<br>Відповідь і номер рішення — у наступній сторіз.</p></div>
 <div class="kartka vidpovid" id="vidpovid" hidden><span class="micro">Відповідь</span>
 <p class="title-1" id="v-mistse"></p><p class="body-s" id="v-rik" style="color:var(--ink-2);margin-top:4px"></p>
 <p class="caption" id="v-dzherelo" style="margin-top:10px"></p></div>
@@ -53,7 +53,7 @@ window.pokazaty = function (d) {
     document.getElementById('vidpovid').hidden = false;
     Brend.tekst('v-mistse', d.vidpovid.mistse);
     Brend.tekst('v-rik', [d.vidpovid.misto || 'Київ', d.vidpovid.rik].filter(Boolean).join(' · '));
-    Brend.tekst('v-dzherelo', 'Джерело: рішення суду № ' + d.vidpovid.rishennya_nomer + ', ЄДРСР. Грайте далі на сайті.');
+    Brend.tekst('v-dzherelo', 'Джерело: рішення суду № ' + d.vidpovid.rishennya_nomer + ', ЄДРСР. Лише те, що дійшло до суду. Грайте далі на сайті.');
   }
   if ((d.tekst || '').length > 130) document.getElementById('zavd').classList.add('dovge');
   var m = document.getElementById('mapa'), r = m.getBoundingClientRect();

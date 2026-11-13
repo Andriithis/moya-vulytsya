@@ -56,9 +56,9 @@ FAILY = ['index.html', 'polityka.html', 'zrazok.html', 'styli.css', 'zrazok.css'
          'oferta.html', 'zvernennya.html', 'zvernennya.js', 'vstanovlennya.js',
          'manifest.webmanifest', 'sw.js']
 STORINKY = ['index.html', 'polityka.html', 'zrazok.html', 'oferta.html', 'zvernennya.html']
-# Ціни з MV-11 — ОДНЕ місце для оферти: у тексті оферти стоять {{tsina.analiz}} і {{tsina.pidpyska}}.
+# Ціни (аналіз — MV-11, підписка — MV-28/MV-60) — ОДНЕ місце для оферти: у тексті оферти стоять {{tsina.analiz}} і {{tsina.pidpyska}}.
 # Змінили ціну рішенням MV — змінити тут і на головній (перевірка test_zahlushka звіряє все з RISHENNYA.md).
-TSINY = {'analiz': 690, 'pidpyska': 299}
+TSINY = {'analiz': 690, 'pidpyska': 399}
 ZMINNA = re.compile(r'\{\{[^{}]*\}\}')
 # Робочий файл кешу: маркери, які підставляє збирання.
 SW_VERSIYA = "/*VERSIYA*/'rozrobka'"

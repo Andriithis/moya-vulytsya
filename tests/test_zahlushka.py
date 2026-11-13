@@ -92,19 +92,19 @@ class StorinkyTests(unittest.TestCase):
         self.assertTrue((SAIT / 'shryfty' / 'OFL-IBM-Plex-Sans.txt').is_file())
 
     def test_tsiny_yak_u_mv3(self):
-        """Ціни на сторінці: 690 грн аналіз, 299 грн/міс підписка (MV-11) — і жодних інших."""
+        """Ціни на сторінці: 690 грн аналіз (MV-11), 399 грн/міс підписка (MV-28, MV-60) — і жодних інших."""
         rishennya = (KORIN / 'RISHENNYA.md').read_text(encoding='utf-8')
-        self.assertIn('**299 грн на місяць**', rishennya)
+        self.assertIn('**Ціна підписки — 399 грн/міс**', rishennya)
         self.assertIn('**690 грн**', rishennya)
         html = (SAIT / 'index.html').read_text(encoding='utf-8')
         tsiny = {int(x) for x in re.findall(r'(\d+)\s*грн', html)}
-        self.assertEqual(tsiny, {0, 299, 690})
+        self.assertEqual(tsiny, {0, 399, 690})
         for blok in re.findall(r'data-tsina="analiz">([^<]+)', html):
             self.assertTrue(blok.startswith('690 грн'), blok)
         for blok in re.findall(r'data-tsina="pidpyska">(.+?)</span>', html):
-            self.assertRegex(blok, r'^299 грн(\s*<small>/ місяць</small>|/міс)$')
+            self.assertRegex(blok, r'^399 грн(\s*<small>/ місяць</small>|/міс)$')
         self.assertIn('Аналіз адреси — 690 грн', html)
-        self.assertIn('Підписка — 299 грн / місяць', html)
+        self.assertIn('Підписка — 399 грн / місяць', html)
 
     def test_zghoda_u_formi(self):
         html = (SAIT / 'index.html').read_text(encoding='utf-8')
@@ -502,15 +502,61 @@ class BrauzerTests(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # ZAVDANNYA-06: оферта, звернення, встановлення на телефон
 # ---------------------------------------------------------------------------
+class ObitsyankyMV60(unittest.TestCase):
+    """MV-60: безкоштовно — соти без адрес; звернення — «розглядаємо за 10 робочих днів» без обіцянки зняти подію
+    за адресою проживання; «10 років» — лише про платне; підписка — 399 грн скрізь; старих шрифтів немає."""
+
+    def tekst(self, f):
+        return (SAIT / f).read_text(encoding='utf-8')
+
+    def test_bez_bezkoshtovnoho_rezultatu_za_adresoyu(self):
+        html = self.tekst('index.html')
+        self.assertNotIn('надішлемо результат', html)
+        self.assertIn('Результат за адресою — платний аналіз адреси.', html)
+        self.assertIn("$('shcho').value = 'analiz'", self.tekst('storinka.js'))
+
+    def test_zvernennya_bez_adresy_prozhyvannya(self):
+        for f in ('zvernennya.html', 'oferta.html'):
+            t = self.tekst(f)
+            self.assertNotIn('адреса проживання', t, f)
+            self.assertNotIn('адресою проживання', t, f)
+            self.assertIn('10 робочих днів', t, f)
+        self.assertIn('Розглядаємо за 10 робочих днів.', self.tekst('zvernennya.html'))
+        self.assertIn('Розглядаємо звернення за 10 робочих днів.', self.tekst('oferta.html'))
+
+    def test_10_rokiv_lyshe_dlia_platnoho(self):
+        for f in ('index.html', 'manifest.webmanifest'):
+            self.assertNotIn('2016–2026', self.tekst(f), f)
+        html = self.tekst('index.html')
+        self.assertNotIn('10 років рішень', html)
+        for m in re.finditer(r'10 років', html):
+            self.assertIn('Аналіз адреси', html[max(0, m.start() - 400):m.start()], '«10 років» — лише в аналізі адреси')
+
+    def test_399_skriz(self):
+        for f in sorted(SAIT.glob('*.html')) + [SAIT / 'zibraty.py']:
+            self.assertNotRegex(f.read_text(encoding='utf-8'), r'\b299\s*грн', f.name)
+        self.assertEqual(zibraty.TSINY['pidpyska'], 399)
+
+    def test_lyshe_plex_u_shryftakh(self):
+        for teka in (SAIT / 'shryfty', KORIN / 'brend' / 'shryfty'):
+            for f in teka.iterdir():
+                self.assertTrue(f.name.startswith(('ibm-plex-sans-', 'OFL-IBM-Plex-Sans')), f)
+        # гра у випуску лежить у zahlushka/hra/, тож її «../shryfty» — це шрифти заглушки
+        for f, teka in ((SAIT / 'index.html', SAIT), (KORIN / 'site' / 'hra' / 'index.html', SAIT / 'hra')):
+            for shliakh in re.findall(r'rel="preload" href="([^"]+\.woff2)"', f.read_text(encoding='utf-8')):
+                self.assertTrue((teka / shliakh).resolve().is_file(), shliakh)
+
+
 STORINKY_06 = ('index.html', 'polityka.html', 'zrazok.html', 'oferta.html', 'zvernennya.html')
 MISTSYA_OFERTY = ('ВЛАСНИК', 'КОД', 'АДРЕСА', 'КОНТАКТ', 'САЙТ', 'ДАТА')
 
 
 def tsiny_z_rishennya():
-    """Ціни з запису MV-11 у RISHENNYA.md: (підписка, аналіз)."""
+    """Ціни з RISHENNYA.md: (підписка — MV-28, що замінила 299 з MV-11; аналіз — MV-11)."""
     rishennya = (KORIN / 'RISHENNYA.md').read_text(encoding='utf-8')
     mv11 = rishennya.split('## MV-11.', 1)[1].split('\n## ', 1)[0]
-    pidpyska = int(re.search(r'Підписка — \*\*(\d+) грн на місяць\*\*', mv11).group(1))
+    mv28 = rishennya.split('## MV-28.', 1)[1].split('\n## ', 1)[0]
+    pidpyska = int(re.search(r'Ціна підписки — (\d+) грн/міс', mv28).group(1))
     analiz = int(re.search(r'аналіз адреси — \*\*(\d+) грн\*\*', mv11).group(1))
     return pidpyska, analiz
 
