@@ -1,40 +1,45 @@
-/* Гра «Вгадай, де це було» (ZAVDANNYA-07). Вигляд — за системою дизайну «Моєї вулиці»
-   (docs/STYL.md і артефакт системи): ті самі змінні, шрифти, рамки без тіней, кути 14/10 px.
-   Шрифти — файлами з сайту (../shryfty/, ліцензія OFL), без сторонніх запитів. */
+/* Гра «Вгадай, де це було» (ZAVDANNYA-07). Вигляд — за docs/STYL.md і MV-58 (переведено в ZAVDANNYA-47):
+   «Індиго й м'ята» (значення — ті самі, що дає збирач сайту з site/sait/kolory.json; перевіряє tests/test_hra.py),
+   IBM Plex Sans, кнопки — як клавіші (межа 1,5 px і суцільний бортик знизу), кути 12/16 px.
+   attention і error — колір «приціл» (vyd): ні помаранчевого, ні червоного (MV-58).
+   Шрифти — файлами з сайту (../shryfty/, ліцензія SIL OFL 1.1), без сторонніх запитів. */
 
 /* ---------- Шрифти ---------- */
-@font-face { font-family: 'Inter'; font-style: normal; font-display: swap; font-weight: 400; src: url(../shryfty/inter-cyrillic-400-normal.woff2) format('woff2'); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
-@font-face { font-family: 'Inter'; font-style: normal; font-display: swap; font-weight: 400; src: url(../shryfty/inter-latin-400-normal.woff2) format('woff2'); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
-@font-face { font-family: 'Inter'; font-style: normal; font-display: swap; font-weight: 600; src: url(../shryfty/inter-cyrillic-600-normal.woff2) format('woff2'); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
-@font-face { font-family: 'Inter'; font-style: normal; font-display: swap; font-weight: 600; src: url(../shryfty/inter-latin-600-normal.woff2) format('woff2'); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
-@font-face { font-family: 'Manrope'; font-style: normal; font-display: swap; font-weight: 700; src: url(../shryfty/manrope-cyrillic-700-normal.woff2) format('woff2'); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
-@font-face { font-family: 'Manrope'; font-style: normal; font-display: swap; font-weight: 700; src: url(../shryfty/manrope-latin-700-normal.woff2) format('woff2'); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
-@font-face { font-family: 'Manrope'; font-style: normal; font-display: swap; font-weight: 800; src: url(../shryfty/manrope-cyrillic-800-normal.woff2) format('woff2'); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
-@font-face { font-family: 'Manrope'; font-style: normal; font-display: swap; font-weight: 800; src: url(../shryfty/manrope-latin-800-normal.woff2) format('woff2'); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: Plex; font-style: normal; font-display: swap; font-weight: 400; src: url(../shryfty/ibm-plex-sans-cyrillic-400-normal.woff2) format('woff2'); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
+@font-face { font-family: Plex; font-style: normal; font-display: swap; font-weight: 400; src: url(../shryfty/ibm-plex-sans-latin-400-normal.woff2) format('woff2'); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: Plex; font-style: normal; font-display: swap; font-weight: 600; src: url(../shryfty/ibm-plex-sans-cyrillic-600-normal.woff2) format('woff2'); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
+@font-face { font-family: Plex; font-style: normal; font-display: swap; font-weight: 600; src: url(../shryfty/ibm-plex-sans-latin-600-normal.woff2) format('woff2'); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: Plex; font-style: normal; font-display: swap; font-weight: 700 800; src: url(../shryfty/ibm-plex-sans-cyrillic-700-normal.woff2) format('woff2'); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
+@font-face { font-family: Plex; font-style: normal; font-display: swap; font-weight: 700 800; src: url(../shryfty/ibm-plex-sans-latin-700-normal.woff2) format('woff2'); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
 
 /* ---------- Змінні системи дизайну (світла / темна тема) ---------- */
 :root {
-  --ground: #F7F6F2;
+  --ground: #F4F5FB;
   --surface: #FFFFFF;
-  --surface-tint: #F1F7F6;
-  --ink: #1B1F24;
-  --ink-2: #3D434C;
-  --muted: #5B616B;
-  --line: #E3E1DA;
-  --line-strong: #C9C6BD;
-  --accent: #0B6B6B;
-  --accent-strong: #064848;
-  --accent-soft: #D7EBEA;
+  --surface-tint: #EDEFFE;
+  --ink: #1C1E2D;
+  --ink-2: #3E4155;
+  --muted: #5F6275;
+  --line: #DFE1E9;
+  --line-strong: #B5B7C4;
+  --mezha: #76798C;
+  --bort: #585B69;
+  --vyd: #3C3CA1;
+  --pk-1: #5DD0A9;
+  --pk-2: #31B88D;
+  --accent: #4447A6;
+  --accent-strong: #33357C;
+  --accent-soft: #DFE3FC;
   --on-accent: #FFFFFF;
-  --attention: #B45309;
-  --attention-soft: #FBEBDD;
-  --error: #A1281C;
-  --data-1: #F1F7F6;
-  --data-2: #D7EBEA;
-  --data-3: #9CCBC7;
-  --data-4: #4FA39D;
-  --data-5: #0B6B6B;
-  --data-city: #A9ADB4;
+  --attention: #3C3CA1;
+  --attention-soft: #E8E8F4;
+  --error: #3C3CA1;
+  --data-1: #9CA1E3;
+  --data-2: #7E84CE;
+  --data-3: #6066C1;
+  --data-4: #464AA9;
+  --data-5: #303482;
+  --data-city: #9B9EAC;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -45,50 +50,55 @@
   --space-8: 40px;
   --space-9: 56px;
   --space-10: 72px;
-  --radius-s: 4px;
-  --radius-m: 10px;
-  --radius-l: 14px;
+  --radius-s: 6px;
+  --radius-m: 12px;
+  --radius-l: 16px;
   --radius-pill: 999px;
   /* Підкладка карти — похідні тихі кольори (вода, парки, вулиці) для світлої теми. */
-  --karta-voda: #DCE5E5;
-  --karta-zelen: #ECEEE3;
-  --karta-zabudova: #EEECE6;
+  --karta-voda: #CADDF6;
+  --karta-zelen: #E4F2DE;
+  --karta-zabudova: #E3E4EB;
   --karta-vulytsia: #FFFFFF;
-  --karta-vulytsia-ramka: #E3E1DA;
-  --karta-za-mezhamy: #ECEAE4;
+  --karta-vulytsia-ramka: #DFE1E9;
+  --karta-za-mezhamy: #E0E2E9;
   --pole: 20px;
   --shapka: 56px;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --ground: #111517;
-    --surface: #1A2023;
-    --surface-tint: #182B2A;
-    --ink: #ECEEEA;
-    --ink-2: #CDD1CC;
-    --muted: #9AA1A8;
-    --line: #2C3438;
-    --line-strong: #3C464B;
-    --accent: #5CB8AF;
-    --accent-strong: #8FD3CB;
-    --accent-soft: #1E3A38;
-    --on-accent: #0B1414;
-    --attention: #F0A257;
-    --attention-soft: #3A2A18;
-    --error: #F08C80;
-    --data-1: #1C2A2B;
-    --data-2: #1E3F3D;
-    --data-3: #2C6662;
-    --data-4: #3F978F;
-    --data-5: #6FC9BF;
-    --data-city: #6B737B;
-    --karta-voda: #0E1D20;
-    --karta-zelen: #151C1B;
-    --karta-zabudova: #1A2124;
-    --karta-vulytsia: #262E32;
-    --karta-vulytsia-ramka: #1A2023;
-    --karta-za-mezhamy: #0D1012;
+    --ground: #11142A;
+    --surface: #1B1F39;
+    --surface-tint: #232849;
+    --ink: #F0F1FA;
+    --ink-2: #D1D3E2;
+    --muted: #A6A9C1;
+    --line: #2A2E47;
+    --line-strong: #4B506F;
+    --mezha: #7D83AB;
+    --bort: #080913;
+    --vyd: #B37BFF;
+    --pk-1: #33BB92;
+    --pk-2: #4DCB9E;
+    --accent: #66E6BA;
+    --accent-strong: #8CECCB;
+    --accent-soft: #30335C;
+    --on-accent: #11142A;
+    --attention: #B37BFF;
+    --attention-soft: #36305D;
+    --error: #B37BFF;
+    --data-1: #444885;
+    --data-2: #5357A3;
+    --data-3: #6466BB;
+    --data-4: #7678CF;
+    --data-5: #8A8BDD;
+    --data-city: #666B88;
+    --karta-voda: #122343;
+    --karta-zelen: #002528;
+    --karta-zabudova: #1C2035;
+    --karta-vulytsia: #3E4360;
+    --karta-vulytsia-ramka: #1B1F39;
+    --karta-za-mezhamy: #0C0E1D;
     color-scheme: dark;
   }
 }
@@ -97,7 +107,7 @@
 /* ---------- Основа ---------- */
 *, *::before, *::after { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
-body { margin: 0; background: var(--ground); color: var(--ink); font-family: Inter, system-ui, sans-serif; font-size: 16px; line-height: 24px; min-height: 100vh; overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
+body { margin: 0; background: var(--ground); color: var(--ink); font-family: Plex, system-ui, sans-serif; font-size: 16px; line-height: 24px; min-height: 100vh; overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
 a { color: var(--accent); text-underline-offset: 3px; }
 a:hover { color: var(--accent-strong); }
 p { margin: 0; }
@@ -105,15 +115,17 @@ p { margin: 0; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 svg { stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
 
-.nadpys { font: 600 12px/16px Inter, system-ui, sans-serif; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.nadpys { font: 600 12px/16px Plex, system-ui, sans-serif; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
 
 /* ---------- Кнопки ---------- */
-.knopka { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: 48px; padding: 12px 22px; border: 1px solid var(--accent); border-radius: var(--radius-m); background: var(--accent); color: var(--on-accent); font: 600 16px/20px Inter, system-ui, sans-serif; cursor: pointer; transition: background-color .15s, border-color .15s, opacity .15s; }
-.knopka:hover:not(:disabled) { background: var(--accent-strong); border-color: var(--accent-strong); }
-.knopka:disabled { background: var(--line); border-color: var(--line); color: var(--muted); cursor: not-allowed; }
-.knopka--druhorydna { background: var(--surface); color: var(--accent); border-color: var(--line-strong); }
-.knopka--druhorydna:hover:not(:disabled) { background: var(--surface-tint); border-color: var(--accent); color: var(--accent-strong); }
-.knopka-tekst { display: inline-flex; align-items: center; gap: var(--space-1); min-height: 44px; padding: 0 var(--space-2); margin-right: calc(var(--space-2) * -1); border: 0; background: none; color: var(--ink); font: 600 14px/20px Inter, system-ui, sans-serif; cursor: pointer; border-radius: var(--radius-m); }
+/* Клавіша (MV-58): межа 1,5 px mezha, суцільний бортик знизу без розмиття; натиск опускає клавішу на 2 px. */
+.knopka { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: 48px; padding: 12px 22px; border: 1.5px solid var(--mezha); border-radius: var(--radius-m); background: var(--accent); color: var(--on-accent); box-shadow: 0 3px 0 var(--bort); font: 600 16px/20px Plex, system-ui, sans-serif; cursor: pointer; transition: background-color .15s, transform .08s ease-out, box-shadow .08s ease-out; }
+.knopka:active:not(:disabled), .rezhym:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--bort); }
+.knopka:hover:not(:disabled) { background: var(--accent-strong); }
+.knopka:disabled { background: var(--line); border-color: var(--line-strong); box-shadow: 0 3px 0 var(--line-strong); color: var(--muted); cursor: not-allowed; }
+.knopka--druhorydna { background: var(--surface); color: var(--accent); }
+.knopka--druhorydna:hover:not(:disabled) { background: var(--surface-tint); color: var(--accent-strong); }
+.knopka-tekst { display: inline-flex; align-items: center; gap: var(--space-1); min-height: 44px; padding: 0 var(--space-2); margin-right: calc(var(--space-2) * -1); border: 0; background: none; color: var(--ink); font: 600 14px/20px Plex, system-ui, sans-serif; cursor: pointer; border-radius: var(--radius-m); }
 .knopka-tekst:hover { color: var(--accent); }
 
 /* ---------- Шапка ---------- */
@@ -124,34 +136,34 @@ svg { stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: roun
 .znak svg { stroke: none; }
 .znak__sota { fill: var(--accent); }
 .znak__seredyna { fill: var(--surface); }
-.znak__nazva { font: 800 18px/24px Manrope, Inter, sans-serif; letter-spacing: -.01em; }
-.mitka-demo { display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: var(--radius-pill); background: var(--attention-soft); color: var(--attention); font: 600 12px/16px Inter, system-ui, sans-serif; letter-spacing: .02em; white-space: nowrap; }
+.znak__nazva { font: 800 18px/24px Plex, system-ui, sans-serif; letter-spacing: -.01em; }
+.mitka-demo { display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: var(--radius-pill); background: var(--attention-soft); color: var(--attention); font: 600 12px/16px Plex, system-ui, sans-serif; letter-spacing: .02em; white-space: nowrap; }
 
 /* ---------- Меню ---------- */
 .menyu { min-height: calc(100vh - var(--shapka)); display: flex; flex-direction: column; }
 .menyu__vnutri { width: 100%; max-width: 640px; margin: 0 auto; padding: var(--space-8) var(--pole) var(--space-8); display: flex; flex-direction: column; gap: var(--space-4); flex: 1; }
-.menyu__nazva { margin: 0; font: 800 34px/40px Manrope, Inter, sans-serif; letter-spacing: -.02em; }
+.menyu__nazva { margin: 0; font: 800 34px/40px Plex, system-ui, sans-serif; letter-spacing: -.02em; }
 .menyu__opys { font-size: 18px; line-height: 28px; color: var(--ink-2); }
 .demo-pidkazka { padding: var(--space-3) var(--space-4); border-radius: var(--radius-m); background: var(--attention-soft); color: var(--ink); font-size: 15px; line-height: 22px; }
 .demo-pidkazka strong { color: var(--attention); font-weight: 600; }
 
 .rezhymy { display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-2); }
-.rezhym { display: flex; align-items: center; gap: var(--space-4); width: 100%; min-height: 88px; padding: var(--space-4) var(--space-5); text-align: left; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius-l); cursor: pointer; font: inherit; transition: border-color .15s, background-color .15s; }
-.rezhym:hover { border-color: var(--accent); }
-.rezhym--holovnyi { background: var(--surface-tint); border-color: var(--accent-soft); }
+.rezhym { display: flex; align-items: center; gap: var(--space-4); width: 100%; min-height: 88px; padding: var(--space-4) var(--space-5); text-align: left; background: var(--surface); color: var(--ink); border: 1.5px solid var(--mezha); border-radius: var(--radius-l); box-shadow: 0 3px 0 var(--bort); cursor: pointer; font: inherit; transition: background-color .15s, transform .08s ease-out, box-shadow .08s ease-out; }
+.rezhym:hover { background: var(--surface-tint); }
+.rezhym--holovnyi { background: var(--surface-tint); }
 .rezhym__ikona { flex: none; width: 48px; height: 48px; border-radius: var(--radius-m); background: var(--accent-soft); color: var(--accent); display: flex; align-items: center; justify-content: center; }
 .rezhym--holovnyi .rezhym__ikona { background: var(--accent); color: var(--on-accent); }
 .rezhym__tekst { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.rezhym__nazva { font: 700 20px/26px Manrope, Inter, sans-serif; }
+.rezhym__nazva { font: 700 20px/26px Plex, system-ui, sans-serif; }
 .rezhym__opys { font-size: 15px; line-height: 22px; color: var(--muted); }
 .rezhym__opys strong { color: var(--ink); font-weight: 600; }
 .rezhym__strilka { flex: none; color: var(--muted); display: flex; }
 
 .pravyla { margin-top: var(--space-6); padding-top: var(--space-6); border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: var(--space-3); }
-.pravyla__nazva { margin: 0; font: 700 20px/26px Manrope, Inter, sans-serif; }
+.pravyla__nazva { margin: 0; font: 700 20px/26px Plex, system-ui, sans-serif; }
 .pravyla__spysok { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-2); }
 .pravyla__spysok li { display: flex; flex-direction: column; gap: 2px; padding: var(--space-3); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-m); font-size: 13px; line-height: 18px; color: var(--muted); }
-.pravyla__chyslo { font: 800 20px/26px Manrope, Inter, sans-serif; color: var(--ink); }
+.pravyla__chyslo { font: 800 20px/26px Plex, system-ui, sans-serif; color: var(--ink); }
 .pravyla__prymitka { font-size: 13px; line-height: 18px; color: var(--muted); }
 
 .pidval { max-width: 640px; width: 100%; margin: 0 auto; padding: var(--space-5) var(--pole) var(--space-7); display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-5); justify-content: space-between; font-size: 13px; line-height: 18px; color: var(--muted); }
@@ -166,8 +178,8 @@ svg { stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: roun
 
 .zavdannya, .vidpovid { padding: var(--space-4) var(--pole) var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
 .zavdannya__shapka { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
-.rakhunok { font: 800 16px/20px Manrope, Inter, sans-serif; color: var(--ink); white-space: nowrap; font-variant-numeric: tabular-nums; }
-.rakhunok::after { content: ' очок'; font: 600 12px/16px Inter, system-ui, sans-serif; color: var(--muted); }
+.rakhunok { font: 800 16px/20px Plex, system-ui, sans-serif; color: var(--ink); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.rakhunok::after { content: ' очок'; font: 600 12px/16px Plex, system-ui, sans-serif; color: var(--muted); }
 .rakhunok[data-slovo]::after { content: ' ' attr(data-slovo); }
 .krokiv { display: flex; gap: 4px; margin: 2px 0 var(--space-1); }
 .krokiv i { flex: 1; height: 4px; border-radius: 2px; background: var(--line); }
@@ -187,7 +199,7 @@ svg { stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: roun
 .vidpovid { gap: var(--space-3); }
 .vidpovid__chysla { display: flex; gap: var(--space-3); }
 .velyke { flex: 1; display: flex; flex-direction: column; gap: 2px; padding: var(--space-3) var(--space-4); border: 1px solid var(--line); border-radius: var(--radius-m); background: var(--ground); }
-.velyke__chyslo { font: 800 30px/34px Manrope, Inter, sans-serif; letter-spacing: -.01em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.velyke__chyslo { font: 800 30px/34px Plex, system-ui, sans-serif; letter-spacing: -.01em; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .velyke__pidpys { font-size: 13px; line-height: 18px; color: var(--muted); }
 .velyke--ochky.vluchno { background: var(--surface-tint); border-color: var(--accent-soft); }
 .velyke--ochky.vluchno .velyke__chyslo { color: var(--accent); }
@@ -195,8 +207,8 @@ svg { stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: roun
 .velyke--ochky.mymo .velyke__chyslo { color: var(--attention); }
 .mistse { display: flex; gap: var(--space-3); align-items: flex-start; }
 .mistse__znak { flex: none; width: 18px; height: 18px; margin-top: 3px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--surface), 0 0 0 6px var(--accent-soft); }
-.mistse__pidpys { font: 600 12px/16px Inter, system-ui, sans-serif; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
-.mistse__adresa { font: 700 20px/26px Manrope, Inter, sans-serif; }
+.mistse__pidpys { font: 600 12px/16px Plex, system-ui, sans-serif; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.mistse__adresa { font: 700 20px/26px Plex, system-ui, sans-serif; }
 .vidpovid__opys { font-size: 16px; line-height: 24px; color: var(--ink-2); }
 .rishennya { font-size: 14px; line-height: 20px; color: var(--muted); }
 .rishennya a { font-weight: 600; }
@@ -213,7 +225,7 @@ svg { stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: roun
 @media (max-width: 899px) { .hra--vidpovid .karta__zboi { display: none; } }
 
 /* Позначки на карті поверх полотна (підпис-«булька» над справжнім місцем). */
-.lehenda { position: absolute; left: var(--space-3); top: var(--space-3); z-index: 2; display: flex; gap: var(--space-3); padding: 6px 10px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-pill); font-size: 12px; line-height: 16px; color: var(--ink-2); }
+.lehenda { position: absolute; left: var(--space-3); top: var(--space-3); z-index: 2; display: flex; gap: var(--space-3); padding: 6px 10px; background: var(--surface); border: 1.5px solid var(--mezha); box-shadow: 0 3px 0 var(--bort); border-radius: var(--radius-pill); font-size: 12px; line-height: 16px; color: var(--ink-2); }
 .lehenda span { display: inline-flex; align-items: center; gap: 6px; }
 .lehenda i { display: inline-block; border-radius: 50%; }
 .lehenda__vasha { width: 10px; height: 10px; background: var(--ink); box-shadow: 0 0 0 2px var(--surface); }
@@ -221,12 +233,12 @@ svg { stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: roun
 .karta__zboi { position: absolute; left: var(--space-3); bottom: 44px; max-width: min(300px, calc(100% - 24px)); padding: 6px 10px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-m); font-size: 12px; line-height: 16px; color: var(--muted); z-index: 2; }
 
 /* Кнопки й підписи MapLibre — у стилі системи. */
-.maplibregl-ctrl-group { background: var(--surface) !important; border: 1px solid var(--line); border-radius: var(--radius-m) !important; box-shadow: none !important; overflow: hidden; }
+.maplibregl-ctrl-group { background: var(--surface) !important; border: 1.5px solid var(--mezha); border-radius: var(--radius-m) !important; box-shadow: 0 3px 0 var(--bort) !important; overflow: hidden; }
 .maplibregl-ctrl-group button { width: 40px !important; height: 40px !important; }
 .maplibregl-ctrl-group button + button { border-top: 1px solid var(--line) !important; }
 .maplibregl-ctrl button .maplibregl-ctrl-icon { filter: none; }
 @media (prefers-color-scheme: dark) { .maplibregl-ctrl button .maplibregl-ctrl-icon { filter: invert(1) hue-rotate(180deg) brightness(1.2); } }
-.maplibregl-ctrl-attrib { background: color-mix(in srgb, var(--surface) 86%, transparent) !important; color: var(--muted); font: 400 11px/16px Inter, system-ui, sans-serif; border-radius: var(--radius-m) 0 0 0; }
+.maplibregl-ctrl-attrib { background: color-mix(in srgb, var(--surface) 86%, transparent) !important; color: var(--muted); font: 400 11px/16px Plex, system-ui, sans-serif; border-radius: var(--radius-m) 0 0 0; }
 .maplibregl-ctrl-attrib a { color: var(--muted) !important; }
 .maplibregl-ctrl-attrib.maplibregl-compact { background: var(--surface) !important; border: 1px solid var(--line); }
 .maplibregl-ctrl-attrib-button { background-color: transparent !important; }
@@ -236,7 +248,7 @@ svg { stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: roun
 .kinets { min-height: calc(100vh - var(--shapka)); }
 .kinets__vnutri { max-width: 640px; margin: 0 auto; padding: var(--space-8) var(--pole) var(--space-8); display: flex; flex-direction: column; gap: var(--space-4); }
 .pidsumok { display: flex; flex-direction: column; gap: var(--space-1); }
-.pidsumok__chyslo { font: 800 52px/56px Manrope, Inter, sans-serif; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.pidsumok__chyslo { font: 800 52px/56px Plex, system-ui, sans-serif; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
 .pidsumok__pidpys { font-size: 16px; line-height: 24px; color: var(--muted); }
 .rekord { font-size: 15px; line-height: 22px; color: var(--ink-2); }
 .rekord strong { color: var(--accent); font-weight: 600; }
@@ -249,17 +261,17 @@ svg { stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: roun
 .sota--mymo { fill: var(--surface); stroke: var(--attention); }
 .krainosti { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); margin-top: var(--space-2); }
 .krainist { padding: var(--space-4); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-l); display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
-.krainist__nazva { font: 600 12px/16px Inter, system-ui, sans-serif; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
-.krainist__chyslo { font: 800 24px/30px Manrope, Inter, sans-serif; white-space: nowrap; }
+.krainist__nazva { font: 600 12px/16px Plex, system-ui, sans-serif; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.krainist__chyslo { font: 800 24px/30px Plex, system-ui, sans-serif; white-space: nowrap; }
 .krainist__opys { font-size: 13px; line-height: 18px; color: var(--ink-2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .spysok-raundu { list-style: none; margin: var(--space-2) 0 0; padding: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-l); overflow: hidden; }
 .spysok-raundu li { display: grid; grid-template-columns: 24px 1fr auto; gap: var(--space-3); align-items: baseline; padding: var(--space-3) var(--space-4); border-top: 1px solid var(--line); font-size: 15px; line-height: 22px; }
 .spysok-raundu li:first-child { border-top: 0; }
-.spysok-raundu .n { font: 600 12px/16px Inter, system-ui, sans-serif; color: var(--muted); }
+.spysok-raundu .n { font: 600 12px/16px Plex, system-ui, sans-serif; color: var(--muted); }
 .spysok-raundu .shcho { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .spysok-raundu .shcho small { display: block; font-size: 13px; line-height: 18px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
-.spysok-raundu .skilky { font: 800 16px/22px Manrope, Inter, sans-serif; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.spysok-raundu .skilky small { display: block; font: 400 13px/18px Inter, system-ui, sans-serif; color: var(--muted); }
+.spysok-raundu .skilky { font: 800 16px/22px Plex, system-ui, sans-serif; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.spysok-raundu .skilky small { display: block; font: 400 13px/18px Plex, system-ui, sans-serif; color: var(--muted); }
 .kinets__dii { display: flex; gap: var(--space-3); margin-top: var(--space-3); }
 .kinets__dii .knopka { flex: 1; }
 .podilytysia-stan { min-height: 18px; font-size: 13px; line-height: 18px; color: var(--muted); }
@@ -297,4 +309,4 @@ svg { stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: roun
   .pravyla__spysok { grid-template-columns: repeat(2, 1fr); }
   .krainist__chyslo { font-size: 20px; line-height: 26px; }
 }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+/* Рух — для всіх (MV-58): відгук клавіш лишається й за «менше руху» в системі. */

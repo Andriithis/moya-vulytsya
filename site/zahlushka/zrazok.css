@@ -1,15 +1,15 @@
-/* Зразок звіту: вигляд — із затвердженого макета «Звіт — стане» (06.11.2026).
+/* Зразок звіту: розкладка — із затвердженого макета «Звіт — стане» (06.11.2026); кольори й шрифт — MV-58 (ZAVDANNYA-47).
    На комп'ютері — аркуш 860 px посередині. На телефоні — та сама послідовність
    розділів в одну колонку (макета телефона для звіту немає). */
-body.zvit-tlo { background: #F7F6F2; padding: 24px 0; }
-.zvit { width: 860px; max-width: 100%; margin: 0 auto; box-shadow: 0 1px 3px rgba(27, 31, 36, 0.08); }
+body.zvit-tlo { background: #F4F5FB; padding: 24px 0; }
+.zvit { width: 860px; max-width: 100%; margin: 0 auto; border: 1px solid #DFE1E9; }  /* без розмиття (MV-58) */
 .zvit-lohotyp { color: inherit; text-decoration: none; }
 .zvit-lohotyp:hover { color: inherit; }
 .zvit-karta { width: 100%; height: auto; }
 
 @media (max-width: 600px) {
   body.zvit-tlo { padding: 0; }
-  .zvit { box-shadow: none; font-size: 14px !important; }
+  .zvit { border: 0; font-size: 14px !important; }
   .zvit > div:first-child { padding-left: 20px !important; padding-right: 20px !important; }
   .zvit-vidstup { padding-left: 20px !important; padding-right: 20px !important; }
   .zvit header { flex-direction: column; gap: 12px !important; }

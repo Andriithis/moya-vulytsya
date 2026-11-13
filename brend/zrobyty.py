@@ -198,7 +198,7 @@ class Malyar:
             s.evaluate('() => document.fonts.ready')
             # Перевіряємо, що наші шрифти справді завантажилися, а не підмінилися системними.
             # (Аватар без тексту шрифтів не вантажить — тоді перевіряти нічого.)
-            shryfty = s.evaluate('''() => !document.body.innerText.trim() ? [] : ['800 20px Manrope', '400 16px Inter']
+            shryfty = s.evaluate('''() => !document.body.innerText.trim() ? [] : ['800 20px Plex', '400 16px Plex']
                 .filter(f => !document.fonts.check(f, 'Моя вулиця'))''')
             bidy = [f'шрифт не завантажився: {f}' for f in shryfty]
             bidy += s.evaluate(JS_VYLAZYT)

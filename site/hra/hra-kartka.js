@@ -7,8 +7,8 @@
   var W = 1080, H = 1350;
   // Картинка завжди у світлих кольорах системи — однаково виглядає в будь-якій стрічці.
   var K = {
-    ground: '#F7F6F2', surface: '#FFFFFF', ink: '#1B1F24', ink2: '#3D434C', muted: '#5B616B',
-    line: '#E3E1DA', accent: '#0B6B6B', accentSoft: '#D7EBEA', attention: '#B45309', attentionSoft: '#FBEBDD'
+    ground: '#F4F5FB', surface: '#FFFFFF', ink: '#1C1E2D', ink2: '#3E4155', muted: '#5F6275',
+    line: '#DFE1E9', accent: '#4447A6', accentSoft: '#DFE3FC', attention: '#3C3CA1', attentionSoft: '#E8E8F4'
   };
   var MISIATSI = ['січня', 'лютого', 'березня', 'квітня', 'травня', 'червня', 'липня', 'серпня', 'вересня', 'жовтня', 'листопада', 'грудня'];
 
@@ -65,11 +65,11 @@
     c.fillStyle = K.surface; c.fill();
     c.restore();
     c.fillStyle = K.ink; c.textBaseline = 'middle';
-    c.font = '800 46px Manrope, Inter, sans-serif';
+    c.font = '800 46px Plex, system-ui, sans-serif';
     c.fillText('Моя вулиця', P + 84, 126);
 
     if (dani.demo) {
-      c.font = '600 26px Inter, sans-serif';
+      c.font = '600 26px Plex, system-ui, sans-serif';
       var t = 'ДЕМО-КОЛОДА', tw = c.measureText(t).width + 11 * 2 + 48;
       zaokruhlenyi(c, W - P - tw, 100, tw, 54, 27); c.fillStyle = K.attentionSoft; c.fill();
       c.fillStyle = K.attention; rozstav(c, t, W - P - tw + 24, 128, 2);
@@ -77,26 +77,26 @@
 
     // Назва гри і режим
     c.textBaseline = 'alphabetic';
-    c.fillStyle = K.muted; c.font = '600 30px Inter, sans-serif';
+    c.fillStyle = K.muted; c.font = '600 30px Plex, system-ui, sans-serif';
     rozstav(c, 'ВГАДАЙ, ДЕ ЦЕ БУЛО', P, 360, 3);
-    c.fillStyle = K.ink; c.font = '800 60px Manrope, Inter, sans-serif';
+    c.fillStyle = K.ink; c.font = '800 60px Plex, system-ui, sans-serif';
     c.fillText(dani.rezhym === 'den' ? 'Подія дня' : 'Раунд з 10 подій', P, 440);
     if (dani.rezhym === 'den' && dani.data) {
-      c.fillStyle = K.muted; c.font = '400 36px Inter, sans-serif';
+      c.fillStyle = K.muted; c.font = '400 36px Plex, system-ui, sans-serif';
       c.fillText(dataTekstom(dani.data), P, 496);
     }
 
     // Очки
-    c.fillStyle = K.ink; c.font = '800 260px Manrope, Inter, sans-serif';
+    c.fillStyle = K.ink; c.font = '800 260px Plex, system-ui, sans-serif';
     c.fillText(Y.chyslo(dani.suma), P - 8, 790);
-    c.fillStyle = K.muted; c.font = '400 42px Inter, sans-serif';
+    c.fillStyle = K.muted; c.font = '400 42px Plex, system-ui, sans-serif';
     c.fillText(Y.slovoOchky(dani.suma) + ' із ' + Y.chyslo(dani.maks), P, 862);
 
     // Соти результатів: одна сота — одна подія
     var r = dani.rezultaty || [];
     if (dani.rezhym === 'den') {
       sotaRezultatu(c, P + 44, 990, 44, r[0] || 0);
-      c.fillStyle = K.ink; c.font = '800 54px Manrope, Inter, sans-serif';
+      c.fillStyle = K.ink; c.font = '800 54px Plex, system-ui, sans-serif';
       c.fillText(dani.vidstanTekst ? 'за ' + dani.vidstanTekst.replace(/ /g, ' ') : '', P + 120, 1010);
     } else {
       var krok = (W - 2 * P) / 10, rr = Math.min(40, krok / 2 - 6);
@@ -106,9 +106,9 @@
     // Низ: адреса сайту
     c.strokeStyle = K.line; c.lineWidth = 2;
     c.beginPath(); c.moveTo(P, 1128); c.lineTo(W - P, 1128); c.stroke();
-    c.fillStyle = K.muted; c.font = '400 34px Inter, sans-serif';
+    c.fillStyle = K.muted; c.font = '400 34px Plex, system-ui, sans-serif';
     c.fillText('Зіграйте й ви — події з судових рішень Києва', P, 1196);
-    c.fillStyle = K.accent; c.font = '800 52px Manrope, Inter, sans-serif';
+    c.fillStyle = K.accent; c.font = '800 52px Plex, system-ui, sans-serif';
     c.fillText(dani.sait || '[САЙТ]', P, 1264);
     return polotno;
   }
@@ -123,7 +123,7 @@
   // Повертає 'podilylysia' | 'zavantazheno' | 'skasovano'.
   function podilytysia(dani) {
     var shryfty = document.fonts && document.fonts.load ? Promise.all([
-      document.fonts.load('800 60px Manrope'), document.fonts.load('600 30px Inter'), document.fonts.load('400 30px Inter')
+      document.fonts.load('800 60px Plex'), document.fonts.load('600 30px Plex'), document.fonts.load('400 30px Plex')
     ]).catch(function () {}) : Promise.resolve();
     return shryfty.then(function () { return doBlob(namaluvaty(dani)); }).then(function (blob) {
       var imya = dani.rezhym === 'den' ? 'moya-vulytsya-podiya-dnya.png' : 'moya-vulytsya-vhadai.png';
