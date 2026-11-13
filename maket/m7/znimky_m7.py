@@ -25,7 +25,8 @@ _git = subprocess.run(['git', 'rev-parse', '--path-format=absolute', '--git-comm
                       capture_output=True, text=True).stdout.strip()
 KORIN = Path(_git).parent if _git else TUT.parents[1]
 TEKA = KORIN / 'tmp' / 'znimky' / 'm7'
-ADRESA = 'http://127.0.0.1:8761/m7/'
+import os
+ADRESA = os.environ.get('ADRESA_M7', 'http://127.0.0.1:8761/m7/')
 EDGE = r'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
 ARGUMENTY = ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist']
 EKRANY = {'pk': (1440, 900), 'telefon': (390, 844)}
@@ -123,6 +124,7 @@ def dotyk(pw):
 
 
 PLASHKY = ['#verkh', '#f3d', '#ftema', '#finfo', '#filtr', '#dzherela', '#porivn']
+VARIANTY_VYD = ('v',)   # етап В: лишився «приціл»
 POSHUK = ['Майдан Незалежності', 'Хрещатик', 'Контрактова площа', 'Андріївський узвіз', 'Софійська площа', 'Поштова площа',
           'Європейська площа', 'Львівська площа', 'Галицька площа', 'Вокзальна площа', 'Бессарабська площа', 'Олімпійський стадіон',
           'Велика Васильківська', 'Саксаганського', 'Богдана Хмельницького', 'Ярославів Вал', 'Володимирська', 'Лук’янівська площа',
@@ -150,7 +152,7 @@ def etap_b(pw):
                 ity(s, baza + kam[ekran])
                 chekaty(s)
                 s.screenshot(path=str(TEKA / f'b-{ekran}-{tema}-{nazva}.png'))
-            for vyd in ('a', 'b', 'v'):
+            for vyd in VARIANTY_VYD:
                 ity(s, f'{baza}&vyd={vyd}' + KAMERY['2podil'][ekran])
                 chekaty(s)
                 do = mistsya(s)
@@ -172,9 +174,7 @@ def etap_b(pw):
             s.click('.f-knopka')
             s.wait_for_timeout(400)
             s.screenshot(path=str(TEKA / f'b-{ekran}-{tema}-5filtr-spysok.png'))
-            ity(s, baza + '&filtr=znachky' + KAMERY['2podil'][ekran])
-            chekaty(s)
-            s.screenshot(path=str(TEKA / f'b-{ekran}-{tema}-6filtr-znachky.png'))
+            s.keyboard.press('Escape')
             s.click('#finfo')
             s.wait_for_timeout(400)
             s.screenshot(path=str(TEKA / f'b-{ekran}-{tema}-7info.png'))

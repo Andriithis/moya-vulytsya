@@ -116,9 +116,19 @@ class EtapBM7(unittest.TestCase):
         self.assertIn('#dzherela{position:absolute;z-index:4;right:8px;bottom:6px;', self.html)
         self.assertIn('<h3>Джерела</h3><p>${DZHERELA}</p>', self.html)
 
-    def test_dva_varianty_filtra_i_try_vydilennya(self):
-        for x in ('data-filtr="spysok"', 'data-filtr="znachky"', 'data-vyd="a"', 'data-vyd="b"', 'data-vyd="v"', 'function prytsil'):
+    def test_lyshe_peremozhtsi_etapu_b(self):
+        """Етап В: фільтр-значки й виділення (а), (б) прибрано; лишились список і «приціл»."""
+        for x in ('data-filtr', 'data-vyd', 'f-znachky', 'TMYANO', "VYD==='b'"):
+            self.assertNotIn(x, self.html)
+        for x in ('class="f-knopka', 'function prytsil', 'const SEL_K=1.25;'):
             self.assertIn(x, self.html)
+
+    def test_etap_v_dorobky(self):
+        self.assertIn('return t?[.70,.2,300]:[.42,.16,277]}', self.html)          # темна: виділення фіолетове, не біле
+        self.assertIn("b.innerHTML=`<span class=\"zn-v\">${D3?KUB:PLASKO}", self.html)  # 2D/3D показує поточний стан
+        self.assertIn("'k-selzasl'", self.html)                                   # назви не лягають на виділену соту
+        self.assertIn("$('#poshuk').placeholder='Вулиця або місце'", self.html)     # підказка на телефоні не обрізана
+        self.assertIn('const FADE_SV=', self.html)                                # світлі соти зблизька не «парк»
 
     def test_poshuk_dvadtsyat_vidomykh_mists(self):
         vidomi = self.html.split('const VIDOMI=[')[1].split('];')[0]
