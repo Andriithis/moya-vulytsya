@@ -84,3 +84,47 @@ class StorinkaM7(unittest.TestCase):
 
     def test_bez_cervonoho_v_stylyakh(self):
         self.assertNotIn('--attention', self.html)
+
+
+class EtapBM7(unittest.TestCase):
+    """Етап Б: розміщення в обраному напрямі «Індиго й м'ята»."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = (MAKET / 'index.html').read_text(encoding='utf-8')
+
+    def test_obranyi_napryam_za_zamovchuvannyam(self):
+        self.assertIn(":'nich';", self.html)
+
+    def test_kartka_v_povitri(self):
+        self.assertIn('#kartka{position:absolute;z-index:6;right:16px;top:16px;max-height:calc(100% - 64px);width:372px;', self.html)
+
+    def test_nichoho_ne_rukhayetsya(self):
+        self.assertNotIn('zPidKartky', self.html)
+        self.assertNotIn('body.k-vidkr #', self.html)
+
+    def test_nemaye_lehendy_i_plyus_minus(self):
+        self.assertNotIn('id="lehenda"', self.html)
+        self.assertNotIn('NavigationControl', self.html)
+
+    def test_keruvannya_v_ryadku_z_poshukom(self):
+        ryad = self.html.split('<div id="verkh-ryad">')[1].split('</div>\n<ul id="pidkazky"')[0]
+        for x in ('id="poshuk"', 'id="f3d"', 'id="ftema"', 'id="finfo"'):
+            self.assertIn(x, ryad)
+
+    def test_dzherela_u_kuti_i_v_info(self):
+        self.assertIn('#dzherela{position:absolute;z-index:4;right:8px;bottom:6px;', self.html)
+        self.assertIn('<h3>Джерела</h3><p>${DZHERELA}</p>', self.html)
+
+    def test_dva_varianty_filtra_i_try_vydilennya(self):
+        for x in ('data-filtr="spysok"', 'data-filtr="znachky"', 'data-vyd="a"', 'data-vyd="b"', 'data-vyd="v"', 'function prytsil'):
+            self.assertIn(x, self.html)
+
+    def test_poshuk_dvadtsyat_vidomykh_mists(self):
+        vidomi = self.html.split('const VIDOMI=[')[1].split('];')[0]
+        self.assertGreaterEqual(vidomi.count("',"), 20 * 2)
+        self.assertIn('duration:TYKHO?0:1200', self.html)
+
+    def test_korotka_kartka(self):
+        self.assertIn('за типову соту`', self.html)
+        self.assertIn('Пік: ${b.pik}', self.html)

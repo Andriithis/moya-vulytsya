@@ -122,6 +122,132 @@ def dotyk(pw):
     b.close()
 
 
+PLASHKY = ['#verkh', '#f3d', '#ftema', '#finfo', '#filtr', '#dzherela', '#porivn']
+POSHUK = ['Майдан Незалежності', 'Хрещатик', 'Контрактова площа', 'Андріївський узвіз', 'Софійська площа', 'Поштова площа',
+          'Європейська площа', 'Львівська площа', 'Галицька площа', 'Вокзальна площа', 'Бессарабська площа', 'Олімпійський стадіон',
+          'Велика Васильківська', 'Саксаганського', 'Богдана Хмельницького', 'Ярославів Вал', 'Володимирська', 'Лук’янівська площа',
+          'Шулявська', 'Святошин', 'Оболонь', 'Мінська', 'Почайна', 'Лівобережна', 'Дарниця', 'Позняки', 'Осокорки', 'Харківська',
+          'Голосіївська', 'Деміївська', 'Либідська', 'Палац «Україна»', 'Виставковий центр', 'Гідропарк', 'Труханів острів',
+          'Парк імені Тараса Шевченка']
+
+
+def mistsya(s):
+    return s.evaluate('''sel=>Object.fromEntries(sel.map(q=>{const e=document.querySelector(q); if(!e) return [q,null];
+      const r=e.getBoundingClientRect(), v=getComputedStyle(e).visibility!=='hidden'&&getComputedStyle(e).display!=='none';
+      return [q,{x:Math.round(r.x),y:Math.round(r.y),w:Math.round(r.width),vydno:v}]}))''', PLASHKY)
+
+
+def etap_b(pw):
+    """Етап Б: «Індиго й м'ята» — розміщення, три варіанти виділеної соти, два варіанти фільтра, ⓘ, пошук із перельотом."""
+    zvit = {}
+    b = pw.chromium.launch(executable_path=EDGE, args=ARGUMENTY)
+    for ekran, (w, h) in EKRANY.items():
+        kont = novyi(b, ekran)
+        s = kont.new_page()
+        for tema in ('svitla', 'temna'):
+            baza = f'{ADRESA}?napr=nich&tema={tema}'
+            for nazva, kam in KAMERY.items():
+                ity(s, baza + kam[ekran])
+                chekaty(s)
+                s.screenshot(path=str(TEKA / f'b-{ekran}-{tema}-{nazva}.png'))
+            for vyd in ('a', 'b', 'v'):
+                ity(s, f'{baza}&vyd={vyd}' + KAMERY['2podil'][ekran])
+                chekaty(s)
+                do = mistsya(s)
+                ok = kartka(s, w, h, ekran)
+                s.wait_for_timeout(600)
+                pislya = mistsya(s)
+                s.screenshot(path=str(TEKA / f'b-{ekran}-{tema}-4kartka-vyd-{vyd}.png'))
+                if ok:
+                    s.go_back()
+                    s.wait_for_timeout(600)
+                zakryto = mistsya(s)
+                zvit[f'{ekran}-{tema}-{vyd}'] = {
+                    'kartka': ok, 'pomylky': s.evaluate('MAKET.stan.pomylky'),
+                    'zsunulys_pry_vidkrytti': [q for q in PLASHKY if do[q] and pislya[q] and do[q] != pislya[q]],
+                    'zsunulys_pislya_zakryttya': [q for q in PLASHKY if do[q] != zakryto[q]]}
+            # фільтр: список відкритий; значки; ⓘ
+            ity(s, baza + KAMERY['2podil'][ekran])
+            chekaty(s)
+            s.click('.f-knopka')
+            s.wait_for_timeout(400)
+            s.screenshot(path=str(TEKA / f'b-{ekran}-{tema}-5filtr-spysok.png'))
+            ity(s, baza + '&filtr=znachky' + KAMERY['2podil'][ekran])
+            chekaty(s)
+            s.screenshot(path=str(TEKA / f'b-{ekran}-{tema}-6filtr-znachky.png'))
+            s.click('#finfo')
+            s.wait_for_timeout(400)
+            s.screenshot(path=str(TEKA / f'b-{ekran}-{tema}-7info.png'))
+        kont.close()
+    # пошук: кожне відоме місце — переліт і картка
+    kont = novyi(b, 'pk')
+    s = kont.new_page()
+    ity(s, f'{ADRESA}?napr=nich')
+    chekaty(s)
+    rez = {}
+    for i, q in enumerate(POSHUK):
+        s.evaluate('MAKET.zakryty()')
+        nazvy = s.evaluate('q=>MAKET.poshuk(q)', q)
+        s.evaluate('MAKET.vybraty(0)')
+        s.wait_for_timeout(1800)
+        z = s.evaluate('MAKET.ZARAZ()')
+        rez[q] = {'pershyi': nazvy[0] if nazvy else None, 'kartka': z}
+        if i < 4:
+            s.screenshot(path=str(TEKA / f'b-poshuk-{i + 1}.png'))
+    zvit['poshuk'] = rez
+    kont.close()
+    # відео пошуку з перельотом (ПК, світла й темна)
+    for tema in ('svitla', 'temna'):
+        vid = TEKA / f'_video_poshuk_{tema}'
+        kont = novyi(b, (1280, 800), ruh=True, video=vid)
+        s = kont.new_page()
+        ity(s, f'{ADRESA}?napr=nich&tema={tema}')
+        chekaty(s, 1.5)
+        s.click('#poshuk')
+        s.keyboard.type('Контрактова', delay=90)
+        s.wait_for_timeout(500)
+        s.keyboard.press('Enter')
+        s.wait_for_timeout(4000)
+        s.click('#poshuk')
+        s.fill('#poshuk', '')
+        s.keyboard.type('Позняки', delay=90)
+        s.wait_for_timeout(500)
+        s.keyboard.press('Enter')
+        s.wait_for_timeout(4500)
+        kont.close()
+        for f in vid.glob('*.webm'):
+            shutil.move(str(f), TEKA / f'b-poshuk-perelit-{tema}.webm')
+        shutil.rmtree(vid, ignore_errors=True)
+    b.close()
+    return zvit
+
+
+def slipi_b():
+    """Знімки варіантів етапу Б під кодами для оцінювача: фільтр F1/F2, виділення V1/V2/V3."""
+    teka = TEKA / 'slipi-b'
+    shutil.rmtree(teka, ignore_errors=True)
+    teka.mkdir()
+    klyuch = {'F1': 'spysok', 'F2': 'znachky', 'V1': 'v', 'V2': 'a', 'V3': 'b'}
+    for f in TEKA.glob('b-*-5filtr-spysok.png'):
+        shutil.copy(f, teka / f.name.replace('5filtr-spysok', 'filtr-F1'))
+    for f in TEKA.glob('b-*-6filtr-znachky.png'):
+        shutil.copy(f, teka / f.name.replace('6filtr-znachky', 'filtr-F2'))
+    for kod, v in klyuch.items():
+        if kod.startswith('V'):
+            for f in TEKA.glob(f'b-*-4kartka-vyd-{v}.png'):
+                shutil.copy(f, teka / f.name.replace(f'4kartka-vyd-{v}', f'vydilennya-{kod}'))
+    from PIL import Image
+    for f in teka.glob('*.png'):
+        im = Image.open(f)
+        c = 60 if '-telefon-' in f.name else 0
+        if c:
+            im = im.crop((0, c, im.width, im.height))
+        else:
+            im = im.crop((0, 0, im.width, im.height - 56))   # смуга макета внизу
+        im.save(f)
+    (TEKA / '_klyuch-slipi-b.json').write_text(json.dumps(klyuch, ensure_ascii=False, indent=1), encoding='utf-8')
+
+
 def slipi():
     """Копії знімків під випадковими кодами — оцінювач не знає, чий напрям. Ключ — _klyuch-slipi.json."""
     teka = TEKA / 'slipi'
@@ -140,8 +266,12 @@ def main(arg: list[str]) -> None:
     TEKA.mkdir(parents=True, exist_ok=True)
     if arg == ['slipi']:
         return slipi()
+    if arg == ['slipi-b']:
+        return slipi_b()
     with sync_playwright() as pw:
-        if arg == ['dotyk']:
+        if arg == ['b']:
+            print(json.dumps(etap_b(pw), ensure_ascii=False, indent=1))
+        elif arg == ['dotyk']:
             dotyk(pw)
         else:
             print(json.dumps(osnovni(pw, arg or NAPRYAMY), ensure_ascii=False, indent=1))
