@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ескіз 2 — Карта-супутник</title>
+<style>
+/* Каркас: лише рамки й сірий, без системи дизайну. */
+body{font:14px/1.4 sans-serif;margin:16px;color:#222;background:#fff}
+.ramky{display:flex;gap:32px;align-items:flex-start;flex-wrap:wrap}
+.pk{width:960px;border:2px solid #888;padding:16px}
+.tel{width:390px;border:2px solid #888;padding:12px;border-radius:24px}
+.b{border:1px dashed #999;padding:8px;margin:8px 0}
+.siryi{background:#eee}
+.karta{background:#ddd;display:flex;align-items:center;justify-content:center;text-align:center;padding:8px}
+.ryad{display:flex;gap:8px}
+.ryad>*{flex:1}
+.chyslo{font-size:28px;font-weight:bold}
+.liva{flex:0 0 380px}
+.liva .karta{height:520px}
+.ekran{border-top:3px solid #c00;margin-top:8px;padding-top:4px;color:#c00;font-size:12px}
+h1{font-size:18px;margin:0 0 8px}
+h2{font-size:15px;margin:0 0 4px}
+h3{font-size:14px;margin:0 0 4px}
+small{color:#666}
+</style>
+</head>
+<body>
+<h1>Ескіз 2 — «Карта-супутник»: карта стоїть ліворуч і показує те, про що блок праворуч</h1>
+<p><small>Числа — справжні з ZVIT-ADRESY-2, розд. 4 (Оболонь, 2024–2026); [N] — ще не пораховано. Червона риска — межа першого екрана.</small></p>
+<div class="ramky">
+
+<div class="pk">
+  <h2>Комп'ютер, 1440 px (зменшено)</h2>
+  <div class="ryad">
+    <div class="liva">
+      <div class="karta">КАРТА — не прокручується.<br><br>Шапка: коло 300 м, соти, 4 адреси-скупчення.<br>Блок 1: точки подій шарів 1–2.<br>Блок 2: вулиця виділена, проблеми.<br>Блок 5: «що поруч» значками.<br>Наведення на картку → точка блимає.</div>
+    </div>
+    <div>
+      <div class="b">
+        <h3>Оболонь, [адреса] · коло 300 м · 2024–2026</h3>
+        <p><b>89 подій — у ≈ 2 рази більше даних, ніж у типовому колі Києва.</b> Здебільшого ДТП і водії напідпитку; 41 з 89 — на чотирьох адресах біля метро й магазинів.</p>
+        <div class="ryad">
+          <div class="b"><span class="chyslo">89</span><br>подій</div>
+          <div class="b"><span class="chyslo">≈ 2 ×</span><br>типового кола Києва</div>
+          <div class="b"><span class="chyslo">41 з 89</span><br>на 4 адресах</div>
+        </div>
+      </div>
+      <div class="b"><h3>1 · У будинку — [N] подій; поруч до 100 м — [N]</h3>картка події · картка події · картка · «ще 8 таких самих»</div>
+      <div class="ekran">межа першого екрана</div>
+      <div class="b"><h3>2 · Моя вулиця</h3>смуга вулиці · проблеми зі станом (триває / росте / затихло / рано казати)</div>
+      <div class="b"><h3>3 · Аналітика</h3>парні смуги · дні тижня · «що з цього»</div>
+      <div class="b"><h3>4 · Цікаве</h3></div>
+      <div class="b"><h3>5 · Район</h3></div>
+      <div class="b"><h3>6 · Куди йде</h3></div>
+      <div class="b siryi"><h3>Наскільки повні дані · Джерела · Додаток</h3></div>
+    </div>
+  </div>
+</div>
+
+<div class="tel">
+  <h2>Телефон, 390 px</h2>
+  <div class="karta" style="height:140px">карта (невисока, над текстом; тап — на весь екран)</div>
+  <div class="b">
+    <h3>Оболонь, [адреса]</h3>
+    <p><b>89 подій — у ≈ 2 рази більше даних, ніж у типовому колі Києва.</b></p>
+    <div class="ryad">
+      <div><span class="chyslo">89</span></div><div><span class="chyslo">≈ 2 ×</span></div><div><span class="chyslo">41</span></div>
+    </div>
+  </div>
+  <div class="ekran">межа першого екрана</div>
+  <div class="b"><h3>1 · У будинку — [N] подій</h3>картки</div>
+  <div class="b">▸ 2 · Моя вулиця</div>
+  <div class="b">▸ 3 · Аналітика</div>
+  <div class="b">▸ 4 · Цікаве</div>
+  <div class="b">▸ 5 · Район</div>
+  <div class="b">▸ 6 · Куди йде</div>
+  <p><small>На телефоні карта не «супутник», а картинка над текстом — по суті це ескіз 1.</small></p>
+</div>
+
+</div>
+</body>
+</html>
