@@ -25,7 +25,7 @@
    Гілку `ispyt` ніколи не зливати; номери іспиту ніде в `main`.
 2. Конфлікти (`RISHENNYA.md`, `docs/08-stan.md`) — злити `main` у гілку PR локально, виправити, `git push origin HEAD:<head.ref>`
    (`gh api repos/Andriithis/<repo>/pulls/N -q .head.ref`; GraphQL у `gh` не працює — лише REST).
-3. «⏳ MV-?» → наступний номер (зараз **MV-78**), у `RISHENNYA.md`, специфікації й коді. Короткий запис — і в другий репозиторій;
+3. «⏳ MV-?» → наступний номер (зараз **MV-79**; MV-78 — хибне блокування 15.11, HTML-рішення), у `RISHENNYA.md`, специфікації й коді. Короткий запис — і в другий репозиторій;
    у `moya-vulytsya/AGENTS.md` оновити діапазон «MV-43…MV-N».
 4. `dani-edrsr`: `python src/check_build.py` (CI немає). `moya-vulytsya`: перевірка `unit` має бути зеленою.
 5. Злиття — MCP GitHub `merge_pull_request`. Далі прибрати `ZAVDANNYA/ZVIT`, звірка документів (AGENTS.md теж!).
