@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ескіз 3 — Вкладки</title>
+<style>
+/* Каркас: лише рамки й сірий, без системи дизайну. */
+body{font:14px/1.4 sans-serif;margin:16px;color:#222;background:#fff}
+.ramky{display:flex;gap:32px;align-items:flex-start;flex-wrap:wrap}
+.pk{width:960px;border:2px solid #888;padding:16px}
+.tel{width:390px;border:2px solid #888;padding:12px;border-radius:24px}
+.b{border:1px dashed #999;padding:8px;margin:8px 0}
+.siryi{background:#eee}
+.karta{background:#ddd;height:140px;display:flex;align-items:center;justify-content:center}
+.ryad{display:flex;gap:8px}
+.ryad>*{flex:1}
+.vkl{display:flex;gap:4px;flex-wrap:wrap}
+.vkl span{border:1px solid #888;padding:4px 8px}
+.vkl .a{background:#333;color:#fff}
+.chyslo{font-size:28px;font-weight:bold}
+.ekran{border-top:3px solid #c00;margin-top:8px;padding-top:4px;color:#c00;font-size:12px}
+h1{font-size:18px;margin:0 0 8px}
+h2{font-size:15px;margin:0 0 4px}
+h3{font-size:14px;margin:0 0 4px}
+small{color:#666}
+</style>
+</head>
+<body>
+<h1>Ескіз 3 — «Вкладки»: шапка спільна, блоки 1–6 — вкладками</h1>
+<p><small>Числа — справжні з ZVIT-ADRESY-2, розд. 4 (Оболонь, 2024–2026); [N] — ще не пораховано. Червона риска — межа першого екрана.</small></p>
+<div class="ramky">
+
+<div class="pk">
+  <h2>Комп'ютер, 1440 px (зменшено)</h2>
+  <div class="b">
+    <h3>Оболонь, [адреса] · коло 300 м · 2024–2026</h3>
+    <p><b>89 подій — у ≈ 2 рази більше даних, ніж у типовому колі Києва.</b></p>
+    <div class="ryad">
+      <div class="b"><span class="chyslo">89</span><br>подій</div>
+      <div class="b"><span class="chyslo">≈ 2 ×</span><br>типового кола Києва</div>
+      <div class="b"><span class="chyslo">41 з 89</span><br>на 4 адресах</div>
+      <div class="karta">карта</div>
+    </div>
+  </div>
+  <div class="vkl"><span class="a">Моя адреса</span><span>Вулиця</span><span>Аналітика</span><span>Цікаве</span><span>Район</span><span>Куди йде</span><span>Дані</span></div>
+  <div class="b"><h3>У будинку — [N] подій; поруч до 100 м — [N]</h3>картка · картка · картка</div>
+  <div class="ekran">межа першого екрана</div>
+  <p><small>Решта блоків — лише після кліку по вкладці.</small></p>
+</div>
+
+<div class="tel">
+  <h2>Телефон, 390 px</h2>
+  <div class="b">
+    <h3>Оболонь, [адреса]</h3>
+    <p><b>89 подій — ≈ 2 × типового кола Києва.</b></p>
+  </div>
+  <div class="vkl"><span class="a">Адреса</span><span>Вулиця</span><span>Аналітика</span><span>…</span></div>
+  <div class="b"><h3>У будинку — [N] подій</h3>картки</div>
+  <div class="ekran">межа першого екрана</div>
+  <p><small>Вкладки на телефоні прокручуються вбік — частину назв не видно.</small></p>
+</div>
+
+</div>
+</body>
+</html>
