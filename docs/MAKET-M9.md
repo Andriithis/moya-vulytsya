@@ -10,7 +10,7 @@ IBM Plex Sans, клавіші. Сторінки — у `tmp\maket-m9\` (у git �
 
 - [x] 1. Навігація й схема переходів — `/navihatsiya/`
 - [x] 2. Підписка — `/pidpyska/`
-- [ ] 3. Звіт адреси — `/zvit-adresy/`
+- [x] 3. Звіт адреси — `/zvit-adresy/`
 - [ ] 4. Мої адреси — `/moi-adresy/bez-pidpysky/` (а), `/moi-adresy/` (б)
 - [ ] 5. Картка адреси на карті — `/adresa/`, `/adresa/pidpysnyk/`; тихі кнопки в картці соти
 - [ ] 6. Знімки (комп'ютер і телефон) — `docs/znimky-m9/`
