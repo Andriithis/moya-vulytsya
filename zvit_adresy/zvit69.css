@@ -1,0 +1,154 @@
+/* Звіт адреси — ZAVDANNYA-69: перший екран (адреса, 3 висновки, табло), «Місця довкола», «Мої адреси».
+   Поверх zvit.css з 64 (вигляд «Індиго й м'ята», MV-58; оформлення MV-79). Колір шкали — інтенсивність даних,
+   не небезпека: світліше — менше, темніше — більше. Без червоного й зеленого «добре — погано». */
+
+:root { --shk-0: #CDD0F3; --shk-1: #A3A8E6; --shk-2: #7E84CE; --shk-3: #464AA9; --shk-4: #26296E; --shk-ni: #E7E8F0; }
+
+.v69 .suputnyk { grid-template-columns: minmax(0, 1fr) 400px; gap: 22px; }
+.v69 .zvit { padding-top: 18px; }
+.v69 .kupleno { margin-bottom: 10px; }
+.v69 .suputnyk__karta { top: 72px; height: calc(100vh - 88px); }
+
+/* ——— перший екран ——— */
+.pershyi { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 16px 24px 14px; transition: border-color .3s; }
+.pershyi.aktyvnyi { border-color: var(--sc-1); }
+.pershyi__adr { display: flex; flex-direction: column; gap: 2px; }
+.pershyi__h { font: 700 28px/34px var(--sans); letter-spacing: -.02em; }
+.pershyi .shapka__de { margin-top: 0; font-size: 14px; line-height: 20px; }
+.vysnovky { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; counter-reset: v; }
+.vysnovky li { counter-increment: v; display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 8px; font: 500 14.5px/20px var(--sans); color: var(--ink); }
+.vysnovky li::before { content: counter(v); width: 22px; height: 22px; border-radius: 50%; background: var(--accent-soft); color: var(--accent-strong); font: 700 12px/22px var(--sans); text-align: center; margin-top: -1px; }
+.vysnovky li:first-child { font-weight: 600; }
+
+/* ——— табло ——— */
+.tablo { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 8px; }
+.tablo__shap { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.tablo__shap h2 { font: 700 13px/18px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.tablo__shap p { font-size: 12.5px; line-height: 18px; color: var(--muted); }
+.tablo__holova, .tablo__r { display: grid; grid-template-columns: 132px repeat(3, minmax(0, 1fr)); gap: 0 12px; }
+.tablo__holova { margin-top: 6px; font: 600 11px/16px var(--sans); color: var(--muted); letter-spacing: .02em; padding-bottom: 4px; }
+.tablo__r { padding: 6px 0; border-top: 1px solid var(--line); align-items: start; }
+.tablo__nazva { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.tablo__nazva b { font: 700 14px/19px var(--sans); }
+.tablo__nazva span { font-size: 11.5px; line-height: 15px; color: var(--muted); }
+.tk { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "l l" "n s" "k k" "t t" "d d"; column-gap: 8px; align-items: center; min-width: 0; }
+.tk__l { grid-area: l; display: none; font: 600 11px/15px var(--sans); color: var(--muted); }
+.tk__n { grid-area: n; font: 800 19px/22px var(--sans); letter-spacing: -.01em; color: var(--ink); white-space: nowrap; }
+.shk { grid-area: s; display: inline-flex; gap: 2px; justify-self: start; }
+.shk i { width: 11px; height: 7px; border-radius: 2px; background: var(--shk-ni); }
+.shk i.tut { height: 11px; margin-top: -2px; }
+.shk[data-k="0"] i.tut { background: var(--shk-0); } .shk[data-k="1"] i.tut { background: var(--shk-1); }
+.shk[data-k="2"] i.tut { background: var(--shk-2); } .shk[data-k="3"] i.tut { background: var(--shk-3); }
+.shk[data-k="4"] i.tut { background: var(--shk-4); }
+.shk--rano i { background: repeating-linear-gradient(45deg, var(--shk-ni) 0 2px, #fff 2px 4px); }
+.tk__k { grid-area: k; font: 600 12.5px/17px var(--sans); color: var(--ink-2); }
+.tk__k[data-k="3"], .tk__k[data-k="4"] { color: var(--accent-strong); font-weight: 700; }
+.tk__k[data-k="0"], .tk__k[data-k="1"] { color: var(--ink-2); }
+.tk__k--rano { color: var(--muted); font-style: italic; }
+.tk__t { grid-area: t; font-size: 11.5px; line-height: 15px; color: var(--muted); }
+.tk__dod, .tk__tema { grid-area: d; font-size: 11.5px; line-height: 15px; color: var(--muted); }
+.tk__tema { color: var(--ink-2); margin-top: 2px; }
+.tk--nemaie { align-self: stretch; }
+.tk__nemaie { font-size: 12px; color: var(--muted); }
+.shk-legenda { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 8px; font-size: 11.5px; line-height: 15px; color: var(--muted); }
+.shk-legenda span { display: inline-flex; align-items: center; gap: 5px; }
+.shk-legenda i { width: 11px; height: 9px; border-radius: 2px; background: var(--shk-2); }
+.shk-legenda i[data-k="0"] { background: var(--shk-0); } .shk-legenda i[data-k="1"] { background: var(--shk-1); }
+.shk-legenda i[data-k="3"] { background: var(--shk-3); } .shk-legenda i[data-k="4"] { background: var(--shk-4); }
+.tablo__prym { margin: 8px 0 0; padding: 0 0 0 16px; font-size: 11.5px; line-height: 16px; color: var(--muted); }
+.tablo__prym li + li { margin-top: 2px; }
+
+/* ——— «Місця довкола» ——— */
+.mistsia { margin-top: 20px; }
+.v69 .blok + .rozdil, .v69 .mistsia + .rozdil { margin-top: 20px; }
+.mistsia__spysok { list-style: none; margin: 18px 0 0; padding: 0; display: flex; flex-direction: column; }
+.mistse { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 12px; padding: 12px 8px; border-top: 1px solid var(--line); border-radius: 10px; transition: background .2s; }
+.mistse:first-child { border-top: 0; }
+.mistse.tut { background: var(--surface-tint); }
+.mistse__ik { width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: #fff; font: 700 13px/28px var(--sans); text-align: center; }
+.mistse[data-typ="park"] .mistse__ik { background: var(--pk-2); }
+.mistse[data-typ="skup"] .mistse__ik { background: var(--sc-4); }
+.mistse__t { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.mistse__h { display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; }
+.mistse__h b { font: 700 15.5px/21px var(--sans); }
+.mistse__d { font-size: 13px; color: var(--muted); white-space: nowrap; }
+.mistse__shcho { font-size: 14.5px; line-height: 21px; color: var(--ink-2); }
+.mistse__shcho .stan { margin-left: 8px; vertical-align: 1px; }
+.mistse__sk, .mistse__roky, .mistse__spil { font-size: 12.5px; line-height: 17px; color: var(--muted); }
+.mistse__por { font-size: 12.5px; line-height: 18px; color: var(--ink-2); background: var(--surface-tint); border-radius: 8px; padding: 6px 10px; margin-top: 2px; }
+.mistse__por b { color: var(--accent-strong); }
+.stan { display: inline-block; padding: 0 8px; border-radius: var(--radius-pill); background: var(--accent-soft); color: var(--accent-strong); font: 600 11.5px/19px var(--sans); white-space: nowrap; }
+.stan--рано-казати { background: var(--surface-tint); color: var(--muted); }
+.mistsia__shche { margin-top: 6px; }
+.mistsia__shche > summary, .usi-300 > summary { cursor: pointer; font: 600 14px/20px var(--sans); color: var(--accent); padding: 8px 0; }
+.usi-300 { margin-top: 10px; }
+
+/* ——— нижні розділи: без зайвого ——— */
+.smuha-vsi { display: flex; flex-direction: column; gap: 6px; }
+.v69 .smuha-tel { display: flex; }
+.index69 { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; }
+
+/* ——— «Мої адреси» ——— */
+.mii__tablo { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 20px 24px; }
+.mii__r { display: grid; grid-template-columns: 170px repeat(3, minmax(0, 1fr)); gap: 0 18px; padding: 8px 0; border-top: 1px solid var(--line); align-items: start; }
+.mii__r[data-ryadok] + .mii__r[data-ryadok] { border-top-color: #EEEFF4; }
+.mii__r--holova { border-top: 0; padding-top: 0; align-items: end; }
+.mii__nazva { display: flex; flex-direction: column; gap: 1px; }
+.mii__nazva b { font: 700 14px/19px var(--sans); }
+.mii__nazva span { font-size: 12px; line-height: 16px; color: var(--muted); }
+.mii__adr { display: flex; flex-direction: column; gap: 2px; padding-bottom: 6px; }
+.mii__adr a { text-decoration: none; color: var(--ink); }
+.mii__adr b { font: 700 18px/23px var(--sans); }
+.mii__adr span { font-size: 12px; color: var(--muted); }
+.mii__adr p { font-size: 13.5px; line-height: 19px; color: var(--ink-2); margin-top: 4px; }
+.mii__kh { display: none; }
+.mii .tk__n { font-size: 22px; line-height: 26px; }
+
+/* ——— карта 69 ——— */
+.mapa .m-kontur { fill: var(--accent); fill-opacity: .06; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 7 5; vector-effect: non-scaling-stroke; }
+.mapa .m-tochka { fill: var(--sc-3); opacity: .45; }
+.mapa .m-tochka.dor { fill: var(--sc-1); opacity: .5; }
+.mapa .m-mistse circle { fill: var(--accent); stroke: #fff; stroke-width: 2; }
+.mapa .m-mistse[data-typ="park"] circle { fill: var(--pk-2); }
+.mapa .m-mistse[data-typ="skup"] circle { fill: var(--sc-4); }
+.mapa .m-mistse text { font: 700 11px var(--sans); fill: #fff; text-anchor: middle; dominant-baseline: central; }
+.mapa .m-mistse.tut circle { stroke: var(--accent-strong); stroke-width: 3.5; }
+.mapa .m-mistse { cursor: pointer; }
+.mapa .m-adr circle { fill: var(--sc-4); stroke: #fff; stroke-width: 1.6; }
+.mapa .m-adr.skup circle { fill: var(--sc-5); }
+.mapa .m-adr text { font: 700 10px var(--sans); fill: #fff; text-anchor: middle; dominant-baseline: central; }
+.mapa .m-d-pish { vector-effect: non-scaling-stroke; }
+.mapa.rezhym-dovkola .shar-adr, .mapa.rezhym-budynok .shar-mistsia, .mapa.rezhym-podii .shar-mistsia, .mapa.rezhym-podii .shar-adr,
+.mapa.rezhym-budynok .shar-adr { opacity: 0; pointer-events: none; }
+.mapa.rezhym-vulytsia .shar-mistsia { opacity: 0; pointer-events: none; }
+.mapa.rezhym-vulytsia .shar-tochky, .mapa.rezhym-dovkola .shar-tochky { opacity: .55; }
+.mapa .shar-adr, .mapa .shar-mistsia, .mapa .shar-tochky { transition: opacity .4s; }
+
+@media (max-width: 1180px) {
+  .v69 .suputnyk { grid-template-columns: minmax(0, 1fr) 320px; }
+  .tablo__holova, .tablo__r { grid-template-columns: 112px repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 760px) {
+  .v69 .suputnyk { grid-template-columns: 1fr; gap: 0; }
+  .v69 .suputnyk__karta { order: -1; position: sticky; top: 54px; z-index: 10; height: 190px; min-height: 0; border-radius: 0 0 16px 16px; margin: 0 -12px 12px; border-width: 0 0 1px; }
+  .v69 .zvit { padding: 0 12px 60px; }
+  .pershyi { padding: 16px 14px 12px; border-radius: 18px; }
+  .pershyi__h { font-size: 25px; line-height: 30px; }
+  .vysnovky li { font-size: 14.5px; line-height: 20px; }
+  .tablo__holova { display: none; }
+  .tablo__r { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; padding: 10px 0; }
+  .tablo__nazva { grid-column: 1 / -1; flex-direction: row; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .tk__l { display: block; }
+  .tk--nemaie { display: none; }
+  .tk__tema { grid-column: 1 / -1; }
+  .tablo__r[data-ryadok="budynok"] .tk:nth-child(3) { grid-column: 1 / -1; }
+  .mistse { grid-template-columns: 26px minmax(0, 1fr); gap: 10px; padding: 10px 2px; }
+  .mistse__ik { width: 24px; height: 24px; font-size: 12px; line-height: 24px; }
+  .mii__tablo { padding: 14px 12px; border-radius: 18px; }
+  .mii__r { grid-template-columns: 1fr; gap: 6px; }
+  .mii__r--holova { gap: 10px; }
+  .mii__k { display: grid; grid-template-columns: minmax(0, 120px) minmax(0, 1fr); gap: 10px; align-items: start; padding: 4px 0; border-top: 1px dashed var(--line); }
+  .mii__kh { display: block; font-size: 12.5px; line-height: 17px; color: var(--ink-2); font-weight: 600; }
+  .mii .tk__l { display: none; }
+}
