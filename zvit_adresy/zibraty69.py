@@ -751,7 +751,7 @@ def mii_adresy(DD, ADR3):
                               for kom, (D, A) in zip(koms, DD))
             rr.append(f'<div class="mii__r" data-ryadok="{k}"><div class="mii__nazva">{"<b>" + n + "</b>" if j == 0 else ""}<span>{nk}</span></div>{komirky}</div>')
     return (f'<main class="zvit mii"><p class="kupleno"><span><b>Мої адреси</b> · 3 куплені звіти · той самий набір рядків і та сама шкала</span></p>'
-            f'<section class="mii__tablo"><div class="mii__r mii__r--holova"><div class="mii__nazva"><b>Табло поруч</b><span>кожна клітинка — проти типового у своєму районі</span></div>'
+            f'<section class="mii__tablo"><div class="mii__r mii__r--holova"><div class="mii__nazva"><b>Табло поруч</b><span>кожна клітинка — проти типового будинку свого району: темніший квадрат — більше в даних, світліший — менше; «у типового» — медіана району</span></div>'
             f'{"".join(stovptsi)}</div>{"".join(rr)}'
             f'<div class="shk-legenda" aria-hidden="true">{"".join(f"<span><i data-k=\"{j}\"></i>{KROKY[j]}</span>" for j in range(5))}</div>'
             f'<p class="osm-prymitka">Шкала — проти свого району: «більше» в центрі й «більше» на Оболоні — різні числа. Порівнюйте кроки, а числа — з підписом «у типового». '
