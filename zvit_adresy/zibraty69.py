@@ -70,6 +70,11 @@ def dr(x, nk=1):
     return s[:-2] if s.endswith(',0') else s
 
 
+def z_nb(t):
+    """текст -> HTML, номер будинку після «№» — у <span class="nb"> (ховається на знімках)"""
+    return re.sub(r'№ (\d[^\s,.:;]*)', lambda m: '№ ' + nb(m.group(1)), E(t))
+
+
 def nb(n):
     return f'<span class="nb">{E(n)}</span>'
 
@@ -202,7 +207,8 @@ def tablo_ryadky(D):
         porozhnia('')]))
     # 2. Вулиця
     if v:
-        out.append(('vulytsia', 'Вулиця', f'{E(korotko(v["nazva"]))} · {ch(v["dovzhyna"])} м', [
+        dov = f'{dr(v["dovzhyna"] / 1000)} км' if v['dovzhyna'] >= 1000 else f'{ch(v["dovzhyna"])} м'
+        out.append(('vulytsia', 'Вулиця', f'{E(korotko(v["nazva"]))}, довжина {dov}', [
             komirka('події на 100 м', dr(v['na100']), v['podii_krok'], typovo(v['podii_krok'], dr), dod=f'<span class="tk__dod">усього {podii_s(v["podii"])}</span>'),
             komirka('скарги на 100 м', dr(v['sk100']), v['skargy_krok'], typovo(v['skargy_krok'], dr), dod=f'<span class="tk__dod">усього {skarh_s(v["skargy"])}</span>'),
             porozhnia('')]))
@@ -270,13 +276,15 @@ def mistsia_vidbir(D):
     tykhi = [m for m in ms if m['typ'] == 'park' and m['podii'] <= 1 and m['nazva']]
     tykhi.sort(key=lambda m: m['d'])
     vybrani = z_podiiamy[:8] + tykhi[:2]
-    reshta = z_podiiamy[8:]
+    reshta = [m for m in z_podiiamy[8:] if m['podii'] >= 2]
     return vybrani, reshta
 
 
 def shcho_tam(m):
     if not m['podii']:
-        return 'подій у даних немає' if m['podii'] == 0 else 'подій мало'
+        return 'подій у даних немає'
+    if m['typ'] == 'park' and m['podii'] <= 1:
+        return 'подій мало: 1 за три роки'
     hr = sorted(m['hrupy'].items(), key=lambda kv: -kv[1])
     h, n = hr[0]
     s = podii_s(m['podii'])
@@ -293,7 +301,8 @@ STAN = {'триває': 'триває', 'нове': 'нове', 'рано каз
 
 
 def mistse_html(m, i):
-    stan = f'<span class="stan stan--{E(m["stan"].replace(" ", "-"))}">{E(STAN[m["stan"]])}</span>' if m.get('stan') else ''
+    malo = m['typ'] == 'park' and m['podii'] <= 1
+    stan = f'<span class="stan stan--{E(m["stan"].replace(" ", "-"))}">{E(STAN[m["stan"]])}</span>' if m.get('stan') and not malo else ''
     sk = ''
     if m.get('skargy'):
         h = m['skargy_hr'][0][0] if m['skargy_hr'] else ''
@@ -302,11 +311,11 @@ def mistse_html(m, i):
     p = m.get('porivn')
     if p:
         k = p['malyi_krok']['k']
-        por = (f'<p class="mistse__por">Як у карті Києва: у {p["r_malyi"]} м — {podii_s(p["malyi"])} (крім дорожніх), '
-               f'у {E(TYP_TYPOVYI[m["typ"]])} міста — {ch(p["malyi_typovo"])}; у {p["r_velykyi"]} м — {ch(p["velykyi"])} проти '
-               f'{ch(p["velykyi_typovo"])}. <b>{E(KROKY[k]) if k is not None else "рано казати"}</b>, ніж у {ch(p["obiektiv"])} таких об\'єктів Києва.</p>')
+        por = (f'<p class="mistse__por">Проти таких самих місць Києва ({ch(p["obiektiv"])}): <b>{E(KROKY[k]) if k is not None else "рано казати"}</b>. '
+               f'У {p["r_malyi"]} м — {podii_s(p["malyi"])} без дорожніх, у {E(TYP_TYPOVYI[m["typ"]])} — {ch(p["malyi_typovo"])}; '
+               f'у {p["r_velykyi"]} м — {ch(p["velykyi"])} проти {ch(p["velykyi_typovo"])}.</p>')
     roky = ''
-    if m['podii']:
+    if m['podii'] and not malo:
         roky = ' · '.join(f'{r}: {m["roky"].get(r, 0)}' for r in ('2024', '2025', '2026'))
         roky = f'<span class="mistse__roky">{roky}</span>'
     spil = f'<span class="mistse__spil">ще {m["spilni"]} — ближче до сусіднього місця</span>' if m.get('spilni') else ''
@@ -369,8 +378,10 @@ def vysnovky(D, vybrani):
         m = vybrani[0]
         nm = html.unescape(re.sub(r'<[^>]+>', '', nazva_mistsia(m)))
         h = max(m['hrupy'].items(), key=lambda kv: kv[1])
-        kand.append((3.5 + min(m['podii'], 60) / 40 + (1 if m['d'] < 300 else 0), 'mistse',
-                     f'Найбільше подій довкола — {nm}, {metry(m["d"])} від будинку: {podii_s(m["podii"])} за три роки, '
+        # вага — за серйозністю (сума ваг видів), не лише числом: скупчення ДТП за 400 м не випереджає події в будинку
+        kand.append((2.5 + min(m['vaha'], 120) / 60 + (1 if m['d'] < 300 else 0), 'mistse',
+                     f'{"Найбільше подій довкола" if m["podii"] >= max(x["podii"] for x in vybrani) else "Найпомітніше місце довкола"} — '
+                     f'{nm}, {metry(m["d"])} від будинку: {podii_s(m["podii"])} за три роки, '
                      f'{"усі" if h[1] == m["podii"] else "здебільшого"} {HR_SLOVA[h[0]]}.'))
     pk = o['podii_krok']
     if syla(pk):
@@ -445,6 +456,8 @@ def zhortka(items, render, pokazaty=1, slovo='таких самих'):
     if len(items) <= pokazaty:
         return ''.join(render(x) for x in items)
     n = len(items) - pokazaty
+    slovo = {'таких самих': mn(n, 'такий самий', 'такі самі', 'таких самих'),
+             'подій поруч': mn(n, 'подія поруч', 'події поруч', 'подій поруч')}.get(slovo, slovo)
     return (f'<div class="zhortka">{"".join(render(x) for x in items[:pokazaty])}'
             f'<button class="shche" type="button"><span class="koly-zakryto">ще {n} {slovo} ▾</span><span class="koly-vidkryto">згорнути ▴</span></button>'
             f'<div class="shovane">{"".join(render(x) for x in items[pokazaty:])}</div></div>')
@@ -541,7 +554,7 @@ def nyzhni_rozdily(D, PEREKAZY):
         shar3.append('</div>')
     if dim:
         h, n = hr_dim.most_common(1)[0]
-        h2 = f'У будинку — {podii_s(len(dim))}{f", і {n} з них — {h.lower()}" if len(dim) > 2 and n > 1 else ""}'
+        h2 = f'У будинку — {podii_s(len(dim))}{f", і {n} з них — {h if h.isupper() else h.lower()}" if len(dim) > 2 and n > 1 else ""}'
     else:
         h2 = 'У самому будинку подій у даних немає'
     B1 = blok('adresa', '1', 'Моя адреса', E(h2),
@@ -573,8 +586,8 @@ def nyzhni_rozdily(D, PEREKAZY):
                     f'<i><u data-shyr="{100 * v["k"] / mx:.1f}"></u></i><b>{v["k"]}</b></div>'
                     for v in sorted(nomerni, key=lambda v: -v['k'])[:12])
     B2 = blok('vulytsia', '2', 'Моя вулиця',
-              E(f'На {vn} — {len(SKUP)} {mn(len(SKUP), "адреса", "адреси", "адрес")}, де подій 5 і більше' + (', і ваш будинок серед них' if ty_skup else '')),
-              f'Усього на вулиці {podii_s(D["vul_k"])} на {len(nomerni)} адресах: здебільшого {", ".join(f"{h.lower()} ({n})" for h, n in vul_hr.most_common(2))}. '
+              E(f'На вашій вулиці — {len(SKUP)} {mn(len(SKUP), "адреса", "адреси", "адрес")}, де подій 5 і більше' + (', і ваш будинок серед них' if ty_skup else '')),
+              f'{E(vn)}: усього {podii_s(D["vul_k"])} на {len(nomerni)} адресах, здебільшого {", ".join(f"{h if h.isupper() else h.lower()} ({n})" for h, n in vul_hr.most_common(2))}. '
               'Скупчення — це лише «багато подій на одній адресі», а не проблема.',
               f'''<div class="dvi"><div class="pidblok"><h3>Адреси вулиці, де найбільше подій</h3><p class="tykho">12 адрес з найбільшим числом подій за 2024–2026.</p><div class="smuha-tel smuhy smuha-vsi">{smuha}</div></div>
 <div class="pidblok"><h3>Де скупчення і чи вони тривають</h3><p class="tykho">Смужки — роки; бліда — 2026, ще неповний.</p><div class="skupchennia">{skup_html or '<p class="tykho">Скупчень немає.</p>'}</div></div></div>
@@ -686,7 +699,7 @@ def pershyi_ekran(D, A, vys, ryadky):
     h1 = f'{E(m.group(1))}, {nb(m.group(2))}' if m else E(A['nazva'])
     return (f'<section class="pershyi" id="shapka" data-rezhym="dovkola"><div class="pershyi__adr"><p class="shapka__mitka">Звіт адреси</p>'
             f'<h1 class="pershyi__h">{h1}</h1><p class="shapka__de">{E(D["raion"])} район · багатоквартирний будинок, {pov} · події 2024 — 5.11.2026</p></div>'
-            f'<ol class="vysnovky">{"".join(f"<li>{E(v)}</li>" for v in vys)}</ol>{tablo_html(D, ryadky)}</section>')
+            f'<ol class="vysnovky">{"".join(f"<li><span>{z_nb(v)}</span></li>" for v in vys)}</ol>{tablo_html(D, ryadky)}</section>')
 
 
 def mapa_js(D, vybrani, slug):
@@ -724,7 +737,7 @@ def mii_adresy(DD, ADR3):
     for D, A in DD:
         vys = D['_vys'][0]
         stovptsi.append(f'<div class="mii__adr"><a href="{E(A["slug"])}.html"><b>{adr_html(A["nazva"])}</b></a>'
-                        f'<span>{E(D["raion"])} район</span><p>{E(vys)}</p></div>')
+                        f'<span>{E(D["raion"])} район</span><p>{z_nb(vys)}</p></div>')
     ryadky = collections.OrderedDict()
     for D, A in DD:
         for k, n, pid, kom in D['_ryadky']:
@@ -788,7 +801,7 @@ def main():
     t = storinka('mii-adresy.html', 'v69 v-mii', 'Мої адреси', mii_adresy(tri, None), ADR)
     perevirka(t, 'mii')
     open(os.path.join(vykhid, 'mii-adresy.html'), 'w', encoding='utf-8').write(t)
-    idx = ''.join(f'<li><a href="{E(A["slug"])}.html">{adr_html(A["nazva"])}</a> — {E(D["_vys"][0])}</li>' for D, A in DD)
+    idx = ''.join(f'<li><a href="{E(A["slug"])}.html">{adr_html(A["nazva"])}</a> — {z_nb(D["_vys"][0])}</li>' for D, A in DD)
     t = storinka('index.html', 'v69', 'Звіт адреси 69', f'''<main class="zvit"><section class="blok"><p class="blok__nomer"><b>69</b>Звіт адреси — перший екран</p>
 <h2>Табло для порівняння і «Місця довкола»</h2><p class="blok__pid">Справжні адреси, дані випуску 08.11.2026 і скарги 1551 до жовтня 2026. Додайте <code>?znimok=1</code>, щоб сховати номери будинків і рішень.</p>
 <div class="blok__tilo"><ul class="index69">{idx}<li><a href="mii-adresy.html">Мої адреси — три звіти поруч</a></li></ul></div></section></main>''', ADR)
