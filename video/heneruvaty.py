@@ -215,7 +215,7 @@ def shcho_bolyt(B: Baza, slug: str):
         {'mitka': f'{korotka} · {MISIATSI_ZA[m]} {misiats[:4]}', 'chyslo': chyslo(n_s),
          'tekst': f'{vidminok(n_s, ("звернення", "звернення", "звернень"))} мешканців до 1551',
          'pidpys': f'У середньому на вулиці району ({rayon}) — {chyslo(round(med_s))}. Скарга — звернення, не перевірений факт.',
-         'holos': f'{korotka}. За {MISIATSI_ZA[m]} — {n_s} {vidminok(n_s, ("звернення", "звернення", "звернень"))} до 1551. '
+         'holos': f'За {MISIATSI_ZA[m]} — {n_s} {vidminok(n_s, ("звернення", "звернення", "звернень"))} до 1551. '
                   f'У середньому на вулиці району — {round(med_s)}.'},
         {'mitka': 'Найчастіше скаржились', 'chyslo': chyslo(n_t), 'tekst': f'{tema.lower()}',
          'pidpys': 'Інші теми: ' + ', '.join(f'{k.lower()} — {n}' for k, n in tut.most_common(3)[1:]) if len(tut) > 1 else '',
@@ -401,7 +401,7 @@ def taimlaps(B: Baza, pivrichchia: bool = True):
                   'pidtekst': f'Пробні дані — {len(roky)} {vidminok(len(roky), ("рік", "роки", "років"))}. 10 років — після повного Києва',
                   'holos': f'Київ у даних судів. Поки що — {len(roky)} {vidminok(len(roky), ("рік", "роки", "років"))}; десять — згодом.'},
         'periody': per, 'soty': {'type': 'FeatureCollection', 'features': fs},
-        'vershyny': {'mitka': 'Вершини', 'tekst': 'Стовпчиком — найгустіші 12 % сот',
+        'vershyny': {'mitka': 'Вершини', 'tekst': 'Стовпчиком — найгустіші 12\u00a0% сот',
                      'pidpys': f'Разом {chyslo(vsogo)} подій, що дійшли до суду. Колір — кількість, не небезпека.',
                      'holos': 'А тепер — вершини: дванадцять відсотків сот, де подій у даних найбільше. Колір — це кількість, а не небезпека.'},
         'kinets': kinets('А що під боком у вас?', 'Карта Києва з сотами й вершинами:', f'{ADRESA_SAITU}/karta/',
