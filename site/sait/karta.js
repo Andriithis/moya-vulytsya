@@ -236,7 +236,7 @@
         var bs = Array.from(HEXB[G.id].values());
         bs.forEach(function (b) { b.nf = chysloSoty(b.p); b.kr = 0; b.q = 0; });
         var zi = bs.filter(function (b) { return b.nf > 0; }).sort(function (a, b) { return a.nf - b.nf; }), L = zi.length;
-        if (ETALON) {   // місце серед підсумкових чисел рівня (не серед поточних)
+        if (ETALON && ETALON[G.id]) {   // місце серед підсумкових чисел рівня (не серед поточних)
           var E = ETALON[G.id], LE = E.length || 1;
           zi.forEach(function (b) {
             var lo = 0, hi = E.length; while (lo < hi) { var md = (lo + hi) >> 1; if (E[md] < b.nf) lo = md + 1; else hi = md; }
@@ -409,18 +409,58 @@
     }
 
     // ---------- дані ----------
+    // Т-12 (ZAVDANNYA-125): на старті — лише великі й середні соти (рівні 7 і 8). Дрібні (9) — коли людина наближається
+    // (зум ≥ ZUM_S, з запасом до їхньої появи на 12) або коли їх просить пошук. Місяці рівнів 8 і 9 («Роки оживають»,
+    // смуга «рік · місяць») — окремими файлами й лише для рівня, якому вони потрібні; рівень 7 приносить їх сам.
+    var ZUM_S = 11;
+    var ZAV = {}, ZAV_M = {}, MAJE = { XL: false, L: false, S: false }, MAJE_M = { XL: false, L: false, S: false };
+    MV.stan.chekaie = {}; MV.stan.zavantazheno = [];
     function zavantazhyty(G) {
-      return fetch(konteiner.getAttribute('data-soty-' + G.r), { credentials: 'omit' }).then(function (v) { return v.json(); }).then(function (d) {
+      if (ZAV[G.id]) return ZAV[G.id];
+      MV.stan.chekaie[G.id] = true;
+      ZAV[G.id] = fetch(konteiner.getAttribute('data-soty-' + G.r), { credentials: 'omit' }).then(function (v) { return v.json(); }).then(function (d) {
         ROKY = d.roky || ROKY;
         var m = new Map();
         d.soty.features.forEach(function (f) {
           var kontur = f.geometry.coordinates[0], c = tsentr(kontur);
           m.set(f.properties.id, { k: f.properties.id, p: f.properties, kontur: kontur, cx: c[0], cy: c[1], nf: 0, kr: 0, q: 0 });
         });
-        HEXB[G.id] = m;
+        HEXB[G.id] = m; MAJE[G.id] = true;
+        if (!konteiner.getAttribute('data-soty-' + G.r + '-m')) MAJE_M[G.id] = true;   // місяці — у самому файлі рівня
+        delete MV.stan.chekaie[G.id]; MV.stan.zavantazheno.push('soty-' + G.r);
+      });
+      return ZAV[G.id];
+    }
+    function zavantazhytyMisiatsi(G) {
+      if (ZAV_M[G.id]) return ZAV_M[G.id];
+      ZAV_M[G.id] = zavantazhyty(G).then(function () {
+        if (MAJE_M[G.id]) return null;
+        return fetch(konteiner.getAttribute('data-soty-' + G.r + '-m'), { credentials: 'omit' }).then(function (v) { return v.json(); }).then(function (d) {
+          HEXB[G.id].forEach(function (b) { if (d.m[b.k]) b.p.m = d.m[b.k]; });
+          MAJE_M[G.id] = true; MV.stan.zavantazheno.push('soty-' + G.r + '-m');
+        });
+      });
+      return ZAV_M[G.id];
+    }
+    // Підсумковий розподіл рівня для «оживання» (за весь період, а не за поточний місяць).
+    function etalonRivnia(G) {
+      var p0 = PERIOD; PERIOD = '3';
+      var e = Array.from(HEXB[G.id].values()).map(function (b) { return chysloSoty(b.p); }).filter(function (n) { return n > 0; }).sort(function (a, b) { return a - b; });
+      PERIOD = p0; return e;
+    }
+    // Дрібні соти — на вимогу; коли прийшли, карта перефарбовується в поточному періоді й фільтрі.
+    function dovantazhytyS() {
+      if (MAJE.S) return Promise.resolve();
+      return zavantazhyty(GI.S).then(function () {
+        return (PERIOD === '_x' || ETALON) ? zavantazhytyMisiatsi(GI.S) : null;
+      }).then(function () {
+        if (ETALON && !ETALON.S) ETALON.S = etalonRivnia(GI.S);
+        if (PERIOD === '_x' && !ETALON) { zastosuvatyChas(); return; }
+        pererakhuvaty(); zafarbuvaty(); if (map && !$('#info').hidden) namalyuvatyInfo();
       });
     }
-    var dani = Promise.all(RIVNI.map(zavantazhyty)).then(function () { pererakhuvaty(); });
+    var dani = Promise.all(RIVNI.filter(function (G) { return G.id !== 'S' || KAM.zoom >= ZUM_S; }).map(zavantazhyty))
+      .then(function () { pererakhuvaty(); });
     dani.catch(function () { pidkazka('Дані карти не завантажилися. Оновіть сторінку.'); });
 
     // ---------- карта ----------
@@ -452,8 +492,11 @@
       map.on('zoomend', function () { if (ZARAZ && ZARAZ.G.id !== colG()) zakryty(); navesty(null); if (!$('#info').hidden) namalyuvatyInfo(); });
       map.on('pitchend', function () { var d = map.getPitch() > 8; if (d !== D3) { D3 = d; d3Tekst(); } });
       map.on('zoom', pidpysZumu);
+      map.on('zoom', function () { if (map.getZoom() >= ZUM_S && !MAJE.S) dovantazhytyS(); });
+      map.on('zoomend', function () { var G = GI[colG()]; if (ETALON && MAJE[G.id] && !MAJE_M[G.id]) zavantazhytyMisiatsi(G); });
       map.on('click', function (e) {
         if (MV.perekhopyty && MV.perekhopyty(e.lngLat)) return;   // гра в карті забрала дотик (ZAVDANNYA-117)
+        if (colG() === 'S' && !MAJE.S) { dovantazhytyS(); pidkazka('Завантажую дрібні соти…'); return; }
         var h = vluchannya(e.point, telefon());
         if (h) { TIP.remove(); natysnuty(h.G, h.b); vidkryty(h.G, h.b); } else { zakryty(); pidkazka('Тут немає подій у даних'); }
       });
@@ -599,12 +642,16 @@
         return;
       }
       // Переліт ≈ 1,2 с до соти вулиці (≈ 0,1 км²) з найбільшою кількістю подій — і її картка.
-      var lo = m.tochka[0], la = m.tochka[1], b = null, bd = Infinity;
-      HEXB.S.forEach(function (c) { if (!c.nf) return; var d = Math.pow((c.cx - lo) * 0.64, 2) + Math.pow(c.cy - la, 2); if (d < bd) { bd = d; b = c; } });
-      if (b && Math.sqrt(bd) * 111320 > GI.S.R * 2.2) b = null;   // найближча сота з подіями — не далі ніж через одну
+      // Дрібні соти пошук не тягне заздалегідь (Т-12): вони вантажаться, поки триває переліт.
+      var lo = m.tochka[0], la = m.tochka[1], zS = dovantazhytyS();
+      var naiblyzhcha = function () {
+        var b = null, bd = Infinity;
+        HEXB.S.forEach(function (c) { if (!c.nf) return; var d = Math.pow((c.cx - lo) * 0.64, 2) + Math.pow(c.cy - la, 2); if (d < bd) { bd = d; b = c; } });
+        return b && Math.sqrt(bd) * 111320 > GI.S.R * 2.2 ? null : b;   // найближча сота з подіями — не далі ніж через одну
+      };
       // Місце стає лівіше картки (ПК) чи вище шторки (телефон) — щоб картка його не закрила.
       var zsuv = telefon() ? [0, -Math.round(konteiner.clientHeight * 0.2)] : [-200, 0];
-      map.once('moveend', function () { if (b && b.nf > 0) vidkryty(GI.S, b, m.nazva, m.slug); else pidkazka('Тут немає подій у даних'); });
+      map.once('moveend', function () { zS.then(function () { var b = naiblyzhcha(); if (b && b.nf > 0) vidkryty(GI.S, b, m.nazva, m.slug); else pidkazka('Тут немає подій у даних'); }); });
       if (TYKHO) map.easeTo({ center: [lo, la], zoom: 14.2, offset: zsuv, duration: 600, essential: true });   // без нахилу й повороту
       else map.flyTo({ center: [lo, la], zoom: 14.2, pitch: pt, offset: zsuv, duration: 1200, essential: true });
     }
@@ -829,6 +876,7 @@
     function zastosuvatyMisiatsi(a, b) {
       if (a == null) { PERIOD = '3'; return; }
       RIVNI.forEach(function (G) {
+        if (!MAJE_M[G.id]) return;     // місяці цього рівня ще не потрібні (Т-12)
         HEXB[G.id].forEach(function (s) {
           var m = s.p.m || {};
           HRUPY.concat([['all']]).forEach(function (h) {
@@ -845,6 +893,9 @@
     }
     function zastosuvatyChas() {
       var r = promizhok();
+      // Рік чи місяць: спершу місяці всіх рівнів, що вже на карті (Т-12; рівень 7 має їх завжди).
+      var treba = r ? RIVNI.filter(function (G) { return MAJE[G.id] && !MAJE_M[G.id]; }) : [];
+      if (treba.length) { Promise.all(treba.map(zavantazhytyMisiatsi)).then(zastosuvatyChas); return; }
       CHAS.mitka = !r ? '' : CHAS.krok === 'rik' ? String(rik0() + Math.floor(r[0] / 12)) : mitkaMisiatsia(r[0]);
       zastosuvatyMisiatsi(r ? r[0] : null, r ? r[1] : null);
       pislyaFiltra(); namalyuvatySmuhu();
@@ -932,8 +983,11 @@
     var OZHYVA = null;
     function vauOzhyvannia(pislia) {
       if (CHAS.ost < 1) { if (pislia) pislia(); return; }
+      // Т-12: «оживає» лише рівень, який видно, — місяці беремо тільки для нього (рівень 7 має їх у собі).
+      var vydno = GI[colG()];
+      if (!MAJE_M[vydno.id]) { zavantazhytyMisiatsi(vydno).then(function () { vauOzhyvannia(pislia); }, function () { if (pislia) pislia(); }); return; }
       ETALON = {};
-      RIVNI.forEach(function (G) { ETALON[G.id] = Array.from(HEXB[G.id].values()).map(function (b) { return b.nf; }).filter(function (n) { return n > 0; }).sort(function (a, b) { return a - b; }); });
+      RIVNI.forEach(function (G) { if (MAJE[G.id]) ETALON[G.id] = etalonRivnia(G); });
       var lich = ekran.querySelector('.vau-lich') || document.createElement('div');
       lich.className = 'vau-lich plashka'; lich.setAttribute('aria-live', 'off'); ekran.appendChild(lich);
       var i = 0, KROK_MS = (TYKHO ? 60 : 140) * TEMPO;
@@ -1013,6 +1067,8 @@
     MV.vershyny = function (id) { return Array.from(HEXB[id].values()).filter(vershyna).map(function (b) { return b.k; }); };
     MV.tsentr = function (id, k) { var b = HEXB[id].get(k); return b && [b.cx, b.cy]; };
     MV.tykho = TYKHO;
+    MV.dovantazhytyS = dovantazhytyS;
+    MV.maie = function () { return { soty: Object.assign({}, MAJE), misiatsi: Object.assign({}, MAJE_M) }; };
   }
 
   // =====================================================================================================
