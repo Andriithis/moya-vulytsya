@@ -778,6 +778,7 @@ def profil_vulytsi(dani: Dani, v: Vulytsia) -> dict:
     return {
         'vsogo': len(podii), 'roky': {r: roky.get(r, 0) for r in VIDKRYTI_ROKY}, 'stari': stari,
         'vyriznennia': vyriznennia, 'rytm': rytm, 'z_chasom': z_chasom,
+        'naichastishe': sorted(vydy.items(), key=lambda x: (-x[1], x[0]))[:3],
         'soty': sorted(soty.items()), 'mists': mists, 'istoriia': istoriia,
         'pershyi_rik': min(roky, default=None),
         'ostannii_rik': max(roky, default=None),
