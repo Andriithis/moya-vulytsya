@@ -121,7 +121,7 @@ ${povidomlennia_ ? `<p class="prymitka" role="status">${e(povidomlennia_)}</p>` 
 const STATUS_DOVIDKY = { v_cherzi: 'готується', hotuietsia: 'готується', hotova: 'готова', vydaleno: 'файл видалено за строком зберігання', pomylka: 'не вдалося — напишіть партнеру, повернемо гроші або зробимо ще раз' };
 const NAZVA_PIDPYSKY = { pidpyska: 'Підписка', rieltor: 'Підписка для рієлтора', osbb: 'Будинок для ОСББ' };
 
-export function kabinet({ poshta, dovidky, stezhu, pidpysky, dostupno, povidomlennia: pov = '' }) {
+export function kabinet({ poshta, dovidky, stezhu, pidpysky, dostupno, povidomlennia: pov = '', bali = null }) {
   const ryadky = dovidky.length ? dovidky.map((d) => `<li><b>${e(d.adresa)}</b> — ${d.rezhym === 'povnyi' ? 'повний звіт' : 'довідка'}, ${data(d.stvoreno)}: ${
     d.status === 'hotova' ? `<a href="/dovidka/${e(d.id)}/">відкрити</a>` : e(STATUS_DOVIDKY[d.status])}</li>`).join('')
     : '<li>Поки немає довідок.</li>';
@@ -132,7 +132,7 @@ export function kabinet({ poshta, dovidky, stezhu, pidpysky, dostupno, povidomle
   const pidp = pidpysky.length ? pidpysky.map((p) => `<li><b>${e(NAZVA_PIDPYSKY[p.tovar])}</b>${p.adresa ? ` (${e(p.adresa)})` : ''} — ${
     p.status === 'aktyvna' ? `діє до ${data(p.diie_do)}, довідок цього періоду лишилось: ${p.zalyshok}
 <form class="v-riadok" method="post" action="/kabinet/skasuvaty"><input type="hidden" name="pidpyska" value="${e(p.id)}"><button class="knopka" type="submit">Скасувати підписку</button></form>`
-      : p.status === 'skasovana' ? `скасована, діє до ${data(p.diie_do)}` : 'очікує оплати'}</li>`).join('')
+      : p.zaBali ? `за бали, діє до ${data(p.diie_do)}, без продовження` : p.status === 'skasovana' ? `скасована, діє до ${data(p.diie_do)}` : 'очікує оплати'}</li>`).join('')
     : `<li>Немає. <a href="/oplata/?tovar=pidpyska">Підписка — ${tsina('pidpyska')}</a></li>`;
   return storinka('Кабінет', `<section class="zaholovok"><h1>Кабінет</h1><p>${e(poshta)}</p>
 ${pov ? `<p class="prymitka" role="status">${e(pov)}</p>` : ''}</section>
@@ -143,9 +143,23 @@ ${pov ? `<p class="prymitka" role="status">${e(pov)}</p>` : ''}</section>
 <input id="budynok" name="budynok" required maxlength="200" placeholder="/budynok/vulytsia/1/">
 <button class="knopka" type="submit">Стежити</button></form></div></section>
 <section class="rozdil"><h2>Підписка</h2><div class="kartka"><ul class="spysok-tekst">${pidp}</ul></div></section>
+${bali ? rozdilBaliv(bali, stezhu) : ''}
 <section class="rozdil"><h2>Мої дані</h2><p class="prymitka">Зберігаємо пошту, замовлення, довідки й адреси «Стежу» (docs/PRODAZH-SERVER.md). Видалення — одразу; записи про оплату партнер зберігає для обліку без пошти.</p>
 <div class="diyi"><form method="post" action="/kabinet/vyhid"><button class="knopka" type="submit">Вийти</button></form>
 <form method="post" action="/kabinet/vydalyty"><input type="hidden" name="pidtverdzhuiu" value="tak"><button class="knopka" type="submit">Видалити мої дані</button></form></div></section>`);
+}
+
+/** Бали ігор (ZAVDANNYA-123) — лише коли обмін увімкнено (OBMIN_BALIV). Разовий номер форми — захист від повторного надсилання. */
+function rozdilBaliv({ balans, kurs, zapyt }, stezhu) {
+  const d = kurs.obmin.dovidka, m = kurs.obmin['pidpyska-misiats'];
+  const vybir = stezhu.length ? `<select name="budynok" aria-label="Будинок">${stezhu.map((s) => `<option value="${e(s.budynok)}">${e(s.adresa)}</option>`).join('')}</select>` : '';
+  return `<section class="rozdil"><h2>Бали ігор</h2><div class="kartka"><p><b>${balans}</b> балів на акаунті.</p>
+<form class="forma" method="post" action="/kabinet/obmin"><input type="hidden" name="tovar" value="dovidka"><input type="hidden" name="zapyt" value="${e(zapyt)}d">
+${vybir || '<p class="prymitka">Щоб обміняти на довідку, спершу додайте будинок у «Стежу».</p>'}
+<button class="knopka" type="submit"${balans >= d.baliv && vybir ? '' : ' disabled'}>Довідка — ${d.baliv} балів</button></form>
+<form class="forma" method="post" action="/kabinet/obmin"><input type="hidden" name="tovar" value="pidpyska-misiats"><input type="hidden" name="zapyt" value="${e(zapyt)}m">
+<button class="knopka" type="submit"${balans >= m.baliv ? '' : ' disabled'}>Місяць підписки — ${m.baliv} балів</button></form></div>
+<p class="prymitka">Обмін — раз на 30 днів. Бали не передаються й не виводяться в гроші; бали з телефона до акаунта не переносяться.</p></section>`;
 }
 
 export const CSS = `/* Сервер продажу (ZAVDANNYA-99): форми в стилі сайту (docs/STYL.md) */
