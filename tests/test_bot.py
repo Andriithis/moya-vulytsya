@@ -252,6 +252,35 @@ class Kanaly(unittest.TestCase):
         self.assertEqual(d['knopky'][0][0]['url'],
                          'https://moya-vulytsya.pages.dev/vulytsia/khreshchatyk/?dzherelo=tg-shevchenkivskyi')
 
+    def test_istoriia_z_perekazom_shi(self):
+        """ZAVDANNYA-110: з переказом ШІ — допис без чернетки; переказ, що не пройшов перевірку, — чернетка, не надсилається."""
+        dobryi = 'Чоловік уночі виніс із магазину кілька товарів, не заплативши. Його затримала охорона.'
+        h = K.Henerator(INDEKS, perekazy={'k1': dobryi, 'k2': 'ОСОБА_1 12.03.2025 вкрав товари з магазину на вулиці міста.'})
+        pachka = h.pachka(date(2026, 11, 23), 7)
+        d1 = next(d for d in pachka if d.get('podiia') == 'k1' and d['typ'] == 'istoriia')
+        self.assertFalse(d1['chernetka'])
+        self.assertIn(dobryi, d1['tekst'])
+        for d in pachka:
+            if d['typ'] == 'istoriia' and d['podiia'] != 'k1':
+                self.assertTrue(d['chernetka'], d['podiia'])
+        nadislano = []
+
+        class Tg:
+            def __init__(self, token): pass
+
+            def vyklyk(self, metod, **k):
+                nadislano.append(k.get('text'))
+                return {'ok': True}
+        import telegram as TG
+        stare = TG.Telegram
+        TG.Telegram = Tg
+        try:
+            zvit = K.nadislaty([d for d in pachka if d['typ'] == 'istoriia'], {r: '@k' for r in h.rayony}, 'x')
+        finally:
+            TG.Telegram = stare
+        self.assertEqual(len(nadislano), 1)
+        self.assertTrue(any('чернетка без переказу ШІ' in z for z in zvit))
+
     def test_vhadai(self):
         d = next(d for d in self.pachka if d['typ'] == 'vhadai')
         self.assertEqual(len(d['varianty']), 3)
