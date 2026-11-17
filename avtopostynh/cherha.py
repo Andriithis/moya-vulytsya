@@ -47,7 +47,7 @@ def iso(t: datetime) -> str:
 
 class Cherha:
     def __init__(self, shliakh: Path | str):
-        self.db = sqlite3.connect(str(shliakh))
+        self.db = sqlite3.connect(str(shliakh), timeout=30)   # щогодинний запуск і сторінка-перегляд пишуть по черзі
         self.db.row_factory = sqlite3.Row
         self.db.executescript(SKHEMA)
 

@@ -40,7 +40,7 @@ def zavantazhyty_kanaly(bot_teka: Path | None):
     """Модуль `kanaly` з `bot/` (після злиття 97) або з указаної теки (гілка 97). Немає — None."""
     for teka in [bot_teka, KORIN / 'bot']:
         if teka and (Path(teka) / 'kanaly.py').is_file():
-            for t in (str(teka), str(KORIN / 'brend'), str(KORIN / 'video')):
+            for t in (str(teka), str(KORIN / 'brend'), str(KORIN / 'video'), str(KORIN / 'site')):
                 if t not in sys.path:
                     sys.path.insert(0, t)
             spec = importlib.util.spec_from_file_location('kanaly', Path(teka) / 'kanaly.py')
