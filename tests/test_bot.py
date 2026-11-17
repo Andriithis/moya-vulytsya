@@ -250,7 +250,7 @@ class Kanaly(unittest.TestCase):
         self.assertIn('Рішення № 117399819 — лише те, що дійшло до суду.', d['tekst'])
         self.assertNotRegex(d['tekst'], r'Хрещатик,?\s*\d')
         self.assertEqual(d['knopky'][0][0]['url'],
-                         'https://moya-vulytsya.pages.dev/vulytsia/khreshchatyk/?dzherelo=tg-shevchenkivskyi')
+                         'https://moya-vulytsya.pages.dev/vulytsia/khreshchatyk/?dzherelo=telegram-shevchenkivskyi')
 
     def test_istoriia_z_perekazom_shi(self):
         """ZAVDANNYA-110: з переказом ШІ — допис без чернетки; переказ, що не пройшов перевірку, — чернетка, не надсилається."""

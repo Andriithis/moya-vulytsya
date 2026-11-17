@@ -25,7 +25,7 @@ CHAS = re.compile(r'\b(год\.|годин[іиуа]?\b|хв\.|хвилин)', r
 SUMA = re.compile(r'\b(грн|гривень|гривні|гривня|коп\.|копійок|долар\w*|євро|USD|EUR|UAH)\b|[$€₴]', re.I)
 # Марки й моделі авто (латиницею й кирилицею), номерні знаки.
 MARKY = re.compile(
-    r'\b(toyota|тойот\w*|bmw|бмв|mercedes\w*|мерседес\w*|audi|ауді|volkswagen|фольксваген\w*|vw|skoda|шкод\w*|daewoo|деу|'
+    r'\b(toyota|тойот\w*|bmw|бмв|mercedes\w*|мерседес\w*|audi|ауді|volkswagen|фольксваген\w*|vw|skoda|октаві\w*|фабі[аяюї]\w*|суперб|кодіак|daewoo|деу|'
     r'lanos|ланос\w*|sens|сенс|ваз|lada|лада|жигул\w*|заз|таврі\w*|renault|рено|hyundai|хюндай|хьюндай|kia|кіа|nissan|ніссан\w*|'
     r'mazda|мазд\w*|honda|хонд\w*|ford|форд\w*|opel|опель\w*|chevrolet|шевроле|mitsubishi|мітсубіші|lexus|лексус\w*|'
     r'peugeot|пежо|citroen|сітроен\w*|fiat|фіат\w*|volvo|вольво|subaru|субару|tesla|тесл\w*|geely|джилі|chery|чері|'

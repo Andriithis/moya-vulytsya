@@ -13,7 +13,7 @@
                 вулиці-відповіді; цього дня історії немає;
   п'ятниця    — «Цифри тижня»: одна вулиця району — події з рішень і скарги 1551 числом, поруч «зазвичай вулиця району»;
                 посилання — на сторінку вулиці; цього дня історії немає.
-Кожен допис веде на конкретне місце (docs/KOMPAS.md, розд. 0, 5) з міткою каналу `?dzherelo=tg-<район>`.
+Кожен допис веде на конкретне місце (docs/KOMPAS.md, розд. 0, 5) з міткою каналу `?dzherelo=telegram-<район>` (як в автопостингу, MV-125).
 Текст історії — переказ ШІ з файлу `--perekazy` (крок dani-edrsr/src/perekazy_istorii.py --koloda, перевірений програмою
 site/sait/perekazy.py; ZAVDANNYA-110); переказу немає — чернетка з колоди лише для перегляду, надсилання її пропускає
 (MV-21, MV-25). Публікація — без попереднього перегляду, Андрій дивиться опубліковане (MV-114;
@@ -64,7 +64,7 @@ def khesh(*chastyny) -> int:
 
 
 def mitka(rayon_slug: str) -> str:
-    return f'tg-{rayon_slug}'
+    return f'telegram-{rayon_slug}'
 
 
 def prydatna(p: dict) -> bool:
@@ -89,14 +89,14 @@ class Henerator:
         self.i = indeks
         self.perekazy = perekazy or {}     # id події колоди → переказ ШІ (dani-edrsr/src/perekazy_istorii.py)
         self.sait = adresa_saitu.rstrip('/')
-        self.rayony = {r['n']: r for r in indeks['rayony']}
-        self.vulytsi = {v['s']: v for v in indeks['vulytsi']}
+        self.rayony = {r['n']: r for r in indeks.get('rayony', [])}
+        self.vulytsi = {v['s']: v for v in indeks.get('vulytsi', [])}
         r0, r1 = indeks.get('roky_podii', [2024, 2026])
         self.roky = f'{r0}–{r1}'
         self.misiatsi = indeks.get('misiatsi_1551') or []
         # скарги 1551 по вулиці сайту — сума будинків вулиці
         self.skarhy_vul = defaultdict(Counter)
-        for b in indeks['budynky']:
+        for b in indeks.get('budynky', []):
             if b.get('vs') and b.get('sk'):
                 self.skarhy_vul[b['vs']].update(b['sk'])
         self.podii_r = defaultdict(list)
@@ -106,7 +106,7 @@ class Henerator:
         for r in self.podii_r:
             self.podii_r[r].sort(key=lambda p: khesh('istoriia', p['id']))
         self.vulytsi_r = defaultdict(list)
-        for v in indeks['vulytsi']:
+        for v in indeks.get('vulytsi', []):
             if v.get('r'):
                 self.vulytsi_r[v['r']].append(v)
 
