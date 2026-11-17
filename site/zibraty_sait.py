@@ -227,7 +227,7 @@ def storinka(*, shlyakh: str, title: str, opys: str, tilo: str, adresa_saitu: st
 <body{' class="z-kartoyu"' if pered_main else ''}>
 <header class="shapka">
 <div class="shapka__vnutri">
-<a class="lohotyp" href="/">{ZNAK}<span class="lohotyp__nazva">Моя вулиця</span></a>
+<a class="lohotyp" href="/" aria-label="Моя вулиця — на головну">{ZNAK}<span class="lohotyp__nazva">Моя вулиця</span></a>
 <nav class="menyu" aria-label="Розділи">{''.join(punkty)}</nav>
 {'' if pered_main else KNOPKA_TEMY}
 </div>
@@ -506,8 +506,8 @@ def storinka_pokazhchyka(vulytsi: list, rayony: list, adresa_saitu: str, rayon: 
     tilo = f'''<nav class="kryhty" aria-label="Де ви"><a href="/">Головна</a><span aria-hidden="true">›</span>{"<a href='/vulytsi/'>Вулиці</a>" if rayon else "Вулиці"}</nav>
 <section class="zaholovok"><h1>{e(nazva)}</h1>
 <p>{chyslo(len(vs))} {vidminok(len(vs), ("вулиця", "вулиці", "вулиць"))} з подіями в даних судів. Поруч із назвою — скільки подій за {PERIOD_VIDKRYTYI}.</p></section>
-<form class="poshuk" role="search" action="/vulytsi/"><label class="prykhovano" for="poshuk-vulytsi">Назва вулиці</label>
-<input id="poshuk-vulytsi" type="search" autocomplete="off" placeholder="Назва вулиці, наприклад: Хрещатик">
+<form class="poshuk" role="search" action="/vulytsi/"><label class="prykhovano" for="poshuk-vulytsi">Вулиця або вулиця й номер будинку</label>
+<input id="poshuk-vulytsi" type="search" autocomplete="off" placeholder="Вулиця або адреса, наприклад: Хрещатик 22">
 <ul class="poshuk__spysok" id="poshuk-spysok" hidden></ul></form>
 {rayony_html}
 {abetka}
@@ -534,7 +534,7 @@ def holovna(dn: D.Dani, vulytsi: list, rayony: list, adresa_saitu: str) -> str:
 <section class="vkhody" aria-label="Розділи">
 <a class="vkhid" href="/osbb/"><span class="mikro">Для ОСББ</span><b>Будинок щомісяця</b><span>звернення мешканців до 1551</span></a>
 <a class="vkhid" href="/sudova-praktyka/"><span class="mikro">Судова практика</span><b>Суди за статтями</b><span>скоро</span></a>
-<a class="vkhid" href="/biznes/"><span class="mikro">Для бізнесу</span><b>Дані на рік</b><span>набори й доступ</span></a>
+<a class="vkhid" href="/biznes/"><span class="mikro">Для бізнесу</span><b>Дані на місяць або рік</b><span>набори й доступ</span></a>
 </section>
 <section class="rozdil"><h2 class="mikro">Вулиці за районами</h2>
 <nav class="rayony" aria-label="Райони">{"".join(f'<a href="/rayon/{slug_rayonu(r)}/">{e(r)}</a>' for r in rayony)}</nav></section>'''
@@ -733,7 +733,7 @@ def zapysaty(shlyakh: Path, tekst: str) -> None:
 def kopiyuvaty_spilne(vykhid: Path) -> None:
     sait = vykhid / 'sait'
     (sait / 'shryfty').mkdir(parents=True, exist_ok=True)
-    for f in ('karta.js', 'poshuk.js', 'tema.js'):
+    for f in ('karta.js', 'poshuk.js', 'tema.js', 'oplata.js'):
         shutil.copyfile(DZHERELO / 'sait' / f, sait / f)
     # Кольори обох тем — на початок стилів (одна сторінка стилів, без зайвого запиту).
     zapysaty(sait / 'sait.css', kolory_css() + (DZHERELO / 'sait' / 'sait.css').read_text(encoding='utf-8'))
@@ -824,9 +824,22 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
     for r in rayony:
         zapysaty(vykhid / 'vulytsi' / slug_rayonu(r) / 'index.html', storinka_pokazhchyka(za_rayonom[r], rayony, adresa_saitu, r))
         adresy.append(f'/vulytsi/{slug_rayonu(r)}/')
+    # Т-2 (ZAVDANNYA-110): у пошук — і старі назви з довідника перейменувань («Червоноармійська» → Велика Васильківська).
+    stari_nazvy = defaultdict(set)
+    for stara, tsili in dn.zvedennia.pereimenuvannia:
+        for t in tsili:
+            stari_nazvy[t].add(stara)
     pokazhchyk = [[v.slug, v.nazva, v.rayony.most_common(1)[0][0] if v.rayony else '', len(v.nedavni),
-                   ' '.join(sorted(v.varianty))] for v in sorted(vulytsi, key=lambda v: (kliuch_abetky(v.korotka), v.slug))]
+                   ' '.join(sorted(set(v.varianty) | stari_nazvy.get(v.slug, set())))]
+                  for v in sorted(vulytsi, key=lambda v: (kliuch_abetky(v.korotka), v.slug))]
     zapysaty(vykhid / 'vulytsi' / 'pokazhchyk.json', json.dumps(pokazhchyk, ensure_ascii=False, separators=(',', ':')))
+    if bud:   # Т-2: будинки для пошуку «вулиця номер» — окремий файл, сторінка вантажить його, лише коли в запиті є номер
+        za_vul = defaultdict(list)
+        for b in bud.spysok:
+            za_vul[(b['vulytsia'], b['vulytsia_slug'] or '')].append([b['nomer'], b['url']])
+        budynky_poshuku = [[n, s, ' '.join(sorted(stari_nazvy.get(s, set()))), sorted(bs, key=lambda x: x[1])]
+                           for (n, s), bs in sorted(za_vul.items())]
+        zapysaty(vykhid / 'vulytsi' / 'budynky.json', json.dumps(budynky_poshuku, ensure_ascii=False, separators=(',', ':')))
 
     # Карта і головна.
     if D.h3 is None:

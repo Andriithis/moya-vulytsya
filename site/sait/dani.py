@@ -74,10 +74,23 @@ TYPY = {
     'наб.': 'набережна', 'набережна': 'набережна', 'майдан': 'майдан', 'проїзд': 'проїзд',
     'алея': 'алея', 'дорога': 'дорога', 'тупик': 'тупик', 'лінія': 'лінія', 'спуск': 'спуск',
     'сквер': 'сквер', 'парк': 'парк', 'міст': 'міст',
+    'проспек': 'проспект', 'пр-т': 'проспект', 'пр-кт': 'проспект', 'пр.': 'проспект',      # одруківки й скорочення з текстів (Т-4)
 }
 # Слова типу, що стоять після назви («Харківське шосе», «Кільцева дорога»).
 TYPY_PISLYA = {'шосе', 'дорога', 'узвіз', 'проїзд', 'набережна', 'площа', 'провулок',
                'бульвар', 'лінія', 'тупик', 'спуск', 'вулиця', 'проспект', 'алея', 'міст', 'майдан'}
+
+# Т-4 (ZAVDANNYA-110): шматки тексту рішення після назви — не частина назви. «вулиця Ярославська навпроти», «вулиця
+# С. Петлюри. Грубо порушуючи вимоги п. п», «вулиця Пластова навпроти Пражська», «проспект Повітряних Сил та
+# Севастопольської площі», «вулиця Ак. Сєркова - пр. Л. Курбаса». Те саме правило — dani-edrsr/src/vypusk.py (chysta_nazva).
+KHVIST_NAZVY = re.compile(
+    r"\s+[-–—]\s+.*$"                                                          # «- вул. Індустріальна» (перехрестя)
+    r"|\s+(?:біля|навпроти|напроти|поблизу|неподалік|поруч|між|вздовж|(?:в|у)\s+районі|та|на|до|від|у бік|в бік)(?:\s.*)?$",
+    re.I)
+KINETS_RECHENNIA = re.compile(r"(\s[А-ЯІЇЄҐ][а-яіїєґ'’]{4,})\.\s.*$")   # «С. Петлюри. Грубо порушуючи…» → «С. Петлюри»
+# Перехрестя в одному рядку: «вулиця Богатирської на проспект Степана Бандери», «вул. X - вул. Y», «вул. X та просп. Y».
+ROZDIL_PEREKHRESTIA = re.compile(
+    r"\s+/\s+|\s+(?:[-–—]|та|і|й|на|з)\s+(?=(?:вул|вулиц|просп|пр-т|пр\.|проспект|бульв|бульвар|пров|провул|пл|площ|наб|шосе)\w*\.?\s)", re.I)
 
 APOSTROFY = str.maketrans({'ʼ': "'", '’': "'", '`': "'", '‘': "'", '´': "'"})
 
@@ -87,7 +100,7 @@ def chystyi(tekst: str) -> str:
     return re.sub(r'\s+', ' ', tekst).strip()
 
 
-def rozibraty_vulytsiu(tekst: str) -> tuple[str, str] | None:
+def rozibraty_vulytsiu(tekst: str, z_tekstu: bool = True) -> tuple[str, str] | None:
     """«вул. М. Бойчука» → ('вулиця', 'М. Бойчука'); «Йорданська вулиця» → ('вулиця', 'Йорданська')."""
     tekst = chystyi(tekst).strip(' ,')
     if not tekst:
@@ -97,6 +110,10 @@ def rozibraty_vulytsiu(tekst: str) -> tuple[str, str] | None:
     tekst = re.sub(r'(?<=\bАк)\.(?=\S)', '. ', tekst)
     # «… поблизу житлового будинку», «… у дворі будинку», «… між будинками» — не частина назви.
     tekst = re.sub(r'(\s+[а-яіїєґ]+){1,3}\s+будин\w*.*$', '', tekst)
+    if z_tekstu:                     # назви OpenStreetMap не обрізаємо — лише назви з текстів рішень (Т-4)
+        tekst = KHVIST_NAZVY.sub('', KINETS_RECHENNIA.sub(r'\1', tekst)).strip(' ,.')
+    if not tekst:
+        return None
     # «О Теліги» → «О. Теліги» (ініціал без крапки)
     tekst = re.sub(r'(?<=\s)([А-ЯІЇЄҐ])\s(?=[А-ЯІЇЄҐ][а-яіїєґ\'])', r'\1. ', tekst)
     slova = tekst.split(' ')
@@ -104,8 +121,9 @@ def rozibraty_vulytsiu(tekst: str) -> tuple[str, str] | None:
     if slova[0].lower() in TYPY and len(slova) > 1:
         typ = TYPY[slova[0].lower()]
         slova = slova[1:]
-    # «пл. Майдан Незалежності» — справжній тип стоїть першим словом назви.
-    if len(slova) > 1 and slova[0].lower() in ('майдан', 'шосе', 'узвіз', 'набережна', 'дорога'):
+    # «пл. Майдан Незалежності» — справжній тип стоїть першим словом назви; «вулиця Проспек С. Бандери» — теж.
+    if len(slova) > 1 and slova[0].lower() in ('майдан', 'шосе', 'узвіз', 'набережна', 'дорога', 'проспект', 'проспек',
+                                               'бульвар', 'провулок', 'площа'):
         typ = TYPY[slova[0].lower()]
         slova = slova[1:]
     # «вул. Харківське шосе» — справжній тип стоїть у кінці.
@@ -245,7 +263,7 @@ def kanonichni_z_osm(con: sqlite3.Connection) -> dict:
     kan = {}
     for (nazva,) in con.execute('SELECT nazva FROM address ORDER BY address_id'):
         vul = nazva.rsplit(',', 1)[0] if ',' in nazva else nazva
-        r = rozibraty_vulytsiu(vul)
+        r = rozibraty_vulytsiu(vul, z_tekstu=False)
         if not r:
             continue
         typ, n = r
@@ -301,6 +319,13 @@ def zvesty_nazvy(varianty: Counter, kanon: dict, pereim: list[dict]) -> tuple[di
                 for (t2, k2, v) in kanon_spysok:
                     if len(k2) > 1 and sorted(k2) == sorted(k):
                         kandydaty.append((t2 != typ, 0, 0, v))
+            # «Набержно-Хрещатицька» — одна літера в одному слові, решта слів ті самі (Т-4).
+            if not kandydaty:
+                for (t2, k2, v) in kanon_spysok:
+                    if t2 == typ and len(k2) == len(k) and k2 != k:
+                        rizni = [(a, b) for a, b in zip(k, k2) if a != b]
+                        if len(rizni) == 1 and len(rizni[0][1]) >= 6 and odna_odrukivka(*rizni[0]):
+                            kandydaty.append((False, 0, 0, v))
             # «Лобановсього» — одна літера пропущена чи зайва в останньому слові (одруківка).
             if not kandydaty and len(k[-1]) >= 7:
                 for (t2, k2, v) in kanon_spysok:
@@ -434,7 +459,7 @@ def vulytsi_mistsia(adresa: str, tochnist: str) -> list[tuple[str, str, str | No
     adresa = chystyi(adresa)
     if not adresa:
         return []
-    chastyny = [c.strip() for c in adresa.split(' / ')] if ' / ' in adresa else [adresa]
+    chastyny = [c.strip() for c in ROZDIL_PEREKHRESTIA.split(adresa)]
     vykhid = []
     for ch in chastyny:
         budynok = None

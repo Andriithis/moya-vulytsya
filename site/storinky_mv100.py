@@ -100,8 +100,9 @@ def ld_skrypt(*obiekty) -> str:
                    for o in obiekty)
 
 
-def knopky_dovidky(budynok: str = '', dzherelo: str = '') -> str:
-    q = f'&amp;budynok={e(budynok)}' if budynok else ''
+def knopky_dovidky(budynok: str = '', dzherelo: str = '', adresa: str = '') -> str:
+    from urllib.parse import quote
+    q = (f'&amp;budynok={e(budynok)}' if budynok else '') + (f'&amp;adresa={quote(adresa)}' if adresa else '')
     d = f'&amp;dzherelo={e(dzherelo)}' if dzherelo else ''
     return (f'<div class="tsiny">'
             f'<a class="knopka knopka--holovna" href="/oplata/?tovar=dovidka{q}{d}">Довідка — {tsina("dovidka")}</a>'
@@ -281,7 +282,7 @@ def storinka_budynku(b: dict, bud: Budynky, adresa_saitu: str, susidni: list) ->
 <p class="rozdil__pidpys">У довідці: теми звернень 1551 по місяцях і статуси простими словами, порівняння з сусідніми будинками,
 події біля будинку й на вулиці коротко — прочитати за 2–3 хвилини. Повний звіт «перед купівлею» — ще й 10 років подій, карта району
 й порівняння зі схожими місцями.</p>
-{knopky_dovidky(b['url'], 'budynok')}
+{knopky_dovidky(b['url'], 'budynok', b['adresa'])}
 <p class="prymitka">Оплата ще не працює — кнопка відкриє сторінку, де можна залишити пошту. <a href="/miy-budynok/">Що входить і підписка</a>.</p></section>''')
 
     if susidni:
@@ -433,12 +434,12 @@ def vitryna_miy_budynok(adresa_saitu: str, prykl: list, kartynka: tuple | None =
     ])
     pryklady = ''.join(f'<li><a href="{b["url"]}">{e(b["adresa"])}</a></li>' for b in prykl)
     tilo = f'''<section class="rozdil"><h2>Знайдіть свій будинок</h2>
-<p class="rozdil__pidpys">Відкрийте свою вулицю — на її сторінці є список будинків. Сторінка будинку безкоштовна: скарги 1551 і події з рішень
-судів числом.</p>
-<form class="poshuk" role="search" action="/vulytsi/"><label class="prykhovano" for="poshuk-vulytsi">Назва вулиці</label>
-<input id="poshuk-vulytsi" type="search" autocomplete="off" placeholder="Назва вулиці, наприклад: Хрещатик">
+<p class="rozdil__pidpys">Введіть вулицю й номер будинку або відкрийте свою вулицю — на її сторінці є список будинків. Сторінка будинку
+безкоштовна: скарги 1551 і події з рішень судів числом.</p>
+<form class="poshuk" role="search" action="/vulytsi/"><label class="prykhovano" for="poshuk-vulytsi">Вулиця і номер будинку</label>
+<input id="poshuk-vulytsi" type="search" autocomplete="off" placeholder="Вулиця і будинок, наприклад: Хрещатик 22">
 <ul class="poshuk__spysok" id="poshuk-spysok" hidden></ul></form>
-{f'<p class="prymitka">Наприклад:</p><ul class="spysok-vulyts">{pryklady}</ul>' if pryklady else ''}</section>
+{f'<p class="prymitka">Наприклад, вулиці:</p><ul class="spysok-vulyts">{pryklady}</ul>' if pryklady else ''}</section>
 <section class="rozdil"><h2>Що можна замовити</h2><div class="tovary">{tovary}</div>
 <p class="prymitka">Довідка — не оцінка будинку й не порада, де жити. Скарги 1551 — звернення людей, не перевірені факти; події — те,
 що дійшло до суду. Оплата ще не працює: кнопка відкриє сторінку, де можна залишити пошту.</p></section>'''
@@ -488,7 +489,7 @@ def vitryna_sudova(adresa_saitu: str, kartynka: tuple | None = None) -> str:
 
 def vitryna_biznes(adresa_saitu: str, kartynka: tuple | None = None) -> str:
     tilo = f'''<section class="rozdil"><h2>Набори й доступ</h2><div class="tovary">
-{kartka_tovaru('biznes', 'Користування базою на рік за договором — не продаж', [
+{kartka_tovaru('biznes', 'Користування базою на місяць або рік за договором — не продаж (MV-92)', [
         'події з рішень судів з адресами й точками на карті (Київ, 10 років)', 'скарги 1551 по будинках',
         'вивантаження файлом або доступ для програм', 'оновлення щомісяця'], True, dzherelo='biznes')}
 <div class="kartka tovar"><h3>Для кого</h3><ul><li>забудовники й агенції нерухомості</li><li>страхові й банки</li>
@@ -496,25 +497,28 @@ def vitryna_biznes(adresa_saitu: str, kartynka: tuple | None = None) -> str:
 <p class="prymitka">Умови — в <a href="/zahlushka/oferta.html">оферті</a> і договорі. Вивантаження бази — лише компаніям за договором.
 Платежі й договори оформлює партнер проєкту.</p></section>'''
     return vitryna('/biznes/', 'Для бізнесу', 'Для компаній',
-                   'База подій із судових рішень і скарг 1551 — у користування на рік за договором. Ціна — за домовленістю: залиште запит, відповість партнер проєкту.',
+                   'База подій із судових рішень і скарг 1551 — у користування на місяць або рік за договором. Ціна — за домовленістю: залиште запит, відповість партнер проєкту.',
                    tilo, 'Дані для бізнесу: події з судових рішень і скарги 1551 Києва | Моя вулиця',
-                   'Дані для компаній: події з судових рішень з адресами, скарги 1551 по будинках. Користування на рік за договором.',
+                   'Дані для компаній: події з судових рішень з адресами, скарги 1551 по будинках. Користування на місяць або рік за договором.',
                    adresa_saitu, kartynka=kartynka)
 
 
 def storinka_oplaty(adresa_saitu: str) -> str:
     tovary = ''.join(f'<li><b>{e(TOVARY[k])}</b> — {tsina(k)}</li>' for k in TOVARY)
+    # Т-3 (ZAVDANNYA-110): що й для якого будинку обрали — читає sait/oplata.js і передає у форму передзамовлення.
+    nazvy = {k: f'{TOVARY[k]} — {tsina(k)}' for k in TOVARY}
     tilo = f'''{kryhty_html([('/', 'Головна'), ('', 'Оплата')])}
 <section class="zaholovok"><span class="mitka">Скоро</span><h1>Оплата скоро</h1>
-<p>Ми ще не приймаємо оплату. Залиште пошту — напишемо один раз, коли довідку можна буде замовити.</p></section>
+<p>Ми ще не приймаємо оплату. Залиште пошту — напишемо один раз, коли довідку можна буде замовити.</p>
+<p class="kartka vybir" id="vybir" data-tovary="{e(json.dumps(nazvy, ensure_ascii=False))}" hidden></p></section>
 <section class="rozdil"><div class="diyi">
-<a class="knopka knopka--holovna" href="/zahlushka/?dzherelo=oplata#peredzamovlennya">Залишити пошту</a>
+<a class="knopka knopka--holovna" id="oplata-poshta" href="/zahlushka/?dzherelo=oplata#peredzamovlennya">Залишити пошту</a>
 <a class="knopka" href="/miy-budynok/">Що входить у довідку</a></div>
 <p class="prymitka">Пошту залишаєте у формі передзамовлення; її зберігають за <a href="/zahlushka/polityka.html">політикою конфіденційності</a>
-і пишуть лише про запуск.</p></section>
+і пишуть лише про запуск. Обраний товар і будинок збережемо разом із поштою.</p></section>
 <section class="rozdil"><h2>Ціни</h2><div class="kartka"><ul class="spysok-tekst">{tovary}</ul></div></section>'''
     return Z.storinka(shlyakh='/oplata/', title='Оплата скоро | Моя вулиця', opys='Оплата ще не працює — залиште пошту.',
-                      tilo=tilo, adresa_saitu=adresa_saitu, indeksuvaty=False)
+                      tilo=tilo, adresa_saitu=adresa_saitu, indeksuvaty=False, skrypty=('/sait/oplata.js',))
 
 
 def storinka_vydalyty(adresa_saitu: str) -> str:
@@ -642,18 +646,20 @@ def zibraty_vse(dn: D.Dani, rayony: list, za_rayonom: dict, bud: Budynky | None,
     adresy.append('/rayony/')
     prykl = []
     if bud:
-        # Приклади — будинки з «середньою» кількістю даних з різних районів: не добірка тих, де найбільше
-        kandydaty = sorted((b for b in bud.spysok if b['vulytsia_slug'] and Budynky.indeksuvaty(b) and b['skarh'] and b['podii_vidkr']),
-                           key=lambda b: (b['skarh'] + b['podii_vidkr'], b['slug']))
-        kandydaty = kandydaty[len(kandydaty) // 2:] + kandydaty[:len(kandydaty) // 2]
+        # Т-7 (ZAVDANNYA-110, MV-25): приклади — вулиці зі сторінками будинків, без номерів житлових будинків; «середні» за
+        # кількістю будинків, з різних районів (не добірка тих, де найбільше).
+        vulytsi_b = sorted(((len(sp), sl) for sl, sp in bud.za_vulytseyu.items() if sl in dn.vulytsi and len(sp) >= 2))
+        vulytsi_b = vulytsi_b[len(vulytsi_b) // 2:] + vulytsi_b[:len(vulytsi_b) // 2]
         bachyly = set()
-        for b in kandydaty:
-            if b['rayon'] not in bachyly:
-                bachyly.add(b['rayon'])
-                prykl.append(b)
+        for _n, sl in vulytsi_b:
+            v = dn.vulytsi[sl]
+            r = v.rayony.most_common(1)[0][0] if v.rayony else ''
+            if r not in bachyly:
+                bachyly.add(r)
+                prykl.append({'url': f'/vulytsia/{sl}/', 'adresa': v.nazva})
             if len(prykl) == 3:
                 break
-        prykl.sort(key=lambda b: b['slug'])
+        prykl.sort(key=lambda b: b['url'])
     import kartynky as K
     kv = {}
     for shl, (mitka, nazva, chysla) in chysla_vitryn(dn, bud, vulyts).items():
