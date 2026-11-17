@@ -356,7 +356,7 @@ def kartynka_budynku(b: dict, kolory: dict) -> bytes:
 # ---------------------------------------------------------------- сторінка району
 
 def storinka_rayonu(dn: D.Dani, rayon: str, vulytsi: list, bud: Budynky | None, podii_hrupy: Counter,
-                    adresa_saitu: str, kolory: dict | None = None, vykhid: Path | None = None) -> str:
+                    adresa_saitu: str, kolory: dict | None = None, vykhid: Path | None = None, mistsia: list | None = None) -> str:
     slug = Z.slug_rayonu(rayon)
     roky_t = Z.PERIOD_VIDKRYTYI
     vsogo = sum(podii_hrupy.values())
@@ -395,6 +395,9 @@ def storinka_rayonu(dn: D.Dani, rayon: str, vulytsi: list, bud: Budynky | None, 
     vs = sorted((v for v in vulytsi if v.nedavni), key=lambda v: (Z.kliuch_abetky(v.korotka), v.slug))   # Д-6: без «0»
     ch.append(f'<section class="rozdil"><h2>Вулиці району</h2><p class="rozdil__pidpys">За абеткою; поруч — подій за {roky_t}. '
               f'<a href="/vulytsi/{slug}/">Покажчик вулиць району</a>.</p>{Z.spysok_vulyts(vs)}</section>')
+    if mistsia:     # ZAVDANNYA-124: публічні місця району — посилання на їхні сторінки
+        import storinky_mistsia as SM
+        ch.append(SM.blok_mists(mistsia, 'Публічні місця району'))
     ch.append(f'<section class="rozdil"><h2>Мій будинок</h2><p class="rozdil__pidpys">Знайдіть свою вулицю — на її сторінці є '
               f'будинки зі своєю сторінкою.</p>{knopky_dovidky("", "rayon")}</section>')
     title = f'{rayon} район, Київ: події з судових рішень і скарги 1551 | Моя вулиця'
@@ -649,7 +652,7 @@ def chysla_vitryn(dn: D.Dani, bud: Budynky | None, vulyts: int) -> dict:
 
 
 def zibraty_vse(dn: D.Dani, rayony: list, za_rayonom: dict, bud: Budynky | None,
-                vykhid: Path, adresa_saitu: str, pachky=None, vulyts: int = 0) -> list:
+                vykhid: Path, adresa_saitu: str, pachky=None, vulyts: int = 0, mistsia_rayonu: dict | None = None) -> list:
     """Пише сторінки будинків, районів, вітрин і довідкові; повертає адреси для sitemap.
     `pachky` (site/khostynh.py, варіант workers) — сторінки й картинки будинків ідуть у пачки, а не окремими файлами."""
     adresy = []
@@ -674,7 +677,8 @@ def zibraty_vse(dn: D.Dani, rayony: list, za_rayonom: dict, bud: Budynky | None,
     pr = podii_rayoniv(dn)
     for r in rayony:
         Z.zapysaty(vykhid / 'rayon' / Z.slug_rayonu(r) / 'index.html',
-                   storinka_rayonu(dn, r, za_rayonom[r], bud, pr.get(r, Counter()), adresa_saitu, kolory, vykhid))
+                   storinka_rayonu(dn, r, za_rayonom[r], bud, pr.get(r, Counter()), adresa_saitu, kolory, vykhid,
+                                   (mistsia_rayonu or {}).get(r)))
         adresy.append(f'/rayon/{Z.slug_rayonu(r)}/')
     Z.zapysaty(vykhid / 'rayony' / 'index.html', storinka_rayoniv(rayony, adresa_saitu))
     adresy.append('/rayony/')

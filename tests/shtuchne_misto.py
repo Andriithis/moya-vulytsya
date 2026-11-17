@@ -37,6 +37,34 @@ def v_mnohokutnyku(lat: float, lon: float, poly: list) -> bool:
     return vse
 
 
+# Публічні названі місця (ZAVDANNYA-124): підпис точки — як у випуску (`location.tochnist = 'mistse'`), точка — на об'єкті.
+# Окремий генератор (зерно 124), щоб решта штучного міста лишилась такою самою. «Теремки» — 2 події (тонка сторінка).
+MISTSIA = [('ст. м. Лісова', 50.46476, 30.64597, 60), ('ст. м. Теремки', 50.36691, 30.45382, 2),
+           ('ст. м. Вокзальна', 50.44165, 30.48817, 35), ('ТРЦ «Ocean Plaza»', 50.41220, 30.52260, 48),
+           ('ТЦ «Блокбастер»', 50.49660, 30.49880, 22), ('Центральний вокзал', 50.44001, 30.48848, 70),
+           ("Лук'янівський ринок", 50.46250, 30.48250, 30), ('парк «Наталка»', 50.50400, 30.52350, 18),
+           ('Голосіївський парк', 50.39350, 30.51250, 12), ('пляж «Венеція»', 50.45200, 30.57600, 9),
+           ('міст Патона', 50.43300, 30.56500, 15), ('зупинка «Майдан»', 50.45010, 30.52340, 5)]
+
+
+def dodaty_mistsia(con, pochatok: int) -> int:
+    rnd = random.Random(124)
+    n = pochatok
+    for adresa, lat, lon, skilky in MISTSIA:
+        for _ in range(skilky):
+            n += 1
+            vyd, st, _ = rnd.choices(VYDY, [v[2] for v in VYDY])[0]
+            data = f'{rnd.choice((2024, 2025, 2026))}-{rnd.randint(1, 9):02d}-{rnd.randint(1, 28):02d}'
+            con.execute('INSERT INTO document VALUES (?,?,?,?,?,?,?)',
+                        (str(n), 'штучний суд', data, 'постанова', '0', f'{n}/0', f'https://reyestr.court.gov.ua/Review/{n}'))
+            con.execute('INSERT INTO location VALUES (?,?,?,?,?,?)',
+                        (n, adresa, 'mistse', round(lat + rnd.gauss(0, 2e-4), 6), round(lon + rnd.gauss(0, 3e-4), 6), 'nazvani'))
+            con.execute('INSERT INTO event VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+                        (f'{n}-1', str(n), 1, data, f'{rnd.randint(7, 22):02d}:{rnd.randint(0, 59):02d}', vyd, st,
+                         'Штучна подія для прототипу.', 0, None, n))
+    return n
+
+
 def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument('baza', type=Path)
@@ -92,7 +120,8 @@ def main(argv: list[str]) -> int:
                     (n, f'вул. Штучна {1 + n % 400}, {1 + n % 97}', 'house', round(lat, 6), round(lon, 6), 'osm'))
         con.execute('INSERT INTO event VALUES (?,?,?,?,?,?,?,?,?,?,?)',
                     (f'{n}-1', str(n), 1, data, None, vyd, st, 'Штучна подія для прототипу.', 0, None, n))
-    con.execute('INSERT INTO release VALUES (?,?,?)', ('shtuchnyi-105', a.podii, 'shtuchnyi'))
+    n = dodaty_mistsia(con, a.podii)
+    con.execute('INSERT INTO release VALUES (?,?,?)', ('shtuchnyi-105', n, 'shtuchnyi'))
     con.commit()
     con.close()
     print(f'{a.baza}: {a.podii} штучних подій, {len(misiatsi)} місяців')

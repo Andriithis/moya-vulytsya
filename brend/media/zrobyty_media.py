@@ -2,6 +2,7 @@
 """Візуал про публічне місце для медіа (MV-113, ZAVDANNYA-113): числа з dani-edrsr → картинки й слайди.
 
     python brend/media/zrobyty_media.py <місце>.json <тека media>/<slug> [--adresa-saitu https://…]
+    python brend/media/zrobyty_media.py <тека JSON> <тека media>        (усі місця одразу — ZAVDANNYA-124)
 
 Вхід — JSON з `dani-edrsr/src/vizual_mistsia.py` (лише публічні місця, лише агрегати). Вихід у теці місця:
   kartka-1x1.png (1080×1080), kartka-16x9.png (1920×1080) — «цифри + карта» (варіант А з NOVI-LINII.md);
@@ -16,7 +17,7 @@ from pathlib import Path
 TUT = Path(__file__).resolve().parent
 KORIN = TUT.parent.parent
 sys.path.insert(0, str(KORIN / 'site'))
-PUBLICHNI = ('площа', 'вокзал', 'метро', 'ТЦ', 'ринок', 'парк', 'міст')   # як dani-edrsr/src/vizual_mistsia.py
+PUBLICHNI = ('площа', 'вокзал', 'метро', 'ТЦ', 'ринок', 'парк', 'міст', 'пляж', 'острів')   # як dani-edrsr/src/vizual_mistsia.py
 ZNIMKY = [('A', '1x1', 'kartka-1x1.png'), ('A', '16x9', 'kartka-16x9.png')] + [('S', n, f'slaid-{n}.png') for n in range(1, 9)]
 ZABOR = re.compile(r'безпечн|рейтинг|найгірш|страшн|ОСОБА_|судд', re.I)
 
@@ -63,11 +64,15 @@ def zrobyty(vkhid, teka, adresa_saitu):
 def main(argv=None):
     import zibraty_sait as ZS
     a = argparse.ArgumentParser(description='Візуал про публічне місце для медіа (MV-113)')
-    a.add_argument('vkhid'); a.add_argument('teka')
+    a.add_argument('vkhid', help='<місце>.json або тека з JSON усіх місць (ZAVDANNYA-124: кожна сторінка /mistse/…)')
+    a.add_argument('teka', help='тека місця або (для теки JSON) тека media — у ній буде <slug>/ на кожне місце')
     a.add_argument('--adresa-saitu', default=ZS.ADRESA_SAITU)
     k = a.parse_args(argv)
-    d = zrobyty(k.vkhid, k.teka, k.adresa_saitu)
-    print(f'{d["nazva"]}: {len(ZNIMKY)} картинок і slaidy.pdf → {k.teka}')
+    vkhody = sorted(Path(k.vkhid).glob('*.json')) if Path(k.vkhid).is_dir() else [Path(k.vkhid)]
+    for f in vkhody:
+        teka = Path(k.teka) / f.stem if Path(k.vkhid).is_dir() else Path(k.teka)
+        d = zrobyty(f, teka, k.adresa_saitu)
+        print(f'{d["nazva"]}: {len(ZNIMKY)} картинок і slaidy.pdf → {teka}')
     return 0
 
 
