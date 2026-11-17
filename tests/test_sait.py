@@ -693,6 +693,21 @@ class Sait(unittest.TestCase):
         mb = (self.sait / 'miy-budynok' / 'index.html').read_text(encoding='utf-8')
         for k in ('199', '449', '599', '399', 'по 99', 'Підписка для рієлтора'):
             self.assertIn(k, mb)
+        # ZAVDANNYA-109, п. 5: період подій у продажу — з випуску (те саме правило, що в звіті), не «10 років»
+        import sqlite3
+        if not self.spravzhnii:
+            con = sqlite3.connect(self.baza)
+            roky = D.roky_danykh(con)
+            con.close()
+            period = f'{roky[0]}–{roky[1]}' if roky[0] != roky[1] else str(roky[0])
+            self.assertIn(f'події за {period} з описами', mb)
+            self.assertIn(f'Київ, {period}', (self.sait / 'biznes' / 'index.html').read_text(encoding='utf-8'))
+        for shl in ('miy-budynok', 'biznes'):
+            self.assertNotIn('10 років', (self.sait / shl / 'index.html').read_text(encoding='utf-8'), shl)
+        con = sqlite3.connect(':memory:')
+        con.execute('create table document(data_rishennia text)')
+        con.executemany('insert into document values (?)', [('2011-05-01',)] * 3 + [('2024-01-02',)] * 60 + [('2025-01-02',)] * 100)
+        self.assertEqual(D.roky_danykh(con), (2024, 2025))
         self.assertIn('10 робочих днів', (self.sait / 'vydalyty' / 'index.html').read_text(encoding='utf-8'))
         oplata = (self.sait / 'oplata' / 'index.html').read_text(encoding='utf-8')
         self.assertIn('noindex', oplata)

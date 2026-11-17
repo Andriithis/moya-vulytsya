@@ -211,7 +211,12 @@ def chyslo_m(x: float) -> str:
     return chyslo(int(x)) if x == int(x) else f'{x:.1f}'.replace('.', ',')
 
 
-def storinka_budynku(b: dict, bud: Budynky, adresa_saitu: str, susidni: list) -> str:
+def podii_zvitu(period: str) -> str:
+    """що про події в повному звіті — чесно за періодом, що є в даних (ZAVDANNYA-109; той самий період, що в звіті)"""
+    return f'події за {period} з описами людською мовою' if period else 'події з рішень судів з описами людською мовою'
+
+
+def storinka_budynku(b: dict, bud: Budynky, adresa_saitu: str, susidni: list, period_podii: str = '') -> str:
     period = period_1551(bud.misiatsi)
     roky_t = f'{D.VIDKRYTI_ROKY[0]}–{D.VIDKRYTI_ROKY[-1]}'
     kryhty = [('/', 'Головна')]
@@ -280,8 +285,8 @@ def storinka_budynku(b: dict, bud: Budynky, adresa_saitu: str, susidni: list) ->
 
     ch.append(f'''<section class="rozdil"><h2>Довідка про будинок</h2>
 <p class="rozdil__pidpys">У довідці: теми звернень 1551 по місяцях і статуси простими словами, порівняння з сусідніми будинками,
-події біля будинку й на вулиці коротко — прочитати за 2–3 хвилини. Повний звіт «перед купівлею» — ще й 10 років подій, карта району
-й порівняння зі схожими місцями.</p>
+події біля будинку й на вулиці коротко — прочитати за 2–3 хвилини. Повний звіт «перед купівлею» — ще й {podii_zvitu(period_podii)},
+карта району й порівняння зі схожими місцями.</p>
 {knopky_dovidky(b['url'], 'budynok', b['adresa'])}
 <p class="prymitka">Оплата ще не працює — кнопка відкриє сторінку, де можна залишити пошту. <a href="/miy-budynok/">Що входить і підписка</a>.</p></section>''')
 
@@ -427,7 +432,7 @@ def kartka_tovaru(kl: str, pidpys: str, punkty: list, holovna: bool = False, dzh
             f'<a class="knopka{" knopka--holovna" if holovna else ""}" href="{href}">{napys}</a></div>')
 
 
-def vitryna_miy_budynok(adresa_saitu: str, prykl: list, kartynka: tuple | None = None) -> str:
+def vitryna_miy_budynok(adresa_saitu: str, prykl: list, kartynka: tuple | None = None, period_podii: str = '') -> str:
     tovary = ''.join([
         kartka_tovaru('dovidka', 'Разово, для одного будинку', [
             'скарги 1551 за 12 місяців: теми, місяці, статуси простими словами',
@@ -436,7 +441,7 @@ def vitryna_miy_budynok(adresa_saitu: str, prykl: list, kartynka: tuple | None =
         kartka_tovaru('try', 'Три будинки — порівняти перед орендою чи купівлею', [
             'три довідки на вибір', 'дешевше, ніж три окремо'], dzherelo='miy-budynok'),
         kartka_tovaru('zvit', 'Перед купівлею житла', [
-            'усе з довідки', 'події за 10 років з описами людською мовою', 'карта району й порівняння зі схожими місцями'],
+            'усе з довідки', podii_zvitu(period_podii), 'карта району й порівняння зі схожими місцями'],
             dzherelo='miy-budynok'),
         kartka_tovaru('pidpyska', 'Щомісяця', [
             '1 довідка на місяць включено', f'додаткові довідки — по {tsina("dodatkova")}',
@@ -498,10 +503,10 @@ def vitryna_sudova(adresa_saitu: str, kartynka: tuple | None = None) -> str:
                    adresa_saitu, kartynka=kartynka)
 
 
-def vitryna_biznes(adresa_saitu: str, kartynka: tuple | None = None) -> str:
+def vitryna_biznes(adresa_saitu: str, kartynka: tuple | None = None, period_podii: str = '') -> str:
     tilo = f'''<section class="rozdil"><h2>Набори й доступ</h2><div class="tovary">
 {kartka_tovaru('biznes', 'Користування базою на місяць або рік за договором — не продаж (MV-92)', [
-        'події з рішень судів з адресами й точками на карті (Київ, 10 років)', 'скарги 1551 по будинках',
+        f'події з рішень судів з адресами й точками на карті (Київ{", " + period_podii if period_podii else ""})', 'скарги 1551 по будинках',
         'вивантаження файлом або доступ для програм', 'оновлення щомісяця'], True, dzherelo='biznes')}
 <div class="kartka tovar"><h3>Для кого</h3><ul><li>забудовники й агенції нерухомості</li><li>страхові й банки</li>
 <li>дослідники й медіа</li></ul></div></div>
@@ -633,7 +638,7 @@ def zibraty_vse(dn: D.Dani, rayony: list, za_rayonom: dict, bud: Budynky | None,
     kolory = Z.kolory_tem()['svitla']
 
     def budynok(b, vikno):
-        html_ = storinka_budynku(b, bud, adresa_saitu, vikno)
+        html_ = storinka_budynku(b, bud, adresa_saitu, vikno, D.period_podii(dn))
         png = kartynka_budynku(b, kolory)
         if pachky is not None:
             pachky.dodaty(b['slug'], html_, png)
@@ -676,10 +681,10 @@ def zibraty_vse(dn: D.Dani, rayony: list, za_rayonom: dict, bud: Budynky | None,
     for shl, (mitka, nazva, chysla) in chysla_vitryn(dn, bud, vulyts).items():
         Z.zapysaty_bajty(vykhid / shl / 'kartynka.png', K.kartynka(mitka, nazva, chysla, kolory))
         kv[shl] = (f'/{shl}/kartynka.png', f'{nazva}: ' + ', '.join(f'{a} {p}' for a, p in chysla))
-    for shl, html_ in (('miy-budynok', vitryna_miy_budynok(adresa_saitu, prykl, kv['miy-budynok'])),
+    for shl, html_ in (('miy-budynok', vitryna_miy_budynok(adresa_saitu, prykl, kv['miy-budynok'], D.period_podii(dn))),
                        ('osbb', vitryna_osbb(adresa_saitu, kv['osbb'])),
                        ('sudova-praktyka', vitryna_sudova(adresa_saitu, kv['sudova-praktyka'])),
-                       ('biznes', vitryna_biznes(adresa_saitu, kv['biznes'])),
+                       ('biznes', vitryna_biznes(adresa_saitu, kv['biznes'], D.period_podii(dn))),
                        ('vydalyty', storinka_vydalyty(adresa_saitu)),
                        ('pro-dani', storinka_pro_dani(adresa_saitu, dn.versiia, period_1551(bud.misiatsi) if bud else ''))):
         Z.zapysaty(vykhid / shl / 'index.html', html_)
