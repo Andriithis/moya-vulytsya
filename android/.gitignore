@@ -1,0 +1,6 @@
+# Ключі підпису — ніколи в git (ZAVDANNYA-102)
+*.keystore
+*.jks
+# Зібране
+*.apk
+*.aab
