@@ -107,11 +107,11 @@ class SudovaPraktykaTests(unittest.TestCase):
         t = self.st('kupap/130')
         self.assertIn('990', t)
         self.assertNotIn('1 767', t)                     # 2019 — не в частках за 3 роки
-        self.assertIn('від події до рішення суду (медіана)', t)
+        self.assertIn('за стільки від події вирішено половину справ', t)
         self.assertIn('2,0\u00a0міс.', t)                  # медіана — 60 днів
         # ст. 190 КК не в списку stroky (дата події < 95 %) — строку немає, хоч дні в рядках є
         t190 = self.st('kk/190')
-        self.assertNotIn('від події до рішення суду (медіана)', t190)
+        self.assertNotIn('за стільки від події вирішено половину справ', t190)
         self.assertIn('Строк від події до рішення для цієї статті не показуємо', t190)
         self.assertIn('серед вироків', t190)
         # замало справ — частки не рахуються
@@ -143,7 +143,7 @@ class SudovaPraktykaTests(unittest.TestCase):
 
     def test_bez_imen_prohnoziv_i_ocinok(self):
         zaboroneno = re.compile(r'ОСОБА_|суддя\s+[А-ЯІЇЄҐ]|рейтинг|небезпечн|безпечн|найімовірніше|імовірно|станеться|'
-                                r'будьте уважні|уникайте|вам призначать|м[ʼ’\']якш|суворіш', re.I)
+                                r'будьте уважні|медіан|уникайте|вам призначать|м[ʼ’\']якш|суворіш', re.I)
         for f in self.storinky:
             m = zaboroneno.search(f.read_text(encoding='utf-8'))
             self.assertIsNone(m, f'{f}: {m and m.group(0)}')
