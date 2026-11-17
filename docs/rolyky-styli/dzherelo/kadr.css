@@ -1,0 +1,69 @@
+/* Накладка кадрів-макетів (ZAVDANNYA-126). Шрифт — IBM Plex Sans (site/sait/shryfty), кольори — docs/STYL.md. */
+html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; }
+body { font-family: Plex, system-ui, sans-serif; color: #F0F1FA; }
+#p { position: absolute; inset: 0; }
+#n { position: absolute; inset: 0; }
+#n > div { position: absolute; }
+.m { color: #66E6BA; } .i { color: #303482; } .t { color: #1C1E2D !important; } .b { color: #FFFFFF; }
+.top { left: 72px; right: 72px; top: 170px; }
+.velyke { font-weight: 700; font-size: 230px; line-height: 0.95; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+.serednie { font-weight: 700; font-size: 104px; line-height: 1.04; letter-spacing: -0.03em; }
+.pid { font-weight: 600; font-size: 50px; line-height: 1.2; margin-top: 26px; color: #D1D3E2; }
+.pid2 { font-weight: 600; font-size: 36px; margin-top: 26px; color: #D1D3E2; text-align: center; }
+.mitka-tekst { font-weight: 700; font-size: 38px; color: #4447A6; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 18px; }
+.niz { left: 72px; right: 72px; bottom: 300px; display: flex; flex-direction: column; gap: 22px; align-items: flex-start; }
+.znak { display: flex; align-items: center; gap: 16px; padding: 12px 30px 12px 14px; border-radius: 999px; font-weight: 700; font-size: 38px;
+  background: #FFFFFF; color: #4447A6; border: 3px solid #76798C; box-shadow: 0 6px 0 #585B69; }
+.znak span { color: #1C1E2D; } .znak svg { width: 56px; height: 56px; } .znak .z2 { fill: #FFFFFF; }
+.znak.nich { background: #1B1F39; color: #66E6BA; border-color: #7D83AB; box-shadow: 0 6px 0 #080913; }
+.znak.nich span { color: #F0F1FA; } .znak.nich .z2 { fill: #1B1F39; }
+.sekunda { font-size: 28px; font-weight: 600; color: #A6A9C1; background: rgba(17,20,42,.82); padding: 10px 20px; border-radius: 12px; }
+.sekunda.temn { color: #3E4155; background: rgba(255,255,255,.85); }
+.mitka { display: flex; align-items: center; gap: 14px; padding: 12px 24px; border-radius: 999px; font-weight: 700; font-size: 36px; }
+.mitka.nich { background: #1B1F39; border: 3px solid #7D83AB; box-shadow: 0 5px 0 #080913; }
+.mitka i { width: 26px; height: 26px; border-radius: 50%; display: block; }
+.cta { left: 72px; right: 72px; bottom: 520px; display: flex; flex-direction: column; align-items: center; }
+.klavisha { font-weight: 700; font-size: 54px; padding: 30px 54px; border-radius: 24px; background: #4447A6; color: #FFFFFF;
+  border: 3px solid #33357C; box-shadow: 0 9px 0 #1F2152; }
+.cta.nich .klavisha, .klavisha.m { background: #66E6BA; color: #11142A; border-color: #8CECCB; box-shadow: 0 9px 0 #1E765C; }
+/* редакційний */
+.hrafik { left: 72px; right: 72px; top: 700px; height: 700px; display: flex; align-items: flex-end; gap: 14px; }
+.stovp { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.stovp .s { width: 100%; background: #9CA1E3; border-radius: 8px 8px 0 0; }
+.stovp.akt .s { background: #303482; }
+.stovp span { font-size: 24px; color: #5F6275; font-weight: 600; }
+.dzh { left: 72px; right: 72px; top: 1470px; font-size: 28px; line-height: 1.35; font-weight: 600; }
+.dzh.papir { color: #5F6275; }
+.vynoska { width: 780px; padding: 34px 40px; background: #FFFFFF; border: 3px solid #76798C; box-shadow: 0 7px 0 #585B69; border-radius: 22px;
+  color: #1C1E2D; font-size: 44px; line-height: 1.3; }
+.dzh-m { font-size: 26px; color: #5F6275; margin-top: 18px; font-weight: 600; }
+.liniia { width: 4px; background: #3C3CA1; }
+.fakty { left: 72px; right: 72px; top: 520px; display: flex; flex-direction: column; gap: 46px; color: #1C1E2D; font-size: 42px; line-height: 1.25; }
+.fakt { display: grid; grid-template-columns: 300px 1fr; gap: 30px; align-items: center; }
+.fakt .ch { font-weight: 700; font-size: 120px; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.roky { left: 120px; right: 120px; top: 1060px; height: 380px; display: flex; align-items: flex-end; gap: 50px; }
+.rik { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 10px; color: #1C1E2D; font-size: 34px; }
+.rik .s { width: 100%; background: #464AA9; border-radius: 10px 10px 0 0; } .rik .s.np { background: #C9CCF3; }
+.rik span { color: #5F6275; font-size: 28px; font-weight: 600; }
+/* гра */
+.plashka { display: inline-block; font-weight: 700; font-size: 40px; padding: 14px 30px; border-radius: 999px; background: #FFFFFF; color: #4447A6;
+  border: 3px solid #76798C; box-shadow: 0 6px 0 #585B69; margin-bottom: 30px; }
+.plashka.m-tlo { background: #5DD0A9; color: #11142A; }
+.kartka-hra { background: #FFFFFF; color: #1C1E2D; font-size: 54px; line-height: 1.25; padding: 40px 44px; border-radius: 28px;
+  border: 3px solid #76798C; box-shadow: 0 9px 0 #585B69; }
+.taimer { left: 430px; top: 790px; width: 220px; height: 220px; border-radius: 50%; background: #4447A6; color: #FFFFFF; font-weight: 700;
+  font-size: 140px; display: flex; align-items: center; justify-content: center; border: 10px solid #FFFFFF; box-shadow: 0 9px 0 #33357C; }
+.varianty { left: 72px; right: 72px; bottom: 380px; display: flex; flex-direction: column; gap: 28px; }
+.kl { font-weight: 700; font-size: 54px; padding: 30px 40px; border-radius: 24px; background: #FFFFFF; color: #1C1E2D;
+  border: 3px solid #76798C; box-shadow: 0 9px 0 #585B69; }
+.kl.tmn { opacity: .45; } .kl.prav { background: #5DD0A9; border-color: #31B88D; box-shadow: 0 9px 0 #1E765C; }
+.pin { width: 48px; height: 48px; border-radius: 50%; background: #3C3CA1; border: 10px solid #FFFFFF; box-shadow: 0 0 0 6px #3C3CA1; }
+/* хронометраж */
+.chas { font-weight: 700; font-size: 110px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: #66E6BA; }
+.tytr { left: 72px; right: 72px; font-weight: 700; font-size: 92px; line-height: 1.08; letter-spacing: -0.02em; }
+.tytr.khron { color: #F0F1FA; }
+.velyke-tytr { font-size: 170px; text-align: left; }
+/* кліп */
+.klip-slovo { left: 60px; right: 60px; top: 640px; font-weight: 700; font-size: 240px; line-height: 0.95; letter-spacing: -0.05em; }
+.klip-pid { left: 72px; right: 72px; top: 1120px; font-weight: 600; font-size: 60px; line-height: 1.2; }
+.panel { background: #FFFFFF; border: 3px solid #76798C; box-shadow: 0 7px 0 #585B69; border-radius: 24px; padding: 34px 40px; }
