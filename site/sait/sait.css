@@ -60,6 +60,7 @@ body.z-kartoyu .shapka__vnutri { max-width: none; padding: 6px 16px; min-height:
 .zaholovok { display: flex; flex-direction: column; gap: 10px; max-width: 760px; }
 .zaholovok h1 { margin: 0; font-size: 40px; line-height: 1.12; font-weight: 700; letter-spacing: -0.5px; }
 .zaholovok p { margin: 0; font-size: 18px; color: var(--ink-2); }
+.zaholovok p.onovleno { font-size: 14px; color: var(--muted); }
 .mitka { align-self: flex-start; font-size: 13px; font-weight: 600; background: var(--accent-soft); color: var(--ink); padding: 4px 12px; border-radius: var(--radius-pill); }
 .mitka--chernetka { background: var(--surface-tint); color: var(--ink-2); border: 1px dashed var(--mezha); }
 .rozdil { display: flex; flex-direction: column; gap: 16px; }
