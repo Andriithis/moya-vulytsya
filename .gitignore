@@ -77,6 +77,8 @@ site/zahlushka/config.js
 # (koloda.json з конвеєра) — лише під час збирання, у git не потрапляє.
 !site/hra/
 site/hra/koloda.json
+# Дані прототипу «Вулиця дня» (ZAVDANNYA-101): з колоди, тож теж поза git.
+site/hra/vulytsia-dnia.json
 
 # === САЙТ (ZAVDANNYA-10) ===
 # Збирач сайту й спільні файли сторінок — у git; зібраний сайт (_site/) — ні.

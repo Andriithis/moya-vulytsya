@@ -31,7 +31,7 @@ MISIATSI = ('січень', 'лютий', 'березень', 'квітень', 
             'жовтень', 'листопад', 'грудень')
 MISIATSI_RODOVYI = ('січня', 'лютого', 'березня', 'квітня', 'травня', 'червня', 'липня', 'серпня', 'вересня',
                     'жовтня', 'листопада', 'грудня')
-HRUPY_PODII = dict(D.HRUPY)
+HRUPY_PODII = D.HR.NAZVA            # назви груп — brend/hrupy.json (MV-116)
 
 
 def tsina(kl: str) -> str:
@@ -186,7 +186,7 @@ def abzats_budynku(b: dict, period: str, r_m: int) -> str:
         for g in b['vidkryti'].values():
             hr.update(g)
         rechennia.append(f'У даних судів за {roky} з адресою будинку — {Z.podii_slovo(b["podii_vidkr"])}: '
-                         + ', '.join(f'{HRUPY_PODII[k].lower() if k != "dtp" else "ДТП"} — {chyslo(n)}'
+                         + ', '.join(f'{D.HR.SLOVO[k]} — {chyslo(n)}'
                                      for k, n in sorted(hr.items(), key=lambda x: (-x[1], x[0]))) + '.')
     else:
         rechennia.append(f'Подій з рішень судів за {roky} з адресою цього будинку в даних немає.')
@@ -334,7 +334,7 @@ def storinka_rayonu(dn: D.Dani, rayon: str, vulytsi: list, bud: Budynky | None, 
     kryhty = [('/', 'Головна'), ('/rayony/', 'Райони'), ('', f'{rayon} район')]
     ch = [kryhty_html(kryhty)]
     rech = [f'У {e(rayon)} районі за {roky_t} у даних судів — {Z.podii_slovo(vsogo)} з точною адресою'
-            + (': ' + ', '.join(f'{HRUPY_PODII[k] if k == "dtp" else HRUPY_PODII[k].lower()} — {chyslo(n)}'
+            + (': ' + ', '.join(f'{D.HR.SLOVO[k]} — {chyslo(n)}'
                                 for k, n in podii_hrupy.most_common(3)) if vsogo else '') + '.']
     if skarhy:
         top = skarhy.most_common(3)
@@ -576,7 +576,7 @@ def podii_rayoniv(dn: D.Dani) -> dict:
         if k not in kesh:
             kesh[k] = dn.rayony.rayon(p.lat, p.lon)
         r = kesh[k]
-        hr = D.HRUPA_VYDU.get(p.vyd)
+        hr = D.HR.hrupa(p.vyd, p.stattia)
         if r and hr:
             out[r][hr] += 1
     return out

@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data: blob:; worker-src 'self'; child-src 'self'; connect-src 'self' https://tiles.openfreemap.org; form-action 'none'; base-uri 'none'">
+<meta name="robots" content="noindex">
+<title>Вулиця дня — Моя вулиця (прототип)</title>
+<meta name="description" content="Щоденна гра на карті Києва: за підказками з даних знайдіть загадану вулицю.">
+<link rel="preload" href="../shryfty/ibm-plex-sans-cyrillic-700-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="../shryfty/ibm-plex-sans-cyrillic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<meta name="theme-color" content="#F4F5FB" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#11142A" media="(prefers-color-scheme: dark)">
+<link rel="icon" type="image/png" sizes="192x192" href="../ikony/ikona-192.png">
+<link rel="stylesheet" href="biblioteka/maplibre-gl.css">
+<link rel="stylesheet" href="hra.css">
+<link rel="stylesheet" href="vulytsia.css">
+</head>
+<body data-sait="[САЙТ]">
+
+<header class="shapka">
+  <div class="shapka__vnutri">
+    <a class="znak" href="../index.html" aria-label="Моя вулиця — на головну">
+      <svg aria-hidden="true" width="24" height="26" viewBox="0 0 26 28"><path class="znak__sota" d="M13 1 L25 8 L25 20 L13 27 L1 20 L1 8 Z"></path><path class="znak__seredyna" d="M13 9 L18 12 L18 17 L13 20 L8 17 L8 12 Z"></path></svg>
+      <span class="znak__nazva">Моя вулиця</span>
+    </a>
+    <span class="mitka-demo">Прототип</span>
+    <a class="knopka-tekst" href="index.html">Де це було?</a>
+  </div>
+</header>
+
+<main class="vd" id="vd">
+  <section class="vd__panel vd__panel--verkh" aria-labelledby="vd-nazva">
+    <div class="vd__shapka">
+      <p class="nadpys" id="vd-data">Вулиця дня</p>
+      <h1 class="vd__nazva" id="vd-nazva">Яка це вулиця?</h1>
+      <p class="vd__opys">Загадано одну вулицю Києва. Назвіть будь-яку — і дізнайтеся, наскільки ви близько: відстань, напрям і чим вони схожі за даними. <span id="vd-sprob">7</span> спроб.</p>
+    </div>
+
+    <ol class="pidkazky" id="pidkazky" aria-live="polite"></ol>
+
+    <div class="sproba" id="sproba">
+      <label class="sproba__pidpys" for="pole">Ваша спроба</label>
+      <div class="sproba__ryadok">
+        <input class="pole" id="pole" type="text" autocomplete="off" spellcheck="false" placeholder="Почніть вводити назву вулиці" aria-autocomplete="list" aria-controls="vybir" aria-expanded="false" role="combobox">
+        <button type="button" class="knopka" id="vidpravyty" disabled>Так</button>
+      </div>
+      <ul class="vybir" id="vybir" role="listbox" hidden></ul>
+      <p class="sproba__stan" id="sproba-stan" role="status"></p>
+    </div>
+  </section>
+
+  <div class="vd__karta">
+    <div class="karta" id="karta" role="img" aria-label="Карта Києва зі спробами"></div>
+    <p class="karta__zboi" id="karta-zboi" hidden>Підкладка карти не завантажилася — видно лише межу міста.</p>
+  </div>
+
+  <section class="vd__panel vd__panel--nyz" aria-label="Спроби й результат">
+    <div class="tablytsia" id="tablytsia" hidden>
+      <div class="tablytsia__shapka" aria-hidden="true">
+        <span>Вулиця</span><span>Відстань</span><span>Район</span><span>Подій</span><span>Тип</span><span>Вирізняє</span>
+      </div>
+      <ol class="sproby" id="sproby"></ol>
+      <p class="tablytsia__lehenda"><i class="kl kl--tak" aria-hidden="true"></i> збігається з загаданою · стрілка в «Подій» — у загаданої більше чи менше</p>
+    </div>
+
+    <section class="kinets-vd" id="kinets" hidden aria-live="polite">
+      <p class="nadpys" id="kinets-nadpys">Розгадано</p>
+      <h2 class="kinets-vd__vulytsia" id="kinets-vulytsia"></h2>
+      <p class="kinets-vd__rayon" id="kinets-rayon"></p>
+      <div class="kinets-vd__chysla">
+        <div class="velyke"><span class="velyke__chyslo" id="kinets-n"></span><span class="velyke__pidpys" id="kinets-n-pidpys">подій у даних</span></div>
+        <div class="velyke"><span class="velyke__chyslo" id="kinets-sproby"></span><span class="velyke__pidpys">спроба</span></div>
+      </div>
+      <p class="kinets-vd__vyrizn" id="kinets-vyrizn"></p>
+      <p class="kinets-vd__detektyv" id="kinets-detektyv"></p>
+      <div class="kinets-vd__podiia" id="kinets-podiia"></div>
+      <div class="kinets-vd__dii">
+        <a class="knopka" id="kinets-storinka" href="#">Сторінка вулиці</a>
+        <button type="button" class="knopka knopka--druhorydna" id="podilytysia">Поділитися</button>
+      </div>
+      <p class="podilytysia-stan" id="podilytysia-stan" role="status"></p>
+      <a class="pidpyska" id="pidpyska" href="#">
+        <span class="pidpyska__nazva">А що на вашій вулиці?</span>
+        <span class="pidpyska__opys" id="pidpyska-opys">Знайдіть свою вулицю — скільки подій і що її вирізняє, безкоштовно. Нове біля дому щотижня — у підписці «Мій район», 399 грн/міс.</span>
+      </a>
+      <p class="kolektsiia" id="kolektsiia"></p>
+      <button type="button" class="knopka-tekst" id="shche">Ще одна загадка (лише в прототипі)</button>
+    </section>
+
+    <p class="vd__prymitka">Числа — події з рішень судів за <span id="vd-roky">2024–2026</span> роки: лише те, що дійшло до суду. Це не рейтинг і не оцінка безпеки вулиці. Без реєстрації — результат зберігається лише на вашому пристрої.</p>
+  </section>
+</main>
+
+<p class="zavantazhennya" id="zavantazhennya" role="status">Завантажуємо вулиці…</p>
+
+<script src="biblioteka/maplibre-gl-csp.js"></script>
+<script src="hra-yadro.js"></script>
+<script src="hra-karta.js"></script>
+<script src="vulytsia-yadro.js"></script>
+<script src="vulytsia.js"></script>
+</body>
+</html>

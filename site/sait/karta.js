@@ -137,9 +137,15 @@
   // =====================================================================================================
   // Карта Києва сотами
   // =====================================================================================================
-  var HRUPY = [['dtp', 'ДТП'], ['dor', 'Дороги'], ['hp', 'Громадський порядок'], ['mai', 'Майно'],
-    ['nar', 'Наркотики'], ['alk', 'Алкоголь'], ['nas', 'Насильство']];
-  var NAZVA_HRUPY = {}; HRUPY.forEach(function (h) { NAZVA_HRUPY[h[0]] = h[1]; });
+  // Групи подій — з одного словника (brend/hrupy.json, MV-116): збирач сайту пише їх у фільтр «Усі події ▾»
+  // (data-hrupa + назва), звідти й беремо — окремого переліку назв у цьому файлі немає.
+  var HRUPY = [], NAZVA_HRUPY = {};
+  function chytatyHrupy(ekran) {
+    HRUPY = Array.prototype.map.call(ekran.querySelectorAll('#f-spysok [data-hrupa]'), function (c) {
+      return [c.getAttribute('data-hrupa'), c.parentNode.querySelector('span').textContent];
+    });
+    NAZVA_HRUPY = {}; HRUPY.forEach(function (h) { NAZVA_HRUPY[h[0]] = h[1]; });
+  }
   // R — радіус соти H3 у метрах; k — частка ширини соти під стовпчик; H — висота найвищої вершини в радіусах (як у М7).
   var RIVNI = [{ r: 7, id: 'XL', R: 1406, k: 0.55, H: 0.9, pl: '≈5 км²' }, { r: 8, id: 'L', R: 531, k: 0.64, H: 1.1, pl: '≈0,7 км²' },
     { r: 9, id: 'S', R: 201, k: 0.8, H: 1.6, pl: '≈0,1 км²' }];
@@ -203,6 +209,7 @@
     var ekran = konteiner.parentNode;
     var $ = function (s) { return ekran.querySelector(s); };
     var K = paleta(), TEMA = K.t;
+    chytatyHrupy(ekran);
     var AKTYVNI = {}; HRUPY.forEach(function (h) { AKTYVNI[h[0]] = true; });
     var PERIOD = '3';   // MV-32: безкоштовно лише останні 3 роки; «Усі роки» — у підписці (чисел за них у файлах немає)
     var ROKY = [], VERSIIA = konteiner.getAttribute('data-versiia') || '';
@@ -656,7 +663,7 @@
       } else {
         var top = HRUPY.filter(function (h) { return h[0] !== 'nas' && AKTYVNI[h[0]] && chysloG(p, h[0]) > 0; })
           .map(function (h) { return [chysloG(p, h[0]), h[1]]; }).sort(function (x, y) { return y[0] - x[0]; }).slice(0, 3);
-        var nas = AKTYVNI.nas && chysloG(p, 'nas') > 0 ? '<div class="nas"><span>Насильство</span><b>' + chyslo(chysloG(p, 'nas')) + '</b></div>' : '';
+        var nas = AKTYVNI.nas && chysloG(p, 'nas') > 0 ? '<div class="nas"><span>' + esc(NAZVA_HRUPY.nas) + '</span><b>' + chyslo(chysloG(p, 'nas')) + '</b></div>' : '';
         var pik = p.h ? '<div class="pik"><b>Пік: ' + esc(p.h.replace(/ (\d)/, ', $1')) + ' год</b><span>за ' + nazvaPeriodu() + ', де відомий час</span></div>'
           : '<div class="pik"><span>Мало даних про час</span></div>';
         var povt = masyv(p.p);
