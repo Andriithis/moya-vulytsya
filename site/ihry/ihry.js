@@ -81,12 +81,12 @@
   // ---------- панель ----------
   var ZARAZ = 'menyu';
   function vidkryty(gra) {
-    panel.hidden = false; knopka.setAttribute('aria-expanded', 'true');
+    panel.hidden = false; knopka.setAttribute('aria-expanded', 'true'); ekran.classList.add('ihry-vidkryto');
     if (window.MvKarta && window.MvKarta.zakryty) window.MvKarta.zakryty();
     hovatyZaproshennia(false);
     pokazaty(gra || 'menyu');
   }
-  function zakryty() { panel.hidden = true; knopka.setAttribute('aria-expanded', 'false'); rezhym(null); prybratyMitky(); }
+  function zakryty() { panel.hidden = true; knopka.setAttribute('aria-expanded', 'false'); ekran.classList.remove('ihry-vidkryto'); rezhym(null); prybratyMitky(); }
   knopka.addEventListener('click', function () { if (panel.hidden) vidkryty(); else zakryty(); });
   panel.addEventListener('click', function (e) {
     if (panel.classList.contains('zghornuta') && e.target.closest('.i-shap') && !e.target.closest('[data-i]')) { panel.classList.remove('zghornuta'); return; }
@@ -344,7 +344,7 @@
     var tsil = VD.tsil, zah = VD.zah, d = VD.d, tak = vRozghadano(), zv = zah.zvuzhennia || {}, pd = zah.podiia;
     var h = '<section class="i-rozkr i-vd-kin"><p class="i-den">' + (tak ? 'Розгадано з ' + VD.st.sproby.length + '-ї спроби з ' + d.sprob : 'Цього разу ні — загадана вулиця') + '</p>' +
       '<h3>' + esc(tsil.nazva) + '</h3><p class="i-prym">' + esc(tsil.rayon) + ' район · ' + chyslo(tsil.n) + ' подій у даних' + (d.roky ? ' за ' + esc(d.roky) : '') + '</p>';
-    if (tsil.vyrizn) h += '<p>Що вирізняє вулицю: ' + esc(tsil.vyrizn.toLowerCase()) + ' — частка вища, ніж по місту.</p>';
+    if (tsil.vyrizn) h += '<p>Що вирізняє вулицю: ' + esc(/^[А-ЯІЇЄҐA-Z]{2}/.test(tsil.vyrizn) ? tsil.vyrizn : tsil.vyrizn.charAt(0).toLowerCase() + tsil.vyrizn.slice(1)) + ' — частка вища, ніж по місту.</p>';
     if (zv.vsi) h += '<p class="i-prym">Як вивести відповідь: у грі ' + chyslo(zv.vsi) + ' вулиць; у цьому районі — ' + zv.rayon + '; з тим самим «вирізняє» — ' + zv.vyrizn + '; і з таким числом подій — ' + zv.n + '. Відповідь одна — це перевіряє програма.</p>';
     h += '<p class="i-vd-podiia">«' + esc(pd.opys) + '»<small>' + esc(pd.vyd) + ' · ' + esc(pd.rik) + (pd.url ? ' · <a href="' + esc(pd.url) + '" target="_blank" rel="noopener noreferrer">рішення суду' + (pd.nomer ? ' № ' + esc(pd.nomer) : '') + '</a>' : '') + '</small></p>' +
       '<p class="i-ryad"><a class="knopka klav knopka--holovna" href="/vulytsia/' + esc(tsil.slug) + '/?dzherelo=hra-vulytsia">Сторінка вулиці</a><button type="button" class="knopka klav i-druh" data-i="v-podilytysia">Поділитися</button></p>' +

@@ -160,3 +160,6 @@
 .i-vd-podiia { padding: 8px 10px; border-radius: var(--radius-m); background: var(--surface-tint); font-size: 13px; line-height: 19px; color: var(--ink); }
 .i-vd-podiia small { display: block; margin-top: 4px; color: var(--muted); }
 .i-ryad .knopka { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+
+/* Панель гри відкрита — смуга «Де ви живете?» не лізе під неї (одна плашка за раз, ZAVDANNYA-123) */
+.ekran-karty.ihry-vidkryto .vau-rayony { display: none; }
