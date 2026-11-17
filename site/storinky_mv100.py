@@ -9,7 +9,7 @@
   * події з рішень — лише числом (MV-100), за останні 3 роки (MV-32); старші — «у підписці» без чисел;
   * скарги 1551 — звернення людей, не перевірені факти; порівняння з сусідами — два числа поруч, без оцінки;
   * колір — кількість (шкала даних), не страх; жодних рейтингів;
-  * ціни — одна таблиця `TSINY`; не погоджені Андрієм — `None`, на сторінці «ціну назвемо перед запуском».
+  * ціни — одна таблиця `site/tsiny.py` (MV-100, MV-102); «Для бізнесу» — ціна за домовленістю і форма запиту.
 """
 from __future__ import annotations
 
@@ -19,26 +19,13 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 import dani as D
+import tsiny as T
 import zibraty_sait as Z
 
 e, chyslo, vidminok, NBSP = Z.e, Z.chyslo, Z.vidminok, Z.NBSP
 
-# MV-100 (17.11.2026). None — ціни ще немає (питання Андрію).
-TSINY = {
-    'dovidka': 199,            # довідка про будинок
-    'try': 449,                # пакет «3 довідки»
-    'zvit': 599,               # повний звіт «перед купівлею»
-    'pidpyska': 399,           # на місяць, 1 довідка включена
-    'dodatkova': 99,           # додаткова довідка в підписці
-    'rieltor': None,           # підписка рієлтора: 5 довідок на місяць
-    'osbb': None,              # річна оплата за будинок (коло 2 пропонувало 1 490 грн/рік — не погоджено)
-    'biznes': None,            # набори даних і доступ
-}
-TOVARY = {
-    'dovidka': 'Довідка про будинок', 'try': '3 довідки', 'zvit': 'Повний звіт «перед купівлею»',
-    'pidpyska': 'Підписка', 'rieltor': 'Підписка для рієлтора', 'osbb': 'Будинок для ОСББ',
-    'biznes': 'Дані для бізнесу',
-}
+# Ціни — одна таблиця для всього сайту (site/tsiny.py; MV-100, MV-102).
+TSINY, TOVARY = T.TSINY, T.TOVARY
 MIN_DANYKH_DLYA_POSHUKU = 3      # будинок з 1–2 записами — сторінка є, але не в пошуку Google (як вулиці)
 MISIATSI = ('січень', 'лютий', 'березень', 'квітень', 'травень', 'червень', 'липень', 'серпень', 'вересень',
             'жовтень', 'листопад', 'грудень')
@@ -47,9 +34,8 @@ MISIATSI_RODOVYI = ('січня', 'лютого', 'березня', 'квітн�
 HRUPY_PODII = dict(D.HRUPY)
 
 
-def tsina(kl: str, na: str = '') -> str:
-    t = TSINY[kl]
-    return f'{chyslo(t)}{NBSP}грн{na}' if t is not None else 'ціну назвемо перед запуском'
+def tsina(kl: str) -> str:
+    return T.tsina(kl)
 
 
 def misiats(ym: str) -> str:
@@ -388,13 +374,17 @@ def vitryna(shlyakh: str, nazva: str, mitka: str, vstup: str, tilo: str, title: 
                       dodatkovo_head=ld_skrypt(kryhty_ld(kryhty, adresa_saitu)))
 
 
-def kartka_tovaru(kl: str, pidpys: str, punkty: list, holovna: bool = False, na: str = '', dzherelo: str = '') -> str:
+def kartka_tovaru(kl: str, pidpys: str, punkty: list, holovna: bool = False, dzherelo: str = '') -> str:
     li = ''.join(f'<li>{p}</li>' for p in punkty)
     d = f'&amp;dzherelo={dzherelo}' if dzherelo else ''
+    if TSINY[kl] is None:
+        # Ціна за домовленістю (MV-102): форма запиту — передзамовлення заглушки з вибором «Для компанії»; відповідає партнер.
+        href, napys = f'/zahlushka/?shcho=kompaniya{d}#peredzamovlennya', 'Надіслати запит'
+    else:
+        href, napys = f'/oplata/?tovar={kl}{d}', 'Замовити'
     return (f'<div class="kartka tovar{" tovar--holovnyi" if holovna else ""}"><h3>{e(TOVARY[kl])}</h3>'
-            f'<p class="tovar__tsina{"" if TSINY[kl] is not None else " tovar__tsina--nema"}">{tsina(kl, na)}</p><p class="tovar__pidpys">{pidpys}</p><ul>{li}</ul>'
-            f'<a class="knopka{" knopka--holovna" if holovna else ""}" href="/oplata/?tovar={kl}{d}">'
-            f'{"Замовити" if TSINY[kl] is not None else "Повідомити про запуск"}</a></div>')
+            f'<p class="tovar__tsina{"" if TSINY[kl] is not None else " tovar__tsina--nema"}">{tsina(kl)}</p><p class="tovar__pidpys">{pidpys}</p><ul>{li}</ul>'
+            f'<a class="knopka{" knopka--holovna" if holovna else ""}" href="{href}">{napys}</a></div>')
 
 
 def vitryna_miy_budynok(adresa_saitu: str, prykl: list) -> str:
@@ -410,7 +400,7 @@ def vitryna_miy_budynok(adresa_saitu: str, prykl: list) -> str:
             dzherelo='miy-budynok'),
         kartka_tovaru('pidpyska', 'Щомісяця', [
             '1 довідка на місяць включено', f'додаткові довідки — по {tsina("dodatkova")}',
-            'карта з адресами й подіями, сповіщення про нове біля дому'], na=' на місяць', dzherelo='miy-budynok'),
+            'карта з адресами й подіями, сповіщення про нове біля дому'], dzherelo='miy-budynok'),
         kartka_tovaru('rieltor', 'Для рієлтора', ['5 довідок на місяць', 'для показів і клієнтів'], dzherelo='miy-budynok'),
     ])
     pryklady = ''.join(f'<li><a href="{b["url"]}">{e(b["adresa"])}</a></li>' for b in prykl)
@@ -439,7 +429,7 @@ def vitryna_osbb(adresa_saitu: str) -> str:
     tilo = f'''<section class="rozdil"><h2>Що отримує правління</h2><div class="tovary">
 {kartka_tovaru('osbb', 'Річна оплата за будинок', [
         'щомісяця — довідка про ваш будинок: усі звернення 1551 з темами, статусами й строками',
-        'порівняння з сусідніми будинками', 'рахунок для юридичної особи'], True, na=' на рік', dzherelo='osbb')}
+        'порівняння з сусідніми будинками', 'рахунок для юридичної особи'], True, dzherelo='osbb')}
 <div class="kartka tovar"><h3>Навіщо</h3><ul><li>бачити, що турбує мешканців, ще до зборів</li>
 <li>мати числа для розмови з управителем і районною адміністрацією</li><li>звітувати мешканцям</li></ul></div>
 </div></section>
@@ -478,15 +468,14 @@ def vitryna_biznes(adresa_saitu: str) -> str:
 <p class="prymitka">Умови — в <a href="/zahlushka/oferta.html">оферті</a> і договорі. Вивантаження бази — лише компаніям за договором.
 Платежі й договори оформлює партнер проєкту.</p></section>'''
     return vitryna('/biznes/', 'Для бізнесу', 'Для компаній',
-                   'База подій із судових рішень і скарг 1551 — у користування на рік за договором. Ціна буде тут, на сторінці, без дзвінків.',
+                   'База подій із судових рішень і скарг 1551 — у користування на рік за договором. Ціна — за домовленістю: залиште запит, відповість партнер проєкту.',
                    tilo, 'Дані для бізнесу: події з судових рішень і скарги 1551 Києва | Моя вулиця',
                    'Дані для компаній: події з судових рішень з адресами, скарги 1551 по будинках. Користування на рік за договором.',
                    adresa_saitu)
 
 
 def storinka_oplaty(adresa_saitu: str) -> str:
-    tovary = ''.join(f'<li><b>{e(TOVARY[k])}</b> — {tsina(k, " на місяць" if k == "pidpyska" else (" на рік" if k == "osbb" else ""))}</li>'
-                     for k in TOVARY)
+    tovary = ''.join(f'<li><b>{e(TOVARY[k])}</b> — {tsina(k)}</li>' for k in TOVARY)
     tilo = f'''{kryhty_html([('/', 'Головна'), ('', 'Оплата')])}
 <section class="zaholovok"><span class="mitka">Скоро</span><h1>Оплата скоро</h1>
 <p>Ми ще не приймаємо оплату. Залиште пошту — напишемо один раз, коли довідку можна буде замовити.</p></section>

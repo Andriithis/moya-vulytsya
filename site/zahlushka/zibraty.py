@@ -56,9 +56,11 @@ FAILY = ['index.html', 'polityka.html', 'zrazok.html', 'styli.css', 'zrazok.css'
          'oferta.html', 'zvernennya.html', 'zvernennya.js', 'vstanovlennya.js',
          'manifest.webmanifest', 'sw.js']
 STORINKY = ['index.html', 'polityka.html', 'zrazok.html', 'oferta.html', 'zvernennya.html']
-# Ціни (аналіз — MV-11, підписка — MV-28/MV-60) — ОДНЕ місце для оферти: у тексті оферти стоять {{tsina.analiz}} і {{tsina.pidpyska}}.
-# Змінили ціну рішенням MV — змінити тут і на головній (перевірка test_zahlushka звіряє все з RISHENNYA.md).
-TSINY = {'analiz': 690, 'pidpyska': 399}
+# Ціни — ОДНА таблиця сайту (site/tsiny.py, MV-100, MV-102): у тексті головної й оферти стоять {{tsina.dovidka}},
+# {{tsina.pidpyska}} тощо, підставляє збирання. Змінили ціну рішенням MV — змінити лише в site/tsiny.py.
+sys.path.insert(0, str(KORIN / 'site'))
+import tsiny as T  # noqa: E402
+TSINY = {k: v for k, v in T.TSINY.items() if v is not None}
 ZMINNA = re.compile(r'\{\{[^{}]*\}\}')
 # Робочий файл кешу: маркери, які підставляє збирання.
 SW_VERSIYA = "/*VERSIYA*/'rozrobka'"
@@ -122,7 +124,7 @@ def zibraty(vykhid: Path, adresa: str, klyuch: str, zapovnennya: dict[str, str],
             if znachennya:
                 tekst = tekst.replace(f'[{mistse}]', html.escape(znachennya))
         for nazva_tsiny, tsina in TSINY.items():
-            tekst = tekst.replace('{{tsina.' + nazva_tsiny + '}}', str(tsina))
+            tekst = tekst.replace('{{tsina.' + nazva_tsiny + '}}', T.suma(tsina))
         zalyshky = sorted(set(ZMINNA.findall(tekst)))
         if zalyshky:
             raise PomylkaZbyrannya(f'{nazva}: невідомі змінні {zalyshky}')

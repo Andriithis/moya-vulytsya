@@ -575,13 +575,24 @@ class Sait(unittest.TestCase):
             self.assertIn(f'href="{shl}', holovna)
 
     def test_tsiny_lyshe_z_mv100(self):
-        """На сторінках — лише ціни MV-100 (199, 449, 599, 399, 99); 690 (MV-11) на нових сторінках немає."""
-        import storinky_mv100 as M
-        dozvoleni = {v for v in M.TSINY.values() if v}
-        self.assertEqual(dozvoleni, {199, 449, 599, 399, 99})
-        for f in self.nashi_storinky():
-            for n in re.findall(r'(\d[\d\u00a0]*)\u00a0грн', f.read_text(encoding='utf-8')):
-                self.assertIn(int(n.replace('\u00a0', '')), dozvoleni, f'{f.relative_to(self.sait)}: {n} грн')
+        """ZAVDANNYA-88, п. 2: на всьому сайті (і в заглушці з офертою) — лише суми з таблиці site/tsiny.py (MV-100, MV-102)
+        і 0 за карту; 690 (MV-11) немає ніде; «Для бізнесу» — ціна за домовленістю з формою запиту."""
+        import tsiny as T
+        self.assertEqual({k: v for k, v in T.TSINY.items()},
+                         {'dovidka': 199, 'try': 449, 'zvit': 599, 'pidpyska': 399, 'dodatkova': 99, 'rieltor': 799,
+                          'osbb': 1490, 'biznes': None})
+        dozvoleni = T.dozvoleni_sumy()
+        for f in self.storinky + sorted(self.sait.rglob('*.js')):
+            t = f.read_text(encoding='utf-8')
+            self.assertNotRegex(t, r'690[\s\u00a0]*грн', f'{f.relative_to(self.sait)}: 690 грн')
+            for n in re.findall(r'(\d[\d\u00a0 ]*)(?:\u00a0|\s)?грн', t):
+                self.assertIn(int(re.sub(r'\D', '', n)), dozvoleni, f'{f.relative_to(self.sait)}: {n} грн')
+        biznes = (self.sait / 'biznes' / 'index.html').read_text(encoding='utf-8')
+        self.assertIn('ціна за домовленістю', biznes)
+        self.assertIn('href="/zahlushka/?shcho=kompaniya&amp;dzherelo=biznes#peredzamovlennya">Надіслати запит', biznes)
+        mb = (self.sait / 'miy-budynok' / 'index.html').read_text(encoding='utf-8')
+        self.assertIn('799\u00a0грн на місяць', mb)
+        self.assertIn('1\u00a0490\u00a0грн на рік', (self.sait / 'osbb' / 'index.html').read_text(encoding='utf-8'))
 
     def test_sitemap_dilytsia_na_chastyny(self):
         if self.spravzhnii:

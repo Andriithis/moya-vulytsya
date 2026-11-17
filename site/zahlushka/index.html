@@ -35,7 +35,7 @@
 <div class="pershyi__tekst">
 <span class="znachok"><span class="lyshe-komp">Київ відкривається незабаром</span><span class="lyshe-telefon">Київ незабаром</span></span>
 <h1>Що суди розповіли про вашу вулицю</h1>
-<p class="pershyi__opys"><span class="lyshe-komp">Карта подій із судових рішень: ДТП, п'яні за кермом, крадіжки, бійки. Безкоштовно — числа по сотах, без адрес. Що було біля дому, який орендуєте чи купуєте, — в аналізі адреси.</span><span class="lyshe-telefon">Події з судових рішень: ДТП, п'яні за кермом, крадіжки, бійки. Біля конкретного дому — в аналізі адреси.</span></p>
+<p class="pershyi__opys"><span class="lyshe-komp">Карта подій із судових рішень: ДТП, п'яні за кермом, крадіжки, бійки. Безкоштовно — числа по сотах, без адрес. Що було біля дому, який орендуєте чи купуєте, — у довідці про будинок.</span><span class="lyshe-telefon">Події з судових рішень: ДТП, п'яні за кермом, крадіжки, бійки. Біля конкретного дому — у довідці про будинок.</span></p>
 <form class="poshuk" id="poshuk" novalidate>
 <label for="adresa" class="poshuk__mitka"><span class="lyshe-komp">Адреса</span><span class="lyshe-telefon">Ваша адреса</span></label>
 <input id="adresa" class="poshuk__adresa" type="text" autocomplete="street-address" maxlength="200" placeholder="Вулиця і номер будинку, наприклад: Хрещатик, 1" data-korotko="Хрещатик, 1">
@@ -43,7 +43,7 @@
 <select id="misto" class="poshuk__misto"><option value="Київ">Київ</option><option value="">Інше місто</option></select>
 <button type="submit" class="poshuk__knopka">Перевірити адресу</button>
 </form>
-<span class="pidkazka">Результат за адресою — платний аналіз адреси. Залиште адресу — повідомимо першими, коли він запрацює.</span>
+<span class="pidkazka">Результат за адресою — платна довідка про будинок. Залиште адресу — повідомимо першими, коли вона запрацює.</span>
 </div>
 <div class="pershyi__soty">
 <svg role="img" aria-label="Соти карти: темніше — більше подій у даних" width="340" height="320" viewBox="0 0 340 320">
@@ -83,8 +83,9 @@
 
 <div class="kartka">
 <span class="kartka__nazva">Підписка</span>
-<span class="kartka__tsina" data-tsina="pidpyska">399 грн <small>/ місяць</small></span>
+<span class="kartka__tsina" data-tsina="pidpyska">{{tsina.pidpyska}} грн <small>/ місяць</small></span>
 <ul>
+<li>1 довідка про будинок щомісяця включено</li>
 <li>адреси й події зі стислим описом</li>
 <li>сповіщення про нові події біля ваших адрес</li>
 <li>порівняння кількох адрес</li>
@@ -93,16 +94,16 @@
 </div>
 
 <div class="kartka kartka--holovna">
-<span class="kartka__nazva">Аналіз адреси</span>
-<span class="kartka__tsina" data-tsina="analiz">690 грн <small>разово</small></span>
+<span class="kartka__nazva">Довідка про будинок</span>
+<span class="kartka__tsina" data-tsina="dovidka">{{tsina.dovidka}} грн <small>разово</small></span>
 <ul>
-<li>чим місце відрізняється від району й міста</li>
-<li>чинні проблеми поруч і що змінилося за 10 років</li>
-<li>день і година, файл PDF, який можна переслати</li>
+<li>скарги 1551 і події з рішень судів біля будинку</li>
+<li>порівняння з сусідніми будинками</li>
+<li>Повний звіт «перед купівлею» — <span data-tsina="zvit">{{tsina.zvit}} грн</span>: ще й 10 років подій і карта району</li>
 </ul>
 <div class="kartka__knopky">
-<a href="#peredzamovlennya" class="knopka-povna" data-peredzamovyty="analiz">Передзамовити аналіз</a>
-<a href="zrazok.html" class="kartka__zrazok">Подивитися зразок звіту</a>
+<a href="#peredzamovlennya" class="knopka-povna" data-peredzamovyty="analiz">Передзамовити довідку</a>
+<a href="zrazok.html" class="kartka__zrazok">Подивитися зразок повного звіту</a>
 </div>
 </div>
 
@@ -119,12 +120,12 @@
 </div>
 <div class="ryadok">
 <div class="ryadok__liva"><b>Підписка</b><span>адреси, події, сповіщення</span></div>
-<span class="ryadok__tsina" data-tsina="pidpyska">399 грн/міс</span>
+<span class="ryadok__tsina" data-tsina="pidpyska">{{tsina.pidpyska}} грн/міс</span>
 </div>
 <div class="ryadok ryadok--holovnyi">
 <div class="ryadok__verkh">
-<div class="ryadok__liva"><b>Аналіз адреси</b><span>порівняння з районом, 10 років, PDF</span></div>
-<span class="ryadok__tsina" data-tsina="analiz">690 грн</span>
+<div class="ryadok__liva"><b>Довідка про будинок</b><span>повний звіт з 10 роками — {{tsina.zvit}} грн</span></div>
+<span class="ryadok__tsina" data-tsina="dovidka">{{tsina.dovidka}} грн</span>
 </div>
 <a href="zrazok.html">Подивитися зразок</a>
 </div>
@@ -142,8 +143,8 @@
 <div class="pole">
 <label for="shcho">Що цікавить</label>
 <select id="shcho" name="shcho">
-<option value="analiz" data-korotko="Аналіз адреси — 690 грн">Аналіз адреси — 690 грн</option>
-<option value="pidpyska" data-korotko="Підписка — 399 грн / міс">Підписка — 399 грн / місяць</option>
+<option value="analiz" data-korotko="Довідка — {{tsina.dovidka}} грн">Довідка про будинок — {{tsina.dovidka}} грн</option>
+<option value="pidpyska" data-korotko="Підписка — {{tsina.pidpyska}} грн / міс">Підписка — {{tsina.pidpyska}} грн / місяць</option>
 <option value="povidomyty" data-korotko="Лише повідомити">Лише повідомити про запуск</option>
 <option value="kompaniya" data-korotko="Для компанії">Для компанії</option>
 </select>
