@@ -1,0 +1,152 @@
+/* Сцена рушія «Вау» (ZAVDANNYA-127). Вигляд — «Індиго й м'ята» (MV-58), IBM Plex Sans (файли сайту).
+   Кадр 1080×1920 (= телефон 540 px × 2). Безпечна зона TikTok: важливе — між y 200 і 1500, x 60…900. */
+@font-face { font-family: Plex; font-weight: 400; font-display: block; src: url(../../site/sait/shryfty/ibm-plex-sans-cyrillic-400-normal.woff2) format('woff2'); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
+@font-face { font-family: Plex; font-weight: 400; font-display: block; src: url(../../site/sait/shryfty/ibm-plex-sans-latin-400-normal.woff2) format('woff2'); unicode-range: U+0000-00FF,U+2000-206F,U+2190-2193,U+2212,U+20B4; }
+@font-face { font-family: Plex; font-weight: 600; font-display: block; src: url(../../site/sait/shryfty/ibm-plex-sans-cyrillic-600-normal.woff2) format('woff2'); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
+@font-face { font-family: Plex; font-weight: 600; font-display: block; src: url(../../site/sait/shryfty/ibm-plex-sans-latin-600-normal.woff2) format('woff2'); unicode-range: U+0000-00FF,U+2000-206F,U+2190-2193,U+2212,U+20B4; }
+@font-face { font-family: Plex; font-weight: 700 900; font-display: block; src: url(../../site/sait/shryfty/ibm-plex-sans-cyrillic-700-normal.woff2) format('woff2'); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
+@font-face { font-family: Plex; font-weight: 700 900; font-display: block; src: url(../../site/sait/shryfty/ibm-plex-sans-latin-700-normal.woff2) format('woff2'); unicode-range: U+0000-00FF,U+2000-206F,U+2190-2193,U+2212,U+20B4; }
+
+:root { /* темна тема сайту (site/sait/kolory.json → збирач) */
+  --ground: #11142A; --surface: #1B1F39; --tint: #232849; --ink: #F0F1FA; --ink2: #D1D3E2; --muted: #A6A9C1;
+  --accent: #66E6BA; --accent2: #8A8BDD; --vyd: #B37BFF; --on-accent: #11142A; --ten: rgba(4, 6, 20, .55);
+}
+[data-t="svitla"] {
+  --ground: #F4F5FB; --surface: #FFFFFF; --tint: #EDEFFE; --ink: #1C1E2D; --ink2: #3E4155; --muted: #5F6275;
+  --accent: #4447A6; --accent2: #6066C1; --vyd: #3C3CA1; --on-accent: #FFFFFF; --ten: rgba(28, 30, 45, .18);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: var(--ground); }
+body { font-family: Plex, system-ui, sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+#kadr { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: var(--ground); }
+#karta, #nakladka, #mitky, #ui, #tekst, #vinietka, #spalakh { position: absolute; inset: 0; }
+#nakladka, #mitky, #ui, #tekst, #vinietka, #spalakh { pointer-events: none; }
+.maplibregl-ctrl-attrib { font: 400 20px/1.3 Plex, system-ui, sans-serif; opacity: .55; }
+.maplibregl-ctrl-bottom-right { bottom: 330px; }
+
+#vinietka { background: radial-gradient(ellipse 85% 70% at 50% 45%, transparent 55%, rgba(5, 6, 18, .55) 100%); }
+[data-t="svitla"] #vinietka { background: radial-gradient(ellipse 85% 70% at 50% 45%, transparent 60%, rgba(30, 32, 70, .18) 100%); }
+/* затемнення під текстом: карта строката, тож напис читається лише на спокійному тлі */
+.zat { position: absolute; left: 0; right: 0; pointer-events: none; opacity: 0; }
+#zat-v { top: 0; height: 1150px; background: linear-gradient(to bottom, rgba(10,12,32,.88) 0%, rgba(10,12,32,.72) 45%, rgba(10,12,32,0) 100%); }
+#zat-n { bottom: 0; height: 1250px; background: linear-gradient(to top, rgba(10,12,32,.9) 0%, rgba(10,12,32,.7) 50%, rgba(10,12,32,0) 100%); }
+#zat-f { inset: 0; background: rgba(10,12,32,.92); }
+[data-t="svitla"] #zat-v { background: linear-gradient(to bottom, rgba(244,245,251,.94) 0%, rgba(244,245,251,.78) 45%, rgba(244,245,251,0) 100%); }
+[data-t="svitla"] #zat-n { background: linear-gradient(to top, rgba(244,245,251,.94) 0%, rgba(244,245,251,.78) 50%, rgba(244,245,251,0) 100%); }
+[data-t="svitla"] #zat-f { background: rgba(244,245,251,.94); }
+#spalakh { background: #fff; opacity: 0; mix-blend-mode: screen; }
+
+#znak { position: absolute; left: 56px; top: 64px; display: flex; align-items: center; gap: 16px; font: 700 38px/1 Plex;
+  color: var(--ink); text-shadow: 0 2px 12px var(--ten); opacity: .92; }
+#znak svg { width: 60px; height: 60px; }
+#znak .z1 { fill: var(--accent2); } #znak .z2 { fill: var(--accent); }
+[data-t="svitla"] #znak .z1 { fill: #4447A6; } [data-t="svitla"] #znak .z2 { fill: #DFE3FC; }
+#dzherelo { position: absolute; left: 56px; right: 170px; bottom: 270px; font: 400 26px/1.35 Plex; color: var(--muted);
+  text-shadow: 0 1px 6px var(--ground); }
+
+/* ---------- кінетичний текст ---------- */
+.t { position: absolute; left: 60px; right: 150px; text-align: left; will-change: transform, opacity; }
+.t.c { text-align: center; left: 60px; right: 60px; }
+.t .w { display: inline-block; white-space: pre; will-change: transform, opacity, filter; }
+.t.hook { font: 900 112px/1.02 Plex; letter-spacing: -2px; color: #fff;
+  text-shadow: 0 6px 0 rgba(0,0,0,.25), 0 0 40px rgba(10, 12, 40, .8); }
+[data-t="svitla"] .t.hook { color: var(--ink); text-shadow: 0 0 30px #fff, 0 0 60px #fff; }
+.t.velykyi { font: 800 84px/1.08 Plex; letter-spacing: -1px; color: #fff; text-shadow: 0 0 36px rgba(10, 12, 40, .85), 0 4px 0 rgba(0,0,0,.2); }
+[data-t="svitla"] .t.velykyi { color: var(--ink); text-shadow: 0 0 26px #fff, 0 0 50px #fff; }
+.t.akcent .w.a, .t .w.a { color: var(--accent); }
+.t.pidpys { font: 700 54px/1.18 Plex; }
+.t.pidpys span.ramka { display: inline; background: var(--surface); color: var(--ink); padding: 6px 18px; border-radius: 18px;
+  box-decoration-break: clone; -webkit-box-decoration-break: clone; box-shadow: 0 8px 0 var(--ten); line-height: 1.5; }
+.t.pidpys .w.zaraz { color: var(--accent); }
+[data-t="svitla"] .t.pidpys .w.zaraz { color: var(--accent); }
+.t.lich { font: 900 230px/0.95 Plex; letter-spacing: -6px; color: var(--accent); font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 60px rgba(102, 230, 186, .35), 0 8px 0 rgba(0,0,0,.25); }
+[data-t="svitla"] .t.lich { text-shadow: 0 0 40px #fff; }
+.t.lich small { display: block; font: 700 56px/1.15 Plex; letter-spacing: 0; color: var(--ink); text-shadow: 0 0 24px var(--ground); margin-top: 10px; }
+.t.mala { font: 600 40px/1.25 Plex; color: var(--ink2); text-shadow: 0 0 18px var(--ground), 0 0 4px var(--ground); }
+.t.kartka { left: 70px; right: 70px; background: var(--surface); color: var(--ink); border-radius: 36px; padding: 44px 48px 40px;
+  box-shadow: 0 14px 0 var(--ten), 0 30px 80px rgba(0,0,0,.35); font: 500 50px/1.3 Plex; }
+.t.kartka b.zag { display: block; font: 700 32px/1.2 Plex; color: var(--accent2); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 18px; }
+[data-t="svitla"] .t.kartka b.zag { color: var(--accent); }
+.t.kartka i.dz { display: block; font: 400 28px/1.3 Plex; color: var(--muted); margin-top: 22px; font-style: normal; }
+.t.fin { text-align: center; left: 60px; right: 60px; }
+.t.fin .logo { width: 170px; height: 170px; margin: 0 auto 30px; display: block; }
+.t.fin .logo .z1 { fill: var(--accent2); } .t.fin .logo .z2 { fill: var(--accent); }
+.t.fin h2 { font: 800 74px/1.1 Plex; margin: 0 0 22px; color: var(--ink); }
+.t.fin p { font: 600 46px/1.25 Plex; margin: 0 0 34px; color: var(--ink2); }
+.t.fin .knopka { display: inline-block; background: var(--accent); color: var(--on-accent); font: 700 46px/1 Plex; padding: 30px 46px;
+  border-radius: 28px; box-shadow: 0 10px 0 rgba(0,0,0,.3); }
+.t.pytannia { font: 900 92px/1.05 Plex; text-align: center; left: 60px; right: 60px; color: #fff; text-shadow: 0 0 40px rgba(10,12,40,.9); }
+[data-t="svitla"] .t.pytannia { color: var(--ink); text-shadow: 0 0 30px #fff; }
+.t.vidlik { font: 900 420px/1 Plex; text-align: center; left: 0; right: 0; color: var(--accent); text-shadow: 0 0 80px rgba(102,230,186,.5); }
+.t.variant { left: 90px; right: 150px; font: 700 54px/1.2 Plex; background: var(--surface); color: var(--ink); border-radius: 26px; padding: 26px 34px;
+  box-shadow: 0 10px 0 var(--ten); }
+.t.variant b { display: inline-block; width: 64px; height: 64px; line-height: 64px; text-align: center; border-radius: 18px; background: var(--tint);
+  margin-right: 22px; color: var(--accent2); }
+.t.variant.pravylno { background: var(--accent); color: var(--on-accent); }
+.t.variant.pravylno b { background: rgba(255,255,255,.35); color: var(--on-accent); }
+.t.variant.ni { opacity: .35 !important; }
+.t.stovpchyky { left: 70px; right: 150px; }
+.t.stovpchyky .r { display: flex; align-items: center; gap: 18px; margin: 18px 0; font: 700 44px/1.1 Plex; color: var(--ink); text-shadow: 0 0 18px var(--ground); }
+.t.stovpchyky .r .s { height: 54px; border-radius: 14px; }
+.t.stovpchyky .r .n { font-variant-numeric: tabular-nums; min-width: 150px; }
+.t.godynnyk { font: 900 200px/1 Plex; text-align: center; left: 0; right: 0; color: #fff; font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 50px rgba(10,12,40,.9); }
+.t.godynnyk small { display: block; font: 700 50px/1.2 Plex; color: var(--accent); letter-spacing: 1px; }
+
+/* ---------- мітки на карті ---------- */
+.m { position: absolute; transform: translate(-50%, -100%); white-space: nowrap; font: 700 34px/1 Plex; padding: 12px 18px 12px 16px;
+  border-radius: 16px; background: var(--surface); color: var(--ink); box-shadow: 0 6px 0 var(--ten), 0 10px 30px rgba(0,0,0,.35); }
+.m::after { content: ''; position: absolute; left: 50%; bottom: -14px; width: 3px; height: 14px; margin-left: -1.5px; background: var(--surface); }
+.m i { display: inline-block; width: 18px; height: 18px; border-radius: 50%; margin-right: 12px; vertical-align: 1px; }
+.m.velyka { font: 800 46px/1 Plex; padding: 18px 26px; }
+.m.tsyfra b { color: var(--accent2); margin-left: 10px; }
+[data-t="svitla"] .m.tsyfra b { color: var(--accent); }
+
+/* ---------- макети інтерфейсу сайту (не скріншоти, а намальовані за STYL.md) ---------- */
+.ui { position: absolute; will-change: transform, opacity; }
+.ui.poshuk { left: 60px; right: 60px; top: 230px; height: 128px; background: var(--surface); border-radius: 30px; display: flex; align-items: center;
+  padding: 0 36px; font: 500 48px/1 Plex; color: var(--ink); box-shadow: 0 10px 0 var(--ten), 0 24px 60px rgba(0,0,0,.35); }
+.ui.poshuk .lupa { width: 52px; height: 52px; border: 7px solid var(--muted); border-radius: 50%; margin-right: 30px; position: relative; flex: none; }
+.ui.poshuk .lupa::after { content: ''; position: absolute; width: 7px; height: 26px; background: var(--muted); right: -14px; bottom: -22px; transform: rotate(-45deg); }
+.ui.poshuk .kursor { display: inline-block; width: 4px; height: 56px; background: var(--accent); margin-left: 4px; vertical-align: -10px; }
+.ui.poshuk .pidkazka { color: var(--muted); }
+.ui.spov { left: 50px; right: 50px; top: 200px; background: var(--surface); border-radius: 34px; padding: 30px 34px; display: flex; gap: 26px;
+  box-shadow: 0 12px 0 var(--ten), 0 30px 70px rgba(0,0,0,.4); }
+.ui.spov svg { width: 88px; height: 88px; flex: none; }
+.ui.spov .z1 { fill: #4447A6; } .ui.spov .z2 { fill: #66E6BA; }
+.ui.spov b { display: block; font: 700 40px/1.2 Plex; color: var(--ink); }
+.ui.spov span { display: block; font: 500 36px/1.3 Plex; color: var(--ink2); margin-top: 6px; }
+.ui.spov small { position: absolute; right: 34px; top: 30px; font: 500 28px/1 Plex; color: var(--muted); }
+.ui.panel { left: 40px; right: 40px; bottom: 300px; background: var(--surface); border-radius: 40px 40px 34px 34px; padding: 40px 44px;
+  box-shadow: 0 -10px 60px rgba(0,0,0,.35); color: var(--ink); }
+.ui.panel h3 { margin: 0 0 8px; font: 800 54px/1.1 Plex; }
+.ui.panel .pid { font: 500 32px/1.3 Plex; color: var(--muted); margin-bottom: 26px; }
+.ui.panel .ryad { display: flex; gap: 22px; margin-bottom: 20px; }
+.ui.panel .kl { flex: 1; background: var(--tint); border-radius: 24px; padding: 22px 24px; }
+.ui.panel .kl b { display: block; font: 800 64px/1 Plex; color: var(--accent2); font-variant-numeric: tabular-nums; }
+[data-t="svitla"] .ui.panel .kl b { color: var(--accent); }
+.ui.panel .kl span { display: block; font: 500 28px/1.25 Plex; color: var(--ink2); margin-top: 10px; }
+.ui.panel .knopka { display: block; text-align: center; margin-top: 12px; background: var(--accent); color: var(--on-accent); font: 700 42px/1 Plex;
+  padding: 30px; border-radius: 26px; box-shadow: 0 8px 0 rgba(0,0,0,.28); }
+.ui.dokument { left: 90px; right: 90px; top: 300px; height: 1150px; background: #fff; color: #1C1E2D; border-radius: 26px; padding: 56px 54px;
+  box-shadow: 0 30px 90px rgba(0,0,0,.45); overflow: hidden; }
+.ui.dokument h4 { font: 800 50px/1.15 Plex; margin: 0 0 8px; }
+.ui.dokument .pid { font: 500 28px/1.3 Plex; color: #5F6275; margin-bottom: 30px; }
+.ui.dokument .sek { border-top: 3px solid #EDEFFE; padding: 24px 0; }
+.ui.dokument .sek b { display: block; font: 700 34px/1.2 Plex; color: #4447A6; margin-bottom: 14px; }
+.ui.dokument .sek .smuha { height: 22px; border-radius: 11px; background: #EDEFFE; margin: 10px 0; }
+.ui.dokument .sek .bar { display: inline-block; height: 30px; border-radius: 8px; margin-right: 10px; background: #6066C1; vertical-align: bottom; }
+.ui.dokument .tsina { position: absolute; right: 40px; top: 40px; background: #66E6BA; color: #11142A; font: 800 40px/1 Plex; padding: 18px 24px; border-radius: 20px; }
+.ui.kanal { left: 60px; right: 60px; top: 260px; background: var(--surface); border-radius: 34px; padding: 34px 38px; color: var(--ink);
+  box-shadow: 0 12px 0 var(--ten), 0 30px 70px rgba(0,0,0,.4); }
+.ui.kanal .shapka { display: flex; align-items: center; gap: 22px; font: 700 40px/1.2 Plex; margin-bottom: 22px; }
+.ui.kanal .shapka svg { width: 80px; height: 80px; }
+.ui.kanal .shapka small { display: block; font: 500 28px/1.2 Plex; color: var(--muted); }
+.ui.kanal .dopys { background: var(--tint); border-radius: 24px 24px 24px 8px; padding: 24px 28px; font: 500 36px/1.35 Plex; margin-top: 18px; }
+.ui.kanal .dopys i { display: block; font-style: normal; font: 500 24px/1 Plex; color: var(--muted); text-align: right; margin-top: 10px; }
+.ui.kanal .z1 { fill: #4447A6; } .ui.kanal .z2 { fill: #66E6BA; }
+
+/* персонаж «Сота» (MV-148): знак-шестикутник без обличчя, з тінню-«клавішею» */
+.ui.sota svg { width: 100%; height: 100%; filter: drop-shadow(0 10px 0 rgba(0,0,0,.35)) drop-shadow(0 0 24px rgba(102,230,186,.35)); }
+.ui.sota .z1 { fill: #6066C1; } .ui.sota .z2 { fill: #66E6BA; }

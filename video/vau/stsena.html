@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<!-- Сцена рушія «Вау» (ZAVDANNYA-127). Кадр 1080×1920. Відкриває лише video/vau/rushii.py.
+     Кадр малює window.kadr(t) — час у секундах; жодних анімацій у реальному часі, тож результат не залежить від швидкості ПК. -->
+<title>Моя вулиця — сцена «Вау»</title>
+<link rel="stylesheet" href="../../site/hra/biblioteka/maplibre-gl.css">
+<link rel="stylesheet" href="stsena.css">
+</head>
+<body>
+<div id="kadr">
+  <div id="karta"></div>
+  <canvas id="nakladka" width="1080" height="1920"></canvas>
+  <div id="mitky"></div>
+  <div id="vinietka"></div>
+  <div id="zat-v" class="zat"></div><div id="zat-n" class="zat"></div><div id="zat-f" class="zat"></div>
+  <div id="ui"></div>
+  <div id="tekst"></div>
+  <div id="spalakh"></div>
+  <div id="znak"><svg viewBox="0 0 48 48" aria-hidden="true"><path class="z1" d="M24 2 43 13v22L24 46 5 35V13z"/><path class="z2" d="M24 15 32 19.5v9L24 33l-8-4.5v-9z"/></svg><span>Моя вулиця</span></div>
+  <div id="dzherelo"></div>
+</div>
+<script src="../../site/hra/biblioteka/maplibre-gl-csp.js"></script>
+<script src="stsena.js"></script>
+</body>
+</html>
