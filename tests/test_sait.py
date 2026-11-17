@@ -37,7 +37,7 @@ from html import escape as html_escape  # noqa: E402
 ZABORONENO_V_HTML = re.compile(r'ОСОБА_|АДРЕСА_|\bкв\.\s*№?\s*\d|квартир[аиіу]?\s*№?\s*\d', re.I)
 # «не «небезпечніше»» у легенді — обов'язковий підпис системи дизайну, не оцінка.
 DOZVOLENI_FRAZY = ('не «небезпечніше»',)
-ZABORONENI_SLOVA = re.compile(r'небезпечн|безпечн|рейтинг', re.I)
+ZABORONENI_SLOVA = re.compile(r'небезпечн|безпечн|рейтинг|страшн', re.I)   # «страшно» — Д-8, ZAVDANNYA-114
 POROZHNI_TEHY = {'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr'}
 
 SKHEMA = '''
@@ -434,6 +434,27 @@ class Sait(unittest.TestCase):
                     break
         self.assertEqual(znaideno[:10], [])
 
+    def test_storinka_vulytsi_bez_biblioteky_karty_na_starti(self):
+        """Т-12 (ZAVDANNYA-114): бібліотеку карти сторінка вулиці не вантажить одразу — karta.js довантажує її біля карти."""
+        p = next((self.sait / 'vulytsia').glob('*/index.html'))
+        t = p.read_text(encoding='utf-8')
+        if 'id="karta-vulytsi"' not in t:
+            self.skipTest('вулиця без карти')
+        self.assertNotIn('maplibre-gl-csp.js', t)
+        self.assertNotIn('maplibre-gl.css', t)
+        self.assertIn('IntersectionObserver', (KORIN / 'site' / 'sait' / 'karta.js').read_text(encoding='utf-8'))
+
+    def test_menyu_na_telefoni_maie_vsi_vitryny(self):
+        """Д-5 (ZAVDANNYA-114): що сховано на телефоні (lyshe-komp), те є під «Ще»."""
+        for p in [self.sait / 'index.html', self.sait / 'vulytsi' / 'index.html']:
+            t = p.read_text(encoding='utf-8')
+            nav = t[t.index('<nav class="menyu"'):t.index('</nav>', t.index('<nav class="menyu"'))]
+            skhovani = re.findall(r'<a class="lyshe-komp" href="([^"]+)"', nav)
+            self.assertTrue(skhovani, p)
+            shche = nav[nav.index('<details class="menyu__shche">'):]
+            for h in skhovani:
+                self.assertIn(f'href="{h}"', shche, f'{p}: {h}')
+
     def test_nemaye_sliv_pro_nebezpeku(self):
         znaideno = []
         for p in self.nashi_storinky():
@@ -644,7 +665,7 @@ class Sait(unittest.TestCase):
         self.assertIn('надійшло 7 звернень. Найчастіше — вода (5) і світло (2)', t)
         self.assertLess(t.index('>Вода<'), t.index('>Світло<'))      # теми — від більшої
         self.assertIn('Сусідній будинок у радіусі 300', t)
-        for k in ('Довідка — 199', '3 довідки — 449', 'Повний звіт — 599'):
+        for k in ('Довідка — 199', '3 довідки — 449', 'Повний звіт — 299'):
             self.assertIn(k, t)
         self.assertIn('Події за 2016–2023 з адресою будинку теж є — у підписці', t)
         tabl = t.split('Події з рішень')[1].split('</table>')[0]
@@ -692,7 +713,7 @@ class Sait(unittest.TestCase):
         for shl in ('rayony', 'rayon/pecherskyi', 'miy-budynok', 'osbb', 'sudova-praktyka', 'biznes', 'oplata', 'vydalyty', 'pro-dani'):
             self.assertTrue((self.sait / shl / 'index.html').is_file(), shl)
         mb = (self.sait / 'miy-budynok' / 'index.html').read_text(encoding='utf-8')
-        for k in ('199', '449', '599', '399', 'по 99', 'Підписка для рієлтора'):
+        for k in ('199', '449', '299', '399', 'по 99', 'Підписка для рієлтора'):
             self.assertIn(k, mb)
         # ZAVDANNYA-109, п. 5: період подій у продажу — з випуску (те саме правило, що в звіті), не «10 років»
         import sqlite3
@@ -725,7 +746,7 @@ class Sait(unittest.TestCase):
         і 0 за карту; 690 (MV-11) немає ніде; «Для бізнесу» — ціна за домовленістю з формою запиту."""
         import tsiny as T
         self.assertEqual({k: v for k, v in T.TSINY.items()},
-                         {'dovidka': 199, 'try': 449, 'zvit': 599, 'pidpyska': 399, 'dodatkova': 99, 'rieltor': 799,
+                         {'dovidka': 199, 'try': 449, 'zvit': 299, 'pidpyska': 399, 'dodatkova': 99, 'rieltor': 799,
                           'osbb': 1490, 'biznes': None})
         dozvoleni = T.dozvoleni_sumy()
         for f in self.storinky + sorted(self.sait.rglob('*.js')):

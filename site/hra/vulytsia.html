@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data: blob:; worker-src 'self'; child-src 'self'; connect-src 'self' https://tiles.openfreemap.org; form-action 'none'; base-uri 'none'">
-<meta name="robots" content="noindex">
-<title>Вулиця дня — Моя вулиця (прототип)</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data: blob:; worker-src 'self'; child-src 'self'; connect-src 'self' https://tiles.openfreemap.org https://*.supabase.co; form-action 'none'; base-uri 'none'">
+<title>Вулиця дня — Моя вулиця</title>
 <meta name="description" content="Щоденна гра на карті Києва: за підказками з даних знайдіть загадану вулицю.">
 <link rel="preload" href="../shryfty/ibm-plex-sans-cyrillic-700-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="../shryfty/ibm-plex-sans-cyrillic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <meta name="theme-color" content="#F4F5FB" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#11142A" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="../manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="../ikony/ikona-192.png">
 <link rel="stylesheet" href="biblioteka/maplibre-gl.css">
 <link rel="stylesheet" href="hra.css">
@@ -25,8 +25,10 @@
       <svg aria-hidden="true" width="24" height="26" viewBox="0 0 26 28"><path class="znak__sota" d="M13 1 L25 8 L25 20 L13 27 L1 20 L1 8 Z"></path><path class="znak__seredyna" d="M13 9 L18 12 L18 17 L13 20 L8 17 L8 12 Z"></path></svg>
       <span class="znak__nazva">Моя вулиця</span>
     </a>
-    <span class="mitka-demo">Прототип</span>
-    <a class="knopka-tekst" href="index.html">Де це було?</a>
+    <a class="knopka-tekst" href="index.html">
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"></path></svg>
+      Усі ігри
+    </a>
   </div>
 </header>
 
@@ -86,7 +88,7 @@
         <span class="pidpyska__opys" id="pidpyska-opys">Знайдіть свою вулицю — скільки подій і що її вирізняє, безкоштовно. Нове біля дому щотижня — у підписці «Мій район», 399 грн/міс.</span>
       </a>
       <p class="kolektsiia" id="kolektsiia"></p>
-      <button type="button" class="knopka-tekst" id="shche">Ще одна загадка (лише в прототипі)</button>
+      <p class="kinets-vd__zavtra" id="kinets-zavtra">Наступна вулиця — завтра. А поки — <a href="index.html">«Вгадай, де це було»</a>.</p>
     </section>
 
     <p class="vd__prymitka">Числа — події з рішень судів за <span id="vd-roky">2024–2026</span> роки: лише те, що дійшло до суду. Це не рейтинг і не оцінка безпеки вулиці. Без реєстрації — результат зберігається лише на вашому пристрої.</p>
@@ -95,6 +97,8 @@
 
 <p class="zavantazhennya" id="zavantazhennya" role="status">Завантажуємо вулиці…</p>
 
+<script src="../config.js"></script>
+<script src="../nadsylannya.js"></script>
 <script src="biblioteka/maplibre-gl-csp.js"></script>
 <script src="hra-yadro.js"></script>
 <script src="hra-karta.js"></script>

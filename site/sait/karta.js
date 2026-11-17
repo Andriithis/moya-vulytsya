@@ -1066,5 +1066,29 @@
   var m = document.getElementById('karta-mista');
   if (m) kartaMista(m);
   var v = document.getElementById('karta-vulytsi');
-  if (v) kartaVulytsi(v);
+  if (v) vidkladeno(v, kartaVulytsi);
+
+  // Т-12 (ZAVDANNYA-114): на сторінці вулиці карта нижче першого екрана — бібліотеку карти (≈ 1,4 МБ без стиснення)
+  // вантажимо, лише коли до карти лишилось ≈ 250 px прокрутки. Хто не догортав — не вантажить її зовсім.
+  function vidkladeno(konteiner, pochaty) {
+    var pochato = false;
+    function zavantazhyty() {
+      if (pochato) return;
+      pochato = true;
+      if (window.maplibregl) { pochaty(konteiner); return; }
+      var css = document.createElement('link');
+      css.rel = 'stylesheet'; css.href = KOREN + 'sait/biblioteka/maplibre-gl.css';
+      document.head.appendChild(css);
+      var s = document.createElement('script');
+      s.src = KOREN + 'sait/biblioteka/maplibre-gl-csp.js';
+      s.onload = function () { pochaty(konteiner); };
+      s.onerror = function () { pokazatyZbii(konteiner, false); };
+      document.head.appendChild(s);
+    }
+    if (!('IntersectionObserver' in window)) { zavantazhyty(); return; }
+    var sposterihach = new IntersectionObserver(function (zapysy) {
+      if (zapysy.some(function (z) { return z.isIntersecting; })) { sposterihach.disconnect(); zavantazhyty(); }
+    }, { rootMargin: '250px 0px' });
+    sposterihach.observe(konteiner);
+  }
 })();

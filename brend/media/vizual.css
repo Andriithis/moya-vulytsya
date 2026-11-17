@@ -1,0 +1,74 @@
+/* Візуал про місце для медіа — MV-113, ZAVDANNYA-113 (з прототипу ZAVDANNYA-91). Вигляд — docs/STYL.md (MV-58): «Індиго й м'ята», IBM Plex Sans,
+   плашки — клавіші. Розміри в пікселях макета; рендер ×2: 540×540 → 1080×1080, 960×540 → 1920×1080. */
+.polotno.f1x1 { width: 540px; height: 540px; }
+.polotno.f16x9 { width: 960px; height: 540px; }
+.polotno { padding: 28px 30px 20px; display: flex; flex-direction: column; }
+.verkh { display: flex; justify-content: space-between; align-items: center; }
+.nazva { margin: 14px 0 2px; }
+.pidpys { color: var(--muted); }
+.niz { margin-top: auto; padding-top: 10px; border-top: 1px solid var(--line); display: flex; justify-content: space-between;
+  align-items: flex-end; gap: 14px; }
+.niz .caption { font-size: 11.5px; line-height: 16px; }
+.dzherelo { font: 700 13px/18px Plex, system-ui, sans-serif; color: var(--ink); }
+.mitka.posylannia { white-space: nowrap; }
+.ryad { display: flex; gap: 22px; flex: 1; min-height: 0; margin-top: 14px; }
+.stovp { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.holovne { padding: 14px 18px; display: flex; gap: 16px; align-items: center; }
+.holovne .number { font-size: 46px; line-height: 50px; color: var(--accent); }
+.holovne .body-s { color: var(--ink-2); }
+.hrupa { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; align-items: baseline; }
+.hrupa b { font: 600 14px/20px Plex, system-ui, sans-serif; }
+.hrupa .chysla { font: 400 13px/18px Plex, system-ui, sans-serif; color: var(--muted); font-variant-numeric: tabular-nums; }
+.hrupa .chysla strong { color: var(--ink); font-weight: 700; }
+.smuhy { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 2px; }
+.smuha { height: 8px; border-radius: 4px; background: var(--data-4); }
+.smuha.kyiv { background: var(--line-strong); height: 5px; }
+.lehenda { display: flex; gap: 14px; align-items: center; font: 400 12px/16px Plex, system-ui, sans-serif; color: var(--muted); }
+.lehenda i { display: inline-block; width: 16px; height: 8px; border-radius: 4px; vertical-align: middle; margin-right: 5px; }
+.shkala { display: inline-flex; gap: 3px; align-items: center; }
+.shkala svg { display: block; }
+.karta { position: relative; flex: none; }
+.karta svg { display: block; }
+.karta .mitka-mistsia { position: absolute; transform: translate(-50%, -100%); white-space: nowrap; background: var(--surface);
+  border: 1.5px solid var(--mezha); box-shadow: 0 3px 0 var(--bort); border-radius: var(--radius-pill); padding: 3px 11px;
+  font: 600 13px/18px Plex, system-ui, sans-serif; }
+.karta .kolo-pidpys { position: absolute; font: 600 11px/14px Plex, system-ui, sans-serif; color: var(--accent-strong); }
+/* Слайди */
+.slaid { padding: 34px 44px 22px; }
+.slaid .nomer { font: 600 12px/16px Plex, system-ui, sans-serif; color: var(--muted); }
+.slaid h2 { margin: 10px 0 4px; }
+.velyke { font: 800 120px/120px Plex, system-ui, sans-serif; color: var(--accent); letter-spacing: -0.02em; }
+.porivniannia { display: flex; gap: 16px; margin-top: 18px; }
+.porivniannia .kartka { padding: 14px 18px; flex: 1; }
+.porivniannia .number { color: var(--accent); }
+.roky { display: flex; gap: 22px; align-items: flex-end; height: 250px; margin-top: 20px; }
+.roky .st { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 6px; }
+.roky .st i { display: block; width: 100%; border-radius: var(--radius-s) var(--radius-s) 0 0; background: var(--data-4); }
+.roky .st i.nep { background: var(--data-2); outline: 1px dashed var(--line-strong); outline-offset: -1px; }
+.roky .st span { font: 700 18px/22px Plex, system-ui, sans-serif; }
+.roky .st em { font: 400 13px/18px Plex, system-ui, sans-serif; color: var(--muted); font-style: normal; }
+.hodyny { display: flex; gap: 4px; align-items: flex-end; height: 220px; margin-top: 18px; }
+.hodyny i { flex: 1; background: var(--data-3); border-radius: 3px 3px 0 0; }
+.hodyny-os { display: flex; gap: 4px; }
+.hodyny-os span { flex: 1; text-align: center; font: 400 11px/14px Plex, system-ui, sans-serif; color: var(--muted); }
+.statti { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+.statti .kartka { padding: 9px 16px; display: flex; gap: 16px; align-items: center; }
+.statti .number { font-size: 26px; line-height: 30px; color: var(--accent); min-width: 56px; text-align: right; }
+.metod { columns: 2; column-gap: 32px; margin-top: 14px; }
+.metod p { margin: 0 0 10px; break-inside: avoid; }
+
+.f1x1 .nazva { font-size: 30px; line-height: 36px; margin-top: 10px; }
+.f1x1 .ryad { gap: 16px; margin-top: 10px; }
+.f1x1 .stovp { gap: 7px; }
+.f1x1 .holovne { padding: 10px 14px; gap: 12px; }
+.f1x1 .holovne .number { font-size: 38px; line-height: 42px; }
+.f1x1 .holovne .body-s { font-size: 13.5px; line-height: 19px; }
+.f1x1 .hrupa b { font-size: 13px; line-height: 18px; }
+.f1x1 .hrupa .chysla { font-size: 12px; }
+
+.verkh .micro { margin-right: 46px; }
+.karta .kolo-pidpys { white-space: nowrap; }
+/* 1:1 — посилання на сторінку місця довге: підпис і посилання одне під одним */
+.f1x1 .niz { flex-direction: column; align-items: flex-start; gap: 6px; padding-top: 8px; }
+.f1x1 .niz .caption { font-size: 11px; line-height: 15px; }
+.f1x1 .mitka.posylannia { font-size: 12px; }
