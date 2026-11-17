@@ -9,6 +9,7 @@
 //   GET  /dovidka/<id>/?k=<ключ>           довідка: ключ із листа або вхід у кабінет власника
 //   /kabinet/…                             вхід за посиланням на пошту, мої довідки, «Стежу», підписка, видалення даних
 //   /api/vnutr/…                           для видавача (site/prodazh/vydavach.py), заголовок Authorization: Bearer VYDACHA_KLIUCH
+//   POST /api/admin/vydalyty               видалення даних на запит людини (партнер), Authorization: Bearer ADMIN_KLIUCH
 import TS from './tsiny.js';
 import { vypadkovyi, sha256, rivni } from './bezpeka.js';
 import { perekhidnyk, pidpysTestu, PomylkaPidpysu, NePidtrymano } from './perekhidnyky.js';
@@ -229,12 +230,7 @@ async function diiaKabinetu(request, env, url, ja, dia) {
     return pereity(url, '/kabinet/', { 'set-cookie': 'mv_sesiia=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax' });
   }
   if (dia === 'vydalyty' && f.pidtverdzhuiu === 'tak') {
-    for (const p of (await L.stanPidpysok(env, ja.id)).filter((x) => x.status === 'aktyvna')) {
-      const zam = await L.odyn(env, 'SELECT * FROM zamovlennia WHERE id = ?', p.zamovlennia_id);
-      let ok = false;
-      try { ok = await perekhidnyk(env, zam.servis)?.skasuvaty({ zamovlennia_id: zam.id, env }); } catch { ok = false; }
-      if (!ok) return kabinet(env, ja, 'Спершу треба скасувати підписку, а сервіс не відповів. Спробуйте ще раз.');
-    }
+    if (!(await skasuvatyVsi(env, ja.id))) return kabinet(env, ja, 'Спершу треба скасувати підписку, а сервіс не відповів. Спробуйте ще раз.');
     await L.vydalytyDani(env, ja.id);
     return S.storinka('Дані видалено', `<section class="zaholovok"><h1>Дані видалено</h1>
 <p>Пошту, довідки, адреси «Стежу» й вхід видалено. Записи про оплату (сума, дата, товар) партнер зберігає для обліку — без пошти.</p></section>`,
@@ -263,6 +259,33 @@ async function vnutr(request, env, url, shliakh) {
   return new Response('ні', { status: 404 });
 }
 
+// ---------------------------------------------------------------- для партнера: видалення на запит
+
+async function skasuvatyVsi(env, korystuvach_id) {
+  for (const p of (await L.stanPidpysok(env, korystuvach_id)).filter((x) => x.status === 'aktyvna')) {
+    const zam = await L.odyn(env, 'SELECT * FROM zamovlennia WHERE id = ?', p.zamovlennia_id);
+    let ok = false;
+    try { ok = await perekhidnyk(env, zam.servis)?.skasuvaty({ zamovlennia_id: zam.id, env }); } catch { ok = false; }
+    if (!ok) return false;
+    await L.zrobyty(env, `UPDATE pidpysky SET status = 'skasovana', skasovano = ? WHERE id = ?`, L.teper(env), p.id);
+  }
+  return true;
+}
+
+async function admin(request, env, shliakh) {
+  const avt = (request.headers.get('authorization') || '').replace(/^Bearer /, '');
+  if (!env.ADMIN_KLIUCH || !rivni(avt, env.ADMIN_KLIUCH)) return new Response('ні', { status: 401 });
+  if (shliakh === 'vydalyty' && request.method === 'POST') {
+    const poshta = L.chystaPoshta((await forma(request)).poshta);
+    const k = poshta && await L.odyn(env, 'SELECT * FROM korystuvachi WHERE poshta = ?', poshta);
+    if (!k) return Response.json({ vydaleno: false, prychyna: 'takoi poshty nemaie' });
+    if (!(await skasuvatyVsi(env, k.id))) return Response.json({ vydaleno: false, prychyna: 'servis ne skasuvav pidpysku' }, { status: 502 });
+    await L.vydalytyDani(env, k.id);
+    return Response.json({ vydaleno: true });
+  }
+  return new Response('ні', { status: 404 });
+}
+
 // ---------------------------------------------------------------- вхід
 
 /** Відповідь сервера продажу або null (тоді — звичайний сайт). */
@@ -281,6 +304,8 @@ export async function prodazh(request, env) {
   if (r && m === 'POST') return spovishchennia(request, env, r[1]);
   r = s.match(/^\/api\/vnutr\/(.+)$/);
   if (r) return vnutr(request, env, url, r[1]);
+  r = s.match(/^\/api\/admin\/(.+)$/);
+  if (r) return admin(request, env, r[1]);
   r = s.match(/^\/dovidka\/(d[a-z2-7]+)\/?$/);
   if (r && m === 'GET') return vidkrytyDovidku(request, env, url, r[1]);
   if (s === '/kabinet/vkhid' && m === 'POST') return nadislatyVkhid(request, env, url);

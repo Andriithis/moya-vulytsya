@@ -391,3 +391,15 @@ test('SHA3-256 на чистому JS дорівнює node:crypto', () => {
     assert.equal(Buffer.from(sha3_256(new TextEncoder().encode(t))).toString('hex'), createHash('sha3-256').update(t).digest('hex'));
   }
 });
+
+test('видалення на запит через партнера: лише з ключем партнера; підписку спершу скасовано', async () => {
+  const env = seredovyshche({ ADMIN_KLIUCH: 'admin-kliuch' });
+  await oplatyty(env, await zamovyty(env, 'pidpyska', null, 'olia@poshta.ua'));
+  const z = (k) => zapyt(env, 'POST', '/api/admin/vydalyty', { forma: { poshta: 'olia@poshta.ua' }, origin: null, zaholovky: { authorization: `Bearer ${k}` } });
+  assert.equal((await z('ne-toi')).r.status, 401);
+  assert.equal((await z('vydacha-kliuch')).r.status, 401, 'ключ видавача не дає видаляти');
+  const { text } = await z('admin-kliuch');
+  assert.deepEqual(JSON.parse(text), { vydaleno: true });
+  assert.equal(sql(env, 'SELECT COUNT(*) n FROM korystuvachi')[0].n, 0);
+  assert.equal(sql(env, 'SELECT status FROM pidpysky')[0].status, 'skasovana');
+});
