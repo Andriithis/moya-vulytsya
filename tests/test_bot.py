@@ -54,6 +54,7 @@ INDEKS = {
         bud('проспект Перемоги', '10-А', 'prospekt-peremohy', 'Шевченківський', 50.4560, 30.4700, ph={'mai': 2}, pv=2),
         bud('Садова вулиця', '3', 'sadova', 'Дарницький', 50.40, 30.60, sk={'світло': 1}),
         bud('вулиця Садова', '3', 'sadova-2', 'Оболонський', 50.50, 30.50, sk={'вода': 2}),
+        bud('вулиця Будівельників', '13-15', 'budivelnykiv', 'Дніпровський', 50.45, 30.62, sk={'вода': 1}),
         bud('проспект Степана Бандери', '12/4', 'prospekt-stepana-bandery', 'Оболонський', 50.49, 30.49, ph={'dtp': 1}, pv=1),
     ],
     'vulytsi': [
@@ -111,6 +112,11 @@ class Adresa(unittest.TestCase):
         self.assertEqual(len(self.p.znaity('Перемоги 10-А').budynky), 1)
         self.assertEqual(len(self.p.znaity('Перемоги 10 a').budynky), 1)        # латинська «a»
         self.assertEqual(len(self.p.znaity('Бандери 12/4').budynky), 1)       # частина назви
+
+    def test_nazva_na_bud_i_diapazon(self):
+        # «Будівельників» не плутати зі словом «буд.»; «13-15» — номер-діапазон
+        self.assertEqual(len(self.p.znaity('вул. Будівельників, буд. 13-15').budynky), 1)
+        self.assertEqual(A.rozibraty('Будівельників 13-15').vulytsia, ['будівельників'])
 
     def test_bez_nomera_i_nevidoma(self):
         r = self.p.znaity('Хрещатик')
