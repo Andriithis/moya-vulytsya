@@ -198,6 +198,12 @@ def storinka(*, shlyakh: str, title: str, opys: str, tilo: str, adresa_saitu: st
         klas = ' class="lyshe-komp"' if lyshe_komp else ''
         cur = ' aria-current="page"' if h == aktyvne else ''
         punkty.append(f'<a{klas} href="/{h}"{cur}>{n}</a>')
+    # Д-1 (ZAVDANNYA-110): Google обрізає заголовки за ≈ 70 знаків і описи за ≈ 170 — довгим знімаємо « | Моя вулиця»
+    # (назва сайту є в og:site_name), опис скорочуємо по слову.
+    if len(title) > 70 and title.endswith(' | Моя вулиця'):
+        title = title[:-len(' | Моя вулиця')]
+    if len(opys) > 170:
+        opys = opys[:169].rsplit(' ', 1)[0].rstrip(',;:—–-') + '…'
     css_mapy = '<link rel="stylesheet" href="/sait/biblioteka/maplibre-gl.css">\n' if mapa else ''
     js = ''.join(f'<script src="{s}"></script>\n' for s in skrypty)
     robots = '' if indeksuvaty else '<meta name="robots" content="noindex, follow">\n'
@@ -293,7 +299,7 @@ def storinka_vulytsi(dn: D.Dani, v: D.Vulytsia, pr: dict, adresa_saitu: str, sus
     vsogo = pr['vsogo']
     roky_t = PERIOD_VIDKRYTYI
     rayon_t = f'{rayon} район' if rayon else 'Київ'
-    title = f'{v.nazva}, Київ: що відбувалося — {podii_slovo(vsogo)} з судових рішень {roky_t} | Моя вулиця'
+    title = f'{v.nazva}, Київ: {podii_slovo(vsogo)} з рішень судів {roky_t} | Моя вулиця'
     vydy_t = ', '.join(x['vyd'].lower() for x in pr['vyriznennia'][:2])
     opys = (f'{v.nazva} ({rayon_t}): {podii_slovo(vsogo)} з судових рішень за {roky_t}. Роки, дні й години' + (f', що вирізняє вулицю: {vydy_t}' if vydy_t else '') + '.')
 
@@ -538,7 +544,12 @@ def holovna(dn: D.Dani, vulytsi: list, rayony: list, adresa_saitu: str) -> str:
 </section>
 <section class="rozdil"><h2 class="mikro">Вулиці за районами</h2>
 <nav class="rayony" aria-label="Райони">{"".join(f'<a href="/rayon/{slug_rayonu(r)}/">{e(r)}</a>' for r in rayony)}</nav></section>'''
-    return storinka(shlyakh='/', title='Моя вулиця — що суди розповіли про вашу вулицю у Києві',
+    import storinky_mv100 as M
+    ld = M.ld_skrypt({'@context': 'https://schema.org', '@type': 'WebSite', 'name': 'Моя вулиця', 'url': adresa_saitu + '/',
+                      'inLanguage': 'uk'},
+                     {'@context': 'https://schema.org', '@type': 'Organization', 'name': 'Моя вулиця', 'url': adresa_saitu + '/',
+                      'logo': adresa_saitu + '/zahlushka/ikony/ikona-192.png'})
+    return storinka(shlyakh='/', title='Моя вулиця — що суди розповіли про вашу вулицю у Києві', dodatkovo_head=ld,
                     opys='Карта Києва з подіями із судових рішень: скільки, коли, яких видів — на кожній вулиці. Покажчик вулиць, гра.',
                     tilo=tilo, adresa_saitu=adresa_saitu, mapa=True, pered_main=ekran_karty(dn),
                     skrypty=('/sait/biblioteka/maplibre-gl-csp.js', '/sait/karta.js'))
@@ -822,7 +833,9 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
     # Покажчик.
     zapysaty(vykhid / 'vulytsi' / 'index.html', storinka_pokazhchyka(vulytsi, rayony, adresa_saitu))
     for r in rayony:
-        zapysaty(vykhid / 'vulytsi' / slug_rayonu(r) / 'index.html', storinka_pokazhchyka(za_rayonom[r], rayony, adresa_saitu, r))
+        # Д-6 (ZAVDANNYA-110): у покажчику району — лише вулиці з подіями за відкриті роки (без «0»)
+        zapysaty(vykhid / 'vulytsi' / slug_rayonu(r) / 'index.html',
+                 storinka_pokazhchyka([v for v in za_rayonom[r] if v.nedavni], rayony, adresa_saitu, r))
         adresy.append(f'/vulytsi/{slug_rayonu(r)}/')
     # Т-2 (ZAVDANNYA-110): у пошук — і старі назви з довідника перейменувань («Червоноармійська» → Велика Васильківська).
     stari_nazvy = defaultdict(set)

@@ -305,6 +305,8 @@ def storinka_budynku(b: dict, bud: Budynky, adresa_saitu: str, susidni: list) ->
              'geo': {'@type': 'GeoCoordinates', 'latitude': round(b['lat'], 5), 'longitude': round(b['lon'], 5)}}
     if b['rayon']:
         place['containedInPlace'] = {'@type': 'Place', 'name': f'{b["rayon"]} район, Київ'}
+    if re.match(r'^\d{4}-\d{2}-\d{2}$', bud.versiia or ''):
+        place['dateModified'] = bud.versiia           # Д-2 (ZAVDANNYA-110), як на сторінці вулиці (MV-101)
     title = f'{b["adresa"]}, Київ: скарги 1551 і події з рішень судів | Моя вулиця'
     opys = (f'{b["adresa"]} ({rayon_t}): {skarhy_slovo(b["skarh"])} до 1551 за 12 місяців'
             + (f' (найчастіше — {next(iter(b["skarhy"]))})' if b['skarh'] else '')
@@ -332,7 +334,7 @@ def kartynka_budynku(b: dict, kolory: dict) -> bytes:
 # ---------------------------------------------------------------- сторінка району
 
 def storinka_rayonu(dn: D.Dani, rayon: str, vulytsi: list, bud: Budynky | None, podii_hrupy: Counter,
-                    adresa_saitu: str) -> str:
+                    adresa_saitu: str, kolory: dict | None = None, vykhid: Path | None = None) -> str:
     slug = Z.slug_rayonu(rayon)
     roky_t = Z.PERIOD_VIDKRYTYI
     vsogo = sum(podii_hrupy.values())
@@ -368,7 +370,7 @@ def storinka_rayonu(dn: D.Dani, rayon: str, vulytsi: list, bud: Budynky | None, 
                       f'<div class="por__ryad por__ryad--1"><span class="por__nazva">{e(z_velykoi(h))}</span>'
                       f'<span class="por__smuha"><i class="sh-{shyryna(n, maks)} por--tut"></i></span><b>{chyslo(n)}</b></div>'
                       for h, n in skarhy.most_common(10)) + '</div></section>')
-    vs = sorted(vulytsi, key=lambda v: (Z.kliuch_abetky(v.korotka), v.slug))
+    vs = sorted((v for v in vulytsi if v.nedavni), key=lambda v: (Z.kliuch_abetky(v.korotka), v.slug))   # Д-6: без «0»
     ch.append(f'<section class="rozdil"><h2>Вулиці району</h2><p class="rozdil__pidpys">За абеткою; поруч — подій за {roky_t}. '
               f'<a href="/vulytsi/{slug}/">Покажчик вулиць району</a>.</p>{Z.spysok_vulyts(vs)}</section>')
     ch.append(f'<section class="rozdil"><h2>Мій будинок</h2><p class="rozdil__pidpys">Знайдіть свою вулицю — на її сторінці є '
@@ -378,8 +380,17 @@ def storinka_rayonu(dn: D.Dani, rayon: str, vulytsi: list, bud: Budynky | None, 
             f'{chyslo(len(vulytsi))} вулиць зі своєю сторінкою.')
     place = {'@context': 'https://schema.org', '@type': 'Place', 'name': f'{rayon} район, Київ',
              'url': f'{adresa_saitu}/rayon/{slug}/', 'containedInPlace': {'@type': 'City', 'name': 'Київ'}}
+    kartynka = None
+    if kolory is not None and vykhid is not None:      # Д-2 (ZAVDANNYA-110): картинка для поширення — лише числа
+        import kartynky as K
+        chysla = [(chyslo(vsogo), f'{vidminok(vsogo, ("подія", "події", "подій"))} з рішень судів за {roky_t}')]
+        if skarhy:
+            n = sum(skarhy.values())
+            chysla.append((chyslo(n), f'{vidminok(n, ("звернення", "звернення", "звернень"))} до 1551 за 12 місяців'))
+        Z.zapysaty_bajty(vykhid / 'rayon' / slug / 'kartynka.png', K.kartynka('Київ · район', f'{rayon} район', chysla, kolory))
+        kartynka = (f'/rayon/{slug}/kartynka.png', f'{rayon} район: ' + ', '.join(f'{a} {p}' for a, p in chysla))
     return Z.storinka(shlyakh=f'/rayon/{slug}/', title=title, opys=opys, tilo='\n'.join(ch), adresa_saitu=adresa_saitu,
-                      aktyvne='vulytsi/', dodatkovo_head=ld_skrypt(place, kryhty_ld(kryhty, adresa_saitu)))
+                      aktyvne='vulytsi/', dodatkovo_head=ld_skrypt(place, kryhty_ld(kryhty, adresa_saitu)), kartynka=kartynka)
 
 
 def storinka_rayoniv(rayony: list, adresa_saitu: str) -> str:
@@ -640,7 +651,7 @@ def zibraty_vse(dn: D.Dani, rayony: list, za_rayonom: dict, bud: Budynky | None,
     pr = podii_rayoniv(dn)
     for r in rayony:
         Z.zapysaty(vykhid / 'rayon' / Z.slug_rayonu(r) / 'index.html',
-                   storinka_rayonu(dn, r, za_rayonom[r], bud, pr.get(r, Counter()), adresa_saitu))
+                   storinka_rayonu(dn, r, za_rayonom[r], bud, pr.get(r, Counter()), adresa_saitu, kolory, vykhid))
         adresy.append(f'/rayon/{Z.slug_rayonu(r)}/')
     Z.zapysaty(vykhid / 'rayony' / 'index.html', storinka_rayoniv(rayony, adresa_saitu))
     adresy.append('/rayony/')

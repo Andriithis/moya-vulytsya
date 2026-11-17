@@ -152,7 +152,10 @@ def stvoryty_pereimenuvannya(shlyakh: Path) -> None:
     # шапка — як у dani-edrsr/config/pereimenuvannia-kyiv.csv
     shlyakh.write_text('stara_nazva,nova_nazva,typ,rayon,nomer_rishennia,data_rishennia,posylannia,perelik_kmda,prymitka\n'
                        'Червоноармійська,Велика Васильківська,вулиця,,,,https://example.org,так,тест\n'
-                       'Червонозоряний,Валерія Лобановського,проспект,,,,https://example.org,так,тест\n', encoding='utf-8')
+                       'Червонозоряний,Валерія Лобановського,проспект,,,,https://example.org,так,тест\n'
+                       # Т-8 (ZAVDANNYA-110): стара назва, перейменована по-різному, — сторінка «оберіть» (як 24 на справжньому)
+                       'Старокиївська,Хрещатик,вулиця,,,,https://example.org,так,тест\n'
+                       'Старокиївська,Велика Васильківська,вулиця,,,,https://example.org,так,тест\n', encoding='utf-8')
 
 
 class PerevirkaHtml(html.parser.HTMLParser):
@@ -232,6 +235,11 @@ def perevirka_storinky(tekst: str) -> list[str]:
     except Exception as e:                   # noqa: BLE001 — html5lib кидає ParseError
         pomylky.append(f'html5lib: {e}')
     return pomylky
+
+
+def sluzhbova(t: str) -> bool:
+    """Переадресація зі старої назви або сторінка «перейменовано по-різному — оберіть» (Т-8): без «Оновлено» й картинки."""
+    return 'http-equiv="refresh"' in t or 'їх перейменовано по-різному' in t
 
 
 def vidbytok_teky(teka: Path) -> str:
@@ -716,13 +724,46 @@ class Sait(unittest.TestCase):
         self.assertIn('799\u00a0грн на місяць', mb)
         self.assertIn('1\u00a0490\u00a0грн на рік', (self.sait / 'osbb' / 'index.html').read_text(encoding='utf-8'))
 
+    def test_dribnytsi_d1_d2_d6(self):
+        """ZAVDANNYA-110: заголовки ≤ 70 знаків і описи ≤ 170 (Д-1); dateModified будинку, картинка району, розмітка
+        WebSite й Organization на головній (Д-2); у покажчику району немає вулиць з «0» (Д-6)."""
+        dovgi = []
+        for p in self.nashi_storinky():
+            t = p.read_text(encoding='utf-8')
+            tl = html.unescape(re.search(r'<title>([^<]*)</title>', t).group(1))
+            op = html.unescape(re.search(r'<meta name="description" content="([^"]*)">', t).group(1))
+            if len(tl) > 70 and not tl.endswith(' — тепер'):
+                if len(tl) - len(tl.split(',')[0]) > 70:      # довга сама назва вулиці — не наша вина
+                    dovgi.append((str(p.relative_to(self.sait)), tl))
+            if len(op) > 170:
+                dovgi.append((str(p.relative_to(self.sait)), op))
+        self.assertEqual(dovgi[:5], [])
+        h = (self.sait / 'index.html').read_text(encoding='utf-8')
+        self.assertIn('"@type": "WebSite"', h)
+        self.assertIn('"@type": "Organization"', h)
+        for r in self.sait.glob('rayon/*/index.html'):
+            self.assertIn('og:image', r.read_text(encoding='utf-8'), r)
+            self.assertTrue((r.parent / 'kartynka.png').is_file())
+        if not self.spravzhnii:
+            self.assertIn('"dateModified": "2026-11-08"', self.budynok('khreshchatyk/22'))
+        for p in self.sait.glob('vulytsi/*/index.html'):
+            self.assertNotRegex(p.read_text(encoding='utf-8'), r'<small>0</small>', p)
+
+    def test_t8_storinka_vyboru_ye(self):
+        """Т-8: штучна база тепер має сторінку «оберіть» — ту, на якій тести падали на справжньому випуску."""
+        if self.spravzhnii:
+            self.skipTest('лише для штучної бази')
+        t = (self.sait / 'vulytsia' / 'starokyivska' / 'index.html').read_text(encoding='utf-8')
+        self.assertTrue(sluzhbova(t))
+        self.assertIn('/vulytsia/khreshchatyk/', t)
+
     def test_onovleno_na_budynku_i_vulytsi(self):
         """ZAVDANNYA-88, п. 3: «Оновлено: місяць рік» на сторінках будинку й вулиці — з дати випуску."""
         versiia = self.zvit['versiia']
         m = re.match(r'(\d{4})-(\d{2})', versiia)
         ochikuvano = f'Оновлено: {self.zs.MISIATSI[int(m.group(2)) - 1]} {m.group(1)}'
         storinky = [p for p in self.storinky if p.relative_to(self.sait).parts[0] in ('budynok', 'vulytsia')
-                    and 'http-equiv="refresh"' not in p.read_text(encoding='utf-8')]
+                    and not sluzhbova(p.read_text(encoding='utf-8'))]
         self.assertTrue(any(p.parts[-4] == 'budynok' or p.relative_to(self.sait).parts[0] == 'budynok' for p in storinky))
         for p in storinky:
             self.assertIn(ochikuvano, p.read_text(encoding='utf-8'), p.relative_to(self.sait))
@@ -740,7 +781,7 @@ class Sait(unittest.TestCase):
             t = p.read_text(encoding='utf-8')
             chastyny = p.relative_to(self.sait).parts
             potribna = chastyny[0] in ('budynok', 'vulytsia', 'miy-budynok', 'osbb', 'sudova-praktyka', 'biznes') \
-                and 'http-equiv="refresh"' not in t
+                and not sluzhbova(t)
             m = re.search(r'<meta property="og:image" content="([^"]+)">', t)
             if not potribna:
                 continue
@@ -877,6 +918,98 @@ def brauzer_dlya_karty() -> str | None:
 
 
 BRAUZER = brauzer_dlya_karty() if YE_H3 else None
+
+
+@unittest.skipUnless(BRAUZER, 'немає Playwright або Chrome/Edge, або h3 — перевірку в браузері пропущено')
+class SaitUBrauzeri(unittest.TestCase):
+    """ZAVDANNYA-110: пошук будинку (Т-2), оплата пам'ятає вибір (Т-3), телефон — ширина (Т-5), назва логотипа (Т-6),
+    кнопки карти (Т-11)."""
+
+    @classmethod
+    def setUpClass(cls):
+        import functools
+        import http.server
+        import threading
+        import zibraty_sait
+        from playwright.sync_api import sync_playwright
+        cls.tmp = tempfile.TemporaryDirectory()
+        tmp = Path(cls.tmp.name)
+        stvoryty_bazu(tmp / 'events.db')
+        stvoryty_pereimenuvannya(tmp / 'pereim.csv')
+        (tmp / 'budynky.json').write_text(json.dumps(BUDYNKY, ensure_ascii=False), encoding='utf-8')
+        zibraty_sait.zibraty_sait(tmp / 'events.db', tmp / 'sait', tmp / 'pereim.csv', KORIN / 'data' / 'borders.json',
+                                  budynky=tmp / 'budynky.json')
+        http.server.SimpleHTTPRequestHandler.log_message = lambda *a: None
+        cls.server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), functools.partial(
+            http.server.SimpleHTTPRequestHandler, directory=str(tmp / 'sait')))
+        threading.Thread(target=cls.server.serve_forever, daemon=True).start()
+        cls.url = f'http://127.0.0.1:{cls.server.server_address[1]}'
+        cls.pw = sync_playwright().start()
+        cls.b = cls.pw.chromium.launch(executable_path=BRAUZER, args=['--no-sandbox'])
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.b.close()
+        cls.pw.stop()
+        cls.server.shutdown()
+        cls.tmp.cleanup()
+
+    def storinka(self, shlyakh, telefon=False):
+        k = self.b.new_context(viewport={'width': 390, 'height': 844} if telefon else {'width': 1280, 'height': 800},
+                               is_mobile=telefon, has_touch=telefon, reduced_motion='reduce')
+        k.route('https://tiles.openfreemap.org/**', lambda r: r.abort())
+        self.addCleanup(k.close)
+        s = k.new_page()
+        pomylky = []
+        s.on('pageerror', lambda e: pomylky.append(str(e)))
+        s.goto(self.url + shlyakh)
+        return s, pomylky
+
+    def poshuk(self, s, zapyt):
+        s.fill('#poshuk-vulytsi', zapyt)
+        s.wait_for_function('() => !document.getElementById("poshuk-spysok").hidden')
+        s.wait_for_timeout(200)
+        return s.eval_on_selector_all('#poshuk-spysok li', 'ls => ls.map(l => [l.textContent, (l.querySelector("a") || {}).href || ""])')
+
+    def test_t2_poshuk_budynku_i_staroi_nazvy(self):
+        for shlyakh in ('/miy-budynok/', '/vulytsi/'):
+            s, pomylky = self.storinka(shlyakh)
+            r = self.poshuk(s, 'Хрещатик 24а')
+            self.assertTrue(r[0][1].endswith('/budynok/khreshchatyk/24-a/'), r)
+            r = self.poshuk(s, 'хрещатик, буд. 22')
+            self.assertTrue(r[0][1].endswith('/budynok/khreshchatyk/22/'), r)
+            r = self.poshuk(s, 'Хрещатик 999')
+            self.assertIn('Будинку 999 в даних немає', r[0][0])
+            self.assertTrue(r[1][1].endswith('/vulytsia/khreshchatyk/'), r)
+            r = self.poshuk(s, 'Червоноармійська')
+            self.assertIn('Велика Васильківська', r[0][0])
+            self.assertEqual(pomylky, [])
+
+    def test_t3_oplata_pamiataie_vybir(self):
+        s, pomylky = self.storinka('/budynok/khreshchatyk/22/')
+        s.click('a.knopka--holovna[href^="/oplata/"]')
+        s.wait_for_selector('#vybir:not([hidden])')
+        self.assertIn('Довідка про будинок', s.inner_text('#vybir'))
+        self.assertIn('вулиця Хрещатик, 22', s.inner_text('#vybir'))
+        href = s.get_attribute('#oplata-poshta', 'href')
+        self.assertIn('dzherelo=oplata-dovidka-budynok', href)
+        self.assertIn('shcho=analiz', href)
+        s.click('#oplata-poshta')
+        s.wait_for_selector('#adresa2')
+        self.assertEqual(s.input_value('#adresa2'), 'вулиця Хрещатик, 22')
+        self.assertEqual(s.input_value('#shcho'), 'analiz')
+        self.assertEqual(pomylky, [])
+
+    def test_t5_t6_t11_telefon(self):
+        for shlyakh in ('/budynok/khreshchatyk/22/', '/vulytsia/khreshchatyk/', '/miy-budynok/', '/oplata/?tovar=dovidka'):
+            s, _ = self.storinka(shlyakh, telefon=True)
+            s.wait_for_timeout(300)
+            self.assertLessEqual(s.evaluate('document.documentElement.scrollWidth'), 390, shlyakh)
+            self.assertEqual(s.get_attribute('a.lohotyp', 'aria-label'), 'Моя вулиця — на головну')
+        s, _ = self.storinka('/?vau=0', telefon=True)
+        s.wait_for_timeout(500)
+        prava = s.evaluate('Math.max(...[...document.querySelectorAll(".verkh-ryad > *")].map(e => e.getBoundingClientRect().right))')
+        self.assertLessEqual(prava, 390)
 ZNIMOK = '''() => { const r = s => { const b = document.querySelector(s).getBoundingClientRect(); return [b.x, b.y, b.width, b.height]; };
     const k = MvKarta.karta, c = k.getCenter();
     return { verkh: r('.verkh-ryad'), filtr: r('#filtr'), dzherela: r('#dzherela'), karta: r('#karta-mista'),
