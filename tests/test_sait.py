@@ -98,13 +98,22 @@ def stvoryty_bazu(shlyakh: Path) -> None:
         con.execute('INSERT INTO document VALUES (?,?,?,?,?,?,?)', (str(n), 'суд', '2025-01-01', 'постанова', '6062', '', f'https://x.ua/{n}'))
         con.execute('INSERT INTO event VALUES (?,?,?,?,?,?,?,?,?,?,?)',
                     (f'{n}-1', str(n), 1, '2025-02-02', None, 'НАС', 'ст.173-2 КУпАП · домашнє насильство', None, 1, '11206:4360', None))
-    # Подія за ст. 390-1 КК (не позначена у випуску) — на сайті лише числом у шестикутнику.
+    # Подія за ст. 390-1 КК (не позначена у випуску) — домашнє насильство: з MV-102 рахується нарівні з іншими.
     n += 1
     con.execute('INSERT INTO document VALUES (?,?,?,?,?,?,?)', (str(n), 'суд', '2025-01-01', 'вирок', '1', '', f'https://x.ua/{n}'))
     con.execute('INSERT INTO location VALUES (?,?,?,?,?,?)', (n, 'вул. Хрещатик, 99', 'house', 50.4480, 30.5232, 'osm'))
     con.execute('INSERT INTO event VALUES (?,?,?,?,?,?,?,?,?,?,?)',
                 (f'{n}-1', str(n), 1, '2025-04-04', None, 'НАС', 'ст.390-1 КК · невиконання обмежувальних приписів',
                  'ОСОБА_9 порушив припис', 0, '11210:4360', n))
+    # MV-102: на Васильківській — домашнє насильство з точкою (рахується всюди) і статевий злочин та справа щодо
+    # дитини з точкою (лише числом у великій соті, ні на вулиці, ні в районі, ні в будинку).
+    for st, chut in (('ст.173-2 КУпАП · домашнє насильство', 1), ('ст.152 КК · зґвалтування', 1),
+                     ('ст.166 КК · злісне невиконання обов’язків щодо дитини', 1)):
+        n += 1
+        con.execute('INSERT INTO document VALUES (?,?,?,?,?,?,?)', (str(n), 'суд', '2025-01-01', 'вирок', '1', '', f'https://x.ua/{n}'))
+        con.execute('INSERT INTO location VALUES (?,?,?,?,?,?)', (n, 'вул. Васильківська, 2', 'house', 50.3960, 30.5100, 'osm'))
+        con.execute('INSERT INTO event VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+                    (f'{n}-1', str(n), 1, '2025-05-05', None, 'НАС', st, 'ОСОБА_8 вдома', chut, '11200:4357', n))
     # Старші роки (MV-32): 7 подій 2019 року і 1 без дати на Хрещатику, 6 подій 2018 року на вулиці, де нових немає.
     # На сайті — лише прапорець «у підписці», жодного числа (ZAVDANNYA-46).
     for vul, lat, lon, data in ([('вул. Хрещатик', 50.4476, 30.5231, f'2019-05-0{1 + j}') for j in range(7)]
@@ -355,9 +364,31 @@ class Sait(unittest.TestCase):
         for riven in (7, 8, 9):
             soty = json.loads((self.sait / 'karta' / f'soty-{riven}.json').read_text(encoding='utf-8'))
             suma[riven] = sum(f['properties'].get('nas3', 0) for f in soty['soty']['features'])
-        self.assertEqual(suma[7], 3)          # великі соти (≈ 5 км²) — так само, лише числом
-        self.assertEqual(suma[8], 3)          # 2 позначені чутливі + 1 за ст. 390-1
-        self.assertEqual(suma[9], 0)
+        # MV-102: 2 домашніх без точки (числом по соті) + 390-1 і 173-2 з точкою + статевий і щодо дитини з точкою
+        self.assertEqual(suma[7], 6)          # великі соти (≈ 5 км²) — усі, статеві й щодо дітей лише числом
+        self.assertEqual(suma[8], 6)
+        self.assertEqual(suma[9], 2)          # малі соти — лише домашнє насильство з точкою (390-1, 173-2)
+
+    def test_mv102_domashnie_na_vidkrytykh_statevi_ni(self):
+        """MV-102: домашнє насильство — на вулиці й у районі нарівні; статеві й щодо дітей — ні (обидва боки)."""
+        if self.spravzhnii:
+            self.skipTest('лише для штучної бази')
+        import storinky_mv100 as M
+        dn = D.zibraty_dani(self.baza, self.pereim, KORIN / 'data' / 'borders.json')
+        vas = next(v for v in dn.vulytsi.values() if v.korotka == 'Васильківська')
+        statti = sorted(dn.podii[i].stattia.split(' ·')[0] for i in vas.nedavni if dn.podii[i].vyd == 'НАС')
+        self.assertEqual(statti, ['ст.173-2 КУпАП'])
+        khr = next(v for v in dn.vulytsi.values() if v.korotka == 'Хрещатик')
+        self.assertIn('ст.390-1 КК', [dn.podii[i].stattia.split(' ·')[0] for i in khr.nedavni])
+        rayony = M.podii_rayoniv(dn)
+        self.assertEqual(sum(c['nas'] for c in rayony.values()), 2)      # 390-1 і 173-2; без 152 і 166 КК
+        for st, vidkr in (('ст.173-2 КУпАП', True), ('ст.173-8 КУпАП', True), ('ст.126-1 КК', True), ('ст.390-1 КК', True),
+                          ('ст.152 КК', False), ('ст.156 КК', False), ('ст.166 КК', False), ('ст.180 КУпАП', False),
+                          ('ст.173-2 КУпАП · щодо дитини', False)):
+            self.assertEqual(D.domashnie(st), vidkr, st)
+        vas_html = (self.sait / 'vulytsia' / vas.slug / 'index.html').read_text(encoding='utf-8')
+        self.assertNotIn('ґвалт', vas_html)
+        self.assertNotIn('щодо дитини', vas_html)
 
     def test_publichni_faily_karty_bez_adres_i_opysiv(self):
         """Безкоштовно — лише числа по сотах (AGENTS.md, розд. 8): у файлах карти й пошуку немає номерів будинків,
@@ -432,9 +463,9 @@ class Sait(unittest.TestCase):
         self.assertIn('url=/vulytsia/velyka-vasylkivska/', stara)
         # «Васильківська» — окрема вулиця, не злита з Великою Васильківською.
         self.assertTrue((self.sait / 'vulytsia' / 'vasylkivska' / 'index.html').is_file())
-        # Подія за ст. 390-1 не потрапляє на сторінку Хрещатика.
+        # Подія за ст. 390-1 — на сторінці Хрещатика числом (MV-102), але без опису.
         khr = (self.sait / 'vulytsia' / 'khreshchatyk' / 'index.html').read_text(encoding='utf-8')
-        self.assertIn('8 подій', khr)
+        self.assertIn('9 подій', khr)
         self.assertNotIn('порушив припис', khr)
 
     def test_lyshe_ostanni_try_roky(self):
@@ -457,16 +488,16 @@ class Sait(unittest.TestCase):
             self.assertNotIn('data-period="A"', t)
         if self.spravzhnii:
             return
-        # Хрещатик: 8 подій за 2025 + 7 за 2019 + 1 без дати — на сайті лише 8 і замок на 2016–2023.
+        # Хрещатик: 8 подій за 2025 + 390-1 (MV-102) + 7 за 2019 + 1 без дати — на сайті лише 9 і замок на 2016–2023.
         khr = (self.sait / 'vulytsia' / 'khreshchatyk' / 'index.html').read_text(encoding='utf-8')
-        self.assertIn('Вулиця Хрещатик: за 2024–2026 у даних судів — 8 подій', khr)
+        self.assertIn('Вулиця Хрещатик: за 2024–2026 у даних судів — 9 подій', khr)
         self.assertIn('rik--zamok', khr)
         self.assertIn('<th scope="row">2016–2023</th><td>у підписці</td>', khr)
-        for zayve in ('16 подій', '15 подій', '>16<', '>15<', '>7<'):
+        for zayve in ('17 подій', '16 подій', '>17<', '>16<', '>7<'):
             self.assertNotIn(zayve, khr)
         # Покажчик і пошук — теж лише за останні 3 роки.
         pk = {r[0]: r[3] for r in json.loads((self.sait / 'vulytsi' / 'pokazhchyk.json').read_text(encoding='utf-8'))}
-        self.assertEqual(pk['khreshchatyk'], 8)
+        self.assertEqual(pk['khreshchatyk'], 9)
         self.assertEqual(pk.get('instytutska', 0), 0)
         # Соти: прапорець «є старші» без чисел; сота лише зі старими подіями на карту не потрапляє.
         d9 = json.loads((self.sait / 'karta' / 'soty-9.json').read_text(encoding='utf-8'))['soty']['features']
@@ -477,7 +508,7 @@ class Sait(unittest.TestCase):
         self.assertNotIn(ins, za_id)
         vsogo8 = sum(f['properties']['all3'] for f in
                      json.loads((self.sait / 'karta' / 'soty-8.json').read_text(encoding='utf-8'))['soty']['features'])
-        self.assertEqual(vsogo8, 51)        # 48 відкритих + 3 чутливі, усі за 2025; старих 14 — не враховано
+        self.assertEqual(vsogo8, 54)        # 48 відкритих + 3 домашніх + 1 домашнє з точкою + статевий і щодо дитини; старих 14 — ні
 
 
     # ---------------------------------------------------------------- ZAVDANNYA-85: будинки, райони, вітрини

@@ -542,7 +542,9 @@ def storinka_pro_dani(adresa_saitu: str, versiia: str, period: str) -> str:
 <section class="rozdil"><h2>Що ми не показуємо відкрито</h2><div class="kartka"><ul class="spysok-tekst">
 <li>Імен, номерів квартир і даних, які суд приховав, немає ніде.</li>
 <li>На безкоштовних сторінках немає описів подій і посилань на рішення — лише числа.</li>
-<li>Безкоштовно — останні 3 роки; старші — у підписці.</li></ul></div></section>
+<li>Безкоштовно — останні 3 роки; старші — у підписці.</li>
+<li>Домашнє насильство рахуємо нарівні з іншими подіями. Статеві злочини й справи щодо дітей на сторінках будинків, вулиць
+і районів не рахуємо — лише в загальному числі великих сот на карті.</li></ul></div></section>
 <section class="rozdil"><h2>Якщо щось не так</h2><p class="rozdil__pidpys"><a href="/vydalyty/">Видалити або виправити подію</a> — відповідаємо
 за 10 робочих днів. <a href="/zahlushka/polityka.html">Політика конфіденційності</a>.</p></section>'''
     return Z.storinka(shlyakh='/pro-dani/', title='Як ми працюємо з даними — суди, 1551, OpenStreetMap | Моя вулиця',
@@ -553,7 +555,7 @@ def storinka_pro_dani(adresa_saitu: str, versiia: str, period: str) -> str:
 # ---------------------------------------------------------------- усе разом
 
 def podii_rayoniv(dn: D.Dani) -> dict:
-    """Район → групи → подій за останні 3 роки (лише з точкою, без чутливих)."""
+    """Район → групи → подій за останні 3 роки (лише з точкою; домашнє насильство — нарівні, статеві й щодо дітей — ні, MV-102)."""
     out = defaultdict(Counter)
     if dn.rayony is None:
         return out
