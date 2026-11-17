@@ -13,9 +13,10 @@
                 вулиці-відповіді; цього дня історії немає;
   п'ятниця    — «Цифри тижня»: одна вулиця району — події з рішень і скарги 1551 числом, поруч «зазвичай вулиця району»;
                 посилання — на сторінку вулиці; цього дня історії немає.
-Кожен допис веде на конкретне місце (docs/KOMPAS.md, розд. 0, 5) з міткою каналу `?dzherelo=tg-<район>`.
-Текст історії — чернетка з колоди (короткий опис, вирізаний правилами); перед публікацією його переписує ШІ людською
-мовою без нових фактів (MV-21, MV-25). Публікація — без попереднього перегляду, Андрій дивиться опубліковане (MV-114;
+Кожен допис веде на конкретне місце (docs/KOMPAS.md, розд. 0, 5) з міткою каналу `?dzherelo=telegram-<район>` (як в автопостингу, MV-125).
+Текст історії — переказ ШІ з файлу `--perekazy` (крок dani-edrsr/src/perekazy_istorii.py --koloda, перевірений програмою
+site/sait/perekazy.py; ZAVDANNYA-110); переказу немає — чернетка з колоди лише для перегляду, надсилання її пропускає
+(MV-21, MV-25). Публікація — без попереднього перегляду, Андрій дивиться опубліковане (MV-114;
 черга й журнал — ZAVDANNYA-107), тому перевірка (`perevirka`) стоїть і перед надсиланням. Поле `chernetka` — про переказ ШІ.
 Повторний запуск з тими самими даними й датами дає ту саму пачку.
 """
@@ -37,10 +38,12 @@ KORIN = TUT.parent
 sys.path.insert(0, str(TUT))
 sys.path.insert(0, str(KORIN / 'brend'))
 sys.path.insert(0, str(KORIN / 'video'))
+sys.path.insert(0, str(KORIN / 'site' / 'sait'))
 
 from adresa_pokazu import bez_nomera, chutlyva  # noqa: E402
 from perevirka import MV4_KATEGORII, MV4_SLOVA, SLIDY, ZABORONENI  # noqa: E402
 from rozmova import ADRESA_SAITU, chyslo, misiats, vidminok  # noqa: E402
+import perekazy as PK  # noqa: E402
 
 DNI_TYZHNIA = ('понеділок', 'вівторок', 'середа', 'четвер', "п'ятниця", 'субота', 'неділя')
 DEN_VHADAI = 2
@@ -61,7 +64,7 @@ def khesh(*chastyny) -> int:
 
 
 def mitka(rayon_slug: str) -> str:
-    return f'tg-{rayon_slug}'
+    return f'telegram-{rayon_slug}'
 
 
 def prydatna(p: dict) -> bool:
@@ -82,8 +85,9 @@ def chernetka(t: str) -> str:
 
 
 class Henerator:
-    def __init__(self, indeks: dict, adresa_saitu: str = ADRESA_SAITU):
+    def __init__(self, indeks: dict, adresa_saitu: str = ADRESA_SAITU, perekazy: dict | None = None):
         self.i = indeks
+        self.perekazy = perekazy or {}     # id події колоди → переказ ШІ (dani-edrsr/src/perekazy_istorii.py)
         self.sait = adresa_saitu.rstrip('/')
         self.rayony = {r['n']: r for r in indeks.get('rayony', [])}
         self.vulytsi = {v['s']: v for v in indeks.get('vulytsi', [])}
@@ -114,12 +118,17 @@ class Henerator:
     def istoriia(self, rayon: str, p: dict, den: date) -> dict:
         v = self.vulytsi.get(p['vulytsia_slug'], {})
         nazva = v.get('n') or p.get('vulytsia_nazva') or bez_nomera(p.get('vulytsia', ''))
+        # ZAVDANNYA-110: у допис — переказ ШІ, що пройшов перевірку програмою (site/sait/perekazy.py); немає — чернетка,
+        # і така не надсилається (лише для перегляду).
+        perekaz = self.perekazy.get(str(p['id']))
+        if perekaz and PK.vady(perekaz, p.get('opys_povnyi') or p['opys_korotkyi']):
+            perekaz = None
         tekst = '\n'.join([
             f'Історія з вулиці · {rayon} район', '',
-            chernetka(p['opys_korotkyi']), '',
+            perekaz or chernetka(p['opys_korotkyi']), '',
             f'{nazva} · {p.get("rik", "")} · {p.get("vyd", "")}',
             f'Рішення № {p["rishennya_nomer"]} — лише те, що дійшло до суду.'])
-        return {'typ': 'istoriia', 'data': den.isoformat(), 'rayon': rayon, 'tekst': tekst, 'chernetka': True,
+        return {'typ': 'istoriia', 'data': den.isoformat(), 'rayon': rayon, 'tekst': tekst, 'chernetka': not perekaz,
                 'podiia': p['id'], 'vulytsia': p['vulytsia_slug'],
                 'knopky': [[{'tekst': f'Що ще було: {nazva}', 'url': self.url(f'/vulytsia/{p["vulytsia_slug"]}/', rayon)}]]}
 
@@ -248,6 +257,8 @@ def nadislaty(dopysy: list[dict], kanaly: dict, token: str) -> list[str]:
             zvit.append(f'{d["rayon"]}: немає каналу')
             continue
         zh = perevirka(d)
+        if d.get('chernetka'):
+            zh.append('чернетка без переказу ШІ (ZAVDANNYA-110)')
         if zh:
             zvit.append(f'{d["rayon"]} {d["typ"]}: не надіслано — {"; ".join(zh)}')
             continue
@@ -273,13 +284,15 @@ def main(argv=None) -> int:
     p.add_argument('--perehliad', type=Path, help='Markdown для перегляду людиною')
     p.add_argument('--adresa-saitu', default=ADRESA_SAITU)
     p.add_argument('--kanaly', type=Path, help='JSON: район → @канал або числовий id (не секрет)')
+    p.add_argument('--perekazy', type=Path, help='перекази ШІ (dani-edrsr/src/perekazy_istorii.py --koloda); без них '
+                   'історії — чернетки, і вони не надсилаються')
     p.add_argument('--nadislaty', action='store_true')
     a = p.parse_args(argv)
     indeks = json.loads(a.indeks.read_text(encoding='utf-8'))
     vzhe = set()
     if a.vzhe and a.vzhe.exists():
         vzhe = {d.get('podiia') for d in json.loads(a.vzhe.read_text(encoding='utf-8')) if d.get('podiia')}
-    h = Henerator(indeks, a.adresa_saitu)
+    h = Henerator(indeks, a.adresa_saitu, PK.prochytaty(a.perekazy))
     dopysy = h.pachka(date.fromisoformat(a.vid), a.dniv, vzhe)
     if a.vykhid:
         a.vykhid.write_text(json.dumps(dopysy, ensure_ascii=False, indent=1), encoding='utf-8')

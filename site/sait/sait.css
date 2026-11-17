@@ -22,7 +22,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, label:focus-within {
 button, input { font: inherit; color: inherit; }
 button { cursor: pointer; }
 h1, h2, h3 { font-family: var(--sans); }
-.prykhovano { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.prykhovano { position: absolute; left: 0; top: 0; width: 1px; height: 1px; padding: 0; margin: -1px; border: 0; overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+/* Т-5 (ZAVDANNYA-110): таблиця не стискається до 1 px — відсуваємо її ліворуч за край, щоб сторінка не ширшала на телефоні. */
+table.prykhovano { left: -10000px; }
 [hidden] { display: none !important; }
 
 /* Клавіша: межа й суцільний бортик знизу; натиск опускає її на бортик. Рух — для всіх (MV-58). */
@@ -316,8 +319,9 @@ body.z-kartoyu .shapka__vnutri { max-width: none; padding: 6px 16px; min-height:
 @media (max-width: 700px) {
   .ekran-karty { height: calc(100vh - 53px); height: calc(100dvh - 53px); }
   .verkh-ryad { top: 8px; left: 8px; right: 8px; gap: 6px; }
-  .verkh { flex: 1; width: auto; padding-left: 10px; }
+  .verkh { flex: 1; width: auto; min-width: 0; padding-left: 10px; }   /* Т-11: кнопки ряду вміщаються */
   .znachok { width: 44px; }
+  .verkh-ryad .znachok { width: 42px; }
   #pidkazky { left: 8px; right: 8px; top: 66px; width: auto; }
   .filtr { left: 8px; top: 66px; }
   #info { left: 8px; right: 8px; top: 66px; width: auto; max-height: calc(100% - 84px); }
