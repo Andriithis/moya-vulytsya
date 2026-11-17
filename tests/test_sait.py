@@ -869,7 +869,9 @@ class Sait(unittest.TestCase):
         konfig = (Path(zv['teka_workera']) / 'wrangler.jsonc').read_text(encoding='utf-8')
         konfig = json.loads(konfig.split('\n', 1)[1])
         self.assertEqual(konfig['vars']['PACHOK'], str(zv['pachok_budynkiv']))
-        self.assertEqual(konfig['assets']['run_worker_first'], ['/budynok/*'])
+        self.assertEqual(konfig['assets']['run_worker_first'], ['/budynok/*'] + KH.MARSHRUTY_PRODAZHU)
+        self.assertNotIn('PRODAZH', konfig['vars'], 'без --prodazh-d1 продаж вимкнено')
+        self.assertFalse((Path(zv['teka_workera']) / 'testy').exists())
         self.assertEqual(konfig['assets']['directory'], f'../{teka.name}')
         self.assertNotRegex(json.dumps(konfig), r'(?i)token|key|secret|ключ')
         # FNV-1a — як у JavaScript (контрольне значення для «a»).

@@ -865,7 +865,8 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
                  adresa_saitu: str = ADRESA_SAITU, koloda: Path | None = None,
                  zvit_zvedennia: Path | None = None, budynky: Path | None = None,
                  mezha_failiv: int | None = None, khostynh: str = 'pages', perekazy: Path | None = None,
-                 kandydaty_istorii: Path | None = None, media: Path | None = None, sudova_praktyka: Path | None = None) -> dict:
+                 kandydaty_istorii: Path | None = None, media: Path | None = None, sudova_praktyka: Path | None = None,
+                 prodazh: dict | None = None) -> dict:
     """khostynh: 'pages' — кожна сторінка файлом (межа 20 000); 'workers' — будинки в пачках (site/khostynh.py)."""
     import khostynh as KH
     if khostynh not in KH.VARIANTY:
@@ -1041,7 +1042,7 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
         'media_mists': media_mists,
     }
     if khostynh == 'workers':
-        zvit['teka_workera'] = str(KH.pidhotuvaty_worker(vykhid, pachky.n if pachky is not None else 1))
+        zvit['teka_workera'] = str(KH.pidhotuvaty_worker(vykhid, pachky.n if pachky is not None else 1, prodazh=prodazh))
     if zvit_zvedennia:
         import csv
         zvit_zvedennia.parent.mkdir(parents=True, exist_ok=True)
@@ -1079,10 +1080,18 @@ def main(argv=None) -> int:
     p.add_argument('--media', type=Path, help='візуали публічних місць для медіа (brend/media/zrobyty_media.py, тека <slug>/ на місце); '
                    'без них блоку «Для медіа» немає')
     p.add_argument('--mezha-failiv', type=int, help='межа кількості файлів (план хостингу; без ключа — 20 000)')
+    p.add_argument('--prodazh-d1', help='увімкнути сервер продажу: ідентифікатор бази Cloudflare D1 (docs/PRODAZH-SERVER.md)')
+    p.add_argument('--platizhnyi-servis', choices=('liqpay', 'mono', 'test'), help='платіжний сервіс для продажу')
+    p.add_argument('--poshta-servis', choices=('zahlushka', 'http-json'), default='zahlushka', help='сервіс листів')
     a = p.parse_args(argv)
+    prodazh = None
+    if a.prodazh_d1 or a.platizhnyi_servis:
+        if a.khostynh != 'workers':
+            p.error('продаж працює лише з --khostynh workers')
+        prodazh = {'d1': a.prodazh_d1, 'servis': a.platizhnyi_servis, 'adresa': a.adresa_saitu, 'poshta': a.poshta_servis}
     zvit = zibraty_sait(a.baza, a.vykhid, a.pereimenuvannya, a.mezhi_rayoniv, a.adresa_saitu, a.koloda,
                         a.zvit_zvedennia, a.budynky, a.mezha_failiv, a.khostynh, a.perekazy, a.kandydaty_istorii,
-                        media=a.media, sudova_praktyka=a.sudova_praktyka)
+                        media=a.media, sudova_praktyka=a.sudova_praktyka, prodazh=prodazh)
     for k, v in zvit.items():
         print(f'{k}: {v}')
     return 0
