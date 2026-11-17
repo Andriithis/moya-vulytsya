@@ -459,6 +459,7 @@ def vulytsi_mistsia(adresa: str, tochnist: str) -> list[tuple[str, str, str | No
     adresa = chystyi(adresa)
     if not adresa:
         return []
+    adresa = re.sub(r'^перехрест\w*\s+', '', adresa, flags=re.I)      # «перехрестя вул. X і вул. Y» (підпис кроку 2)
     chastyny = [c.strip() for c in ROZDIL_PEREKHRESTIA.split(adresa)]
     vykhid = []
     for ch in chastyny:

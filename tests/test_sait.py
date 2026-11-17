@@ -263,6 +263,8 @@ class ZvedenniaNazv(unittest.TestCase):
             self.assertEqual(D.rozibraty_vulytsiu(t), tr, t)
         self.assertEqual([x[1] for x in D.vulytsi_mistsia('вулиця Богатирської на проспект Степана Бандери', 'cross')],
                          ['Богатирської', 'Степана Бандери'])
+        self.assertEqual([x[1] for x in D.vulytsi_mistsia('перехрестя вул. Хрещатик і вул. Прорізна', 'cross')],
+                         ['Хрещатик', 'Прорізна'])
         self.assertEqual([x[1] for x in D.vulytsi_mistsia('вулиця В. Гетьмана - вул. Індустріальна', 'cross')],
                          ['В. Гетьмана', 'Індустріальна'])
         kanon = {('вулиця', D.kliuch('Набережно-Хрещатицька')): ('вулиця', 'Набережно-Хрещатицька', 'Набережно-Хрещатицька вулиця')}
