@@ -1,0 +1,23 @@
+{
+ "_pro": "Налаштування балів і спроб ігор у карті (ZAVDANNYA-117, MV-130). Числа — порада виконавця (ZVIT-117.md, розд. «Бали»); остаточно — Андрій. Змінюється лише тут: гра, тести й звіт читають цей файл.",
+ "versiia": 1,
+ "ochok_za_bal": 100,
+ "bezkoshtovno_na_den": {"vgadai": 3, "kvalifikuy": 3, "vulytsia": 1, "podiia_dnia": 1, "detektyv": 1},
+ "vgadai_podii_v_sprobi": 5,
+ "kupleni_dlia": ["vgadai", "kvalifikuy"],
+ "stelia_baliv_na_den": 300,
+ "pakety": [
+  {"id": "sproby-5", "sprob": 5, "tsina": 49},
+  {"id": "sproby-12", "sprob": 12, "tsina": 99, "holovnyi": true},
+  {"id": "sproby-24", "sprob": 24, "tsina": 199}
+ ],
+ "obmin": [
+  {"id": "dovidka", "nazva": "Довідка про будинок", "baliv": 1500, "tsina": 199},
+  {"id": "pidpyska-misiats", "nazva": "Місяць підписки", "baliv": 3000, "tsina": 399}
+ ],
+ "obminiv_na_30_dniv": 1,
+ "oplata_uvimknena": false,
+ "oplata_chomu_ni": "Оплата спроб увімкнеться після висновку юриста (питання «азартна гра»).",
+ "obmin_uvimkneno": false,
+ "obmin_chomu_ni": "Обмін балів запрацює з кабінетом: бали тоді рахуватиме сервер, а не телефон."
+}

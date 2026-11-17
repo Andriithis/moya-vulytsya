@@ -1,0 +1,87 @@
+/* «Вулиця дня» (MV-126; ZAVDANNYA-101, ZAVDANNYA-114). Змінні й клавіші — з hra.css (docs/STYL.md, MV-58).
+   Збіг — accent-soft і жирний текст; незбіг — світла клітинка. Ні зеленого, ні червоного. */
+
+.vd { display: flex; flex-direction: column; min-height: calc(100vh - var(--shapka)); }
+.vd__panel { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-5) var(--pole) var(--space-5); background: var(--surface); }
+.vd__panel--nyz:has(.tablytsia[hidden]):has(.kinets-vd[hidden]) { padding-top: var(--space-3); }
+.vd__karta { position: relative; height: 38vh; min-height: 260px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.vd__shapka { display: flex; flex-direction: column; gap: var(--space-2); }
+.vd__nazva { margin: 0; font: 800 30px/36px Plex, system-ui, sans-serif; letter-spacing: -.02em; }
+.vd__opys { font-size: 16px; line-height: 24px; color: var(--ink-2); }
+.vd__prymitka { font-size: 12px; line-height: 17px; color: var(--muted); }
+
+/* ---------- Підказки ---------- */
+.pidkazky { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.pidkazka { display: flex; flex-direction: column; gap: 2px; padding: var(--space-3) var(--space-4); border-radius: var(--radius-m); background: var(--surface-tint); border: 1px solid var(--accent-soft); }
+.pidkazka__mitka { font: 600 11px/14px Plex, system-ui, sans-serif; letter-spacing: .05em; text-transform: uppercase; color: var(--accent); }
+.pidkazka__tekst { font: 600 17px/24px Plex, system-ui, sans-serif; color: var(--ink); }
+.pidkazka__dzherelo { font-size: 12px; line-height: 16px; color: var(--muted); }
+.pidkazka--zakryta { background: transparent; border: 1px dashed var(--line-strong); }
+.pidkazka--zakryta .pidkazka__mitka { color: var(--muted); }
+.pidkazka--zakryta .pidkazka__tekst { font-weight: 400; font-size: 14px; color: var(--muted); }
+.pidkazka:has(.pidkazka__dzherelo) .pidkazka__tekst { font-weight: 400; font-size: 15px; line-height: 22px; }
+
+/* ---------- Поле спроби ---------- */
+.sproba { position: relative; display: flex; flex-direction: column; gap: var(--space-2); }
+.sproba__pidpys { font: 600 14px/20px Plex, system-ui, sans-serif; }
+.sproba__ryadok { display: flex; gap: var(--space-2); }
+.pole { flex: 1; min-width: 0; min-height: 48px; padding: 0 var(--space-4); border: 1.5px solid var(--mezha); border-radius: var(--radius-m); box-shadow: 0 3px 0 var(--bort); background: var(--surface); color: var(--ink); font: 400 16px/20px Plex, system-ui, sans-serif; }
+.pole:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.sproba .knopka { min-width: 76px; }
+.vybir { position: absolute; z-index: 10; left: 0; right: 0; top: 84px; margin: 0; padding: 4px; list-style: none; background: var(--surface); border: 1.5px solid var(--mezha); border-radius: var(--radius-m); box-shadow: 0 3px 0 var(--bort); max-height: 320px; overflow-y: auto; }
+.vybir__ryadok { display: flex; justify-content: space-between; gap: var(--space-3); padding: 10px 12px; border-radius: 8px; cursor: pointer; font-size: 15px; line-height: 20px; }
+.vybir__ryadok small { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.vybir__ryadok:hover, .vybir__ryadok--aktyvnyi { background: var(--surface-tint); }
+.vybir__porozhnio { padding: 10px 12px; font-size: 14px; color: var(--muted); }
+.sproba__stan { min-height: 20px; font-size: 14px; line-height: 20px; color: var(--ink-2); }
+
+/* ---------- Таблиця спроб ---------- */
+.tablytsia { display: flex; flex-direction: column; gap: var(--space-2); }
+.tablytsia__shapka, .sproba-ryadok { display: grid; grid-template-columns: 1.2fr 1fr 1fr .9fr; gap: 4px; }
+.kl--vyrizn { grid-column: 1 / -1; }
+.kl--vidstan { white-space: nowrap; }
+.tablytsia__shapka { display: none; font: 600 11px/14px Plex, system-ui, sans-serif; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.sproby { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.sproba-ryadok { padding: var(--space-2); border: 1px solid var(--line); border-radius: var(--radius-m); background: var(--ground); }
+.sproba-ryadok__nazva { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--space-2); font: 600 15px/20px Plex, system-ui, sans-serif; }
+.sproba-ryadok__nazva b { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--accent); color: var(--accent); font-size: 12px; }
+.sproba-ryadok--tak .sproba-ryadok__nazva b { background: var(--accent); color: var(--on-accent); }
+.kl { display: flex; align-items: center; justify-content: center; gap: 4px; min-height: 36px; padding: 4px 6px; border-radius: 8px; background: var(--surface); border: 1px solid var(--line); font-size: 12px; line-height: 15px; text-align: center; color: var(--ink-2); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.kl--tak { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); font-weight: 700; }
+.kl svg { flex: none; stroke-width: 2.4; color: var(--accent); }
+.tablytsia__lehenda { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; line-height: 16px; color: var(--muted); }
+.tablytsia__lehenda .kl { display: inline-block; min-height: 0; width: 14px; height: 14px; padding: 0; }
+
+/* ---------- Кінець ---------- */
+.kinets-vd { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); border: 1.5px solid var(--mezha); border-radius: var(--radius-l); box-shadow: 0 3px 0 var(--bort); background: var(--surface); }
+.kinets-vd__vulytsia { margin: 0; font: 800 26px/32px Plex, system-ui, sans-serif; letter-spacing: -.01em; }
+.kinets-vd__rayon { color: var(--muted); font-size: 14px; line-height: 20px; margin-top: -8px; }
+.kinets-vd__chysla { display: flex; gap: var(--space-3); }
+.kinets-vd__vyrizn, .kinets-vd__detektyv { font-size: 14px; line-height: 20px; color: var(--ink-2); }
+.kinets-vd__detektyv { color: var(--muted); font-size: 13px; line-height: 18px; }
+.kinets-vd__podiia { display: flex; flex-direction: column; gap: 4px; padding: var(--space-3); border-radius: var(--radius-m); background: var(--ground); font-size: 15px; line-height: 22px; }
+.kinets-vd__meta { font-size: 13px; line-height: 18px; color: var(--muted); }
+.kinets-vd__dii { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.kinets-vd__dii .knopka { flex: 1; text-decoration: none; }
+.pidpyska { display: flex; flex-direction: column; gap: 2px; padding: var(--space-3) var(--space-4); border-radius: var(--radius-m); background: var(--surface-tint); border: 1.5px solid var(--accent); text-decoration: none; color: var(--ink); }
+.pidpyska__nazva { font: 700 16px/22px Plex, system-ui, sans-serif; color: var(--accent); }
+.pidpyska__opys { font-size: 14px; line-height: 20px; color: var(--ink-2); }
+.kolektsiia { font-size: 13px; line-height: 18px; color: var(--muted); }
+.kinets-vd .knopka-tekst { align-self: flex-start; color: var(--muted); font-weight: 400; font-size: 13px; }
+
+@media (min-width: 600px) {
+  .tablytsia__shapka, .sproba-ryadok { grid-template-columns: 1.6fr 1fr 1fr .8fr .9fr 1.5fr; align-items: center; }
+  .tablytsia__shapka { display: grid; padding: 0 var(--space-2); }
+  .sproba-ryadok__nazva, .kl--vyrizn { grid-column: auto; }
+}
+@media (min-width: 900px) {
+  /* Ліворуч — колонка, що гортається разом зі сторінкою; карта праворуч стоїть на місці. */
+  .vd { display: block; min-height: calc(100vh - var(--shapka)); }
+  .vd__panel { width: 620px; border-right: 1px solid var(--line); padding: var(--space-6); }
+  .vd__panel--verkh { padding-bottom: var(--space-3); }
+  .vd__panel--nyz { padding-top: var(--space-3); min-height: calc(100vh - var(--shapka)); }
+  .vd__karta { position: fixed; top: var(--shapka); left: 620px; right: 0; bottom: 0; height: auto; min-height: 0; border: 0; }
+}
+
+.kinets-vd__zavtra { font-size: 14px; line-height: 20px; color: var(--muted); }
+.kinets-vd__zavtra a { color: var(--accent); }

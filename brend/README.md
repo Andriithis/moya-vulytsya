@@ -79,7 +79,7 @@ python brend/zrobyty.py brend/dani/мій-файл.json
 
 ### `avatar`, `youtube`, `facebook`
 Дані — `dani/avatar.json`, `dani/youtube.json`, `dani/facebook.json`. Текст обкладинок:
-«Моя вулиця — що відбувається на вашій вулиці. За даними судів.» На YouTube текст лише
+«Моя вулиця — що відбувається під боком. Скарги мешканців і події з рішень судів.» (MV-52, MV-106) На YouTube текст лише
 в безпечній зоні 1546×423; на Facebook — у середині, яку лишає телефон (≈1110 px).
 
 ## Що де лежить
@@ -97,3 +97,17 @@ brend/
 
 Перевірки: `python -m unittest tests/test_brend.py`. Знімок аватара в колі 110 px:
 `python tests/znimky_brend.py` → `tmp/znimky/zavdannya-12/avatar-kolo-110.png`.
+
+## Візуал публічного місця для медіа (MV-113)
+
+`media/` — шаблон картки «цифри + карта» (1:1, 16:9) і 8 слайдів. Числа дає `dani-edrsr/src/vizual_mistsia.py` (лише публічні
+місця з `config/mistsia-media.csv`), картинки малює:
+
+```
+python brend/media/zrobyty_media.py <місце>.json <тека media>/<slug>
+python site/zibraty_sait.py … --media <тека media>
+```
+
+Тека `<slug>/` потрапляє на сторінку місця (`/vulytsia/<slug>/media/`) з блоком «Для медіа». Як і колода гри, готові
+візуали — результат збирання, у git їх немає; перший справжній (Вокзальна площа) — `docs/znimky-113/vokzalna-ploshcha/`. Умови: безкоштовно з підписом
+«Джерело: Моя вулиця» і посиланням на сторінку місця.

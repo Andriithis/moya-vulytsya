@@ -1,0 +1,491 @@
+{
+ "id": "zrazok-2-muzykant",
+ "nazva": "Справа музиканта з фунікулера",
+ "poznachka": "Вигадана історія за мотивами справжньої справи",
+ "tyzhden": "2026-11-23",
+ "zrazok": true,
+ "rishennia": {
+  "nomer": "128144382",
+  "url": "https://reyestr.court.gov.ua/Review/128144382",
+  "sud": "Шевченківський районний суд м. Києва",
+  "data": "2025-06-12",
+  "stattia": "ч. 4 ст. 185 КК",
+  "chas": "20:39",
+  "uryvky": [
+   "30.09.2024 року приблизно о 20 год. 35 хв. ОСОБА_2 перебуваючи у вагоні електропотягу КП «Київський метрополітен»",
+   "правними діями ніхто не спостерігає, ОСОБА_2 , 30.09.2024 приблизно о 20 год 39 хв., доїхавши до ст. метро «Майдан незалежності» КП «Київський метроп",
+   "ітен» в м. Києві, який рухався зі станції метрополітену «Контрактова Площа» в напрямку санкції метрополітену «Майдан Незалежності», помітив поблизу раніше невідому громадянку",
+   "чим спричинив ОСОБА_5 матеріальний збиток на загальну суму 28625,19 грн згідно висновку експерта",
+   "визнати винуватим за ч. 4 ст. 185 КК України",
+   "Шевченківський районний суд м. Києва (суд — з дампу ЄДРСР)"
+  ],
+  "spravzhni_nazvy": []
+ },
+ "vulytsia": "вулиця Хрещатик",
+ "zaklady": [],
+ "personazhi": [
+  {
+   "imia": "Музикант Данило",
+   "rol": "грає біля нижньої станції фунікулера, поруч із входом у метро",
+   "vyhadanyi": true
+  }
+ ],
+ "oriientyry": [],
+ "vyklyk": "Кінець вересня 2024-го. У київському метро в людини зникло майно — суд потім установив, як це було. Музикант Данило, що грає біля нижньої станції фунікулера, каже, що бачив дещо важливе, але розповідатиме потроху: він вигаданий, як і його свідчення. До неділі з'ясуйте: на якій станції, що це за подія, о котрій порі доби і скільки коштувало те, що зникло. Справу розглядав Шевченківський районний суд.",
+ "polia": {
+  "de": {
+   "pytannia": "На якій станції метро?",
+   "vidpovid": "maidan",
+   "kandydaty": [
+    {
+     "id": "maidan",
+     "nazva": "«Майдан Незалежності»",
+     "lat": 50.4501,
+     "lon": 30.524,
+     "oznaky": {
+      "liniia": "синя",
+      "pivden_vid_kontraktovoi": true,
+      "peresadka": true,
+      "pislia_poshtovoi": true
+     },
+     "slova": [
+      "Майдан"
+     ]
+    },
+    {
+     "id": "poshtova",
+     "nazva": "«Поштова площа»",
+     "lat": 50.459,
+     "lon": 30.5253,
+     "oznaky": {
+      "liniia": "синя",
+      "pivden_vid_kontraktovoi": true,
+      "peresadka": false,
+      "pislia_poshtovoi": false
+     }
+    },
+    {
+     "id": "kontraktova",
+     "nazva": "«Контрактова площа»",
+     "lat": 50.4655,
+     "lon": 30.5151,
+     "oznaky": {
+      "liniia": "синя",
+      "pivden_vid_kontraktovoi": false,
+      "peresadka": false,
+      "pislia_poshtovoi": false
+     }
+    },
+    {
+     "id": "shevchenka",
+     "nazva": "«Тараса Шевченка»",
+     "lat": 50.473,
+     "lon": 30.505,
+     "oznaky": {
+      "liniia": "синя",
+      "pivden_vid_kontraktovoi": false,
+      "peresadka": false,
+      "pislia_poshtovoi": false
+     }
+    },
+    {
+     "id": "huh",
+     "nazva": "«Площа Українських Героїв»",
+     "lat": 50.4392,
+     "lon": 30.5163,
+     "oznaky": {
+      "liniia": "синя",
+      "pivden_vid_kontraktovoi": true,
+      "peresadka": true,
+      "pislia_poshtovoi": false
+     }
+    },
+    {
+     "id": "olimpiiska",
+     "nazva": "«Олімпійська»",
+     "lat": 50.4318,
+     "lon": 30.516,
+     "oznaky": {
+      "liniia": "синя",
+      "pivden_vid_kontraktovoi": true,
+      "peresadka": false,
+      "pislia_poshtovoi": false
+     }
+    },
+    {
+     "id": "khreshchatyk",
+     "nazva": "«Хрещатик»",
+     "lat": 50.4473,
+     "lon": 30.5228,
+     "oznaky": {
+      "liniia": "червона",
+      "pivden_vid_kontraktovoi": false,
+      "peresadka": true,
+      "pislia_poshtovoi": false
+     }
+    },
+    {
+     "id": "teatralna",
+     "nazva": "«Театральна»",
+     "lat": 50.4451,
+     "lon": 30.5178,
+     "oznaky": {
+      "liniia": "червона",
+      "pivden_vid_kontraktovoi": false,
+      "peresadka": true,
+      "pislia_poshtovoi": false
+     }
+    },
+    {
+     "id": "zoloti",
+     "nazva": "«Золоті ворота»",
+     "lat": 50.4485,
+     "lon": 30.5135,
+     "oznaky": {
+      "liniia": "зелена",
+      "pivden_vid_kontraktovoi": false,
+      "peresadka": true,
+      "pislia_poshtovoi": false
+     }
+    },
+    {
+     "id": "palats",
+     "nazva": "«Палац спорту»",
+     "lat": 50.4381,
+     "lon": 30.521,
+     "oznaky": {
+      "liniia": "зелена",
+      "pivden_vid_kontraktovoi": false,
+      "peresadka": true,
+      "pislia_poshtovoi": false
+     }
+    }
+   ]
+  },
+  "shcho": {
+   "pytannia": "Що це за подія?",
+   "vidpovid": "kradizhka",
+   "kandydaty": [
+    {
+     "id": "kradizhka",
+     "nazva": "Крадіжка",
+     "stattia": "ст. 185",
+     "slova": [
+      "крадіж",
+      "викра"
+     ],
+     "oznaky": {
+      "vidkryto": false,
+      "nasylstvo": false,
+      "obman": false
+     }
+    },
+    {
+     "id": "hrabizh",
+     "nazva": "Грабіж",
+     "stattia": "ст. 186",
+     "slova": [
+      "грабі"
+     ],
+     "oznaky": {
+      "vidkryto": true,
+      "nasylstvo": false,
+      "obman": false
+     }
+    },
+    {
+     "id": "rozbii",
+     "nazva": "Розбій",
+     "stattia": "ст. 187",
+     "slova": [
+      "розбі"
+     ],
+     "oznaky": {
+      "vidkryto": true,
+      "nasylstvo": true,
+      "obman": false
+     }
+    },
+    {
+     "id": "shakhraistvo",
+     "nazva": "Шахрайство",
+     "stattia": "ст. 190",
+     "slova": [
+      "шахрай"
+     ],
+     "oznaky": {
+      "vidkryto": false,
+      "nasylstvo": false,
+      "obman": true
+     }
+    }
+   ]
+  },
+  "koly": {
+   "pytannia": "О котрій порі доби?",
+   "vidpovid": "vechir",
+   "kandydaty": [
+    {
+     "id": "ranok",
+     "nazva": "Ранок (6–12)",
+     "oznaky": {
+      "chastyna": "ranok"
+     },
+     "slova": [
+      "ранок",
+      "вранці",
+      "зранку"
+     ]
+    },
+    {
+     "id": "den",
+     "nazva": "День (12–17)",
+     "oznaky": {
+      "chastyna": "den"
+     },
+     "slova": [
+      "вдень",
+      "удень"
+     ]
+    },
+    {
+     "id": "vechir",
+     "nazva": "Вечір (17–23)",
+     "oznaky": {
+      "chastyna": "vechir"
+     },
+     "slova": [
+      "вечір",
+      "увечері",
+      "ввечері",
+      "вечора"
+     ]
+    },
+    {
+     "id": "nich",
+     "nazva": "Ніч (23–6)",
+     "oznaky": {
+      "chastyna": "nich"
+     },
+     "slova": [
+      "ніч",
+      "вночі",
+      "уночі"
+     ]
+    }
+   ]
+  },
+  "pole": {
+   "pytannia": "Скільки коштувало те, що зникло?",
+   "vidpovid": "15_40",
+   "kandydaty": [
+    {
+     "id": "do3",
+     "nazva": "До 3 тис. грн",
+     "oznaky": {
+      "pyatyznachna": false,
+      "dvadtsiat": false
+     }
+    },
+    {
+     "id": "3_15",
+     "nazva": "3–15 тис. грн",
+     "oznaky": {
+      "pyatyznachna": true,
+      "dvadtsiat": false
+     }
+    },
+    {
+     "id": "15_40",
+     "nazva": "15–40 тис. грн",
+     "oznaky": {
+      "pyatyznachna": true,
+      "dvadtsiat": true
+     }
+    },
+    {
+     "id": "pon40",
+     "nazva": "Понад 40 тис. грн",
+     "oznaky": {
+      "pyatyznachna": true,
+      "dvadtsiat": false
+     }
+    }
+   ]
+  }
+ },
+ "slidy": [
+  {
+   "n": 1,
+   "zahadka": "Слід 1 — на площі на Подолі, де стоїть фонтан із Самсоном.",
+   "tsil": {
+    "lat": 50.4652,
+    "lon": 30.5157,
+    "radius_m": 500
+   },
+   "rechennia": [
+    {
+     "tekst": "Потяг рушив від станції «Контрактова площа» в бік центру.",
+     "dzherelo": "rishennia",
+     "tsytata": "який рухався зі станції метрополітену «Контрактова Площа» в напрямку",
+     "umovy": [
+      {
+       "pole": "de",
+       "oznaka": "pivden_vid_kontraktovoi",
+       "znachennia": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "n": 2,
+   "zahadka": "Слід 2 — біля барокової церкви на верху узвозу, що з'єднує Поділ і Старе місто.",
+   "tsil": {
+    "lat": 50.4589,
+    "lon": 30.5178,
+    "radius_m": 400
+   },
+   "rechennia": [
+    {
+     "tekst": "Усе сталося близько 20:39.",
+     "dzherelo": "rishennia",
+     "tsytata": "приблизно о 20 год 39 хв.",
+     "umovy": [
+      {
+       "pole": "koly",
+       "oznaka": "chastyna",
+       "znachennia": "vechir"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "n": 3,
+   "zahadka": "Слід 3 — біля монастиря із золотими банями на горі над Подолом.",
+   "tsil": {
+    "lat": 50.4557,
+    "lon": 30.523,
+    "radius_m": 350
+   },
+   "rechennia": [
+    {
+     "tekst": "Суд установив: людина діяла тоді, коли, як вона вважала, за нею ніхто не спостерігав.",
+     "dzherelo": "rishennia",
+     "tsytata": "ніхто не спостерігає",
+     "umovy": [
+      {
+       "pole": "shcho",
+       "oznaka": "vidkryto",
+       "znachennia": false
+      }
+     ]
+    },
+    {
+     "tekst": "Збиток оцінив експерт — сума п'ятизначна.",
+     "dzherelo": "rishennia",
+     "tsytata": "матеріальний збиток на загальну суму 28625,19 грн",
+     "umovy": [
+      {
+       "pole": "pole",
+       "oznaka": "pyatyznachna",
+       "znachennia": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "n": 4,
+   "zahadka": "Слід 4 — біля відбудованої брами давнього Києва.",
+   "tsil": {
+    "lat": 50.4488,
+    "lon": 30.5132,
+    "radius_m": 400
+   },
+   "rechennia": [
+    {
+     "tekst": "Зі станції можна перейти на іншу лінію, не виходячи на вулицю.",
+     "dzherelo": "karta",
+     "umovy": [
+      {
+       "pole": "de",
+       "oznaka": "peresadka",
+       "znachennia": true
+      }
+     ]
+    },
+    {
+     "tekst": "Суд не встановив обману: майно ніхто не віддавав добровільно.",
+     "dzherelo": "rishennia",
+     "tsytata": "визнати винуватим за ч. 4 ст. 185 КК України",
+     "umovy": [
+      {
+       "pole": "shcho",
+       "oznaka": "obman",
+       "znachennia": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "n": 5,
+   "zahadka": "Слід 5 — біля нижньої станції фунікулера, де грає Данило.",
+   "tsil": {
+    "lat": 50.4597,
+    "lon": 30.5255,
+    "radius_m": 400
+   },
+   "rechennia": [
+    {
+     "tekst": "Наступна станція після «Поштова площа» в бік центру й була місцем події.",
+     "dzherelo": "pidkazka",
+     "umovy": [
+      {
+       "pole": "de",
+       "oznaka": "pislia_poshtovoi",
+       "znachennia": true
+      }
+     ]
+    },
+    {
+     "tekst": "Сума збитку починається з двійки.",
+     "dzherelo": "rishennia",
+     "tsytata": "на загальну суму 28625,19 грн",
+     "umovy": [
+      {
+       "pole": "pole",
+       "oznaka": "dvadtsiat",
+       "znachennia": true
+      }
+     ]
+    },
+    {
+     "tekst": "Музикант Данило пам'ятає, як того вечора зачинилися двері вагона на «Поштова площа» — і потяг рушив до центру.",
+     "dzherelo": "vyhadka"
+    }
+   ]
+  },
+  {
+   "n": 6,
+   "zahadka": "Останній слід — там, де, на вашу думку, усе сталося. Якщо місце правильне, слід з'явиться.",
+   "tsil": {
+    "lat": 50.4501,
+    "lon": 30.524,
+    "radius_m": 400
+   },
+   "rechennia": [
+    {
+     "tekst": "Так, це тут: подія сталася у вагоні, коли потяг доїжджав до цієї станції.",
+     "dzherelo": "pidkazka"
+    }
+   ]
+  }
+ ],
+ "rozkryttia": {
+  "spravzhnie": "30 вересня 2024 року, близько 20:39, у вагоні потяга, що йшов від станції «Контрактова площа» до станції «Майдан Незалежності», людина викрала чуже майно так, що цього ніхто не помітив. Збиток експерт оцінив у 28 625,19 грн. Суд установив, що це сталося, і кваліфікував як крадіжку (ч. 4 ст. 185 КК).",
+  "vyhadka": "Вигадано: музикант Данило, усе, що він бачив і каже, і місця, де сховано сліди 1–5. Справжні — станції й напрямок руху, час, вид події і сума збитку. Будь-яка схожість зі справжніми людьми випадкова."
+ }
+}

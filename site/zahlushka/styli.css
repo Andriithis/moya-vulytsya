@@ -11,14 +11,56 @@
 @font-face { font-family: Plex; font-style: normal; font-display: swap; font-weight: 700 800; src: url(shryfty/ibm-plex-sans-cyrillic-700-normal.woff2) format('woff2'); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
 @font-face { font-family: Plex; font-style: normal; font-display: swap; font-weight: 700 800; src: url(shryfty/ibm-plex-sans-latin-700-normal.woff2) format('woff2'); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
 
+/* ---------- Кольори: світла й темна тема (Д-3, ZAVDANNYA-114) ----------
+   Ті самі значення, що в грі (hra.css) і на сайті (MV-58). Темна — за налаштуванням телефона чи комп'ютера.
+   Зразок звіту (zrazok.html, клас lyshe-svitla) лишається світлим: це зразок паперу. */
+:root {
+  --surface: #FFFFFF;
+  --ground: #F4F5FB;
+  --ink: #1C1E2D;
+  --ink-2: #3E4155;
+  --muted: #5F6275;
+  --mezha: #76798C;
+  --bort: #585B69;
+  --line-strong: #B5B7C4;
+  --line: #DFE1E9;
+  --accent: #4447A6;
+  --accent-strong: #33357C;
+  --surface-tint: #EDEFFE;
+  --accent-soft: #DFE3FC;
+  --attention: #3C3CA1;
+  --on-accent: #FFFFFF;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not(.lyshe-svitla) {
+    --surface: #1B1F39;
+    --ground: #11142A;
+    --ink: #F0F1FA;
+    --ink-2: #D1D3E2;
+    --muted: #A6A9C1;
+    --mezha: #7D83AB;
+    --bort: #080913;
+    --line-strong: #4B506F;
+    --line: #2A2E47;
+    --accent: #66E6BA;
+    --accent-strong: #8CECCB;
+    --surface-tint: #232849;
+    --accent-soft: #30335C;
+    --attention: #B37BFF;
+    --on-accent: #11142A;
+    color-scheme: dark;
+  }
+}
+
 /* ---------- Основа ---------- */
 /* Як у середовищі макета: розміри рахуються разом із відступами й рамкою.
    Без цього три картки цін не вміщаються в один ряд, як на макеті. */
 *, *::before, *::after { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
-body { margin: 0; background: #F4F5FB; color: #1C1E2D; font-family: Plex, system-ui, sans-serif; font-size: 16px; line-height: 1.5; }
-a { color: #4447A6; }
-a:hover { color: #33357C; }
+body { margin: 0; background: var(--ground); color: var(--ink); font-family: Plex, system-ui, sans-serif; font-size: 16px; line-height: 1.5; }
+a { color: var(--accent); }
+a:hover { color: var(--accent-strong); }
 .zaholovnyi { font-family: Plex, system-ui, sans-serif; }
 .prykhovano { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .lyshe-telefon { display: none; }
@@ -28,7 +70,7 @@ a:hover { color: #33357C; }
 .pastka { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }
 
 /* ---------- Шапка ---------- */
-.shapka { border-bottom: 1px solid #DFE1E9; background: #FFFFFF; }
+.shapka { border-bottom: 1px solid var(--line); background: var(--surface); }
 .shapka__vnutri { max-width: 1120px; margin: 0 auto; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; box-sizing: border-box; }
 .lohotyp { display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; }
 .lohotyp:hover { color: inherit; }
@@ -38,89 +80,90 @@ a:hover { color: #33357C; }
 /* ---------- Перший екран ---------- */
 .pershyi { max-width: 1120px; margin: 0 auto; padding: 72px 24px 56px; display: flex; flex-wrap: wrap; gap: 48px; align-items: center; box-sizing: border-box; }
 .pershyi__tekst { flex: 999 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 20px; }
-.znachok { align-self: flex-start; font-size: 13px; font-weight: 600; background: #DFE3FC; color: #33357C; padding: 4px 12px; border-radius: 99px; }
+.znachok { align-self: flex-start; font-size: 13px; font-weight: 600; background: var(--accent-soft); color: var(--accent-strong); padding: 4px 12px; border-radius: 99px; }
 .pershyi h1 { margin: 0; font-family: Plex, system-ui, sans-serif; font-size: 52px; line-height: 1.08; font-weight: 800; letter-spacing: -0.01em; }
-.pershyi__opys { margin: 0; font-size: 19px; color: #3E4155; max-width: 560px; }
-.poshuk { display: flex; flex-wrap: wrap; gap: 10px; background: #FFFFFF; border: 1px solid #DFE1E9; border-radius: 16px; padding: 10px; max-width: 620px; }
+.pershyi__opys { margin: 0; font-size: 19px; color: var(--ink-2); max-width: 560px; }
+.poshuk { display: flex; flex-wrap: wrap; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 10px; max-width: 620px; }
 .poshuk__mitka { position: absolute; width: 1px; height: 1px; overflow: hidden; }
-.poshuk__adresa { flex: 999 1 280px; min-width: 0; border: 0; font: inherit; font-size: 16px; padding: 12px 14px; background: transparent; color: #1C1E2D; }
-.poshuk__misto { flex: 1 1 120px; font: inherit; font-size: 15px; padding: 12px; border: 1px solid #DFE1E9; border-radius: 12px; background: #F4F5FB; color: #1C1E2D; }
-.poshuk__knopka { flex: 1 1 160px; text-align: center; background: #4447A6; color: #FFFFFF; border: 0; font: inherit; font-weight: 600; padding: 12px 20px; border-radius: 12px; min-height: 44px; box-sizing: border-box; cursor: pointer; }
-.poshuk__knopka:hover { background: #33357C; }
-.pidkazka { font-size: 14px; color: #5F6275; }
+.poshuk__adresa { flex: 999 1 280px; min-width: 0; border: 0; font: inherit; font-size: 16px; padding: 12px 14px; background: transparent; color: var(--ink); }
+.poshuk__misto { flex: 1 1 120px; font: inherit; font-size: 15px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--ground); color: var(--ink); }
+.poshuk__knopka { flex: 1 1 160px; text-align: center; background: var(--accent); color: var(--on-accent); border: 0; font: inherit; font-weight: 600; padding: 12px 20px; border-radius: 12px; min-height: 44px; box-sizing: border-box; cursor: pointer; }
+.poshuk__knopka:hover { background: var(--accent-strong); }
+.pidkazka { font-size: 14px; color: var(--muted); }
 .pershyi__soty { flex: 1 1 300px; min-width: 0; display: flex; justify-content: center; }
 .pershyi__soty svg { max-width: 100%; height: auto; }
 
 /* ---------- Ціни ---------- */
-.tsiny { background: #FFFFFF; border-top: 1px solid #DFE1E9; border-bottom: 1px solid #DFE1E9; }
+.tsiny { background: var(--surface); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .tsiny__vnutri { max-width: 1120px; margin: 0 auto; padding: 56px 24px; display: flex; flex-direction: column; gap: 28px; box-sizing: border-box; }
 h2.rozdil { margin: 0; font-family: Plex, system-ui, sans-serif; font-size: 32px; line-height: 1.25; font-weight: 700; }
 .kartky { display: flex; flex-wrap: wrap; gap: 18px; }
-.kartka { flex: 1 1 300px; min-width: 0; border: 1px solid #DFE1E9; border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 12px; }
-.kartka--holovna { border: 2px solid #4447A6; background: #EDEFFE; }
+.kartka { flex: 1 1 300px; min-width: 0; border: 1px solid var(--line); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 12px; }
+.kartka--holovna { border: 2px solid var(--accent); background: var(--surface-tint); }
 .kartka__nazva { font-weight: 700; font-size: 18px; }
 .kartka__tsina { font-family: Plex, system-ui, sans-serif; font-size: 30px; font-weight: 800; }
-.kartka__tsina small { font-size: 16px; font-weight: 600; color: #5F6275; }
+.kartka__tsina small { font-size: 16px; font-weight: 600; color: var(--muted); }
+.kartka__haslo { font-weight: 600; font-size: 15px; color: var(--accent); }
 .kartka ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 15px; }
-.knopka-kontur { margin-top: auto; text-align: center; border: 1.5px solid #4447A6; color: #4447A6; text-decoration: none; font-weight: 600; padding: 11px; border-radius: 12px; }
+.knopka-kontur { margin-top: auto; text-align: center; border: 1.5px solid var(--accent); color: var(--accent); text-decoration: none; font-weight: 600; padding: 11px; border-radius: 12px; }
 .kartka__knopky { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
-.knopka-povna { text-align: center; background: #4447A6; color: #FFFFFF; text-decoration: none; font-weight: 600; padding: 12px; border-radius: 12px; }
-.knopka-povna:hover { background: #33357C; color: #FFFFFF; }
+.knopka-povna { text-align: center; background: var(--accent); color: var(--on-accent); text-decoration: none; font-weight: 600; padding: 12px; border-radius: 12px; }
+.knopka-povna:hover { background: var(--accent-strong); color: var(--on-accent); }
 .kartka__zrazok { text-align: center; font-size: 15px; }
-.kompaniyi { font-size: 14px; color: #5F6275; }
+.kompaniyi { font-size: 14px; color: var(--muted); }
 
 /* Ціни на телефоні — короткі рядки, як у макеті телефона */
 .tsiny-tel { padding: 0 20px 28px; flex-direction: column; gap: 12px; }
-.ryadok { background: #FFFFFF; border: 1px solid #DFE1E9; border-radius: 16px; padding: 18px; display: flex; justify-content: space-between; gap: 12px; }
-.ryadok--holovnyi { background: #EDEFFE; border: 2px solid #4447A6; flex-direction: column; gap: 10px; }
+.ryadok { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: flex; justify-content: space-between; gap: 12px; }
+.ryadok--holovnyi { background: var(--surface-tint); border: 2px solid var(--accent); flex-direction: column; gap: 10px; }
 .ryadok__verkh { display: flex; justify-content: space-between; gap: 12px; }
 .ryadok__liva { display: flex; flex-direction: column; }
 .ryadok__liva b { font-weight: 700; }
-.ryadok__liva span { font-size: 14px; color: #5F6275; }
+.ryadok__liva span { font-size: 14px; color: var(--muted); }
 .ryadok__tsina { font-weight: 800; font-family: Plex, system-ui, sans-serif; white-space: nowrap; }
 .ryadok a { font-size: 14px; }
 
 /* ---------- Передзамовлення ---------- */
 .peredzamovlennya { max-width: 1120px; margin: 0 auto; padding: 56px 24px; display: flex; flex-wrap: wrap; gap: 40px; box-sizing: border-box; }
 .peredzamovlennya__tekst { flex: 1 1 340px; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
-.peredzamovlennya__tekst p { margin: 0; color: #3E4155; }
-.forma { flex: 1 1 460px; min-width: 0; background: #FFFFFF; border: 1px solid #DFE1E9; border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 16px; box-sizing: border-box; position: relative; }
+.peredzamovlennya__tekst p { margin: 0; color: var(--ink-2); }
+.forma { flex: 1 1 460px; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 16px; box-sizing: border-box; position: relative; }
 .pole { display: flex; flex-direction: column; gap: 6px; }
 .pole label, .pole__mitka { font-size: 14px; font-weight: 600; }
 .poliv-ryad { display: flex; flex-wrap: wrap; gap: 12px; }
 .poliv-ryad .pole:first-child { flex: 1 1 200px; min-width: 0; }
 .poliv-ryad .pole:last-child { flex: 2 1 260px; min-width: 0; }
-.forma input[type=text], .forma select { font: inherit; padding: 12px; border: 1px solid #B5B7C4; border-radius: 12px; background: #FFFFFF; color: #1C1E2D; }
-.zghoda { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; color: #3E4155; }
+.forma input[type=text], .forma select { font: inherit; padding: 12px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--surface); color: var(--ink); }
+.zghoda { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; color: var(--ink-2); }
 .zghoda input { width: 20px; height: 20px; margin: 2px 0 0; flex: none; }
-.forma__knopka { font: inherit; font-weight: 600; background: #4447A6; color: #FFFFFF; border: 0; padding: 14px; border-radius: 12px; min-height: 48px; cursor: pointer; }
-.forma__knopka:hover { background: #33357C; }
+.forma__knopka { font: inherit; font-weight: 600; background: var(--accent); color: var(--on-accent); border: 0; padding: 14px; border-radius: 12px; min-height: 48px; cursor: pointer; }
+.forma__knopka:hover { background: var(--accent-strong); }
 .forma__knopka[disabled] { opacity: 0.7; cursor: progress; }
-.pomylka { font-size: 14px; color: #3C3CA1; font-weight: 600; }
-.forma--pomylka input[aria-invalid=true] { border-color: #3C3CA1; }
+.pomylka { font-size: 14px; color: var(--attention); font-weight: 600; }
+.forma--pomylka input[aria-invalid=true] { border-color: var(--attention); }
 .povidomlennya { display: flex; flex-direction: column; gap: 12px; }
 .povidomlennya__holovne { font-family: Plex, system-ui, sans-serif; font-size: 22px; font-weight: 800; }
-.povidomlennya p { margin: 0; color: #3E4155; }
+.povidomlennya p { margin: 0; color: var(--ink-2); }
 
 /* ---------- Питання ---------- */
-.pytannya { background: #FFFFFF; border-top: 1px solid #DFE1E9; }
+.pytannya { background: var(--surface); border-top: 1px solid var(--line); }
 .pytannya__vnutri { max-width: 1120px; margin: 0 auto; padding: 56px 24px; display: flex; flex-direction: column; gap: 20px; box-sizing: border-box; }
 .pytannya__ryad { display: flex; flex-wrap: wrap; gap: 24px; }
 .pytannya__odne { flex: 1 1 300px; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .pytannya__odne b { font-weight: 700; }
-.pytannya__odne span { font-size: 15px; color: #3E4155; }
+.pytannya__odne span { font-size: 15px; color: var(--ink-2); }
 
 /* ---------- Підвал ---------- */
-.pidval { max-width: 1120px; margin: 0 auto; padding: 28px 24px 40px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #5F6275; box-sizing: border-box; }
+.pidval { max-width: 1120px; margin: 0 auto; padding: 28px 24px 40px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--muted); box-sizing: border-box; }
 
 /* ---------- Окремі сторінки (політика) ---------- */
 .storinka { max-width: 760px; margin: 0 auto; padding: 48px 24px 56px; box-sizing: border-box; }
 .storinka h1 { margin: 0 0 8px; font-family: Plex, system-ui, sans-serif; font-size: 40px; line-height: 1.12; font-weight: 800; }
 .storinka h2 { margin: 32px 0 8px; font-family: Plex, system-ui, sans-serif; font-size: 22px; font-weight: 700; }
-.storinka p, .storinka li { color: #3E4155; }
+.storinka p, .storinka li { color: var(--ink-2); }
 .storinka ul { padding-left: 20px; }
-.storinka .data { color: #5F6275; font-size: 14px; }
-.storinka .kartka-tekst { background: #FFFFFF; border: 1px solid #DFE1E9; border-radius: 16px; padding: 8px 28px 28px; }
+.storinka .data { color: var(--muted); font-size: 14px; }
+.storinka .kartka-tekst { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 8px 28px 28px; }
 
 /* ---------- Телефон (макет 390 px) ---------- */
 @media (max-width: 600px) {
@@ -142,14 +185,14 @@ h2.rozdil { margin: 0; font-family: Plex, system-ui, sans-serif; font-size: 32px
   .pershyi__soty { display: none; }
   .poshuk { flex-direction: column; gap: 16px; background: transparent; border: 0; padding: 0; border-radius: 0; }
   .poshuk__mitka { position: static; width: auto; height: auto; overflow: visible; font-size: 14px; font-weight: 600; margin-bottom: -6px; }
-  .poshuk__adresa { flex: none; font: inherit; padding: 14px; border: 1px solid #B5B7C4; border-radius: 12px; background: #FFFFFF; }
+  .poshuk__adresa { flex: none; font: inherit; padding: 14px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--surface); }
   .poshuk__misto { display: none; }
   .poshuk__knopka { flex: none; padding: 14px; border-radius: 12px; }
   .pidkazka { display: none; }
 
   .tsiny { display: none; }
 
-  .peredzamovlennya { background: #FFFFFF; border-top: 1px solid #DFE1E9; padding: 28px 20px; gap: 14px; flex-direction: column; }
+  .peredzamovlennya { background: var(--surface); border-top: 1px solid var(--line); padding: 28px 20px; gap: 14px; flex-direction: column; }
   .peredzamovlennya__tekst { flex: none; gap: 14px; }
   .peredzamovlennya__tekst p { font-size: 15px; }
   h2.rozdil { font-size: 24px; }
@@ -176,24 +219,24 @@ h2.rozdil { margin: 0; font-family: Plex, system-ui, sans-serif; font-size: 32px
 
 /* ---------- Оферта і звернення (ZAVDANNYA-06) ----------
    Лише нові класи для нових сторінок; правила головної вище не змінено. */
-.storinka .vstup { margin: 0 0 12px; font-size: 17px; color: #3E4155; }
-.storinka .vstup--dribno { font-size: 15px; color: #5F6275; margin-bottom: 24px; }
+.storinka .vstup { margin: 0 0 12px; font-size: 17px; color: var(--ink-2); }
+.storinka .vstup--dribno { font-size: 15px; color: var(--muted); margin-bottom: 24px; }
 .forma--storinka { margin-top: 8px; }
-.forma textarea { font: inherit; padding: 12px; border: 1px solid #B5B7C4; border-radius: 12px; background: #FFFFFF; color: #1C1E2D; resize: vertical; min-height: 110px; }
-.forma--pomylka textarea[aria-invalid=true] { border-color: #3C3CA1; }
+.forma textarea { font: inherit; padding: 12px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--surface); color: var(--ink); resize: vertical; min-height: 110px; }
+.forma--pomylka textarea[aria-invalid=true] { border-color: var(--attention); }
 .vybir { margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 10px; }
 .vybir legend { padding: 0; margin-bottom: 10px; }
-.vybir label { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; color: #1C1E2D; cursor: pointer; }
-.vybir input { width: 20px; height: 20px; margin: 1px 0 0; flex: none; accent-color: #4447A6; }
+.vybir label { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; color: var(--ink); cursor: pointer; }
+.vybir input { width: 20px; height: 20px; margin: 1px 0 0; flex: none; accent-color: var(--accent); }
 .storinka .tsiny-oferta { width: 100%; border-collapse: collapse; margin: 8px 0 4px; font-size: 15px; }
-.storinka .tsiny-oferta th, .storinka .tsiny-oferta td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #DFE1E9; vertical-align: top; color: #3E4155; }
-.storinka .tsiny-oferta th { color: #1C1E2D; font-weight: 700; }
-.storinka .tsiny-oferta td:last-child { white-space: nowrap; font-family: Plex, system-ui, sans-serif; font-weight: 800; color: #1C1E2D; }
-.storinka .vazhlyvo { background: #EDEFFE; border-left: 3px solid #4447A6; padding: 12px 16px; border-radius: 0 12px 12px 0; }
+.storinka .tsiny-oferta th, .storinka .tsiny-oferta td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--ink-2); }
+.storinka .tsiny-oferta th { color: var(--ink); font-weight: 700; }
+.storinka .tsiny-oferta td:last-child { white-space: nowrap; font-family: Plex, system-ui, sans-serif; font-weight: 800; color: var(--ink); }
+.storinka .vazhlyvo { background: var(--surface-tint); border-left: 3px solid var(--accent); padding: 12px 16px; border-radius: 0 12px 12px 0; }
 
 @media (max-width: 600px) {
   .storinka .vstup { font-size: 16px; }
-  .forma.forma--storinka { background: #FFFFFF; border: 1px solid #DFE1E9; border-radius: 16px; padding: 18px; }
+  .forma.forma--storinka { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px; }
   .forma textarea { padding: 14px; border-radius: 12px; }
   .vybir input { width: 22px; height: 22px; margin: 0; }
   .storinka .tsiny-oferta td:last-child { white-space: normal; }
@@ -204,13 +247,16 @@ h2.rozdil { margin: 0; font-family: Plex, system-ui, sans-serif; font-size: 32px
    натиск опускає клавішу на 2 px. Рух — для всіх (MV-58). */
 .poshuk__knopka, .knopka-povna, .knopka-kontur, .forma__knopka,
 .poshuk__adresa, .poshuk__misto, .forma input[type=text], .forma select, .forma textarea {
-  border: 1.5px solid #76798C; box-shadow: 0 3px 0 #585B69; border-radius: 12px; }
+  border: 1.5px solid var(--mezha); box-shadow: 0 3px 0 var(--bort); border-radius: 12px; }
 .poshuk__knopka, .knopka-povna, .knopka-kontur, .forma__knopka { transition: transform .08s ease-out, box-shadow .08s ease-out; }
-.poshuk__knopka:active, .knopka-povna:active, .knopka-kontur:active, .forma__knopka:not([disabled]):active { transform: translateY(2px); box-shadow: 0 1px 0 #585B69; }
-.knopka-kontur { background: #FFFFFF; }
-.knopka-kontur:hover { background: #EDEFFE; color: #33357C; }
-.forma--pomylka input[aria-invalid=true], .forma--pomylka textarea[aria-invalid=true] { border-color: #3C3CA1; }
+.poshuk__knopka:active, .knopka-povna:active, .knopka-kontur:active, .forma__knopka:not([disabled]):active { transform: translateY(2px); box-shadow: 0 1px 0 var(--bort); }
+.knopka-kontur { background: var(--surface); }
+.knopka-kontur:hover { background: var(--surface-tint); color: var(--accent-strong); }
+.forma--pomylka input[aria-invalid=true], .forma--pomylka textarea[aria-invalid=true] { border-color: var(--attention); }
 /* На комп'ютері поле адреси сидить усередині плашки пошуку — плашка і є клавіша. */
-.poshuk { border: 1.5px solid #76798C; box-shadow: 0 3px 0 #585B69; }
+.poshuk { border: 1.5px solid var(--mezha); box-shadow: 0 3px 0 var(--bort); }
 @media (min-width: 601px) { .poshuk__adresa { border: 0; box-shadow: none; } }
 @media (max-width: 600px) { .poshuk { border: 0; box-shadow: none; } }
+
+/* Темна тема: шви між сотами першого екрана — кольору тла, а не білі (Д-3, ZAVDANNYA-114). */
+.pershyi__soty svg g[stroke] { stroke: var(--ground); }

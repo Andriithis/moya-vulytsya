@@ -77,16 +77,22 @@ site/zahlushka/config.js
 # (koloda.json з конвеєра) — лише під час збирання, у git не потрапляє.
 !site/hra/
 site/hra/koloda.json
+# Дані прототипу «Вулиця дня» (ZAVDANNYA-101): з колоди, тож теж поза git.
+site/hra/vulytsia-dnia.json
 
 # === САЙТ (ZAVDANNYA-10) ===
 # Збирач сайту й спільні файли сторінок — у git; зібраний сайт (_site/) — ні.
 !site/zibraty_sait.py
 !site/storinky_mv100.py
+!site/storinky_sp.py
 !site/tsiny.py
 !site/khostynh.py
 !site/kartynky.py
 !site/worker/
 !site/sait/
+# === ІГРИ В КАРТІ (ZAVDANNYA-117) ===
+# Код ігор, перевірка справ «Детектива тижня», справи-зразки, «Кваліфікуй» і налаштування балів — у git.
+!site/ihry/
 # Сервер продажу (ZAVDANNYA-99): видавач довідок — у git.
 !site/prodazh/
 site/prodazh/__pycache__/

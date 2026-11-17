@@ -22,7 +22,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, label:focus-within {
 button, input { font: inherit; color: inherit; }
 button { cursor: pointer; }
 h1, h2, h3 { font-family: var(--sans); }
-.prykhovano { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.prykhovano { position: absolute; left: 0; top: 0; width: 1px; height: 1px; padding: 0; margin: -1px; border: 0; overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+/* Т-5 (ZAVDANNYA-110): таблиця не стискається до 1 px — відсуваємо її ліворуч за край, щоб сторінка не ширшала на телефоні. */
+table.prykhovano { left: -10000px; }
 [hidden] { display: none !important; }
 
 /* Клавіша: межа й суцільний бортик знизу; натиск опускає її на бортик. Рух — для всіх (MV-58). */
@@ -61,6 +64,11 @@ body.z-kartoyu .shapka__vnutri { max-width: none; padding: 6px 16px; min-height:
 .zaholovok h1 { margin: 0; font-size: 40px; line-height: 1.12; font-weight: 700; letter-spacing: -0.5px; }
 .zaholovok p { margin: 0; font-size: 18px; color: var(--ink-2); }
 .zaholovok p.onovleno { font-size: 14px; color: var(--muted); }
+.zaholovok p.zaholovok__opys { font-size: 15px; color: var(--muted); }
+/* Гасло лінії «Мій будинок» з описом дрібно (MV-106) */
+.haslo-linii { margin: 0; display: flex; flex-direction: column; gap: 2px; }
+.haslo-linii b { font-size: 20px; line-height: 26px; font-weight: 700; color: var(--accent); }
+.haslo-linii span { font-size: 14px; color: var(--muted); }
 .mitka { align-self: flex-start; font-size: 13px; font-weight: 600; background: var(--accent-soft); color: var(--ink); padding: 4px 12px; border-radius: var(--radius-pill); }
 .mitka--chernetka { background: var(--surface-tint); color: var(--ink-2); border: 1px dashed var(--mezha); }
 .rozdil { display: flex; flex-direction: column; gap: 16px; }
@@ -316,8 +324,9 @@ body.z-kartoyu .shapka__vnutri { max-width: none; padding: 6px 16px; min-height:
 @media (max-width: 700px) {
   .ekran-karty { height: calc(100vh - 53px); height: calc(100dvh - 53px); }
   .verkh-ryad { top: 8px; left: 8px; right: 8px; gap: 6px; }
-  .verkh { flex: 1; width: auto; padding-left: 10px; }
+  .verkh { flex: 1; width: auto; min-width: 0; padding-left: 10px; }   /* Т-11: кнопки ряду вміщаються */
   .znachok { width: 44px; }
+  .verkh-ryad .znachok { width: 42px; }
   #pidkazky { left: 8px; right: 8px; top: 66px; width: auto; }
   .filtr { left: 8px; top: 66px; }
   #info { left: 8px; right: 8px; top: 66px; width: auto; max-height: calc(100% - 84px); }
@@ -347,6 +356,17 @@ body.z-kartoyu .shapka__vnutri { max-width: none; padding: 6px 16px; min-height:
 
 /* Шапка: вітрини (ZAVDANNYA-85) — на вузьких екранах лише «Карта», «Вулиці», «Мій будинок»; решта — у підвалі */
 @media (max-width: 1100px) { .menyu .lyshe-komp { display: none; } }
+/* Д-5 (ZAVDANNYA-114): решта вітрин на телефоні — під «Ще» */
+.menyu__shche { display: none; position: relative; }
+@media (max-width: 1100px) { .menyu__shche { display: block; } }
+.menyu__shche > summary { list-style: none; cursor: pointer; padding: 10px 0; color: var(--ink-2); white-space: nowrap; }
+.menyu__shche > summary::-webkit-details-marker { display: none; }
+.menyu__shche > summary::after { content: ' ▾'; font-size: .8em; }
+.menyu__shche[open] > summary, .menyu__shche:has([aria-current]) > summary { color: var(--accent); }
+.menyu__spysok { position: absolute; right: 0; top: 100%; z-index: 30; display: flex; flex-direction: column; min-width: 200px;
+  padding: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 8px 24px rgba(17, 20, 42, .16); }
+.menyu__spysok a { padding: 12px 14px; border-radius: 8px; }
+.menyu__spysok a:hover { background: var(--surface-tint, var(--ground)); }
 
 /* Сторінка будинку й району (ZAVDANNYA-85): два числа поруч, колір — кількість (шкала даних), не страх */
 .por { display: flex; flex-direction: column; gap: 10px; }
@@ -387,3 +407,36 @@ body.z-kartoyu .shapka__vnutri { max-width: none; padding: 6px 16px; min-height:
 .menyu a, .lohotyp__nazva { white-space: nowrap; }
 @media (max-width: 600px) { .menyu { gap: 12px; } }
 @media (max-width: 430px) { .lohotyp__nazva { display: none; } }
+
+/* ZAVDANNYA-105 (прототип): смуга «роки · місяці» і «вау». Колір — лише наш (індиго й м'ята), без червоного. */
+.chas { position: absolute; z-index: 5; left: 16px; bottom: 16px; display: flex; align-items: center; gap: 8px; padding: 6px 8px; flex-wrap: wrap; max-width: calc(100% - 32px); }
+.ch-kroky { display: flex; border: 1.5px solid var(--mezha); border-radius: 10px; overflow: hidden; }
+.ch-kroky .seg { padding: 0 10px; }
+.ch-per { display: inline-flex; align-items: center; gap: 4px; }
+.ch-per[hidden] { display: none; }
+.ch-strilka, .ch-gra { min-width: 36px; min-height: 36px; border-radius: var(--radius-m); background: var(--surface); color: var(--ink); font: 700 16px/1 var(--sans); }
+.ch-strilka:disabled { color: var(--muted); opacity: .5; }
+.ch-znach { min-width: 112px; text-align: center; font: 600 14px/20px var(--sans); color: var(--ink); font-variant-numeric: tabular-nums; }
+.ch-skilky { font: 400 13px/18px var(--sans); color: var(--muted); font-variant-numeric: tabular-nums; padding-right: 4px; }
+.vau-lich { position: absolute; z-index: 5; left: 50%; top: 76px; transform: translateX(-50%); padding: 8px 16px; text-align: center; transition: opacity .8s; }
+.vau-lich b { display: block; font: 700 20px/26px var(--sans); color: var(--ink); }
+.vau-lich span { font: 400 13px/18px var(--sans); color: var(--muted); font-variant-numeric: tabular-nums; }
+.vau-lich--hasne { opacity: 0; }
+.vau-rayony { position: absolute; z-index: 5; left: 50%; bottom: 76px; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 8px 10px; max-width: min(860px, calc(100% - 32px)); }
+.vr-pyt { font: 600 14px/20px var(--sans); color: var(--ink); white-space: nowrap; }
+.vr-chipy { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.vr-chipy .seg { border-radius: var(--radius-pill); padding: 0 12px; white-space: nowrap; border: 1.5px solid var(--mezha); }
+.vr-x { border: 0; background: none; font-size: 20px; color: var(--muted); min-width: 32px; min-height: 32px; }
+@media (max-width: 700px) {
+  .chas { left: 8px; right: 8px; bottom: 8px; max-width: none; justify-content: space-between; }
+  .ch-skilky { display: none; }
+  .ch-znach { min-width: 96px; }
+  .vau-lich { top: 120px; }
+  .vau-rayony { left: 8px; right: 8px; transform: none; bottom: 70px; max-width: none; }
+  .vr-pyt { display: none; }
+  .ekran-karty.shukayu .chas, .ekran-karty.shukayu .vau-rayony { display: none; }
+}
+/* «Для медіа» на сторінці публічного місця (MV-113) */
+.media-pryklad { display: block; width: 100%; height: auto; border-radius: var(--radius-m, 12px); border: 1.5px solid var(--mezha); margin: 12px 0; }
+.media-faily { list-style: none; padding: 0; margin: 0 0 12px; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+.media-faily .knopka span { color: var(--muted); font-weight: 400; margin-left: 4px; }

@@ -4,12 +4,14 @@ export default {
  "tsiny": {
   "dovidka": 199,
   "try": 449,
-  "zvit": 599,
+  "zvit": 299,
   "pidpyska": 399,
   "dodatkova": 99,
   "rieltor": 799,
   "osbb": 1490,
-  "biznes": null
+  "biznes": null,
+  "spdovidka": 199,
+  "spyurist": 490
  },
  "nazvy": {
   "dovidka": "Довідка про будинок",
@@ -19,7 +21,9 @@ export default {
   "dodatkova": "Додаткова довідка в підписці",
   "rieltor": "Підписка для рієлтора",
   "osbb": "Будинок для ОСББ",
-  "biznes": "Дані для бізнесу"
+  "biznes": "Дані для бізнесу",
+  "spdovidka": "Довідка «Як закінчуються такі справи в моєму суді»",
+  "spyurist": "Підписка юристу «Практика»"
  },
  "dovidok": {
   "dovidka": 1,

@@ -5,11 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://*.supabase.co; form-action 'none'; base-uri 'none'">
-<title>Моя вулиця — що суди розповіли про вашу вулицю</title>
-<meta name="description" content="Карта подій із судових рішень. Київ відкривається незабаром — залиште контакт на передзамовлення.">
+<title>Моя вулиця — що відбувається під боком</title>
+<meta name="description" content="Що відбувається під боком: скарги мешканців і події з рішень судів — по кожному будинку. Київ відкривається незабаром — залиште контакт на передзамовлення.">
 <link rel="preload" href="shryfty/ibm-plex-sans-cyrillic-700-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="shryfty/ibm-plex-sans-cyrillic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
-<meta name="theme-color" content="#4447A6">
+<meta name="theme-color" content="#4447A6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#11142A" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="ikony/ikona-192.png">
 <link rel="stylesheet" href="styli.css">
@@ -34,7 +35,7 @@
 <section class="pershyi">
 <div class="pershyi__tekst">
 <span class="znachok"><span class="lyshe-komp">Київ відкривається незабаром</span><span class="lyshe-telefon">Київ незабаром</span></span>
-<h1>Що суди розповіли про вашу вулицю</h1>
+<h1>Що відбувається під боком</h1>
 <p class="pershyi__opys"><span class="lyshe-komp">Карта подій із судових рішень: ДТП, п'яні за кермом, крадіжки, бійки. Безкоштовно — числа по сотах, без адрес. Що було біля дому, який орендуєте чи купуєте, — у довідці про будинок.</span><span class="lyshe-telefon">Події з судових рішень: ДТП, п'яні за кермом, крадіжки, бійки. Біля конкретного дому — у довідці про будинок.</span></p>
 <form class="poshuk" id="poshuk" novalidate>
 <label for="adresa" class="poshuk__mitka"><span class="lyshe-komp">Адреса</span><span class="lyshe-telefon">Ваша адреса</span></label>
@@ -96,10 +97,11 @@
 <div class="kartka kartka--holovna">
 <span class="kartka__nazva">Довідка про будинок</span>
 <span class="kartka__tsina" data-tsina="dovidka">{{tsina.dovidka}} грн <small>разово</small></span>
+<span class="kartka__haslo">Що болить вашому будинку</span>
 <ul>
 <li>скарги 1551 і події з рішень судів біля будинку</li>
 <li>порівняння з сусідніми будинками</li>
-<li>Повний звіт «перед купівлею» — <span data-tsina="zvit">{{tsina.zvit}} грн</span>: ще й 10 років подій і карта району</li>
+<li>Повний звіт «перед купівлею» — <span data-tsina="zvit">{{tsina.zvit}} грн</span>: ще й історія будинку й вулиці за всі роки в даних</li>
 </ul>
 <div class="kartka__knopky">
 <a href="#peredzamovlennya" class="knopka-povna" data-peredzamovyty="analiz">Передзамовити довідку</a>
@@ -124,7 +126,7 @@
 </div>
 <div class="ryadok ryadok--holovnyi">
 <div class="ryadok__verkh">
-<div class="ryadok__liva"><b>Довідка про будинок</b><span>повний звіт з 10 роками — {{tsina.zvit}} грн</span></div>
+<div class="ryadok__liva"><b>Довідка про будинок</b><span>повний звіт з історією будинку — {{tsina.zvit}} грн</span></div>
 <span class="ryadok__tsina" data-tsina="dovidka">{{tsina.dovidka}} грн</span>
 </div>
 <a href="zrazok.html">Подивитися зразок</a>

@@ -22,6 +22,10 @@ import unicodedata
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'brend'))
+import hrupy as HR  # noqa: E402  групи подій — один словник (MV-116)
 
 try:
     import h3
@@ -29,6 +33,7 @@ except ImportError:  # pragma: no cover — без h3 немає лише кар
     h3 = None
 
 RIVEN_H3 = 9
+KANDYDATIV_ISTORII = 3      # скільки найсвіжіших подій вулиці віддаємо на переказ ШІ (ZAVDANNYA-110)
 ROKY = list(range(2016, 2027))      # MV-2: Київ, 2016–2026
 OSTANNI_ROKY = 3
 # MV-32: безкоштовно — лише останні 3 роки. Числа за старші роки (і за події без року) не потрапляють
@@ -73,10 +78,23 @@ TYPY = {
     'наб.': 'набережна', 'набережна': 'набережна', 'майдан': 'майдан', 'проїзд': 'проїзд',
     'алея': 'алея', 'дорога': 'дорога', 'тупик': 'тупик', 'лінія': 'лінія', 'спуск': 'спуск',
     'сквер': 'сквер', 'парк': 'парк', 'міст': 'міст',
+    'проспек': 'проспект', 'пр-т': 'проспект', 'пр-кт': 'проспект', 'пр.': 'проспект',      # одруківки й скорочення з текстів (Т-4)
 }
 # Слова типу, що стоять після назви («Харківське шосе», «Кільцева дорога»).
 TYPY_PISLYA = {'шосе', 'дорога', 'узвіз', 'проїзд', 'набережна', 'площа', 'провулок',
                'бульвар', 'лінія', 'тупик', 'спуск', 'вулиця', 'проспект', 'алея', 'міст', 'майдан'}
+
+# Т-4 (ZAVDANNYA-110): шматки тексту рішення після назви — не частина назви. «вулиця Ярославська навпроти», «вулиця
+# С. Петлюри. Грубо порушуючи вимоги п. п», «вулиця Пластова навпроти Пражська», «проспект Повітряних Сил та
+# Севастопольської площі», «вулиця Ак. Сєркова - пр. Л. Курбаса». Те саме правило — dani-edrsr/src/vypusk.py (chysta_nazva).
+KHVIST_NAZVY = re.compile(
+    r"\s+[-–—]\s+.*$"                                                          # «- вул. Індустріальна» (перехрестя)
+    r"|\s+(?:біля|навпроти|напроти|поблизу|неподалік|поруч|між|вздовж|(?:в|у)\s+районі|та|на|до|від|у бік|в бік)(?:\s.*)?$",
+    re.I)
+KINETS_RECHENNIA = re.compile(r"(\s[А-ЯІЇЄҐ][а-яіїєґ'’]{4,})\.\s.*$")   # «С. Петлюри. Грубо порушуючи…» → «С. Петлюри»
+# Перехрестя в одному рядку: «вулиця Богатирської на проспект Степана Бандери», «вул. X - вул. Y», «вул. X та просп. Y».
+ROZDIL_PEREKHRESTIA = re.compile(
+    r"\s+/\s+|\s+(?:[-–—]|та|і|й|на|з)\s+(?=(?:вул|вулиц|просп|пр-т|пр\.|проспект|бульв|бульвар|пров|провул|пл|площ|наб|шосе)\w*\.?\s)", re.I)
 
 APOSTROFY = str.maketrans({'ʼ': "'", '’': "'", '`': "'", '‘': "'", '´': "'"})
 
@@ -86,7 +104,7 @@ def chystyi(tekst: str) -> str:
     return re.sub(r'\s+', ' ', tekst).strip()
 
 
-def rozibraty_vulytsiu(tekst: str) -> tuple[str, str] | None:
+def rozibraty_vulytsiu(tekst: str, z_tekstu: bool = True) -> tuple[str, str] | None:
     """«вул. М. Бойчука» → ('вулиця', 'М. Бойчука'); «Йорданська вулиця» → ('вулиця', 'Йорданська')."""
     tekst = chystyi(tekst).strip(' ,')
     if not tekst:
@@ -96,6 +114,10 @@ def rozibraty_vulytsiu(tekst: str) -> tuple[str, str] | None:
     tekst = re.sub(r'(?<=\bАк)\.(?=\S)', '. ', tekst)
     # «… поблизу житлового будинку», «… у дворі будинку», «… між будинками» — не частина назви.
     tekst = re.sub(r'(\s+[а-яіїєґ]+){1,3}\s+будин\w*.*$', '', tekst)
+    if z_tekstu:                     # назви OpenStreetMap не обрізаємо — лише назви з текстів рішень (Т-4)
+        tekst = KHVIST_NAZVY.sub('', KINETS_RECHENNIA.sub(r'\1', tekst)).strip(' ,.')
+    if not tekst:
+        return None
     # «О Теліги» → «О. Теліги» (ініціал без крапки)
     tekst = re.sub(r'(?<=\s)([А-ЯІЇЄҐ])\s(?=[А-ЯІЇЄҐ][а-яіїєґ\'])', r'\1. ', tekst)
     slova = tekst.split(' ')
@@ -103,8 +125,9 @@ def rozibraty_vulytsiu(tekst: str) -> tuple[str, str] | None:
     if slova[0].lower() in TYPY and len(slova) > 1:
         typ = TYPY[slova[0].lower()]
         slova = slova[1:]
-    # «пл. Майдан Незалежності» — справжній тип стоїть першим словом назви.
-    if len(slova) > 1 and slova[0].lower() in ('майдан', 'шосе', 'узвіз', 'набережна', 'дорога'):
+    # «пл. Майдан Незалежності» — справжній тип стоїть першим словом назви; «вулиця Проспек С. Бандери» — теж.
+    if len(slova) > 1 and slova[0].lower() in ('майдан', 'шосе', 'узвіз', 'набережна', 'дорога', 'проспект', 'проспек',
+                                               'бульвар', 'провулок', 'площа'):
         typ = TYPY[slova[0].lower()]
         slova = slova[1:]
     # «вул. Харківське шосе» — справжній тип стоїть у кінці.
@@ -244,7 +267,7 @@ def kanonichni_z_osm(con: sqlite3.Connection) -> dict:
     kan = {}
     for (nazva,) in con.execute('SELECT nazva FROM address ORDER BY address_id'):
         vul = nazva.rsplit(',', 1)[0] if ',' in nazva else nazva
-        r = rozibraty_vulytsiu(vul)
+        r = rozibraty_vulytsiu(vul, z_tekstu=False)
         if not r:
             continue
         typ, n = r
@@ -300,6 +323,13 @@ def zvesty_nazvy(varianty: Counter, kanon: dict, pereim: list[dict]) -> tuple[di
                 for (t2, k2, v) in kanon_spysok:
                     if len(k2) > 1 and sorted(k2) == sorted(k):
                         kandydaty.append((t2 != typ, 0, 0, v))
+            # «Набержно-Хрещатицька» — одна літера в одному слові, решта слів ті самі (Т-4).
+            if not kandydaty:
+                for (t2, k2, v) in kanon_spysok:
+                    if t2 == typ and len(k2) == len(k) and k2 != k:
+                        rizni = [(a, b) for a, b in zip(k, k2) if a != b]
+                        if len(rizni) == 1 and len(rizni[0][1]) >= 6 and odna_odrukivka(*rizni[0]):
+                            kandydaty.append((False, 0, 0, v))
             # «Лобановсього» — одна літера пропущена чи зайва в останньому слові (одруківка).
             if not kandydaty and len(k[-1]) >= 7:
                 for (t2, k2, v) in kanon_spysok:
@@ -394,11 +424,10 @@ class Podiia:
 
 
 def vyd_lyudskoyu(stattia: str | None, vyd: str) -> str:
-    """«ст.130 КУпАП · керування у стані сп'яніння» → «Керування у стані сп'яніння»."""
+    """«ст.130 КУпАП · керування у стані сп'яніння» → «Керування у стані сп'яніння»; без підпису — назва групи (MV-116)."""
     t = (stattia or '').split('·', 1)[-1].strip() if stattia else ''
     if not t or t.startswith('ст.'):
-        t = {'ДТП': 'ДТП', 'ДОР': 'Порушення на дорозі', 'ГП': 'Громадський порядок', 'НАР': 'Наркотики',
-             'МАЙ': 'Майнові', 'АЛК': 'Торгівля алкоголем', 'НАС': 'Насильство'}.get(vyd, vyd)
+        t = HR.nazva(vyd, stattia) or vyd
     return t[:1].upper() + t[1:]
 
 
@@ -433,7 +462,8 @@ def vulytsi_mistsia(adresa: str, tochnist: str) -> list[tuple[str, str, str | No
     adresa = chystyi(adresa)
     if not adresa:
         return []
-    chastyny = [c.strip() for c in adresa.split(' / ')] if ' / ' in adresa else [adresa]
+    adresa = re.sub(r'^перехрест\w*\s+', '', adresa, flags=re.I)      # «перехрестя вул. X і вул. Y» (підпис кроку 2)
+    chastyny = [c.strip() for c in ROZDIL_PEREKHRESTIA.split(adresa)]
     vykhid = []
     for ch in chastyny:
         budynok = None
@@ -457,39 +487,36 @@ class Dani:
     soty: dict                                  # рівень H3 (7, 8, 9) → {клітинка: дані соти}
     vulytsi_podii: list = field(default_factory=list)
     rayony: object = None                       # межі районів (Rayony) — для назви району соти й пошуку
+    roky_danykh: tuple | None = None            # (перший, останній) рік подій випуску — правило `roky_danykh`
+    perekazy: dict = field(default_factory=dict)   # event_id → переказ ШІ для історії вулиці (perekazy.py)
 
 
-def ochyshchena_istoriia(fabula: str | None, mezha: int = 300) -> str | None:
-    """Перші ~300 знаків фабули без імен і номерів квартир. None — якщо прибрати не вдалося."""
-    if not fabula:
+# Період подій для продажу (ZAVDANNYA-109, S-Зв.3 dani-edrsr): те саме правило, що й у звіті адреси
+# (`dani-edrsr/src/zvit/analityka.py`, `roky_danykh`) — рік береться, якщо рішень за нього у випуску щонайменше десята
+# частина від найповнішого року. Зараз — 2024–2026; після повного Києва — скільки буде. Не плутати з MV-2 (`ROKY`): це план
+# даних, а не те, що вже є.
+CHASTKA_ROKU = 10
+
+
+def roky_danykh(con) -> tuple | None:
+    rr = [(int(r), n) for r, n in con.execute(
+        'select substr(data_rishennia, 1, 4) r, count(*) n from document where data_rishennia is not null group by r order by r')
+        if r and r.isdigit()]
+    if not rr:
         return None
-    t = chystyi(fabula)
-    t = re.sub(r'ОСОБА_\d+', 'особа', t)
-    t = re.sub(r'(в|у)?\s*(кв\.|квартир[аиіу]|квартирі)\s*(№\s*)?\d+[-\w]*', '', t, flags=re.I)
-    t = re.sub(r'АДРЕСА_\d+', 'за адресою', t)
-    t = re.sub(r'\b(АДРЕСА|ІНФОРМАЦІЯ|НОМЕР|ДАТА|ПІБ)_\d+', '…', t)
-    # Номери будинків (MV-3: на безкоштовній сторінці немає адрес): «вул. Хрещатик, 42» → «вул. Хрещатик»,
-    # «біля будинку 12» → «біля будинку», «буд. 5» → «будинку».
-    t = re.sub(r'((?:вул|просп|пр-т|пр|бульв|пров|пл|наб|вулиц[яіі]|проспект[уі]?|бульвар[уі]?|провул[ок]\w*|площ[аіу]|шосе|узвіз)\.?\s+'
-               r'[А-ЯІЇЄҐA-Z0-9][^,;.]{0,50}?)\s*,\s*(буд\.\s*|будинок\s*|№\s*)?\d+[\w/-]*', r'\1', t)
-    t = re.sub(r'\b(будинок|будинку|будинком|будинка)\s*(№\s*)?\d+[а-яa-z]?([/-]\d*[а-яa-z]?)*', r'\1', t, flags=re.I)
-    t = re.sub(r'\bбуд\.\s*(№\s*)?\d+[а-яa-z]?([/-]\d*[а-яa-z]?)*', 'будинку', t, flags=re.I)
-    t = re.sub(r'№\s*\d+[\w/-]*', '', t)
-    t = re.sub(r'\s+([,.;:])', r'\1', t)
-    t = re.sub(r'\s{2,}', ' ', t).strip()
-    if NOMER_BUDYNKU.search(t):
-        return None
-    # Імена, що могли лишитися: «Іванов І.І.», «гр. Петренко».
-    if re.search(r'[А-ЯІЇЄҐ][а-яіїєґ\']+\s+[А-ЯІЇЄҐ]\.\s?[А-ЯІЇЄҐ]\.', t) or re.search(r'\bгр\.\s*[А-ЯІЇЄҐ]', t):
-        return None
-    if re.search(r'кв\.|квартир', t, re.I) or '_' in t:
-        return None
-    if ZABORONENI_SLOVA.search(t):
-        return None
-    t = t[:1].upper() + t[1:]
-    if len(t) > mezha:
-        t = t[:mezha].rsplit(' ', 1)[0].rstrip(',;:—-') + '…'
-    return t
+    mezha = max(n for _, n in rr) / CHASTKA_ROKU
+    roky = [r for r, n in rr if n >= mezha]
+    return roky[0], roky[-1]
+
+
+def period_podii(dn) -> str:
+    """«2024–2026» — роки подій, що вже є в даних (для вітрини й опису звіту)"""
+    r = getattr(dn, 'roky_danykh', None)
+    if not r:
+        return ''
+    return str(r[0]) if r[0] == r[1] else f'{r[0]}–{r[1]}'
+
+
 
 
 def zibraty_dani(baza: Path, pereimenuvannia: Path | None, mezhi_rayoniv: Path | None) -> Dani:
@@ -606,22 +633,24 @@ def zibraty_dani(baza: Path, pereimenuvannia: Path | None, mezhi_rayoniv: Path |
             soty[riven] = soty_rivnia(podii, vulytsi_podii, varianty_slug, problemy, riven)
 
     zv = Zvedennia(vulytsi, varianty_slug, sumnivni, neodnoz, pereim_spysok)
+    try:
+        roky = roky_danykh(con)
+    except sqlite3.OperationalError:       # база без таблиці рішень — періоду не кажемо
+        roky = None
     con.close()
-    return Dani(versiia, podii, vulytsi, zv, misto_vydy, soty, vulytsi_podii, rayony)
+    return Dani(versiia, podii, vulytsi, zv, misto_vydy, soty, vulytsi_podii, rayony, roky)
 
 
 # ---------------------------------------------------------------- соти головної карти
 
-# Сім груп карти (друге уточнення центрального чату до ZAVDANNYA-10): ДТП окремо від інших дорожніх.
-HRUPY = [('dtp', 'ДТП'), ('dor', 'Дороги'), ('hp', 'Громадський порядок'), ('mai', 'Майно'),
-         ('nar', 'Наркотики'), ('alk', 'Алкоголь'), ('nas', 'Насильство')]
-HRUPA_VYDU = {'ДТП': 'dtp', 'ДОР': 'dor', 'ГП': 'hp', 'МАЙ': 'mai', 'НАР': 'nar', 'АЛК': 'alk', 'НАС': 'nas'}
+# Сім груп подій — з одного словника (brend/hrupy.json, копія dani-edrsr/src/hrupy.py; MV-116). Група — за видом і статтею.
+HRUPY = HR.HRUPY
 
 # «Що страждає» по групах — пошуком слів у фабулі. Окремого поля цілі у випуску немає, тому
 # це наближення; у картці показуємо лише те, що трапляється щонайменше в 5 подіях соти.
 # Насильство — лише числом, тож для нього нічого не шукаємо.
 TSILI = {
-    'mai': ('беруть', [
+    'kra': ('беруть', [
         ('телефони', re.compile(r'мобільн\w*\s+телефон|смартфон|iphone|айфон|телефон\w*\s+(марки|«|"|samsung|xiaomi|apple)', re.I)),
         ('авто', re.compile(r'заволоді\w*\s+(транспортн|автомоб)|автомобіл\w*\s+(марки|«)', re.I)),
         ('алкоголь', re.compile(r'горілк|коньяк|віскі|алкогольн\w+\s+напо|бренді|\bром\b', re.I)),
@@ -654,7 +683,7 @@ TSILI = {
         ('квіти', re.compile(r'квіт', re.I)),
         ('алкоголь', re.compile(r'алкогол|горілк|\bпив|\bвин[оа]', re.I)),
     ]),
-    'hp': ('на кого', [
+    'por': ('на кого', [
         ('перехожих', re.compile(r'перехож', re.I)),
         ('поліцейських', re.compile(r'поліцейськ|працівник\w*\s+поліції', re.I)),
         ('продавців і охорону', re.compile(r'продавц|касир|охоронц|охорон\w+\s+магазин', re.I)),
@@ -674,9 +703,19 @@ def hodyna_pik(hodyny: Counter) -> str | None:
     return f'{chastyna} {naikrashche}–{(naikrashche + 3) % 24 or 24}'
 
 
+def indeks_misiatsia(data: str | None) -> int | None:
+    """Номер місяця від січня першого відкритого року (0, 1, …) або None, якщо місяця в даті немає."""
+    if not data or len(data) < 7 or not data[:4].isdigit() or not data[5:7].isdigit():
+        return None
+    rik, mis = int(data[:4]), int(data[5:7])
+    if not (1 <= mis <= 12) or not (VIDKRYTI_ROKY[0] <= rik <= VIDKRYTI_ROKY[-1]):
+        return None
+    return (rik - VIDKRYTI_ROKY[0]) * 12 + mis - 1
+
+
 def soty_rivnia(podii: list, vulytsi_podii: list, varianty_slug: dict, problemy: list, riven: int) -> dict:
     """Соти одного рівня H3. Статеві й щодо дітей (MV-4, MV-102) — лише у великих сотах (рівні 7 і 8) і лише числом
-    у групі «Насильство»; домашнє насильство з точкою — як усі події, без точки — як чутливі (числом по соті випуску). Лише події за останні 3 роки (MV-32); старші — лише прапорець «stari» у соті,
+    у групі насильства (`nas`, brend/hrupy.json); домашнє насильство з точкою — як усі події, без точки — як чутливі (числом по соті випуску). Лише події за останні 3 роки (MV-32); старші — лише прапорець «stari» у соті,
     де є й нові події (сота лише зі старими подіями на безкоштовну карту не потрапляє)."""
     soty = {}
     stari_k = set()
@@ -700,12 +739,18 @@ def soty_rivnia(podii: list, vulytsi_podii: list, varianty_slug: dict, problemy:
         if not vidkryta(p):
             stari_k.add(k)
             continue
-        s = soty.setdefault(k, {'chysla': Counter(), 'roky': Counter(), 'hodyny': Counter(), 'stari': False,
+        s = soty.setdefault(k, {'chysla': Counter(), 'roky': Counter(), 'misiatsi': defaultdict(Counter), 'hodyny': Counter(), 'stari': False,
                                 'tsili': defaultdict(Counter), 'vulytsi': Counter(), 'z_adresoyu': 0, 'problemy': []})
-        hrupa = 'nas' if lyshe_chyslo else HRUPA_VYDU.get(p.vyd)
+        hrupa = 'nas' if lyshe_chyslo else HR.hrupa(p.vyd, p.stattia)
         for h in ((hrupa, 'all') if hrupa else ('all',)):
             s['chysla'][f'{h}3'] += 1
         s['roky'][p.rik] += 1
+        mi = indeks_misiatsia(p.data) if not p.chutlyva else None
+        # ZAVDANNYA-105: місяці для смуги «роки · місяці» й «оживання» (лише числа). Статеві й щодо дітей — без місяця:
+        # число за місяць у малій кількості легше пов'язати з конкретною справою, ніж число за 3 роки.
+        if mi is not None:
+            for h in ((hrupa, 'all') if hrupa else ('all',)):
+                s['misiatsi'][h][mi] += 1
         if lyshe_chyslo:
             continue                      # далі — лише відкриті події
         s['z_adresoyu'] += 1
@@ -737,9 +782,10 @@ DNI = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'нд']
 
 
 def profil_vulytsi(dani: Dani, v: Vulytsia) -> dict:
-    """Узагальнене для безкоштовної сторінки: без адрес подій і описів, крім однієї чернетки історії
-    (MV-27, MV-25). Лише події за останні 3 роки (MV-32); про старші — лише прапорець «stari»."""
+    """Узагальнене для безкоштовної сторінки: без адрес подій і описів, крім однієї історії — переказу ШІ
+    (MV-27, MV-25, ZAVDANNYA-110). Лише події за останні 3 роки (MV-32); про старші — лише прапорець «stari»."""
     import datetime
+    import perekazy as PK
     podii = [dani.podii[i] for i in v.nedavni]
     vidkryti = [p for p in podii if not p.chutlyva]
     roky = Counter(p.rik for p in podii)
@@ -778,14 +824,16 @@ def profil_vulytsi(dani: Dani, v: Vulytsia) -> dict:
     soty = Counter(h3.latlng_to_cell(p.lat, p.lon, 9) for p in vidkryti if p.lat is not None) if h3 else Counter()
     mists = len({(round(p.lat, 5), round(p.lon, 5)) for p in vidkryti if p.lat is not None})
 
-    # Історія: найсвіжіша подія з придатною фабулою (не насильство, не чутлива).
+    # Історія (ZAVDANNYA-110, Б-1; MV-25, MV-110): лише переказ ШІ, що пройшов перевірку програмою; сирої фабули
+    # на відкритій сторінці немає. Кандидати — найсвіжіші події з фабулою (не насильство, не чутливі); переказ —
+    # з файлу кроку dani-edrsr/src/perekazy_istorii.py. Переказу немає — історії немає.
+    kandydaty = [p for p in sorted(vidkryti, key=lambda p: (p.data or '', p.event_id), reverse=True)
+                 if p.vyd not in ('НАС',) and p.fabula][:KANDYDATIV_ISTORII]
     istoriia = None
-    for p in sorted(vidkryti, key=lambda p: (p.data or '', p.event_id), reverse=True):
-        if p.vyd in ('НАС',) or not p.fabula:
-            continue
-        t = ochyshchena_istoriia(p.fabula)
-        if t and len(t) >= 80:
-            istoriia = {'tekst': t, 'rik': p.rik, 'vyd': vyd_lyudskoyu(p.stattia, p.vyd), 'url': p.url}
+    for p in kandydaty:
+        t = dani.perekazy.get(p.event_id)
+        if t and not PK.vady(t, p.fabula):
+            istoriia = {'tekst': t, 'rik': p.rik, 'vyd': vyd_lyudskoyu(p.stattia, p.vyd), 'event_id': p.event_id}
             break
 
     return {
@@ -793,6 +841,7 @@ def profil_vulytsi(dani: Dani, v: Vulytsia) -> dict:
         'vyriznennia': vyriznennia, 'rytm': rytm, 'z_chasom': z_chasom,
         'naichastishe': sorted(vydy.items(), key=lambda x: (-x[1], x[0]))[:3],
         'soty': sorted(soty.items()), 'mists': mists, 'istoriia': istoriia,
+        'kandydaty_istorii': [p.event_id for p in kandydaty],
         'pershyi_rik': min(roky, default=None),
         'ostannii_rik': max(roky, default=None),
     }
