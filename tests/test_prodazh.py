@@ -116,6 +116,7 @@ class Vydavach(unittest.TestCase):
     def tearDownClass(cls):
         cls.srv.terminate()
         cls.srv.wait(5)
+        cls.srv.stdout.close()
         cls.tmp.cleanup()
 
     def vidkryty(self, shliakh, dani=None):
