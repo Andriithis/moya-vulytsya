@@ -849,6 +849,12 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
 
     # Заглушка з грою — її власним збирачем, без змін.
     import zibraty as zahlushka
+    if koloda:   # Б-4 (ZAVDANNYA-110): справжня колода — лише через перевірку для публікації, без обходу
+        K = zahlushka.koloda_hry
+        try:
+            K.dlya_publikatsiyi(K.pidhotuvaty(K.prochytaty(koloda)))
+        except K.PomylkaKolody as pomylka:
+            raise SystemExit(f'Колоду гри не можна публікувати: {pomylka}') from pomylka
     zahlushka.zibraty(vykhid / 'zahlushka', '', '', {}, False, koloda)
     adresy.append('/zahlushka/')
 
