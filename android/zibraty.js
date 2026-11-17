@@ -55,6 +55,7 @@ function zapustyty(komanda, argumenty, teka) {
   try {
     await new TwaGenerator().createTwaProject(VYKHID, new TwaManifest(robochi), new ConsoleLog('zibraty'));
   } finally {
+    srv.closeAllConnections();   // інакше відкриті з'єднання тримають процес після збирання
     srv.close();
   }
   // У проєкт кладемо справжній twa-manifest.json (з адресами сайту, а не локального сервера).
@@ -78,5 +79,6 @@ function zapustyty(komanda, argumenty, teka) {
     fs.rmSync(kl);
     pidsumok.push(proto);
   }
+  fs.rmSync(path.join(VYKHID, 'vyrivniano.apk'), { force: true });
   for (const f of pidsumok) console.log(`${path.relative(KORIN, f)} — ${(fs.statSync(f).size / 1024).toFixed(0)} КБ`);
 })().catch((e) => { console.error(e); process.exit(1); });
