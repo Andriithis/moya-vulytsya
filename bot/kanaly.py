@@ -85,14 +85,14 @@ class Henerator:
     def __init__(self, indeks: dict, adresa_saitu: str = ADRESA_SAITU):
         self.i = indeks
         self.sait = adresa_saitu.rstrip('/')
-        self.rayony = {r['n']: r for r in indeks['rayony']}
-        self.vulytsi = {v['s']: v for v in indeks['vulytsi']}
+        self.rayony = {r['n']: r for r in indeks.get('rayony', [])}
+        self.vulytsi = {v['s']: v for v in indeks.get('vulytsi', [])}
         r0, r1 = indeks.get('roky_podii', [2024, 2026])
         self.roky = f'{r0}–{r1}'
         self.misiatsi = indeks.get('misiatsi_1551') or []
         # скарги 1551 по вулиці сайту — сума будинків вулиці
         self.skarhy_vul = defaultdict(Counter)
-        for b in indeks['budynky']:
+        for b in indeks.get('budynky', []):
             if b.get('vs') and b.get('sk'):
                 self.skarhy_vul[b['vs']].update(b['sk'])
         self.podii_r = defaultdict(list)
@@ -102,7 +102,7 @@ class Henerator:
         for r in self.podii_r:
             self.podii_r[r].sort(key=lambda p: khesh('istoriia', p['id']))
         self.vulytsi_r = defaultdict(list)
-        for v in indeks['vulytsi']:
+        for v in indeks.get('vulytsi', []):
             if v.get('r'):
                 self.vulytsi_r[v['r']].append(v)
 
