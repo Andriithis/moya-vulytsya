@@ -45,3 +45,34 @@ def tsina(kl: str, strok: bool = True) -> str:
 def dozvoleni_sumy() -> set[int]:
     """Усі суми, які можуть бути на сайті (0 — безкоштовна карта)."""
     return {0} | {v for v in TSINY.values() if v is not None}
+
+
+# ---------------------------------------------------------------- для сервера продажу (ZAVDANNYA-99)
+# Скільки довідок дає покупка або підписка за один період (MV-100, MV-102). ОСББ — довідки лише на свій будинок.
+DOVIDOK = {'dovidka': 1, 'try': 3, 'zvit': 1, 'pidpyska': 1, 'rieltor': 5, 'osbb': 1}
+# Період підписки: скільки місяців між списаннями (ОСББ — рік, MV-102).
+PERIOD_MISIATSIV = {'pidpyska': 1, 'rieltor': 1, 'osbb': 12}
+# Який звіт генерувати (dani-edrsr/src/zvit/zibraty.py): повний — лише «Повний звіт», решта — довідка.
+REZHYM = {'zvit': 'povnyi'}
+# Що можна купити через сервер (бізнес — за домовленістю, додаткова — лише з кабінету підписника).
+NA_PRODAZH = ('dovidka', 'try', 'zvit', 'pidpyska', 'rieltor', 'osbb')
+
+
+MODUL_JS = '// Зібрано з site/tsiny.py (python site/tsiny.py). Не редагувати руками.\nexport default '
+
+
+def dlia_servera() -> dict:
+    """Таблиця цін для сервера продажу (`site/worker/prodazh/tsiny.js`; той самий вміст звіряє тест)."""
+    return {
+        'pro': 'Зібрано з site/tsiny.py (python site/tsiny.py). Не редагувати руками.',
+        'tsiny': TSINY, 'nazvy': TOVARY, 'dovidok': DOVIDOK, 'period_misiatsiv': PERIOD_MISIATSIV,
+        'rezhym': REZHYM, 'na_prodazh': list(NA_PRODAZH),
+    }
+
+
+if __name__ == '__main__':
+    import json
+    from pathlib import Path
+    f = Path(__file__).resolve().parent / 'worker' / 'prodazh' / 'tsiny.js'
+    f.write_text(MODUL_JS + json.dumps(dlia_servera(), ensure_ascii=False, indent=1) + ';\n', encoding='utf-8')
+    print(f)
