@@ -21,7 +21,8 @@
   var MISTO = { center: [30.523, 50.452], zoom: 9.75, pitch: 0, bearing: 0 };
   var ZUM_ZUPYNKY = REZHYM === 'skhema' ? 12.8 : 15.4;
   var ZUM_VULYTSI = REZHYM === 'skhema' ? 13.4 : 14.4;
-  var VIDSTUP = { top: 260, bottom: 1000, left: 0, right: 140 };   // точка — над карткою, лівіше правих 15 %
+  var VIDSTUP = { top: 260, bottom: 1100, left: 0, right: 140 };   // точка — над карткою (картка піднята, ZAVDANNYA-94), лівіше правих 15 %
+  var UKRAINA = { center: [31.3, 48.7], zoom: 5.1, pitch: 0, bearing: 0 };   // початок перельоту (група «Місто згори»)
   var LIT = 1.8;           // політ між зупинками, с
   var POYAVA = 0.35;       // поява картки, с
 
@@ -49,7 +50,7 @@
   }
 
   // ---------- стиль карти ----------
-  function styl(mezha, soty) {
+  function styl(mezha, soty, S) {
     var k = {};
     ['ground', 'surface', 'ink', 'muted', 'line', 'line-strong', 'accent', 'accent-soft', 'data-1', 'data-2', 'data-3', 'data-4', 'data-5',
       'karta-voda', 'karta-zelen', 'karta-zabudova', 'karta-vulytsia', 'karta-vulytsia-ramka', 'karta-za-mezhamy']
@@ -61,7 +62,8 @@
       soty: { type: 'geojson', data: soty },
       kolo: { type: 'geojson', data: fc() },
       adresa: { type: 'geojson', data: fc() },
-      tochka: { type: 'geojson', data: fc() }
+      tochka: { type: 'geojson', data: fc() },
+      tl: { type: 'geojson', data: S.shablon === 'taimlaps' && S.soty ? S.soty : fc() }
     };
     var shary = [{ id: 'tlo', type: 'background', paint: { 'background-color': k.ground } }];
     if (REZHYM === 'pidkladka') {
@@ -75,18 +77,54 @@
         { id: 'vulytsi', type: 'line', source: 'osnova', 'source-layer': 'transportation', minzoom: 12, filter: dorohy(['minor', 'service', 'tertiary', 'secondary']), layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': k['karta-vulytsia'], 'line-width': shyr(0.3, 2.6, 15) } },
         { id: 'magistrali', type: 'line', source: 'osnova', 'source-layer': 'transportation', filter: dorohy(['motorway', 'trunk', 'primary']), layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': k['line-strong'], 'line-width': shyr(1.2, 5, 22) } }
       ]);
+      // вулиця ролика (група «Що болить вулиці», «Одна історія») — м'ятною лінією під назвами (ZAVDANNYA-94)
+      if (S.pidsvitka && S.pidsvitka.length) {
+        shary.push({ id: 'pidsvitka', type: 'line', source: 'osnova', 'source-layer': 'transportation', minzoom: 11,
+          filter: ['all', ['==', ['geometry-type'], 'LineString'], ['in', ['coalesce', ['get', 'name:uk'], ['get', 'name']], ['literal', S.pidsvitka]]],
+          layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': zminna('pk-2'), 'line-opacity': 0.9, 'line-width': shyr(2, 9, 30) } });
+      }
     }
     shary = shary.concat([
-      { id: 'soty', type: 'fill', source: 'soty', paint: { 'fill-color': kolirSoty, 'fill-opacity': REZHYM === 'pidkladka' ? 0.55 : 0.92 } },
-      { id: 'soty-ramka', type: 'line', source: 'soty', paint: { 'line-color': k.surface, 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 0.6, 14, 2.5] } },
-      { id: 'za-mezhamy', type: 'fill', source: 'maska', paint: { 'fill-color': k['karta-za-mezhamy'], 'fill-opacity': 0.85 } },
+      // Соти — лише на загальному плані: з наближенням гаснуть (на зупинці не заливають вулиці, ZAVDANNYA-94, п. 1)
+      { id: 'soty', type: 'fill', source: 'soty', layout: { visibility: S.shablon === 'taimlaps' ? 'none' : 'visible' }, paint: { 'fill-color': kolirSoty,
+        'fill-opacity': REZHYM === 'pidkladka' ? ['interpolate', ['linear'], ['zoom'], 10.5, 0.55, 12.5, 0.3, 13.8, 0.1, 14.6, 0] : 0.92 } },
+      { id: 'soty-ramka', type: 'line', source: 'soty', layout: { visibility: S.shablon === 'taimlaps' ? 'none' : 'visible' }, paint: { 'line-color': k.surface,
+        'line-width': ['interpolate', ['linear'], ['zoom'], 10, 0.6, 14, 2.5],
+        'line-opacity': REZHYM === 'pidkladka' ? ['interpolate', ['linear'], ['zoom'], 11.5, 1, 13.5, 0] : 1 } },
+      // таймлапс: соти за періодами (колір — клас у періоді i, ставить kadr) і 3D-вершини наприкінці
+      { id: 'tl', type: 'fill', source: 'tl', paint: { 'fill-color': k['data-1'], 'fill-opacity': 0 } },
+      { id: 'tl-ramka', type: 'line', source: 'tl', paint: { 'line-color': k.surface, 'line-width': 1.2, 'line-opacity': 0 } },
+      { id: 'za-mezhamy', type: 'fill', source: 'maska', paint: { 'fill-color': k['karta-za-mezhamy'], 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 7.5, 0, 9.2, 0.85] } },
       { id: 'mezha', type: 'line', source: 'mezha', layout: { 'line-join': 'round' }, paint: { 'line-color': k['line-strong'], 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 2.5, 14, 5] } },
+      { id: 'tl-3d', type: 'fill-extrusion', source: 'tl', filter: ['==', ['get', 'v'], 1], paint: { 'fill-extrusion-color': ['interpolate', ['linear'], ['get', 'q'], 0.88, zminna('pk-1'), 1, zminna('pk-2')],
+        'fill-extrusion-height': 0, 'fill-extrusion-opacity': 0.92 } },
       { id: 'kolo', type: 'line', source: 'kolo', paint: { 'line-color': k.ink, 'line-width': 4, 'line-dasharray': [2, 1.5] } },
       { id: 'adresa', type: 'circle', source: 'adresa', paint: { 'circle-radius': 16, 'circle-color': k.ink, 'circle-stroke-color': k.surface, 'circle-stroke-width': 6 } },
       { id: 'tochka-oreol', type: 'circle', source: 'tochka', paint: { 'circle-radius': ['get', 'r'], 'circle-color': k.accent, 'circle-opacity': 0.18 } },
       { id: 'tochka-ramka', type: 'circle', source: 'tochka', paint: { 'circle-radius': 30, 'circle-color': k.ink } },
       { id: 'tochka', type: 'circle', source: 'tochka', paint: { 'circle-radius': 20, 'circle-color': k.accent, 'circle-stroke-color': k.surface, 'circle-stroke-width': 7 } }
     ]);
+    if (REZHYM === 'pidkladka') {
+      // Назви (ZAVDANNYA-94, п. 1): вулиці й площі з 13,5 зуму, станції метро, райони й річка — щоб місце впізнавали.
+      var nazva = ['coalesce', ['get', 'name:uk'], ['get', 'name']];
+      var oreol = { 'text-color': k.ink, 'text-halo-color': k.surface, 'text-halo-width': 3 };
+      var pered = shary.findIndex(function (l) { return l.id === 'kolo'; });
+      shary.splice(pered, 0,
+        { id: 'nazvy-vod', type: 'symbol', source: 'osnova', 'source-layer': 'water_name', minzoom: 9,
+          layout: { 'text-field': nazva, 'text-font': ['Noto Sans Italic'], 'text-size': 30, 'symbol-placement': 'line', 'text-max-angle': 30 },
+          paint: { 'text-color': '#3B6EA8', 'text-halo-color': k.surface, 'text-halo-width': 2 } },
+        { id: 'nazvy-vulyts', type: 'symbol', source: 'osnova', 'source-layer': 'transportation_name', minzoom: 13.5,
+          layout: { 'text-field': nazva, 'text-font': ['Noto Sans Bold'], 'symbol-placement': 'line', 'text-max-angle': 35, 'text-padding': 6,
+            'text-size': ['interpolate', ['linear'], ['zoom'], 13.5, 24, 16, 32] }, paint: oreol },
+        { id: 'nazvy-metro', type: 'symbol', source: 'osnova', 'source-layer': 'poi', minzoom: 12.5,
+          filter: ['any', ['==', ['get', 'subclass'], 'subway'], ['==', ['get', 'class'], 'railway']],
+          layout: { 'text-field': ['concat', 'Ⓜ ', nazva], 'text-font': ['Noto Sans Bold'], 'text-size': 28, 'text-anchor': 'top', 'text-offset': [0, 0.4] },
+          paint: { 'text-color': k.accent, 'text-halo-color': k.surface, 'text-halo-width': 3 } },
+        { id: 'nazvy-mists', type: 'symbol', source: 'osnova', 'source-layer': 'place', maxzoom: 14,
+          filter: ['in', ['get', 'class'], ['literal', ['city', 'town', 'suburb', 'quarter', 'neighbourhood', 'country', 'state']]],
+          layout: { 'text-field': nazva, 'text-font': ['Noto Sans Bold'], 'text-size': ['match', ['get', 'class'], ['city', 'country'], 44, 'state', 34, 30], 'text-padding': 10 },
+          paint: { 'text-color': k.muted, 'text-halo-color': k.surface, 'text-halo-width': 3 } });
+    }
     var s = { version: 8, sources: dzherela, layers: shary };
     if (REZHYM === 'pidkladka') s.glyphs = SHRYFTY;
     return s;
@@ -136,15 +174,17 @@
     var V = [], t = 0, kam = MISTO;
     function dodaty(v) { v.t0 = t; v.t1 = t + v.tryv; V.push(v); t = v.t1; }
     var v0 = S.vstup;
-    // вступ: місто згори, ледь наближаємось
-    dodaty({ tryv: v0.tryvalist, kam: dreif(MISTO, t, v0.tryvalist, 0, 0.25), kartka: kartkaVstupu(v0) });
-    kam = { center: MISTO.center, zoom: MISTO.zoom + 0.25, pitch: 0, bearing: 0 };
+    // вступ: місто згори, ледь наближаємось; переліт починається з України
+    var start = S.shablon === 'perelit' ? UKRAINA : S.shablon === 'taimlaps' ? { center: MISTO.center, zoom: MISTO.zoom + 0.2, pitch: 30, bearing: -10 } : MISTO;
+    dodaty({ tryv: v0.tryvalist, kam: dreif(start, t, v0.tryvalist, S.shablon === 'taimlaps' ? 3 : 0, 0.25), kartka: kartkaVstupu(v0), holos: v0.holos,
+      period: S.shablon === 'taimlaps' ? -1 : undefined });
+    kam = { center: start.center, zoom: start.zoom + 0.25, pitch: start.pitch, bearing: start.bearing + (S.shablon === 'taimlaps' ? 3 : 0) };
 
     if (S.shablon === 'tur') {
       S.tochky.forEach(function (p, i) {
         var c = kamZupynky(p, i), d = p.tryvalist;
         dodaty({ tryv: d, kam: zlyty(polit(kam, c, t, LIT), t + LIT, dreif(c, t + LIT, d - LIT, 7, 0.15)),
-          kartka: kartkaPodii(p, true), kartkaVid: LIT * 0.55, kroky: (i + 1) + ' / ' + S.tochky.length, tochka: [p.lon, p.lat], tochkaVid: LIT * 0.8 });
+          kartka: kartkaPodii(p, true), kartkaVid: LIT * 0.55, holos: p.holos, kroky: (i + 1) + ' / ' + S.tochky.length, tochka: [p.lon, p.lat], tochkaVid: LIT * 0.8 });
         kam = { center: c.center, zoom: c.zoom + 0.15, pitch: c.pitch, bearing: c.bearing + 7 };
       });
     } else if (S.shablon === 'vhadai') {
@@ -155,7 +195,7 @@
         // питання: місто згори, без точки
         dodaty({ tryv: p.pytannya, kam: zlyty(polit(kam, misto, t, lit0), t + lit0, dreif(misto, t + lit0, p.pytannya - lit0, 0, 0.1)),
           kartka: '<div class="mitka">' + esc(p.koly + ' · ' + p.vyd) + '</div><div class="istoriia">' + esc(p.tekst) + '</div><div class="prymitka">Де це було?</div>',
-          kroky: nm });
+          kroky: nm, holos: p.holos_pytannya });
         var m2 = { center: misto.center, zoom: misto.zoom + 0.1, pitch: 0, bearing: 0 };
         // пауза: «Ваш варіант?» і відлік
         var tp = t;
@@ -166,7 +206,7 @@
         var c = kamZupynky(p, i), d = p.tryvalist;
         dodaty({ tryv: d, kam: zlyty(polit(m3, c, t, LIT), t + LIT, dreif(c, t + LIT, d - LIT, 6, 0.12)),
           kartka: '<div class="vidpovid"><div class="mitka">Відповідь</div><div class="adresa">' + esc(p.adresa) + '</div><div class="prymitka">Київ · ' + esc(p.koly) + '<br>' + rishennya(p) + '</div></div>',
-          kartkaVid: LIT * 0.6, kroky: nm, tochka: [p.lon, p.lat], tochkaVid: LIT * 0.7 });
+          kartkaVid: LIT * 0.6, kroky: nm, tochka: [p.lon, p.lat], tochkaVid: LIT * 0.7, holos: p.holos_vidpovid });
         kam = { center: c.center, zoom: c.zoom + 0.12, pitch: c.pitch, bearing: c.bearing + 6 };
       });
     } else if (S.shablon === 'tsyfry') {
@@ -176,21 +216,98 @@
         var lit = i === 0 ? LIT : 0.01, d = f.tryvalist;
         dodaty({ tryv: d, kam: zlyty(polit(kam, a, t, lit), t + lit, dreif(a, t + lit, d - lit, 6, 0.1)),
           kartka: '<div class="mitka">' + esc(C.adresa) + ' · радіус 1 км</div><div class="chyslo">' + esc(f.chyslo) + '</div><div class="chyslo-tekst">' + esc(f.tekst) + '</div>',
-          kartkaVid: i === 0 ? LIT * 0.6 : 0, kroky: (i + 1) + ' / ' + S.tochky.length, kolo: C });
+          kartkaVid: i === 0 ? LIT * 0.6 : 0, kroky: (i + 1) + ' / ' + S.tochky.length, kolo: C, holos: f.holos });
         kam = { center: a.center, zoom: a.zoom + 0.1, pitch: a.pitch, bearing: a.bearing + 6 };
       });
     }
-    // кінцівка: назад до міста
-    var k0 = S.kinets, misto2 = { center: MISTO.center, zoom: MISTO.zoom, pitch: 0, bearing: 0 };
-    dodaty({ tryv: k0.tryvalist, kam: zlyty(polit(kam, misto2, t, LIT), t + LIT, dreif(misto2, t + LIT, k0.tryvalist - LIT, 0, 0.1)),
-      kartka: '<div class="mitka">Моя вулиця</div><div class="zahol">' + esc(k0.tekst) + '</div>' + (k0.pidtekst ? '<div class="pidtekst">' + esc(k0.pidtekst) + '</div>' : ''),
-      kartkaVid: 0.5, ostannii: true });
+    else if (S.shablon === 'istoriia') {
+      // «Одна вулиця — одна історія» (група 2): переліт до точки, повільний обліт, переказ на 2–3 картки
+      var p1 = S.tochky[0], c1 = { center: [p1.lon, p1.lat], zoom: ZUM_ZUPYNKY - 0.3, pitch: 52, bearing: -18 };
+      var dd = p1.karty.map(function (_, j) { return (p1.tryvalosti && p1.tryvalosti[j]) || p1.tryvalist / p1.karty.length; });
+      var obertannia = 26, vsogo = dd.reduce(function (a, b) { return a + b; }, 0), tp0 = t;
+      var obl = function (tt) { var u = zatysk((tt - tp0 - LIT) / (vsogo - LIT), 0, 1);
+        return { center: c1.center, zoom: c1.zoom + 0.35 * u, pitch: c1.pitch, bearing: c1.bearing + obertannia * u }; };
+      p1.karty.forEach(function (tekst, j) {
+        var ost = j === p1.karty.length - 1;
+        dodaty({ tryv: dd[j], kam: j === 0 ? zlyty(polit(kam, c1, t, LIT), t + LIT, obl) : obl, kartkaVid: j === 0 ? LIT * 0.6 : 0,
+          kartka: '<div class="mitka">' + esc(p1.koly + ' · ' + p1.vyd) + '</div><div class="istoriia">' + esc(tekst) + '</div>' +
+            (ost ? '<div class="adresa">' + esc(p1.adresa) + '</div><div class="prymitka">' + rishennya(p1) + '</div>' : ''),
+          kroky: (j + 1) + ' / ' + p1.karty.length, tochka: [p1.lon, p1.lat], tochkaVid: j === 0 ? LIT * 0.8 : -1, holos: p1.holos && p1.holos[j] });
+      });
+      kam = obl(t);
+    } else if (S.shablon === 'shcho_bolyt') {
+      // «Що болить вулиці» (група 1): вулиця м'ятною лінією, обліт, факти числом з порівнянням
+      var C2 = S.tsentr, c2 = { center: [C2.lon, C2.lat], zoom: C2.zoom || 15, pitch: 48, bearing: -20 };
+      S.tochky.forEach(function (f, i) {
+        var a = { center: c2.center, zoom: c2.zoom + 0.08 * i, pitch: c2.pitch, bearing: c2.bearing + 8 * i };
+        var lit = i === 0 ? LIT : 0.01, d = f.tryvalist;
+        dodaty({ tryv: d, kam: zlyty(polit(kam, a, t, lit), t + lit, dreif(a, t + lit, d - lit, 8, 0.08)),
+          kartka: '<div class="mitka">' + esc(f.mitka || C2.nazva) + '</div><div class="chyslo">' + esc(f.chyslo) + '</div><div class="chyslo-tekst">' + esc(f.tekst) + '</div>' +
+            (f.pidpys ? '<div class="prymitka">' + esc(f.pidpys) + '</div>' : ''),
+          kartkaVid: i === 0 ? LIT * 0.6 : 0, kroky: (i + 1) + ' / ' + S.tochky.length, holos: f.holos });
+        kam = { center: a.center, zoom: a.zoom + 0.08, pitch: a.pitch, bearing: a.bearing + 8 };
+      });
+    } else if (S.shablon === 'kartky') {
+      // картки з числами над містом (групи 5–7: «Як це працює», «Що буває за…», «Історії з даних»)
+      var c3 = S.kamera ? { center: [S.kamera.lon, S.kamera.lat], zoom: S.kamera.zoom, pitch: S.kamera.pitch || 0, bearing: 0 } : { center: MISTO.center, zoom: MISTO.zoom + 0.3, pitch: 25, bearing: 0 };
+      S.tochky.forEach(function (f, i) {
+        var a = { center: c3.center, zoom: c3.zoom + 0.06 * i, pitch: c3.pitch, bearing: c3.bearing + 4 * i }, lit = i === 0 ? LIT : 0.01;
+        dodaty({ tryv: f.tryvalist, kam: zlyty(polit(kam, a, t, lit), t + lit, dreif(a, t + lit, f.tryvalist - lit, 4, 0.06)),
+          kartka: '<div class="mitka">' + esc(f.mitka || '') + '</div>' + (f.chyslo ? '<div class="chyslo">' + esc(f.chyslo) + '</div>' : '') +
+            '<div class="chyslo-tekst">' + esc(f.tekst) + '</div>' + (f.pidpys ? '<div class="prymitka">' + esc(f.pidpys) + '</div>' : ''),
+          kartkaVid: i === 0 ? LIT * 0.6 : 0, kroky: (i + 1) + ' / ' + S.tochky.length, holos: f.holos });
+        kam = { center: a.center, zoom: a.zoom + 0.06, pitch: a.pitch, bearing: a.bearing + 4 };
+      });
+    } else if (S.shablon === 'perelit') {
+      // переліт від України до вулиці (група 4): зупинки з власним зумом, політ довший
+      S.tochky.forEach(function (f, i) {
+        var a = { center: [f.lon, f.lat], zoom: f.zoom, pitch: f.pitch || 0, bearing: f.bearing || 0 }, lit = Math.min(f.tryvalist * 0.6, f.lit || 2.6);
+        dodaty({ tryv: f.tryvalist, kam: zlyty(polit(kam, a, t, lit), t + lit, dreif(a, t + lit, f.tryvalist - lit, 6, 0.1)),
+          kartka: '<div class="mitka">' + esc(f.mitka || '') + '</div><div class="zahol zahol--mensh">' + esc(f.tekst) + '</div>' + (f.pidtekst ? '<div class="pidtekst">' + esc(f.pidtekst) + '</div>' : ''),
+          kartkaVid: lit * 0.7, holos: f.holos });
+        kam = { center: a.center, zoom: a.zoom + 0.1, pitch: a.pitch, bearing: a.bearing + 6 };
+      });
+    } else if (S.shablon === 'taimlaps') {
+      // таймлапс (група 4): соти наростають за періодами, наприкінці — 3D-вершини (верхні 12 %, MV-55)
+      var c4 = { center: MISTO.center, zoom: MISTO.zoom + 0.45, pitch: 30, bearing: -7 };
+      S.periody.forEach(function (f, i) {
+        var a = { center: c4.center, zoom: c4.zoom + 0.05 * i, pitch: c4.pitch, bearing: c4.bearing + 2 * i }, lit = i === 0 ? 1.0 : 0.01;
+        dodaty({ tryv: f.tryvalist, kam: zlyty(polit(kam, a, t, lit), t + lit, dreif(a, t + lit, f.tryvalist - lit, 2, 0.05)), period: i,
+          kartka: '<div class="mitka">' + esc(f.mitka_mala || 'Події в даних') + '</div><div class="rik">' + esc(f.mitka) + '</div>' + (f.tekst ? '<div class="pidtekst">' + esc(f.tekst) + '</div>' : ''),
+          kartkaVid: i === 0 ? 0.4 : 0, klas: 'kartka--taimlaps', holos: f.holos });
+        kam = { center: a.center, zoom: a.zoom + 0.05, pitch: a.pitch, bearing: a.bearing + 2 };
+      });
+      var vr = S.vershyny, a5 = { center: MISTO.center, zoom: MISTO.zoom + 0.9, pitch: 58, bearing: 25 }, tv = t;
+      dodaty({ tryv: vr.tryvalist, kam: zlyty(polit(kam, a5, t, 2.2), t + 2.2, dreif(a5, t + 2.2, vr.tryvalist - 2.2, 22, 0.1)), period: S.periody.length - 1,
+        vershyny: [tv + 0.6, 2.4], kartka: '<div class="mitka">' + esc(vr.mitka || 'Вершини') + '</div><div class="chyslo-tekst">' + esc(vr.tekst) + '</div>' +
+          (vr.pidpys ? '<div class="prymitka">' + esc(vr.pidpys) + '</div>' : ''), kartkaVid: 1.2, holos: vr.holos });
+      kam = { center: a5.center, zoom: a5.zoom + 0.1, pitch: a5.pitch, bearing: a5.bearing + 22 };
+    }
+    // кінцівка: назад до міста (таймлапс — лишається на вершинах); посилання — на сторінку цього місця (MV-106)
+    var k0 = S.kinets, misto2 = S.shablon === 'taimlaps' ? kam : { center: MISTO.center, zoom: MISTO.zoom, pitch: 0, bearing: 0 };
+    var vers = S.shablon === 'taimlaps' ? [0, 0.01] : undefined;
+    dodaty({ tryv: k0.tryvalist, kam: zlyty(polit(kam, misto2, t, LIT), t + LIT, dreif(misto2, t + LIT, k0.tryvalist - LIT, S.shablon === 'taimlaps' ? 6 : 0, 0.1)),
+      period: S.shablon === 'taimlaps' ? S.periody.length - 1 : undefined, vershyny: vers,
+      kartka: '<div class="mitka">Моя вулиця</div><div class="zahol">' + esc(k0.tekst) + '</div>' + (k0.pidtekst ? '<div class="pidtekst">' + esc(k0.pidtekst) + '</div>' : '') +
+        (k0.posylannia ? '<div class="posylannia">' + esc(String(k0.posylannia).replace(/^https?:\/\//, '').replace(/\/$/, '')) + '</div>' : ''),
+      kartkaVid: 0.5, ostannii: true, holos: k0.holos });
     return { vidrizky: V, tryvalist: t };
   }
 
   // ---------- стан кадру ----------
   var karta, SHKALA, el = {};
-  var ostannie = { kartka: null, klas: null, kroky: null, tochka: null, kolo: null };
+  var ostannie = { kartka: null, klas: null, kroky: null, tochka: null, kolo: null, period: null, vysota: null };
+
+  function postavytyPeriod(i) {
+    if (i === ostannie.period) return;
+    ostannie.period = i;
+    if (i === undefined) return;
+    var vyraz = i < 0 ? 0 : ['at', i, ['get', 'k']];
+    var kol = ['match', vyraz, 1, zminna('data-1'), 2, zminna('data-2'), 3, zminna('data-3'), 4, zminna('data-4'), zminna('data-5')];
+    karta.setPaintProperty('tl', 'fill-color', kol);
+    karta.setPaintProperty('tl', 'fill-opacity', i < 0 ? 0 : ['case', ['>', vyraz, 0], 0.62, 0]);
+    karta.setPaintProperty('tl-ramka', 'line-opacity', i < 0 ? 0 : ['case', ['>', vyraz, 0], 0.9, 0]);
+  }
 
   function prozorist(v, t, vid) {
     var a = zatysk((t - v.t0 - (vid || 0)) / POYAVA, 0, 1);
@@ -213,14 +330,24 @@
     var kr = v.kroky || '';
     if (kr !== ostannie.kroky) { el.kroky.textContent = kr; ostannie.kroky = kr; }
 
-    var tk = v.tochka && t >= v.t0 + (v.tochkaVid || 0) ? v.tochka : null;
+    var tk = v.tochka && v.tochkaVid >= 0 && t >= v.t0 + (v.tochkaVid || 0) ? v.tochka : null;
     var kTochky = tk ? tk.join(',') : '';
     var u = tk ? zatysk((t - v.t0 - v.tochkaVid) / 0.6, 0, 1) : 0;
     if (tk) {
       var f = tochka(tk[0], tk[1]); f.properties.r = 20 + 46 * plavno(u);
       karta.getSource('tochka').setData(fc([f]));
     } else if (ostannie.tochka !== '') karta.getSource('tochka').setData(fc());
+    // точка лишається між картками історії (tochkaVid < 0 — без нової появи)
+    if (v.tochka && v.tochkaVid < 0 && kTochky === '') { var f2 = tochka(v.tochka[0], v.tochka[1]); f2.properties.r = 66; karta.getSource('tochka').setData(fc([f2])); kTochky = v.tochka.join(','); }
     ostannie.tochka = kTochky;
+
+    if (SHKALA.taimlaps) {
+      postavytyPeriod(v.period);
+      var vys = 0;
+      if (v.vershyny) vys = v.vershyny[1] <= 0.01 ? 1 : plavno((t - v.vershyny[0]) / v.vershyny[1]);
+      vys = Math.round(vys * 100) / 100;
+      if (vys !== ostannie.vysota) { karta.setPaintProperty('tl-3d', 'fill-extrusion-height', ['*', ['get', 'h'], vys]); ostannie.vysota = vys; }
+    }
 
     var kl = v.kolo ? v.kolo.lat + ',' + v.kolo.lon : '';
     if (kl !== ostannie.kolo) {
@@ -240,7 +367,8 @@
     });
   }
 
-  window.vidrizky = function () { return SHKALA.vidrizky.map(function (v) { return { t0: v.t0, t1: v.t1 }; }); };
+  // відрізки з текстом для голосу: рендер накладає голос із початку відрізка (+ затримка появи картки)
+  window.vidrizky = function () { return SHKALA.vidrizky.map(function (v) { return { t0: v.t0, t1: v.t1, holos: v.holos || '', vid: v.kartkaVid || 0 }; }); };
   window.kadr = function (t) { postavyty(t); return pislyaMaliuvannia(); };
 
   function vantazhyty(u) { return fetch(u).then(function (r) { if (!r.ok) throw new Error(u + ': ' + r.status); return r.json(); }); }
@@ -251,12 +379,14 @@
       // MV-60: адресу й номер рішення готує video/perevirka.py (pidhotuvaty) — сирий сценарій не показуємо
       if (!S.pidhotovano) throw new Error('Сценарій не підготовлено — відкривайте сцену через video/rendery.py (MV-60)');
       SHKALA = zibraty(S);
+      SHKALA.taimlaps = S.shablon === 'taimlaps';
       el.kartka = document.getElementById('kartka');
       el.kroky = document.getElementById('kroky');
-      document.getElementById('dzherelo').textContent = 'Дані: судові рішення ЄДРСР — лише те, що дійшло до суду · темніше — більше подій у даних · карта: © OpenStreetMap' + (REZHYM === 'pidkladka' ? ', OpenFreeMap' : '');
+      // один рядок (ZAVDANNYA-94, п. 1): джерело даних і карти; 1551 — лише якщо в ролику є скарги
+      document.getElementById('dzherelo').textContent = 'Дані: ЄДРСР — лише те, що дійшло до суду' + (S.z1551 ? ' · 1551 (КМДА)' : '') + ' · © OpenStreetMap';
       maplibregl.setWorkerUrl('../site/hra/biblioteka/maplibre-gl-csp-worker.js');
       karta = new maplibregl.Map({
-        container: 'karta', style: styl(r[1], r[2]), center: MISTO.center, zoom: MISTO.zoom,
+        container: 'karta', style: styl(r[1], r[2], S), center: MISTO.center, zoom: MISTO.zoom,
         interactive: false, attributionControl: false, fadeDuration: 0, preserveDrawingBuffer: true,
         pixelRatio: 1, maxPitch: 70
       });

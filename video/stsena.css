@@ -42,9 +42,9 @@ body { font-family: Plex, system-ui, sans-serif; color: var(--ink); -webkit-font
 #kroky:empty { display: none; }
 
 /* Картка — плашка-клавіша: межа 3 px (1,5 ×2), бортик 6 px, кути 32 px (16 ×2). Права межа ≤ 896 px. */
-#kartka { left: 56px; width: 840px; bottom: 510px; background: var(--surface); border: 3px solid var(--mezha);
+#kartka { left: 56px; width: 840px; bottom: 610px; background: var(--surface); border: 3px solid var(--mezha);
   box-shadow: 0 6px 0 var(--bort); border-radius: 32px; padding: 40px 44px 44px; }
-/* низ картки — не нижче 1410 px: під нею ще рядок джерела, а нижче 1536 px — інтерфейс TikTok */
+/* низ картки — не нижче 1310 px (піднято на 100 px, ZAVDANNYA-94): під нею рядок джерела, а нижче ≈ 1450 px — підпис і кнопки TikTok/Reels */
 #kartka:empty { display: none; }
 .mitka { font: 600 30px/1.2 Plex, system-ui, sans-serif; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
 .zahol { font: 800 92px/1.04 Plex, system-ui, sans-serif; letter-spacing: -0.02em; margin-top: 18px; }
@@ -64,6 +64,12 @@ body { font-family: Plex, system-ui, sans-serif; color: var(--ink); -webkit-font
   border-radius: 50%; border: 6px solid var(--accent); font: 800 120px/1 Plex, system-ui, sans-serif; color: var(--accent); }
 
 /* Підпис джерела: внизу, але над безпечною лінією 1536 px — дрібний, не головний */
-#dzherelo { left: 64px; bottom: 400px; max-width: 830px; font: 600 26px/1.3 Plex, system-ui, sans-serif; color: var(--muted);
+#dzherelo { left: 64px; bottom: 520px; max-width: 830px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font: 600 24px/1.3 Plex, system-ui, sans-serif; color: var(--muted);
   background: var(--surface); border: 3px solid var(--mezha); box-shadow: 0 6px 0 var(--bort); border-radius: 999px; padding: 10px 24px; }
 
+
+/* ZAVDANNYA-94: нові шаблони */
+.zahol--mensh { font-size: 74px; }
+.rik { font: 800 170px/1 Plex, system-ui, sans-serif; letter-spacing: -0.03em; color: var(--accent); margin-top: 10px; }
+.posylannia { margin-top: 26px; font: 700 34px/1.25 Plex, system-ui, sans-serif; color: var(--accent); word-break: break-all; }
+.posylannia::before { content: '→ '; }

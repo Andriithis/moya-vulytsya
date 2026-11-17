@@ -11,12 +11,16 @@
     --vykhid TEKA               куди класти .mp4 (за замовчуванням video/vyhid/, у git не йде)
     --znimky TEKA               ще й зберегти 3 кадри-знімки (PNG) у цю теку
     --fps 30                    кадрів на секунду
+    --zvuk                      голос (video/zvuk.py; MV_HOLOS=piper|azure|google|elevenlabs) + власна тиха музика,
+                                субтитри .srt поруч (ZAVDANNYA-94)
+    --muzyka spokii|vechir|misto|ranok|hra   петля музики (за замовчуванням — з поля "muzyka" сценарію або spokii)
+    --lyshe-znimky              лише кадри-знімки, без відео (швидка перевірка вигляду)
 
 Як працює: локальний вебсервер віддає `video/stsena.html`; безголовий Chrome відкриває його
 в кадрі 1080×1920; для кожного кадру сторінка ставить камеру й картки (window.kadr), чекає,
 доки карта домалюється, і рендер знімає екран; знімки йдуть потоком у ffmpeg
 (H.264, -preset veryfast, 30 кадрів/с, yuv420p — це приймають TikTok, YouTube і Instagram).
-Звуку немає (наступний крок).
+Звук — ключем --zvuk (video/zvuk.py).
 
 Потрібно: Python-пакет playwright, Google Chrome або Chromium, ffmpeg.
 """
@@ -61,7 +65,8 @@ def server():
     return s
 
 
-def rendery(brauzer, port, stsenarii: Path, rezhym, vykhid: Path, znimky: Path | None, fps):
+def rendery(brauzer, port, stsenarii: Path, rezhym, vykhid: Path, znimky: Path | None, fps, zvuk_=False, muz=None,
+            lyshe_znimky=False):
     S = json.loads(stsenarii.read_text(encoding='utf-8'))
     imia = stsenarii.stem + ('' if rezhym == 'skhema' else '-pidkladka')
     vykhid.mkdir(parents=True, exist_ok=True)
@@ -92,6 +97,14 @@ def rendery(brauzer, port, stsenarii: Path, rezhym, vykhid: Path, znimky: Path |
             v = vidrizky[i]
             momenty.append(round(max(v['t0'], v['t1'] - 0.45) * fps))
 
+    vidrizky_holosu = s.evaluate('() => window.vidrizky()')
+    if lyshe_znimky:
+        for nomer, k in enumerate(momenty, 1):
+            s.evaluate('t => window.kadr(t)', k / fps)
+            s.screenshot(path=str(znimky / f'{imia}-{nomer}.png'))
+        s.close()
+        print(f'{imia}: {len(momenty)} знімків')
+        return None, tryv, 0
     ffmpeg = shutil.which('ffmpeg')
     if not ffmpeg:
         sys.exit('Немає ffmpeg: встановіть (Windows: winget install ffmpeg; Linux: apt install ffmpeg)')
@@ -118,6 +131,13 @@ def rendery(brauzer, port, stsenarii: Path, rezhym, vykhid: Path, znimky: Path |
     s.close()
     if pomylky:
         raise RuntimeError('; '.join(pomylky))
+    if zvuk_:
+        import zvuk
+        tykho = mp4.with_name(mp4.stem + '-bez-zvuku.mp4')
+        mp4.replace(tykho)
+        zv = zvuk.zvesty(tykho, vidrizky_holosu, mp4, muz or S.get('muzyka', 'spokii'))
+        tykho.unlink()
+        print(f'  звук: {zv["replik"]} реплік; пришвидшено {zv["pryshvydsheno"] or "—"}; не вмістилось {zv["ne_vmistylos"] or "—"}')
     sek = time.time() - pochatok
     print(f'{mp4}: {tryv:.1f} с ролика, {n} кадрів, рендер {sek:.0f} с')
     return mp4, tryv, sek
@@ -130,6 +150,9 @@ def main():
     a.add_argument('--vykhid', type=Path, default=TUT / 'vyhid')
     a.add_argument('--znimky', type=Path)
     a.add_argument('--fps', type=int, default=30)
+    a.add_argument('--zvuk', action='store_true')
+    a.add_argument('--muzyka')
+    a.add_argument('--lyshe-znimky', action='store_true')
     arg = a.parse_args()
 
     sys.path.insert(0, str(TUT))
@@ -147,7 +170,8 @@ def main():
             ch = znaity_chrome()
             b = pw.chromium.launch(executable_path=ch, args=ARGUMENTY_CHROME) if ch else pw.chromium.launch(args=ARGUMENTY_CHROME)
             for st in arg.stsenarii:
-                rendery(b, srv.server_address[1], st, arg.rezhym, arg.vykhid, arg.znimky, arg.fps)
+                rendery(b, srv.server_address[1], st, arg.rezhym, arg.vykhid, arg.znimky or (arg.vykhid / 'znimky' if arg.lyshe_znimky else None),
+                        arg.fps, arg.zvuk, arg.muzyka, arg.lyshe_znimky)
             b.close()
     finally:
         srv.shutdown()
