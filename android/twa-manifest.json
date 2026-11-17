@@ -1,0 +1,48 @@
+{
+  "packageId": "ua.moyavulytsya.app",
+  "host": "moya-vulytsya.pages.dev",
+  "name": "Моя вулиця",
+  "launcherName": "Моя вулиця",
+  "display": "standalone",
+  "orientation": "default",
+  "themeColor": "#4447A6",
+  "themeColorDark": "#11142A",
+  "navigationColor": "#F4F5FB",
+  "navigationColorDark": "#11142A",
+  "navigationDividerColor": "#DFE1E9",
+  "navigationDividerColorDark": "#2A2E47",
+  "backgroundColor": "#F4F5FB",
+  "enableNotifications": true,
+  "startUrl": "/index.html?dzherelo=dodatok",
+  "iconUrl": "https://moya-vulytsya.pages.dev/ikony/ikona-512.png",
+  "maskableIconUrl": "https://moya-vulytsya.pages.dev/ikony/ikona-maskable-512.png",
+  "monochromeIconUrl": "",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": { "path": "./klyuch-zavantazhennia.keystore", "alias": "moya-vulytsya" },
+  "appVersionName": "0.1.0",
+  "appVersionCode": 1,
+  "shortcuts": [
+    {
+      "name": "Вгадай, де це було",
+      "shortName": "Грати",
+      "url": "/hra/?dzherelo=dodatok",
+      "chosenIconUrl": "https://moya-vulytsya.pages.dev/ikony/ikona-192.png"
+    }
+  ],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://moya-vulytsya.pages.dev/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {
+    "playBilling": { "enabled": false }
+  },
+  "alphaDependencies": { "enabled": false },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://moya-vulytsya.pages.dev/",
+  "minSdkVersion": 24,
+  "fingerprints": [],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": [],
+  "appVersion": "0.1.0"
+}
