@@ -22,6 +22,10 @@ import unicodedata
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'brend'))
+import hrupy as HR  # noqa: E402  групи подій — один словник (MV-116)
 
 try:
     import h3
@@ -394,11 +398,10 @@ class Podiia:
 
 
 def vyd_lyudskoyu(stattia: str | None, vyd: str) -> str:
-    """«ст.130 КУпАП · керування у стані сп'яніння» → «Керування у стані сп'яніння»."""
+    """«ст.130 КУпАП · керування у стані сп'яніння» → «Керування у стані сп'яніння»; без підпису — назва групи (MV-116)."""
     t = (stattia or '').split('·', 1)[-1].strip() if stattia else ''
     if not t or t.startswith('ст.'):
-        t = {'ДТП': 'ДТП', 'ДОР': 'Порушення на дорозі', 'ГП': 'Громадський порядок', 'НАР': 'Наркотики',
-             'МАЙ': 'Майнові', 'АЛК': 'Торгівля алкоголем', 'НАС': 'Насильство'}.get(vyd, vyd)
+        t = HR.nazva(vyd, stattia) or vyd
     return t[:1].upper() + t[1:]
 
 
@@ -612,16 +615,14 @@ def zibraty_dani(baza: Path, pereimenuvannia: Path | None, mezhi_rayoniv: Path |
 
 # ---------------------------------------------------------------- соти головної карти
 
-# Сім груп карти (друге уточнення центрального чату до ZAVDANNYA-10): ДТП окремо від інших дорожніх.
-HRUPY = [('dtp', 'ДТП'), ('dor', 'Дороги'), ('hp', 'Громадський порядок'), ('mai', 'Майно'),
-         ('nar', 'Наркотики'), ('alk', 'Алкоголь'), ('nas', 'Насильство')]
-HRUPA_VYDU = {'ДТП': 'dtp', 'ДОР': 'dor', 'ГП': 'hp', 'МАЙ': 'mai', 'НАР': 'nar', 'АЛК': 'alk', 'НАС': 'nas'}
+# Сім груп подій — з одного словника (brend/hrupy.json, копія dani-edrsr/src/hrupy.py; MV-116). Група — за видом і статтею.
+HRUPY = HR.HRUPY
 
 # «Що страждає» по групах — пошуком слів у фабулі. Окремого поля цілі у випуску немає, тому
 # це наближення; у картці показуємо лише те, що трапляється щонайменше в 5 подіях соти.
 # Насильство — лише числом, тож для нього нічого не шукаємо.
 TSILI = {
-    'mai': ('беруть', [
+    'kra': ('беруть', [
         ('телефони', re.compile(r'мобільн\w*\s+телефон|смартфон|iphone|айфон|телефон\w*\s+(марки|«|"|samsung|xiaomi|apple)', re.I)),
         ('авто', re.compile(r'заволоді\w*\s+(транспортн|автомоб)|автомобіл\w*\s+(марки|«)', re.I)),
         ('алкоголь', re.compile(r'горілк|коньяк|віскі|алкогольн\w+\s+напо|бренді|\bром\b', re.I)),
@@ -654,7 +655,7 @@ TSILI = {
         ('квіти', re.compile(r'квіт', re.I)),
         ('алкоголь', re.compile(r'алкогол|горілк|\bпив|\bвин[оа]', re.I)),
     ]),
-    'hp': ('на кого', [
+    'por': ('на кого', [
         ('перехожих', re.compile(r'перехож', re.I)),
         ('поліцейських', re.compile(r'поліцейськ|працівник\w*\s+поліції', re.I)),
         ('продавців і охорону', re.compile(r'продавц|касир|охоронц|охорон\w+\s+магазин', re.I)),
@@ -674,9 +675,19 @@ def hodyna_pik(hodyny: Counter) -> str | None:
     return f'{chastyna} {naikrashche}–{(naikrashche + 3) % 24 or 24}'
 
 
+def indeks_misiatsia(data: str | None) -> int | None:
+    """Номер місяця від січня першого відкритого року (0, 1, …) або None, якщо місяця в даті немає."""
+    if not data or len(data) < 7 or not data[:4].isdigit() or not data[5:7].isdigit():
+        return None
+    rik, mis = int(data[:4]), int(data[5:7])
+    if not (1 <= mis <= 12) or not (VIDKRYTI_ROKY[0] <= rik <= VIDKRYTI_ROKY[-1]):
+        return None
+    return (rik - VIDKRYTI_ROKY[0]) * 12 + mis - 1
+
+
 def soty_rivnia(podii: list, vulytsi_podii: list, varianty_slug: dict, problemy: list, riven: int) -> dict:
     """Соти одного рівня H3. Статеві й щодо дітей (MV-4, MV-102) — лише у великих сотах (рівні 7 і 8) і лише числом
-    у групі «Насильство»; домашнє насильство з точкою — як усі події, без точки — як чутливі (числом по соті випуску). Лише події за останні 3 роки (MV-32); старші — лише прапорець «stari» у соті,
+    у групі насильства (`nas`, brend/hrupy.json); домашнє насильство з точкою — як усі події, без точки — як чутливі (числом по соті випуску). Лише події за останні 3 роки (MV-32); старші — лише прапорець «stari» у соті,
     де є й нові події (сота лише зі старими подіями на безкоштовну карту не потрапляє)."""
     soty = {}
     stari_k = set()
@@ -700,12 +711,18 @@ def soty_rivnia(podii: list, vulytsi_podii: list, varianty_slug: dict, problemy:
         if not vidkryta(p):
             stari_k.add(k)
             continue
-        s = soty.setdefault(k, {'chysla': Counter(), 'roky': Counter(), 'hodyny': Counter(), 'stari': False,
+        s = soty.setdefault(k, {'chysla': Counter(), 'roky': Counter(), 'misiatsi': defaultdict(Counter), 'hodyny': Counter(), 'stari': False,
                                 'tsili': defaultdict(Counter), 'vulytsi': Counter(), 'z_adresoyu': 0, 'problemy': []})
-        hrupa = 'nas' if lyshe_chyslo else HRUPA_VYDU.get(p.vyd)
+        hrupa = 'nas' if lyshe_chyslo else HR.hrupa(p.vyd, p.stattia)
         for h in ((hrupa, 'all') if hrupa else ('all',)):
             s['chysla'][f'{h}3'] += 1
         s['roky'][p.rik] += 1
+        mi = indeks_misiatsia(p.data) if not p.chutlyva else None
+        # ZAVDANNYA-105: місяці для смуги «роки · місяці» й «оживання» (лише числа). Статеві й щодо дітей — без місяця:
+        # число за місяць у малій кількості легше пов'язати з конкретною справою, ніж число за 3 роки.
+        if mi is not None:
+            for h in ((hrupa, 'all') if hrupa else ('all',)):
+                s['misiatsi'][h][mi] += 1
         if lyshe_chyslo:
             continue                      # далі — лише відкриті події
         s['z_adresoyu'] += 1
