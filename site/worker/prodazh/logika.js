@@ -257,6 +257,7 @@ export async function vydalytyDani(env, korystuvach_id) {
   await zrobyty(env, 'UPDATE zamovlennia SET korystuvach_id = NULL, budynok = NULL, adresa = NULL WHERE korystuvach_id = ?', korystuvach_id);
   await zrobyty(env, 'UPDATE pidpysky SET korystuvach_id = NULL, budynok = NULL, adresa = NULL WHERE korystuvach_id = ?', korystuvach_id);
   await zrobyty(env, 'DELETE FROM stezhu WHERE korystuvach_id = ?', korystuvach_id);
+  await zrobyty(env, 'DELETE FROM bali_rukh WHERE korystuvach_id = ?', korystuvach_id);   // бали ігор (ZAVDANNYA-123)
   await zrobyty(env, 'DELETE FROM sesii WHERE korystuvach_id = ?', korystuvach_id);
   await zrobyty(env, 'DELETE FROM vkhody WHERE korystuvach_id = ?', korystuvach_id);
   await zrobyty(env, 'DELETE FROM korystuvachi WHERE id = ?', korystuvach_id);

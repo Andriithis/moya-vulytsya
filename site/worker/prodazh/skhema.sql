@@ -93,3 +93,17 @@ CREATE TABLE IF NOT EXISTS spovishchennia (
   otrymano       INTEGER NOT NULL,
   PRIMARY KEY (servis, kliuch)
 );
+
+-- Бали ігор (ZAVDANNYA-123; MV-130, MV-138) — лише серверні, за акаунтом. Журнал руху: + нараховано, − обміняно.
+-- Баланс = сума зміни. Бали з пристрою (localStorage) сюди не переносяться — їх не перевірити (ZVIT-117, розд. 4).
+-- Обмін увімкнено лише змінною OBMIN_BALIV = 'tak' (після висновку юриста й кабінету); без неї таблиця порожня.
+CREATE TABLE IF NOT EXISTS bali_rukh (
+  id             INTEGER PRIMARY KEY,
+  korystuvach_id INTEGER NOT NULL,
+  zmina          INTEGER NOT NULL,           -- + нараховано (гра), − обмін
+  prychyna       TEXT NOT NULL,              -- hra:<гра>:<дата> | obmin:<товар>
+  kliuch         TEXT NOT NULL UNIQUE,       -- той самий запит удруге нічого не змінює
+  zamovlennia_id TEXT,                       -- для обміну: замовлення з сумою 0 і servis = 'bali'
+  stvoreno       INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS bali_rukh_k ON bali_rukh(korystuvach_id);

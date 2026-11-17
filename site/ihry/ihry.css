@@ -141,3 +141,25 @@
   .i-sitka { grid-template-columns: 1fr 1fr; }
   .i-gra { min-height: 104px; }
 }
+
+/* Вулиця дня — робоча версія ZAVDANNYA-114 у карті (ZAVDANNYA-123) */
+.i-vd-pidk { margin: 8px 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.i-vd-pidk li { padding: 6px 10px; border-radius: var(--radius-m); background: var(--surface-tint); font-size: 13px; line-height: 18px; color: var(--ink); }
+.i-vd-pidk li > span { display: block; font: 600 11px/14px var(--sans); color: var(--muted); }
+.i-vd-pidk li small { display: block; color: var(--muted); }
+.i-vd-pidk li.zakr { background: none; border: 1.5px dashed var(--mezha); color: var(--muted); }
+.i-sproby li.tak b { color: var(--accent); }
+.i-sproby li b span { display: inline-block; min-width: 18px; margin-right: 6px; color: var(--muted); font-weight: 600; }
+.i-kl { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.i-kl i { display: inline-flex; align-items: center; gap: 3px; min-height: 22px; padding: 0 7px; border: 1px solid var(--mezha); border-radius: var(--radius-pill);
+  font-style: normal; font-size: 12px; color: var(--ink-2); background: var(--surface); }
+.i-kl i.tak { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.i-kl svg { fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.i-pidk-0 { padding: 6px 10px; font-size: 13px; color: var(--muted); }
+.i-vd-kin h3 { margin-top: 2px; }
+.i-vd-podiia { padding: 8px 10px; border-radius: var(--radius-m); background: var(--surface-tint); font-size: 13px; line-height: 19px; color: var(--ink); }
+.i-vd-podiia small { display: block; margin-top: 4px; color: var(--muted); }
+.i-ryad .knopka { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+
+/* Панель гри відкрита — смуга «Де ви живете?» не лізе під неї (одна плашка за раз, ZAVDANNYA-123) */
+.ekran-karty.ihry-vidkryto .vau-rayony { display: none; }
