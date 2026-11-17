@@ -132,6 +132,65 @@ class NomerBudynkuMV60(unittest.TestCase):
         self.assertIn('perevirka.pidhotuvaty(S)', (KORIN / 'video' / 'rendery.py').read_text(encoding='utf-8'))
 
 
+ZRAZKY = sorted((KORIN / 'video' / 'stsenarii' / 'zrazky-94').glob('*.json'))
+
+
+class Zrazky94(unittest.TestCase):
+    """ZAVDANNYA-94: сценарії з генератора — сім груп MV-111, кожен проходить перевірку й веде на сторінку місця."""
+
+    def test_usi_hrupy_i_perevirka(self):
+        hrupy = set()
+        for f in ZRAZKY:
+            S = zavantazhyty(f)
+            hrupy.add(S['hrupa'])
+            self.assertEqual(perevirka.pereviryty(S, f.name), [], f.name)
+            self.assertTrue(20 <= perevirka.tryvalist(S) <= 40, f.name)
+            pos = S['kinets']['posylannia']
+            self.assertTrue(pos.startswith('https://') and pos.rstrip('/').count('/') >= 3, f'{f.name}: не на головну')
+        self.assertEqual(hrupy, {1, 2, 3, 4, 5, 6, 7})
+
+    def test_bez_nomeriv_zhytla(self):
+        for f in ZRAZKY:
+            S = perevirka.pidhotuvaty(zavantazhyty(f))
+            for p in S.get('tochky', []):
+                if p.get('adresa') and p.get('typ_mistsia') not in perevirka.PUBLICHNI:
+                    self.assertNotRegex(p['adresa'], r',\s*\d', f.name)
+
+    def test_istoriia_lyshe_perekaz(self):
+        S = zavantazhyty(KORIN / 'video' / 'stsenarii' / 'zrazky-94' / '2-istoriia-yakuba-kolasa.json')
+        S2 = copy.deepcopy(S)
+        S2['tochky'][0]['karty'][0] = 'ОСОБА_1 09.01.2025 о 16 год. 55 хв. таємно викрала товар на суму 1808 грн.'
+        self.assertTrue(any('переказ не пройшов' in z for z in perevirka.pereviryty(S2, 't')))
+        S3 = copy.deepcopy(S)
+        S3['tochky'][0]['dzherelo_tekstu'] = 'fabula'
+        self.assertTrue(any('лише переказ ШІ' in z for z in perevirka.pereviryty(S3, 't')))
+
+    def test_posylannia_obovyazkove(self):
+        S = zavantazhyty(KORIN / 'video' / 'stsenarii' / 'zrazky-94' / '1-shcho-bolyt-heroiv-dnipra.json')
+        for pos in ('', 'https://moya-vulytsya.pages.dev/'):
+            S2 = copy.deepcopy(S)
+            S2['kinets']['posylannia'] = pos
+            self.assertTrue(any('posylannia' in z for z in perevirka.pereviryty(S2, 't')), pos)
+
+    def test_taimlaps_lyshe_chysla(self):
+        S = zavantazhyty(KORIN / 'video' / 'stsenarii' / 'zrazky-94' / '4-taimlaps.json')
+        S['soty']['features'][0]['properties']['adresa'] = 'вул. Х, 1'
+        self.assertTrue(any('без адрес' in z for z in perevirka.pereviryty(S, 't')))
+
+    def test_tekst_dlia_holosu(self):
+        import zvuk
+        self.assertEqual(zvuk.chyslo_slovamy(2024), 'дві тисячі двадцять чотири')
+        self.assertEqual(zvuk.chyslo_slovamy(872), 'вісімсот сімдесят два')
+        self.assertEqual(zvuk.tekst_dlia_holosu('до 1551'), "до п'ятнадцять п'ятдесят один")
+        self.assertEqual(zvuk.tekst_dlia_holosu('вул. Хрещатик'), 'вулиця Хрещатик')
+        self.assertNotRegex(zvuk.tekst_dlia_holosu('872 звернення, 12 %'), r'\d')
+
+    def test_kliuchi_ne_u_fajlakh(self):
+        t = (KORIN / 'video' / 'zvuk.py').read_text(encoding='utf-8')
+        for k in ('AZURE_SPEECH_KEY', 'GOOGLE_TTS_KEY', 'ELEVENLABS_API_KEY'):
+            self.assertIn(f"os.environ['{k}']", t)
+
+
 class Soty(unittest.TestCase):
     def test_lyshe_chysla_bez_adres(self):
         fc = zavantazhyty(KORIN / 'video' / 'dani' / 'soty-kyiv.geojson')
