@@ -146,7 +146,7 @@
     });
 
     karta.on('click', function (e) {
-      if (!mozhnaTorkatysia) return;
+      if (!mozhnaTorkatysia || opts.bezTorkannia) return;   // «Вулиця дня» — карта лише показує
       dani.vasha = tochka(e.lngLat);
       onovyty('vasha');
       if (opts.pryTorkanni) opts.pryTorkanni({ lat: e.lngLat.lat, lng: e.lngLat.lng });
