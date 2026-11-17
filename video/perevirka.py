@@ -219,7 +219,7 @@ def pereviryty(S, imia='', koloda=None):
             if not nomer_rishennya(p):
                 zauv(f'tochky[{i}]: немає номера рішення (rishennya_nomer)')
     t = tryvalist(S)
-    mezha = 40 if S['shablon'] in NOVI else 35
+    mezha = 40 if S['shablon'] in NOVI or S.get('hrupa') else 35   # згенеровані (група MV-111) — до 40 с, ZAVDANNYA-94
     if not 20 <= t <= mezha:
         zauv(f'тривалість {t:.1f} с, треба 20–{mezha} с')
     if S['shablon'] in NOVI:

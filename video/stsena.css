@@ -70,6 +70,6 @@ body { font-family: Plex, system-ui, sans-serif; color: var(--ink); -webkit-font
 
 /* ZAVDANNYA-94: нові шаблони */
 .zahol--mensh { font-size: 74px; }
-.rik { font: 800 170px/1 Plex, system-ui, sans-serif; letter-spacing: -0.03em; color: var(--accent); margin-top: 10px; }
+.rik { font: 800 128px/1.02 Plex, system-ui, sans-serif; letter-spacing: -0.03em; color: var(--accent); margin-top: 10px; }
 .posylannia { margin-top: 26px; font: 700 34px/1.25 Plex, system-ui, sans-serif; color: var(--accent); word-break: break-all; }
 .posylannia::before { content: '→ '; }

@@ -79,7 +79,7 @@
       ]);
       // вулиця ролика (група «Що болить вулиці», «Одна історія») — м'ятною лінією під назвами (ZAVDANNYA-94)
       if (S.pidsvitka && S.pidsvitka.length) {
-        shary.push({ id: 'pidsvitka', type: 'line', source: 'osnova', 'source-layer': 'transportation', minzoom: 11,
+        shary.push({ id: 'pidsvitka', type: 'line', source: 'osnova', 'source-layer': 'transportation_name', minzoom: 11,   // назви є лише тут
           filter: ['all', ['==', ['geometry-type'], 'LineString'], ['in', ['coalesce', ['get', 'name:uk'], ['get', 'name']], ['literal', S.pidsvitka]]],
           layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': zminna('pk-2'), 'line-opacity': 0.9, 'line-width': shyr(2, 9, 30) } });
       }
@@ -97,7 +97,7 @@
       { id: 'za-mezhamy', type: 'fill', source: 'maska', paint: { 'fill-color': k['karta-za-mezhamy'], 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 7.5, 0, 9.2, 0.85] } },
       { id: 'mezha', type: 'line', source: 'mezha', layout: { 'line-join': 'round' }, paint: { 'line-color': k['line-strong'], 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 2.5, 14, 5] } },
       { id: 'tl-3d', type: 'fill-extrusion', source: 'tl', filter: ['==', ['get', 'v'], 1], paint: { 'fill-extrusion-color': ['interpolate', ['linear'], ['get', 'q'], 0.88, zminna('pk-1'), 1, zminna('pk-2')],
-        'fill-extrusion-height': 0, 'fill-extrusion-opacity': 0.92 } },
+        'fill-extrusion-height': 0, 'fill-extrusion-opacity': 0 } },
       { id: 'kolo', type: 'line', source: 'kolo', paint: { 'line-color': k.ink, 'line-width': 4, 'line-dasharray': [2, 1.5] } },
       { id: 'adresa', type: 'circle', source: 'adresa', paint: { 'circle-radius': 16, 'circle-color': k.ink, 'circle-stroke-color': k.surface, 'circle-stroke-width': 6 } },
       { id: 'tochka-oreol', type: 'circle', source: 'tochka', paint: { 'circle-radius': ['get', 'r'], 'circle-color': k.accent, 'circle-opacity': 0.18 } },
@@ -346,7 +346,12 @@
       var vys = 0;
       if (v.vershyny) vys = v.vershyny[1] <= 0.01 ? 1 : plavno((t - v.vershyny[0]) / v.vershyny[1]);
       vys = Math.round(vys * 100) / 100;
-      if (vys !== ostannie.vysota) { karta.setPaintProperty('tl-3d', 'fill-extrusion-height', ['*', ['get', 'h'], vys]); ostannie.vysota = vys; }
+      if (vys !== ostannie.vysota) {
+        karta.setPaintProperty('tl-3d', 'fill-extrusion-height', ['*', ['get', 'h'], vys]);
+        // до вершин шару не видно зовсім (нульова висота інакше малює плоскі м'ятні соти)
+        karta.setPaintProperty('tl-3d', 'fill-extrusion-opacity', vys > 0 ? 0.92 : 0);
+        ostannie.vysota = vys;
+      }
     }
 
     var kl = v.kolo ? v.kolo.lat + ',' + v.kolo.lon : '';
@@ -383,7 +388,7 @@
       el.kartka = document.getElementById('kartka');
       el.kroky = document.getElementById('kroky');
       // один рядок (ZAVDANNYA-94, п. 1): джерело даних і карти; 1551 — лише якщо в ролику є скарги
-      document.getElementById('dzherelo').textContent = 'Дані: ЄДРСР — лише те, що дійшло до суду' + (S.z1551 ? ' · 1551 (КМДА)' : '') + ' · © OpenStreetMap';
+      document.getElementById('dzherelo').textContent = 'Дані: ЄДРСР — лише те, що дійшло до суду' + (S.z1551 ? ' · 1551 (КМДА) · © OSM' : ' · © OpenStreetMap');
       maplibregl.setWorkerUrl('../site/hra/biblioteka/maplibre-gl-csp-worker.js');
       karta = new maplibregl.Map({
         container: 'karta', style: styl(r[1], r[2], S), center: MISTO.center, zoom: MISTO.zoom,

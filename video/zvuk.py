@@ -7,7 +7,7 @@
                 у ~/.cache/mv-holosy/), голос — MV_PIPER_HOLOS: tetiana (за замовчуванням) | lada | mykyta.
     azure       — Azure AI Speech: AZURE_SPEECH_KEY, AZURE_SPEECH_REGION (напр. westeurope),
                   MV_AZURE_HOLOS (uk-UA-PolinaNeural | uk-UA-OstapNeural).
-    google      — Google Cloud Text-to-Speech: GOOGLE_TTS_KEY (ключ API), MV_GOOGLE_HOLOS (напр. uk-UA-Standard-A).
+    google      — Google Cloud Text-to-Speech: GOOGLE_TTS_KEY (ключ API), MV_GOOGLE_HOLOS (uk-UA-Wavenet-B, uk-UA-Standard-B або uk-UA-Chirp3-HD-<ім'я>).
     elevenlabs  — ElevenLabs: ELEVENLABS_API_KEY, MV_ELEVENLABS_HOLOS (id голосу), модель eleven_multilingual_v2.
 
 Платні голоси не перевірені (ключів немає, ZAVDANNYA-94): код написано за документацією, перший запуск — з ключем
@@ -169,7 +169,7 @@ def holos_azure(tekst: str, kudy: Path) -> Path:
 
 def holos_google(tekst: str, kudy: Path) -> Path:
     kl = os.environ['GOOGLE_TTS_KEY']
-    hol = os.environ.get('MV_GOOGLE_HOLOS', 'uk-UA-Standard-A')
+    hol = os.environ.get('MV_GOOGLE_HOLOS', 'uk-UA-Wavenet-B')
     tilo = json.dumps({'input': {'text': tekst}, 'voice': {'languageCode': 'uk-UA', 'name': hol},
                        'audioConfig': {'audioEncoding': 'LINEAR16', 'sampleRateHertz': 24000}}).encode('utf-8')
     v = json.loads(_zapyt(f'https://texttospeech.googleapis.com/v1/text:synthesize?key={kl}', tilo,

@@ -1,0 +1,66 @@
+{
+ "nazva": "Вгадай, де це було",
+ "shablon": "vhadai",
+ "hrupa": 3,
+ "muzyka": "hra",
+ "opys": "Два раунди гри з колоди 2026-11-08; тексти — переказ ШІ (перевірено програмою).",
+ "vstup": {
+  "mitka": "Гра",
+  "tekst": "Вгадай, де це було",
+  "pidtekst": "Дві справжні події Києва",
+  "holos": "Вгадай, де це було!",
+  "tryvalist": 2.5
+ },
+ "tochky": [
+  {
+   "id": "117399819-1",
+   "vyd": "Торгівля з рук",
+   "koly": "2024",
+   "adresa": "вул. Хрещатик",
+   "typ_mistsia": "nevidomo",
+   "lat": 50.448788,
+   "lon": 30.523539,
+   "tekst": "Зимовий день. Просто на вулиці з рук продавали блакитно-жовті тканинні стрічки — у невстановленому для торгівлі місці.",
+   "rishennya_url": "https://od.reyestr.court.gov.ua/files/58/d3e734bb1c43df5beeb5c76ac047431f.rtf",
+   "rishennya_nomer": "117399819",
+   "dzherelo_tekstu": "perekaz_shi",
+   "pytannya": 10.0,
+   "pauza": 3.0,
+   "holos_pytannya": "Зимовий день. Просто на вулиці з рук продавали блакитно-жовті тканинні стрічки — у невстановленому для торгівлі місці. Де це було?",
+   "holos_vidpovid": "вул. Хрещатик.",
+   "tryvalist": 4.0
+  },
+  {
+   "id": "125436493-1",
+   "vyd": "Шкода довкіллю",
+   "koly": "2024",
+   "adresa": "просп. Європейського Союзу",
+   "typ_mistsia": "nevidomo",
+   "lat": 50.504729,
+   "lon": 30.449637,
+   "tekst": "Неділя, день. Тут продавали живу рибу без документів: карасів, коропа й товстолоба.",
+   "rishennya_url": "https://od.reyestr.court.gov.ua/files/62/6d3096746e6421172c374e9bf69bbdf0.rtf",
+   "rishennya_nomer": "125436493",
+   "dzherelo_tekstu": "perekaz_shi",
+   "pytannya": 7.0,
+   "pauza": 3.0,
+   "holos_pytannya": "Неділя, день. Тут продавали живу рибу без документів: карасів, коропа й товстолоба. Де це було?",
+   "holos_vidpovid": "просп. Європейського Союзу.",
+   "tryvalist": 4.0
+  }
+ ],
+ "kinets": {
+  "tekst": "Скільки вгадали?",
+  "pidtekst": "Більше раундів — у грі на карті. Ця вулиця:",
+  "posylannia": "https://moya-vulytsya.pages.dev/vulytsia/prospekt-yevropeiskoho-soiuzu/",
+  "holos": "Скільки вгадали?",
+  "tryvalist": 3.5
+ },
+ "versiia": "2026-11-08",
+ "pidpys_merezhi": "Вгадай, де це було. https://moya-vulytsya.pages.dev/vulytsia/prospekt-yevropeiskoho-soiuzu/?dzherelo=tiktok&rolyk=vhadai",
+ "znimky": [
+  1,
+  3,
+  6
+ ]
+}
