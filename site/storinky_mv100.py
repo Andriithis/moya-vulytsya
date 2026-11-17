@@ -47,6 +47,18 @@ def period_1551(ms: list) -> str:
     return f'{misiats(ms[0])} — {misiats(ms[-1])}' if ms else ''
 
 
+# Б-2 (ZAVDANNYA-110): квартира, офіс, приміщення, поверх — не частина номера будинку; те саме правило, що
+# dani-edrsr/src/budynky_sait.py (KVARTYRA) — тут на випадок старого зведення.
+KVARTYRA = re.compile(r'\s*,?\s*(?:оф(?:іс)?|кв(?:артира)?|прим(?:іщення)?|кімн(?:ата)?|\d*\s*поверх|секція)\b\.?.*$'
+                      r'|\s*,?\s*(?:оф(?:іс)?|кв|прим)\.?\s*№?\s*\d.*$', re.I)
+
+
+def bez_kvartyry(n: str) -> str:
+    """«43 кв32» → «43», «15/5 оф73» → «15/5»."""
+    t = KVARTYRA.sub('', n or '').strip(' ,')
+    return t or n
+
+
 def slug_nomera(n: str) -> str:
     """«17-А» → «17-a», «12/4» → «12-4», «37 к6» → «37-k6»."""
     return D.translit(re.sub(r'[/\s]+', '-', n)) or 'bud'
@@ -115,6 +127,7 @@ class Budynky:
         self.spysok = []
         zainiati = set()
         for b in z['budynky']:
+            b = dict(b, nomer=bez_kvartyry(b['nomer']))
             r = D.rozibraty_vulytsiu(b['vulytsia'])
             v = za_kliuchem.get((r[0], D.kliuch(r[1]))) if r else None
             if v:

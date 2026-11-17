@@ -141,6 +141,8 @@ BUDYNKY = {   # зведення будинків, як його дає dani-edr
          'podii': {'2019': {'mai': 1}, '2025': {'dtp': 3}}},
         {'k': 'хрещатик|24А', 'vulytsia': 'вулиця Хрещатик', 'nomer': '24-А', 'lat': 50.4477, 'lon': 30.5232, 'rayon': 'Печерський',
          'skarhy': {'ліфт': 1}},
+        {'k': 'хрещатик|43', 'vulytsia': 'вулиця Хрещатик', 'nomer': '43 кв32', 'lat': 50.4479, 'lon': 30.5233,
+         'rayon': 'Печерський', 'skarhy': {'вода': 1}},      # Б-2: квартира в номері зі старого зведення
         {'k': 'невідома|1', 'vulytsia': 'вулиця Невідома', 'nomer': '1', 'lat': 50.40, 'lon': 30.50, 'skarhy': {'вода': 4}},
     ]}
 
@@ -618,6 +620,20 @@ class Sait(unittest.TestCase):
         self.assertNotIn('2019', tabl)                                # старші роки — без чисел (MV-32)
         self.assertIn('"@type": "BreadcrumbList"', t)
         self.assertIn('/oplata/?tovar=dovidka', t)
+
+    def test_b2_kvartyra_ne_chastyna_nomera(self):
+        """ZAVDANNYA-110, Б-2: «43 кв32» — будинок 43; квартири й офісу немає ні в адресі сторінки, ні в заголовку."""
+        import storinky_mv100 as M
+        for h, tr in (('43 кв32', '43'), ('82 оф4', '82'), ('28 оф248', '28'), ('15/5 оф73', '15/5'), ('10 кв2', '10'), ('24-А', '24-А')):
+            self.assertEqual(M.bez_kvartyry(h), tr)
+        if self.spravzhnii:
+            if not self.budynky:
+                self.skipTest('без MV_BUDYNKY')
+        else:
+            self.assertTrue((self.sait / 'budynok' / 'khreshchatyk' / '43' / 'index.html').is_file())
+        pohani = [str(p.relative_to(self.sait)) for p in self.sait.glob('budynok/*/*/index.html')
+                  if re.search(r'(kv|of)\d', p.parent.name) or re.search(r'<h1>[^<]*\b(кв|оф)\s*\d', p.read_text(encoding='utf-8'))]
+        self.assertEqual(pohani, [])
 
     def test_budynky_bez_opysiv_i_posylan(self):
         opys = re.compile(r'керуючи|зіткнення|порушив|визнав|reyestr\.court\.gov\.ua|doc_url|fabula|ОСОБА_', re.I)
