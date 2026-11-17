@@ -18,7 +18,7 @@
 
   var kanal = ('oplata' + (tovary[tovar] ? '-' + tovar : '') + (dzherelo ? '-' + dzherelo : '')).slice(0, 40);
   var shcho = { dovidka: 'analiz', try: 'analiz', zvit: 'analiz', dodatkova: 'analiz', pidpyska: 'pidpyska',
-    rieltor: 'pidpyska', osbb: 'kompaniya', biznes: 'kompaniya' }[tovar] || 'povidomyty';
+    rieltor: 'pidpyska', osbb: 'kompaniya', biznes: 'kompaniya', spdovidka: 'analiz', spyurist: 'pidpyska' }[tovar] || 'povidomyty';
   var p = new URLSearchParams({ dzherelo: kanal, shcho: shcho });
   if (adresa) p.set('adresa', adresa);
   knopka.href = '/zahlushka/?' + p.toString() + '#peredzamovlennya';
