@@ -124,7 +124,7 @@
         '<div class="i-sitka">' +
         kart('detektyv', 'Детектив тижня', 'щодня слід на карті, у неділю — розкриття', det, !st) +
         kart('vgadai', 'Вгадай, де це було', 'опис події — ваша точка на карті', DZH.koloda ? (den.podiia ? 'подія дня зіграна' : 'подія дня чекає') : 'скоро', !DZH.koloda) +
-        kart('vulytsia', 'Вулиця дня', 'вгадайте вулицю за 7 спроб', DZH.vulytsia ? (den.vulytsia ? 'сьогодні зіграно' : 'сьогодні не зіграно') : 'скоро', !DZH.vulytsia) +
+        (DZH.vulytsia ? kart('vulytsia', 'Вулиця дня', 'одна вулиця на добу — вгадайте за 7 спроб', den.vulytsia ? 'сьогодні зіграно' : 'сьогодні не зіграно') : '') +
         kart('kvalifikuy', 'Кваліфікуй', 'фабула → стаття → як вирішують суди; для студентів і курсантів', r[1] ? Y.sproby(s, 'kvalifikuy', K, c.data).bezkoshtovnykh + ' безкоштовні справи сьогодні' : 'скоро', !r[1]) +
         '</div><p class="i-prym">Справи дня однакові для всіх; очки — лише за точність. <button type="button" class="i-lnk" data-i="hra" data-gra="nalashtuvannia">Налаштування</button></p>', true);
     });
@@ -293,61 +293,119 @@
     });
   }
 
-  // ---------- «Вулиця дня» на карті (стик із ZAVDANNYA-114: дані — site/hra/vulytsia_dnia.py) ----------
+  // ---------- «Вулиця дня» на карті — робоча версія ZAVDANNYA-114 (MV-126), дані — site/hra/vulytsia_dnia.py ----------
+  // Одна загадка на добу, однакова для всіх (дата за Києвом); підказки — як на сторінці гри (спальні райони — раніше й
+  // «частина району»); фінал — сторінка вулиці, «Поділитися» без назви вулиці, підписка. Без даних гри картки в меню немає.
   var VD = null;
   function vulytsia() {
     zavantazhyty('vulytsia').then(function (d) {
-      if (!d || !V || !d.zahadky || !d.zahadky.length) { ramka('Вулиця дня', '<p>«Вулиця дня» з\'явиться з повним випуском бази.</p>'); return; }
+      if (!d || !V || !d.zahadky || !d.zahadky.length) { pokazaty('menyu'); return; }
       var c = chas(), vul = d.vulytsi.map(V.vulytsia), za = {}; vul.forEach(function (v) { za[v.slug] = v; });
       var z = V.zahadkaDnya(d.zahadky, c.data), zah = d.zahadky[z.i], tsil = za[zah.slug];
+      if (!tsil) { pokazaty('menyu'); return; }
       var kl = 'mv-ihry-vulytsia-' + c.data;
-      VD = { d: d, vul: vul, za: za, zah: zah, tsil: tsil, kl: kl, st: chytaty(kl, { sproby: [], kin: false }) };
+      var st = chytaty(kl, { sproby: [], kin: false });
+      st.sproby = (st.sproby || []).filter(function (s, i, a) { return za[s] && a.indexOf(s) === i; });
+      VD = { d: d, vul: vul, za: za, zah: zah, tsil: tsil, kl: kl, st: st, data: c.data };
       vMalyuvaty();
     });
   }
+  function vRozghadano() { var s = VD.st.sproby; return s.length > 0 && s[s.length - 1] === VD.tsil.slug; }
+  function vPidkazky() {
+    var zah = VD.zah, tsil = VD.tsil, st = VD.st;
+    var nevd = st.sproby.filter(function (s) { return s !== tsil.slug; }).length;
+    var spysok = V.pidkazkyDlia(zah), vidkr = st.kin ? spysok.map(function (p) { return p.pole; }) : V.vidkryti(nevd, zah);
+    return '<ol class="i-vd-pidk">' + spysok.map(function (p, i) {
+      var t;
+      if (vidkr.indexOf(p.pole) === -1) return '<li class="zakr"><span>Підказка ' + (i + 1) + '</span>Відкриється після ' + p.pislia + '-ї невдалої спроби</li>';
+      if (p.pole === 'rayon') t = esc(tsil.rayon) + ' район';
+      else if (p.pole === 'chastyna') t = esc(zah.chastyna.charAt(0).toUpperCase() + zah.chastyna.slice(1));
+      else if (p.pole === 'litera') t = 'Назва починається на «' + esc(V.persha(tsil)) + '»';
+      else t = '<small>Одна з подій на цій вулиці · ' + esc(zah.podiia.vyd) + ' · ' + esc(zah.podiia.rik) + '</small>«' + esc(zah.podiia.opys) + '»';
+      return '<li><span>Підказка ' + (i + 1) + '</span>' + t + '</li>';
+    }).join('') + '</ol>';
+  }
+  function vRyadok(slug, i) {
+    var v = VD.za[slug], p = V.porivnyaty(v, VD.tsil);
+    var kl = function (t, tak, pidpys) { return '<i class="' + (tak ? 'tak' : '') + '" aria-label="' + pidpys + ': ' + esc(t) + (tak ? ', збігається' : ', не збігається') + '">' + esc(t) + '</i>'; };
+    var vid = p.tak ? '<i class="tak">тут</i>' : '<i aria-label="Загадана — за ' + H.vidstanTekstom(p.vidstanM) + ' ' + p.napryamPovnyi + '"><svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true" data-az="' + p.azymut + '"><path d="M12 20V5M6 11l6-6 6 6"/></svg>' + H.vidstanTekstom(p.vidstanM) + '</i>';
+    return '<li' + (p.tak ? ' class="tak"' : '') + '><b><span>' + (i + 1) + '</span>' + esc(v.nazva) + '</b><div class="i-kl">' + vid +
+      kl(v.rayon.replace(/ський$/, 'ськ.').replace(/цький$/, 'цьк.'), p.rayon, 'Район') +
+      kl(chyslo(v.n) + (p.n > 0 ? ' ↑' : p.n < 0 ? ' ↓' : ''), p.n === 0, 'Подій') + kl(v.typ, p.typ, 'Тип') +
+      kl(v.vyrizn || 'нічим особливим', p.vyrizn, 'Вирізняє') + '</div></li>';
+  }
+  function vKolektsiia() {
+    var k = chytaty('mv-ihry-vulytsia-kolektsiia', []);
+    if (k.indexOf(VD.tsil.slug) === -1) { k.push(VD.tsil.slug); pysaty('mv-ihry-vulytsia-kolektsiia', k); }
+    var n = k.length;
+    return n + ' ' + (n % 10 === 1 && n % 100 !== 11 ? 'вулицю' : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14)) ? 'вулиці' : 'вулиць');
+  }
+  function vKinets() {
+    var tsil = VD.tsil, zah = VD.zah, d = VD.d, tak = vRozghadano(), zv = zah.zvuzhennia || {}, pd = zah.podiia;
+    var h = '<section class="i-rozkr i-vd-kin"><p class="i-den">' + (tak ? 'Розгадано з ' + VD.st.sproby.length + '-ї спроби з ' + d.sprob : 'Цього разу ні — загадана вулиця') + '</p>' +
+      '<h3>' + esc(tsil.nazva) + '</h3><p class="i-prym">' + esc(tsil.rayon) + ' район · ' + chyslo(tsil.n) + ' подій у даних' + (d.roky ? ' за ' + esc(d.roky) : '') + '</p>';
+    if (tsil.vyrizn) h += '<p>Що вирізняє вулицю: ' + esc(tsil.vyrizn.toLowerCase()) + ' — частка вища, ніж по місту.</p>';
+    if (zv.vsi) h += '<p class="i-prym">Як вивести відповідь: у грі ' + chyslo(zv.vsi) + ' вулиць; у цьому районі — ' + zv.rayon + '; з тим самим «вирізняє» — ' + zv.vyrizn + '; і з таким числом подій — ' + zv.n + '. Відповідь одна — це перевіряє програма.</p>';
+    h += '<p class="i-vd-podiia">«' + esc(pd.opys) + '»<small>' + esc(pd.vyd) + ' · ' + esc(pd.rik) + (pd.url ? ' · <a href="' + esc(pd.url) + '" target="_blank" rel="noopener noreferrer">рішення суду' + (pd.nomer ? ' № ' + esc(pd.nomer) : '') + '</a>' : '') + '</small></p>' +
+      '<p class="i-ryad"><a class="knopka klav knopka--holovna" href="/vulytsia/' + esc(tsil.slug) + '/?dzherelo=hra-vulytsia">Сторінка вулиці</a><button type="button" class="knopka klav i-druh" data-i="v-podilytysia">Поділитися</button></p>' +
+      '<p class="i-prym" id="i-vd-stan" role="status"></p>' +
+      (PROBA || VD.data !== Y.chasKyiv().data ? '' : '<p class="i-prym">Наступна вулиця — завтра.</p>') +
+      '<p class="i-prym">Відкрито ' + vKolektsiia() + ' на цьому пристрої.</p></section>' +
+      '<h3>А що на вашій вулиці?</h3><p>Сторінка кожної вулиці — числа безкоштовно; <a href="/oplata/?tovar=pidpyska&amp;dzherelo=hra-vulytsia">підписка</a> показує події з адресами і нове біля дому.</p>' +
+      '<p class="i-ryad"><a class="knopka klav" href="/vulytsi/?dzherelo=hra-vulytsia">Знайти свою вулицю</a><a class="knopka klav i-druh" href="/oplata/?tovar=pidpyska&amp;dzherelo=hra-vulytsia">Підписка</a></p>';
+    return h;
+  }
   function vMalyuvaty() {
-    var st = VD.st, tsil = VD.tsil, nevd = st.sproby.filter(function (s) { return s !== tsil.slug; }).length;
-    var vidkr = V.vidkryti(nevd);
-    var pidk = '<p class="i-prym">Район: <b>' + esc(tsil.rayon) + '</b>' + (vidkr.indexOf('podiia') !== -1 ? ' · подія тут: «' + esc(VD.zah.podiia.opys) + '»' : '') + (vidkr.indexOf('litera') !== -1 ? ' · назва починається на «' + esc(V.persha(tsil)) + '»' : '') + '</p>';
-    var ryadky = st.sproby.map(function (slug) {
-      var p = V.porivnyaty(VD.za[slug], tsil);
-      return '<li><b>' + esc(VD.za[slug].nazva) + '</b><span>' + (p.tak ? 'так!' : H.vidstanTekstom(p.vidstanM) + ' ' + p.napryamPovnyi) + ' · район ' + (p.rayon ? '✓' : '✗') + ' · подій ' + (p.n === 0 ? '=' : p.n > 0 ? 'більше' : 'менше') + ' · вирізняє ' + (p.vyrizn ? '✓' : '✗') + '</span></li>';
-    }).join('');
-    var kin = st.kin;
-    var h = '<p>Загадана вулиця Києва. Назвіть будь-яку — гра скаже, як далеко й у якому напрямку загадана, чи той самий район, більше чи менше там подій. Спроб — ' + VD.d.sprob + '.</p>' + pidk +
-      '<ol class="i-sproby">' + ryadky + '</ol>';
-    if (!kin) h += '<label class="i-poshuk"><span class="prykhovano">Назва вулиці</span><input id="i-vul" type="search" autocomplete="off" placeholder="Назва вулиці"></label><ul id="i-vul-pidk" class="i-pidk"></ul>';
-    else {
-      var tak = st.sproby[st.sproby.length - 1] === tsil.slug;
-      h += '<p class="i-ochky">' + (tak ? 'Розгадано з ' + st.sproby.length + '-ї спроби' : 'Це була ' + esc(tsil.nazva)) + '</p>' +
-        '<p><a class="knopka klav" href="/vulytsia/' + esc(tsil.slug) + '/">Сторінка вулиці</a> <button type="button" class="knopka klav" data-i="v-podilytysia">Поділитися</button></p>' +
-        '<p class="i-prym">А що на вашій вулиці? <a href="/oplata/?tovar=pidpyska&amp;dzherelo=vulytsia-dnia">Підписка</a> показує події з адресами.</p>';
-    }
+    var st = VD.st, tsil = VD.tsil;
+    var h = '<p class="i-den">' + esc(new Date(VD.data + 'T12:00:00').toLocaleDateString('uk-UA', { day: 'numeric', month: 'long' })) + (VD.d.demo ? ' · <span class="i-zrazok">зразок</span>' : '') + '</p>' +
+      '<p>Загадана вулиця Києва — одна на добу, однакова для всіх. Назвіть будь-яку: гра скаже, як далеко й у якому напрямку загадана, чи той самий район, більше чи менше там подій. Спроб — ' + VD.d.sprob + '.</p>' +
+      vPidkazky() + (st.sproby.length ? '<ol class="i-sproby">' + st.sproby.map(vRyadok).join('') + '</ol>' : '');
+    if (!st.kin) h += '<label class="i-poshuk"><span class="prykhovano">Назва вулиці</span><input id="i-vul" type="search" autocomplete="off" placeholder="Назва вулиці" role="combobox" aria-expanded="false" aria-controls="i-vul-pidk"></label><ul id="i-vul-pidk" class="i-pidk" role="listbox"></ul>' +
+      '<p class="i-prym">Лишилось спроб: ' + (VD.d.sprob - st.sproby.length) + '.</p>';
+    else h += vKinets();
     ramka('Вулиця дня', h);
+    panel.querySelectorAll('svg[data-az]').forEach(function (e) { e.style.transform = 'rotate(' + e.getAttribute('data-az') + 'deg)'; });
     prybratyMitky();
-    st.sproby.forEach(function (slug) { var v = VD.za[slug]; marker(v.lat, v.lon, slug === tsil.slug ? 'pravda' : 'sproba', v.nazva); });
+    st.sproby.forEach(function (slug, i) { var v = VD.za[slug]; marker(v.lat, v.lon, slug === tsil.slug ? 'pravda' : 'sproba', (i + 1) + ' · ' + v.nazva); });
+    if (st.kin && !(st.sproby.length && st.sproby[st.sproby.length - 1] === tsil.slug)) marker(tsil.lat, tsil.lon, 'pravda', tsil.nazva);
     var inp = $('#i-vul'), ul = $('#i-vul-pidk');
-    if (inp) inp.addEventListener('input', function () {
+    if (!inp) return;
+    var znaid = [];
+    inp.addEventListener('input', function () {
       var krim = {}; st.sproby.forEach(function (s) { krim[s] = true; });
-      ul.innerHTML = V.shukaty(VD.vul, inp.value, krim, 6).map(function (v) { return '<li><button type="button" data-slug="' + esc(v.slug) + '">' + esc(v.nazva) + ' <small>' + esc(v.rayon) + '</small></button></li>'; }).join('');
+      znaid = V.shukaty(VD.vul, inp.value, krim, 6);
+      ul.innerHTML = znaid.map(function (v) { return '<li role="option"><button type="button" data-slug="' + esc(v.slug) + '">' + esc(v.nazva) + (v.stara ? ' (кол. ' + esc(v.stara) + ')' : '') + ' <small>' + esc(v.rayon) + '</small></button></li>'; }).join('') +
+        (!znaid.length && inp.value.trim().length > 1 ? '<li class="i-pidk-0">Такої вулиці в грі немає — у грі вулиці, де в даних щонайменше 5 подій.</li>' : '');
+      inp.setAttribute('aria-expanded', znaid.length ? 'true' : 'false');
     });
-    if (ul) ul.addEventListener('click', function (e) { var b = e.target.closest('[data-slug]'); if (b) vSproba(b.getAttribute('data-slug')); });
+    inp.addEventListener('keydown', function (e) { if (e.key === 'Enter' && znaid.length) { e.preventDefault(); vSproba(znaid[0].slug); } });
+    ul.addEventListener('click', function (e) { var b = e.target.closest('[data-slug]'); if (b) vSproba(b.getAttribute('data-slug')); });
   }
   function vSproba(slug) {
-    var st = VD.st; st.sproby.push(slug);
+    var st = VD.st;
+    if (st.kin || !VD.za[slug] || st.sproby.indexOf(slug) !== -1) return;
+    st.sproby.push(slug);
     var tak = slug === VD.tsil.slug;
     if (tak || st.sproby.length >= VD.d.sprob) {
       st.kin = true;
       if (!PROBA && !st.bali) st.bali = narakhuvaty(tak ? Math.max(0, 1000 - 125 * (st.sproby.length - 1)) : 0) || -1;
       var c = chas(), den = chytaty('mv-ihry-den-' + c.data, {}); den.vulytsia = true; pysaty('mv-ihry-den-' + c.data, den);
       letity(VD.tsil.lat, VD.tsil.lon, 14.5);
-    } else { var v = VD.za[slug]; letity(v.lat, v.lon, 13); }
+    } else {
+      var p = V.porivnyaty(VD.za[slug], VD.tsil);
+      toast('Ні, загадана — за ' + H.vidstanTekstom(p.vidstanM) + ' ' + p.napryamPovnyi);
+      var v = VD.za[slug]; letity(v.lat, v.lon, 12.5);
+    }
     pysaty(VD.kl, st); vMalyuvaty();
   }
   function vPodilytysia() {
     var por = VD.st.sproby.map(function (s) { return V.porivnyaty(VD.za[s], VD.tsil); });
-    var t = V.tekstPodilytysia(chas().data, por, por.length && por[por.length - 1].tak, VD.d.sprob, location.origin + '/karta/?hra=vulytsia');
-    if (navigator.clipboard) navigator.clipboard.writeText(t).then(function () { toast('Скопійовано'); }, function () { toast(t); }); else toast(t);
+    var t = V.tekstPodilytysia(VD.data, por, vRozghadano(), VD.d.sprob, location.origin + '/karta/?hra=vulytsia');   // без ?data= і назви вулиці
+    var stan = $('#i-vd-stan');
+    var pokaz = function (s) { if (stan) stan.textContent = s; };
+    if (navigator.share) navigator.share({ text: t }).catch(function () { /* скасовано */ });
+    else if (navigator.clipboard) navigator.clipboard.writeText(t).then(function () { pokaz('Скопійовано — вставте в чат чи допис.'); toast('Скопійовано'); }, function () { pokaz(t); });
+    else pokaz(t);
   }
 
   // ---------- «Кваліфікуй» ----------

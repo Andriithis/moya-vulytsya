@@ -297,6 +297,38 @@ def _perevirka(sprava: dict, vulytsi: set[str] | None, zh: list[str]) -> None:
         zh.append(f'П8: вид «{shcho["nazva"]}» не збігається зі статтею рішення {r.get("stattia")}')
 
 
+# --- Звірка з OpenStreetMap (ZAVDANNYA-123): координати станцій і схованок — не з пам'яті, а з еталона osm-tochky.json
+OSM_TOCHKY = Path(__file__).resolve().parent / 'osm-tochky.json'
+OSM_STANTSIIA_M = 150      # варіант «де» — не далі від станції OSM
+
+
+def osm_tochky(shlyakh: Path = OSM_TOCHKY) -> dict:
+    return json.loads(Path(shlyakh).read_text(encoding='utf-8'))['tochky']
+
+
+def zvirka_osm(sprava: dict, tochky: dict | None = None) -> None:
+    """Кожен варіант «де» і кожна схованка сліду має посилання `osm` на точку еталона й лежить поруч із нею:
+    варіант — до 150 м, центр схованки — до половини її радіуса (щоб дотик до самого орієнтира зараховувався).
+    Нова точка — спершу в osm-tochky.json (з Nominatim/OSM, з номером об'єкта OSM), потім у справу."""
+    tochky = osm_tochky() if tochky is None else tochky
+    zh = []
+    for k in sprava['polia']['de']['kandydaty']:
+        t = tochky.get(k.get('osm', ''))
+        if not t:
+            zh.append(f'OSM: варіант {k["id"]} без точки еталона')
+        elif vidstan_m(k, t) > OSM_STANTSIIA_M:
+            zh.append(f'OSM: варіант {k["id"]} за {vidstan_m(k, t):.0f} м від {t["nazva"]}')
+    for sl in sprava['slidy']:
+        c = sl['tsil']
+        t = tochky.get(c.get('osm', ''))
+        if not t:
+            zh.append(f'OSM: схованка сліду {sl["n"]} без точки еталона')
+        elif vidstan_m(c, t) > c.get('radius_m', 0) / 2:
+            zh.append(f'OSM: схованка сліду {sl["n"]} за {vidstan_m(c, t):.0f} м від {t["nazva"]} (радіус {c.get("radius_m")})')
+    if zh:
+        raise PomylkaSpravy('; '.join(zh))
+
+
 def zvit(sprava: dict) -> dict:
     kroky = zvuzhennia(sprava)
     rozkryto = {p: next(i for i, k in enumerate(kroky) if len(k[p]) == 1) for p in POLIA}
@@ -333,7 +365,9 @@ def main(argv=None) -> int:
     pady = 0
     for f in x.spravy:
         try:
-            z = perevirka(prochytaty(f), vulytsi)
+            sp = prochytaty(f)
+            z = perevirka(sp, vulytsi)
+            zvirka_osm(sp)
         except PomylkaSpravy as e:
             print(f'НЕ ГОДИТЬСЯ {f.name}: {e}')
             pady += 1
