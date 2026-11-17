@@ -51,6 +51,7 @@ MEZHA_SITEMAP = 45000           # адрес в одному sitemap (станд
 # Вулиці з 1–2 подіями: сторінка є (на неї ведуть покажчик і карта), але пошуку Google її не даємо
 # і в sitemap.xml не пишемо — «тонкі» сторінки шкодять усьому сайту в пошуку.
 MIN_PODII_DLYA_POSHUKU = 3
+RIVNI_MISIATSI_OKREMO = (8, 9)   # Т-12: місяці цих рівнів — у soty-<рівень>-m.json (ZAVDANNYA-125)
 # MV-32: безкоштовно — останні 3 роки; старші — у підписці (сірі стовпчики з замком, без чисел).
 PERIOD_VIDKRYTYI = f'{D.VIDKRYTI_ROKY[0]}–{D.VIDKRYTI_ROKY[-1]}'
 PERIOD_ZAMKNENYI = f'{D.STARI_ROKY[0]}–{D.STARI_ROKY[-1]}'
@@ -687,7 +688,7 @@ def ekran_karty(dn: D.Dani) -> str:
     info_ik = svg_html('<circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><circle cx="12" cy="7.6" r=".6" fill="currentColor"/>', 22)
     kub = svg_html('<path d="M12 3 20 7.5V16.5L12 21 4 16.5V7.5Z"/><path d="M4 7.5 12 12 20 7.5M12 12V21"/>', 20)
     return f'''<section class="ekran-karty" aria-label="Карта Києва">
-<div id="karta-mista" class="karta-povna" data-soty-7="/karta/soty-7.json" data-soty-8="/karta/soty-8.json" data-soty-9="/karta/soty-9.json" data-poshuk="/karta/poshuk.json" data-versiia="{e(dn.versiia)}"></div>
+<div id="karta-mista" class="karta-povna" data-soty-7="/karta/soty-7.json" data-soty-8="/karta/soty-8.json" data-soty-9="/karta/soty-9.json" data-soty-8-m="/karta/soty-8-m.json" data-soty-9-m="/karta/soty-9-m.json" data-poshuk="/karta/poshuk.json" data-versiia="{e(dn.versiia)}"></div>
 <noscript><p class="karta-bez-js">Щоб побачити карту, увімкніть JavaScript. Без нього — <a href="/vulytsi/">покажчик вулиць</a>.</p></noscript>
 <p class="karta__zboi" hidden>Підкладка карти не завантажилася — видно соти й межу Києва.</p>
 <div class="verkh-ryad">
@@ -972,8 +973,17 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
     if D.h3 is None:
         raise SystemExit('Немає бібліотеки h3 (pip install h3) — карту шестикутників не зібрати.')
     for riven in (7, 8, 9):
+        soty = soty_geojson(dn, riven)
+        # Т-12 (ZAVDANNYA-125): місяці («Роки оживають», смуга «рік · місяць») рівнів 8 і 9 — окремим файлом: сторінка бере
+        # їх лише тоді, коли вони потрібні (видно цей рівень під час «оживання» чи людина обрала рік або місяць).
+        # Рівень 7 лишає місяці в собі: з нього рахується лічильник подій і останній місяць смуги.
+        if riven in RIVNI_MISIATSI_OKREMO:
+            misiatsi = {f['properties']['id']: f['properties'].pop('m') for f in soty['features'] if 'm' in f['properties']}
+            zapysaty(vykhid / 'karta' / f'soty-{riven}-m.json',
+                     json.dumps({'versiia': dn.versiia, 'riven': riven, 'm': misiatsi}, ensure_ascii=False,
+                                separators=(',', ':'), sort_keys=True))
         zapysaty(vykhid / 'karta' / f'soty-{riven}.json',
-                 json.dumps({'versiia': dn.versiia, 'riven': riven, 'roky': D.ROKY, 'soty': soty_geojson(dn, riven)},
+                 json.dumps({'versiia': dn.versiia, 'riven': riven, 'roky': D.ROKY, 'soty': soty},
                             ensure_ascii=False, separators=(',', ':'), sort_keys=True))
     zapysaty(vykhid / 'karta' / 'poshuk.json', json.dumps(poshuk_karty(dn, vulytsi, tsentry_vulyts), ensure_ascii=False,
                                                           separators=(',', ':')))
