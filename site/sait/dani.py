@@ -530,8 +530,10 @@ def zibraty_dani(baza: Path, pereimenuvannia: Path | None, mezhi_rayoniv: Path |
     # 1. Які варіанти назв вулиць є в місцях подій.
     varianty = Counter()
     vulytsi_podii = []
+    import mistsia as MS     # ZAVDANNYA-124: назване публічне місце (метро, ТЦ, парк, міст…) — не вулиця, у нього своя сторінка
     for i, p in enumerate(podii):
-        vv = vulytsi_mistsia(p.adresa, p.tochnist) if p.lat is not None else []
+        publichne = p.tochnist == 'mistse' and MS.rozibraty(p.adresa) is not None
+        vv = vulytsi_mistsia(p.adresa, p.tochnist) if p.lat is not None and not publichne else []
         vulytsi_podii.append(vv)
         for (t, n, _) in vv:
             varianty[(t, n)] += 1
