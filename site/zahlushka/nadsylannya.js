@@ -8,7 +8,9 @@
 
   var PODII = ['pryishly', 'adresa', 'peredzamovyty', 'kontakt',
     // ZAVDANNYA-07: гра «Вгадай, де це було». Лише назва події й канал, як і для чотирьох чисел.
-    'hra_start', 'hra_vidpovid', 'hra_kinets', 'hra_podilytysia', 'den_zihrano'];
+    'hra_start', 'hra_vidpovid', 'hra_kinets', 'hra_podilytysia', 'den_zihrano',
+    // ZAVDANNYA-114: друга гра «Вулиця дня» (MV-126) — так само лише назва й канал.
+    'vd_start', 'vd_kinets', 'vd_storinka', 'vd_pidpyska', 'vd_podilytysia'];
   var SHCHO = ['analiz', 'pidpyska', 'povidomyty', 'kompaniya'];
 
   function nalashtuvannya() {

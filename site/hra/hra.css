@@ -150,6 +150,7 @@ svg { stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: roun
 .rezhymy { display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-2); }
 .rezhym { display: flex; align-items: center; gap: var(--space-4); width: 100%; min-height: 88px; padding: var(--space-4) var(--space-5); text-align: left; background: var(--surface); color: var(--ink); border: 1.5px solid var(--mezha); border-radius: var(--radius-l); box-shadow: 0 3px 0 var(--bort); cursor: pointer; font: inherit; transition: background-color .15s, transform .08s ease-out, box-shadow .08s ease-out; }
 .rezhym:hover { background: var(--surface-tint); }
+a.rezhym { text-decoration: none; box-sizing: border-box; }   /* «Вулиця дня» — посилання на іншу сторінку */
 .rezhym--holovnyi { background: var(--surface-tint); }
 .rezhym__ikona { flex: none; width: 48px; height: 48px; border-radius: var(--radius-m); background: var(--accent-soft); color: var(--accent); display: flex; align-items: center; justify-content: center; }
 .rezhym--holovnyi .rezhym__ikona { background: var(--accent); color: var(--on-accent); }

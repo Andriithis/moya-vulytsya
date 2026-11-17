@@ -128,5 +128,22 @@ class ShryftyIKlavishi(unittest.TestCase):
         self.assertIn('box-shadow: 0 6px 0 var(--bort)', (KORIN / 'video' / 'stsena.css').read_text(encoding='utf-8'))
 
 
+
+class TemnaTema(unittest.TestCase):
+    """Д-3 (ZAVDANNYA-114): заглушка, оферта, політика, звернення — і темна тема; сайт — за налаштуванням телефона."""
+
+    def test_zahlushka_mae_temnu_temu(self):
+        css = (KORIN / 'site' / 'zahlushka' / 'styli.css').read_text(encoding='utf-8')
+        self.assertIn('@media (prefers-color-scheme: dark)', css)
+        poza = css[:css.index(':root {')] + css[css.index('/* ---------- Основа'):]
+        self.assertEqual(re.findall(r'#[0-9A-Fa-f]{6}\b', poza), [], 'кольори — лише змінними, щоб темна тема діяла скрізь')
+        for f in ('index.html', 'oferta.html', 'polityka.html', 'zvernennya.html', 'pro-nas.html'):
+            self.assertIn('media="(prefers-color-scheme: dark)"', (KORIN / 'site' / 'zahlushka' / f).read_text(encoding='utf-8'), f)
+
+    def test_sait_za_nalashtuvanniam_telefona(self):
+        js = (KORIN / 'site' / 'sait' / 'tema.js').read_text(encoding='utf-8')
+        self.assertIn("prefers-color-scheme: dark", js)
+        self.assertIn('zberezhena() ||', js, 'вибір людини — важливіший за телефон')
+
 if __name__ == '__main__':
     unittest.main()

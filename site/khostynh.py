@@ -81,27 +81,46 @@ def teka_workera(vykhid: Path) -> Path:
     return vykhid.parent / f'{vykhid.name}-worker'
 
 
-def pidhotuvaty_worker(vykhid: Path, pachok: int, nazva: str = 'moya-vulytsya') -> Path:
+# Адреси, для яких Cloudflare спершу запускає скрипт (решту віддає сам). Продаж — site/worker/prodazh/index.js, MARSHRUTY.
+MARSHRUTY_PRODAZHU = ['/oplata/*', '/api/*', '/kabinet/*', '/dovidka/*', '/prodazh/*']
+R2_DOVIDOK = 'moya-vulytsya-dovidky'
+SERVISY_OPLATY = ('liqpay', 'mono', 'test')
+
+
+def pidhotuvaty_worker(vykhid: Path, pachok: int, nazva: str = 'moya-vulytsya', prodazh: dict | None = None) -> Path:
     """Тека поруч із сайтом: скрипт і налаштування Cloudflare Workers (`npx wrangler deploy` з цієї теки).
-    Ключів тут немає: вхід у Cloudflare — токеном партнера в налаштуваннях запуску, не у файлах."""
+    Ключів тут немає: вхід у Cloudflare — токеном партнера в налаштуваннях запуску, не у файлах; ключі оплати й пошти —
+    секрети Workers (`npx wrangler secret put …`, docs/PRODAZH-SERVER.md).
+    prodazh — {'d1': ідентифікатор бази D1, 'servis': liqpay | mono | test, 'adresa': адреса сайту}: увімкнути продаж
+    (ZAVDANNYA-99). Без нього адреси продажу віддають статичний сайт («Оплата скоро»)."""
     t = teka_workera(vykhid)
     if t.exists():
         shutil.rmtree(t)
-    t.mkdir(parents=True)
-    shutil.copyfile(WORKER / 'index.js', t / 'index.js')
+    shutil.copytree(WORKER, t, ignore=shutil.ignore_patterns('testy', '*.sql'))
     konfig = {
         'name': nazva,
         'main': 'index.js',
         'compatibility_date': '2026-11-01',
+        'compatibility_flags': ['nodejs_compat'],
         'assets': {
             'directory': f'../{vykhid.name}',
             'binding': 'ASSETS',
             'not_found_handling': '404-page',
             'html_handling': 'auto-trailing-slash',
-            'run_worker_first': ['/budynok/*'],
+            'run_worker_first': ['/budynok/*'] + MARSHRUTY_PRODAZHU,
         },
         'vars': {'PACHOK': str(pachok)},
     }
-    (t / 'wrangler.jsonc').write_text('// Зібрано site/zibraty_sait.py --khostynh workers (ZAVDANNYA-88). Не редагувати руками.\n'
+    if prodazh:
+        if prodazh.get('servis') not in SERVISY_OPLATY or not prodazh.get('d1'):
+            raise SystemExit(f'Продаж: потрібні --prodazh-d1 і --platizhnyi-servis ({", ".join(SERVISY_OPLATY)})')
+        konfig['vars'].update({'PRODAZH': 'tak', 'PLATIZHNYI_SERVIS': prodazh['servis'],
+                               'ADRESA_SAITU': prodazh.get('adresa', ''), 'POSHTA_SERVIS': prodazh.get('poshta', 'zahlushka')})
+        if prodazh['servis'] == 'test':
+            konfig['vars']['TESTOVA_OPLATA'] = 'tak'
+        konfig['d1_databases'] = [{'binding': 'BAZA', 'database_name': f'{nazva}-prodazh', 'database_id': prodazh['d1']}]
+        konfig['r2_buckets'] = [{'binding': 'DOVIDKY', 'bucket_name': R2_DOVIDOK}]
+        konfig['triggers'] = {'crons': ['17 2 * * *']}     # щоденне прибирання (logika.prybraty)
+    (t / 'wrangler.jsonc').write_text('// Зібрано site/zibraty_sait.py --khostynh workers (ZAVDANNYA-88, -99). Не редагувати руками.\n'
                                       + json.dumps(konfig, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     return t
