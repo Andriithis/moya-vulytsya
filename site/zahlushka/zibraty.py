@@ -180,6 +180,9 @@ def zibraty_hru(vykhid: Path, adresa: str, zapovnennya: dict[str, str],
             continue
         if f.name == 'koloda.json' or (f.name == 'koloda-demo.json' and not gotova['demo']):
             continue
+        # «Вулиця дня» (ZAVDANNYA-101) — поки прототип: лише для перегляду, у збірку для публікації не йде.
+        if f.name.startswith('vulytsia') and (dlya_publikatsiyi or f.suffix == '.py'):
+            continue
         (tsil / vidn).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(f, tsil / vidn)
     (tsil / 'koloda.json').write_text(json.dumps(gotova, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
