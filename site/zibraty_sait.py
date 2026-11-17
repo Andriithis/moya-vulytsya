@@ -13,6 +13,7 @@
   /budynok/<вулиця>/<номер>/ сторінка будинку: скарги 1551 і події з рішень лише числом (з --budynky; MV-99, MV-100)
   /rayon/<район>/, /rayony/ сторінки районів
   /miy-budynok/, /osbb/, /sudova-praktyka/, /biznes/   вітрини (ZAVDANNYA-85)
+  /sudova-praktyka/<kupap|kk>/<номер>/  сторінки статей (з --sudova-praktyka; ZAVDANNYA-111, MV-122)
   /oplata/                  оплата-заглушка «залиште пошту»; /vydalyty/, /pro-dani/ — видалення й про дані
   /zahlushka/               заглушка з формою і грою (site/zahlushka/zibraty.py, без змін)
   sitemap.xml (або індекс sitemap-N.xml, якщо адрес більше 45 000), robots.txt, 404.html
@@ -525,7 +526,7 @@ def storinka_pokazhchyka(vulytsi: list, rayony: list, adresa_saitu: str, rayon: 
                     adresa_saitu=adresa_saitu, aktyvne='vulytsi/', skrypty=('/sait/poshuk.js',))
 
 
-def holovna(dn: D.Dani, vulytsi: list, rayony: list, adresa_saitu: str) -> str:
+def holovna(dn: D.Dani, vulytsi: list, rayony: list, adresa_saitu: str, sudova_praktyka: bool = False) -> str:
     """Головна — одразу карта Києва з пошуком (AGENTS.md, розд. 3: без вступу), під нею — входи."""
     tilo = f'''<section class="vstup-ryad">
 <div><h1 class="h-mala">Що суди розповіли про вашу вулицю</h1>
@@ -539,7 +540,7 @@ def holovna(dn: D.Dani, vulytsi: list, rayony: list, adresa_saitu: str) -> str:
 </section>
 <section class="vkhody" aria-label="Розділи">
 <a class="vkhid" href="/osbb/"><span class="mikro">Для ОСББ</span><b>Будинок щомісяця</b><span>звернення мешканців до 1551</span></a>
-<a class="vkhid" href="/sudova-praktyka/"><span class="mikro">Судова практика</span><b>Суди за статтями</b><span>скоро</span></a>
+<a class="vkhid" href="/sudova-praktyka/"><span class="mikro">Судова практика</span><b>Суди за статтями</b><span>{"чим закінчуються справи" if sudova_praktyka else "скоро"}</span></a>
 <a class="vkhid" href="/biznes/"><span class="mikro">Для бізнесу</span><b>Дані на місяць або рік</b><span>набори й доступ</span></a>
 </section>
 <section class="rozdil"><h2 class="mikro">Вулиці за районами</h2>
@@ -744,7 +745,7 @@ def zapysaty(shlyakh: Path, tekst: str) -> None:
 def kopiyuvaty_spilne(vykhid: Path) -> None:
     sait = vykhid / 'sait'
     (sait / 'shryfty').mkdir(parents=True, exist_ok=True)
-    for f in ('karta.js', 'poshuk.js', 'tema.js', 'oplata.js'):
+    for f in ('karta.js', 'poshuk.js', 'tema.js', 'oplata.js', 'sp.js', 'sp.css'):
         shutil.copyfile(DZHERELO / 'sait' / f, sait / f)
     # Кольори обох тем — на початок стилів (одна сторінка стилів, без зайвого запиту).
     zapysaty(sait / 'sait.css', kolory_css() + (DZHERELO / 'sait' / 'sait.css').read_text(encoding='utf-8'))
@@ -760,7 +761,7 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
                  adresa_saitu: str = ADRESA_SAITU, koloda: Path | None = None,
                  zvit_zvedennia: Path | None = None, budynky: Path | None = None,
                  mezha_failiv: int | None = None, khostynh: str = 'pages', perekazy: Path | None = None,
-                 kandydaty_istorii: Path | None = None) -> dict:
+                 kandydaty_istorii: Path | None = None, sudova_praktyka: Path | None = None) -> dict:
     """khostynh: 'pages' — кожна сторінка файлом (межа 20 000); 'workers' — будинки в пачках (site/khostynh.py)."""
     import khostynh as KH
     if khostynh not in KH.VARIANTY:
@@ -864,7 +865,7 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
     zapysaty(vykhid / 'karta' / 'poshuk.json', json.dumps(poshuk_karty(dn, vulytsi, tsentry_vulyts), ensure_ascii=False,
                                                           separators=(',', ':')))
     zapysaty(vykhid / 'karta' / 'index.html', storinka_karty(dn, adresa_saitu))
-    zapysaty(vykhid / 'index.html', holovna(dn, vulytsi, rayony, adresa_saitu))
+    zapysaty(vykhid / 'index.html', holovna(dn, vulytsi, rayony, adresa_saitu, bool(sudova_praktyka)))
     zapysaty(vykhid / '404.html', storinka_404(adresa_saitu))
 
     # Будинки, райони, вітрини, оплата-заглушка, видалення, про дані (ZAVDANNYA-85).
@@ -872,6 +873,13 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
     adresy += M.zibraty_vse(dn, rayony, za_rayonom, bud, vykhid, adresa_saitu, pachky, len(vulytsi))
     if pachky is not None:
         pachky.zapysaty(vykhid)
+    # «Судова практика» (ZAVDANNYA-111): з зведенням dani-edrsr — справжній розділ замість вітрини «скоро».
+    sp_storinok = 0
+    if sudova_praktyka:
+        import storinky_sp as SP
+        novi = [a for a in SP.zibraty(sudova_praktyka, vykhid, adresa_saitu) if a not in adresy]
+        adresy += novi
+        sp_storinok = len(novi)
 
     # Заглушка з грою — її власним збирачем, без змін.
     import zibraty as zahlushka
@@ -913,7 +921,7 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
         'budynkiv_u_poshuku': sum(1 for b in bud.spysok if M.Budynky.indeksuvaty(b)) if bud else 0,
         'adres_u_sitemap': len(adresy), 'khostynh': khostynh,
         'pachok_budynkiv': pachky.n if pachky is not None else 0,
-        'istorii_vulyts': istorii, 'perekaziv_u_faili': len(dn.perekazy),
+        'istorii_vulyts': istorii, 'perekaziv_u_faili': len(dn.perekazy), 'sudova_praktyka_u_sitemap': sp_storinok,
     }
     if khostynh == 'workers':
         zvit['teka_workera'] = str(KH.pidhotuvaty_worker(vykhid, pachky.n if pachky is not None else 1))
@@ -949,10 +957,13 @@ def main(argv=None) -> int:
     p.add_argument('--perekazy', type=Path, help='перекази ШІ для історій вулиць (dani-edrsr/src/perekazy_istorii.py); '
                    'без них блоку «Одна історія з вулиці» немає')
     p.add_argument('--kandydaty-istorii', type=Path, help='куди записати події-кандидати історій вулиць (вхід кроку переказів)')
+    p.add_argument('--sudova-praktyka', type=Path, help='зведення «Судової практики» з dani-edrsr (src/sudova_praktyka.py sait) — '
+                   'розділ і сторінки статей; без нього — вітрина «скоро»')
     p.add_argument('--mezha-failiv', type=int, help='межа кількості файлів (план хостингу; без ключа — 20 000)')
     a = p.parse_args(argv)
     zvit = zibraty_sait(a.baza, a.vykhid, a.pereimenuvannya, a.mezhi_rayoniv, a.adresa_saitu, a.koloda,
-                        a.zvit_zvedennia, a.budynky, a.mezha_failiv, a.khostynh, a.perekazy, a.kandydaty_istorii)
+                        a.zvit_zvedennia, a.budynky, a.mezha_failiv, a.khostynh, a.perekazy, a.kandydaty_istorii,
+                        a.sudova_praktyka)
     for k, v in zvit.items():
         print(f'{k}: {v}')
     return 0

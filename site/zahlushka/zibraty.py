@@ -62,7 +62,7 @@ STORINKY = ['index.html', 'polityka.html', 'zrazok.html', 'oferta.html', 'zverne
 # {{tsina.pidpyska}} тощо, підставляє збирання. Змінили ціну рішенням MV — змінити лише в site/tsiny.py.
 sys.path.insert(0, str(KORIN / 'site'))
 import tsiny as T  # noqa: E402
-TSINY = {k: v for k, v in T.TSINY.items() if v is not None}
+TSINY = {k: v for k, v in T.TSINY.items() if v is not None and k not in T.NE_V_OFERTI}
 ZMINNA = re.compile(r'\{\{[^{}]*\}\}')
 # Робочий файл кешу: маркери, які підставляє збирання.
 SW_VERSIYA = "/*VERSIYA*/'rozrobka'"

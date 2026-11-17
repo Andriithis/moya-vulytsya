@@ -725,7 +725,7 @@ class Sait(unittest.TestCase):
         import tsiny as T
         self.assertEqual({k: v for k, v in T.TSINY.items()},
                          {'dovidka': 199, 'try': 449, 'zvit': 599, 'pidpyska': 399, 'dodatkova': 99, 'rieltor': 799,
-                          'osbb': 1490, 'biznes': None})
+                          'osbb': 1490, 'biznes': None, 'spdovidka': 199, 'spyurist': 490})
         dozvoleni = T.dozvoleni_sumy()
         for f in self.storinky + sorted(self.sait.rglob('*.js')):
             t = f.read_text(encoding='utf-8')
