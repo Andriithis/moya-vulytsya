@@ -1,5 +1,8 @@
-// Сторінка гри «Вулиця дня» (ZAVDANNYA-101, прототип). Дані — vulytsia-dnia.json (site/hra/vulytsia_dnia.py).
-// Карта — та сама, що в «Де це було?» (hra-karta.js); спроби — точки-середини вулиць із номером.
+// Сторінка гри «Вулиця дня» (MV-126; прототип — ZAVDANNYA-101, робоча версія — ZAVDANNYA-114).
+// Дані — vulytsia-dnia.json (site/hra/vulytsia_dnia.py). Карта — та сама, що в «Де це було?» (hra-karta.js);
+// спроби — точки-середини вулиць із номером. Загадка — одна на добу, однакова для всіх (дата за Києвом).
+// На пристрої зберігаємо лише спроби дня й колекцію відкритих вулиць (localStorage, з try/catch).
+// Рахунок — через nadsylannya.js: лише назва події (vd_start, vd_kinets, vd_storinka, vd_pidpyska, vd_podilytysia) і канал.
 (function () {
   'use strict';
 
@@ -10,13 +13,19 @@
   if (SAIT.charAt(0) === '[') SAIT = '';
 
   var dani = null, vulytsi = [], zaSlug = {}, zahadka = null, zahadana = null;
-  var sproby = [], kinets = false, data = H.dataKyiv(), poradok = 0;
+  var sproby = [], kinets = false, sohodni = H.dataKyiv(), data = sohodni;
+  var dzherelo = new URLSearchParams(location.search).get('dzherelo');
   var karta = null, vybrana = null, vybirIndeks = -1;
 
   // ---------- Пам'ять пристрою (без облікового запису) ----------
   function prochytaty(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } }
   function zapysaty(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* без пам'яті теж грається */ } }
-  var KLYUCH = function () { return 'mv-vd-' + data + (poradok ? '-' + poradok : ''); };
+  var KLYUCH = function () { return 'mv-vd-' + data; };
+
+  function nadislaty(nazva) {
+    var N = window.MvNadsylannya;
+    if (N && N.nadislatyPodiyu) N.nadislatyPodiyu(nazva, dzherelo);
+  }
 
   // ---------- Карта ----------
   function tochky() {
@@ -65,10 +74,11 @@
   // ---------- Підказки ----------
   function pidkazky() {
     var nevdali = sproby.filter(function (s) { return !s.p.tak; }).length;
-    var vidkr = kinets ? Y.PIDKAZKY.map(function (p) { return p.pole; }) : Y.vidkryti(nevdali);
+    var spysok = Y.pidkazkyDlia(zahadka);
+    var vidkr = kinets ? spysok.map(function (p) { return p.pole; }) : Y.vidkryti(nevdali, zahadka);
     var ol = $('pidkazky');
     ol.textContent = '';
-    Y.PIDKAZKY.forEach(function (p, i) {
+    spysok.forEach(function (p, i) {
       var li = document.createElement('li');
       li.className = 'pidkazka';
       var mitka = document.createElement('span');
@@ -81,6 +91,8 @@
         tekst.textContent = 'Відкриється після ' + p.pislia + '-ї невдалої спроби';
       } else if (p.pole === 'rayon') {
         tekst.textContent = zahadana.rayon + ' район';
+      } else if (p.pole === 'chastyna') {
+        tekst.textContent = zahadka.chastyna.charAt(0).toUpperCase() + zahadka.chastyna.slice(1);
       } else if (p.pole === 'litera') {
         tekst.textContent = 'Назва починається на «' + Y.persha(zahadana) + '»';
       } else {
@@ -189,6 +201,7 @@
     var storinka = '/vulytsia/' + zahadana.slug + '/';
     $('kinets-storinka').href = storinka + '?dzherelo=hra-vulytsia';
     $('pidpyska').href = '/vulytsi/?dzherelo=hra-vulytsia';
+    $('kinets-zavtra').hidden = data !== sohodni;
     var n = kolektsiia();
     $('kolektsiia').textContent = 'Вулиця додана до вашої колекції: відкрито ' + n + ' ' + (n % 10 === 1 && n % 100 !== 11 ? 'вулицю' : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14)) ? 'вулиці' : 'вулиць') + '.';
     onovytyKartu(true);
@@ -202,6 +215,8 @@
     sproby.push({ slug: slug, p: p });
     kinets = p.tak || sproby.length >= dani.sprob;
     zapysaty(KLYUCH(), sproby.map(function (s) { return s.slug; }));
+    if (sproby.length === 1) nadislaty('vd_start');
+    if (kinets) nadislaty('vd_kinets');
     $('pole').value = ''; vybrana = null; $('vidpravyty').disabled = true; zakrytyVybir();
     var zalyshylos = dani.sprob - sproby.length;
     $('sproba-stan').textContent = p.tak ? '' : 'Ні, загадана — за ' + H.vidstanTekstom(p.vidstanM) + ' ' + p.napryamPovnyi +
@@ -268,7 +283,7 @@
   function podilytysia() {
     var rozghadano = sproby.length && sproby[sproby.length - 1].p.tak;
     var tekst = Y.tekstPodilytysia(data, sproby.map(function (s) { return s.p; }), rozghadano, dani.sprob,
-      (SAIT || 'moya-vulytsya') + '/hra/vulytsia.html');
+      /^https?:$/.test(location.protocol) ? location.origin + location.pathname : SAIT);   // адреса самої гри, без ?data=
     var stan = $('podilytysia-stan');
     if (navigator.share) {
       navigator.share({ text: tekst }).catch(function () { /* скасовано */ });
@@ -286,17 +301,14 @@
   }
 
   function pochaty() {
-    var p = new URLSearchParams(location.search);
-    if (/^\d{4}-\d{2}-\d{2}$/.test(p.get('data') || '')) data = p.get('data');
-    var vybir = Y.zahadkaDnya(dani.zahadky, data);
-    var i = (vybir.i + poradok) % dani.zahadky.length;
-    zahadka = dani.zahadky[i];
+    data = Y.dataZAdresy(new URLSearchParams(location.search).get('data'), sohodni);
+    zahadka = dani.zahadky[Y.zahadkaDnya(dani.zahadky, data).i];
     zahadana = zaSlug[zahadka.slug];
     sproby = []; kinets = false;
     $('kinets').hidden = true; $('sproba').hidden = false; $('sproba-stan').textContent = '';
     $('podilytysia-stan').textContent = '';
     var d = new Date(data + 'T12:00:00');
-    $('vd-data').textContent = 'Вулиця дня · ' + d.toLocaleDateString('uk-UA', { day: 'numeric', month: 'long' }) + (poradok ? ' · ще одна' : '');
+    $('vd-data').textContent = 'Вулиця дня · ' + d.toLocaleDateString('uk-UA', { day: 'numeric', month: 'long' });
     (prochytaty(KLYUCH()) || []).forEach(function (s) {
       if (zaSlug[s] && !kinets) {
         var pp = Y.porivnyaty(zaSlug[s], zahadana);
@@ -305,7 +317,6 @@
       }
     });
     vse();
-    if (karta) { karta.skynuty(); }
     if (kinets) pokazatyKinets(); else onovytyKartu(false);
   }
 
@@ -324,13 +335,14 @@
       $('zavantazhennya').textContent = 'Не вдалося завантажити гру. Спробуйте оновити сторінку.';
     });
 
-  // Для знімків і перевірок (tests/znimky_hry_vulytsia.py): що загадано і які спроби.
+  // Для знімків і перевірок (tests/znimky_hry_vulytsia.js): що загадано і які спроби.
   window.MvVulytsia = { stan: function () { return { zahadana: zahadana, sproby: sproby, vulytsi: vulytsi, kinets: kinets }; } };
 
   $('pole').addEventListener('input', pokazatyVybir);
   $('pole').addEventListener('keydown', klavishi);
   $('pole').addEventListener('blur', function () { setTimeout(zakrytyVybir, 150); });
   $('vidpravyty').addEventListener('click', function () { if (vybrana) zrobytySprobu(vybrana.slug); });
-  $('podilytysia').addEventListener('click', podilytysia);
-  $('shche').addEventListener('click', function () { poradok += 1; pochaty(); });
+  $('podilytysia').addEventListener('click', function () { nadislaty('vd_podilytysia'); podilytysia(); });
+  $('kinets-storinka').addEventListener('click', function () { nadislaty('vd_storinka'); });
+  $('pidpyska').addEventListener('click', function () { nadislaty('vd_pidpyska'); });
 })();

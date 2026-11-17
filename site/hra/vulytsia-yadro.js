@@ -1,4 +1,4 @@
-// Ядро гри «Вулиця дня» (ZAVDANNYA-101, прототип): без карти й сторінки — лише розрахунки.
+// Ядро гри «Вулиця дня» (MV-126; ZAVDANNYA-101, ZAVDANNYA-114): без карти й сторінки — лише розрахунки.
 // Перевіряє tests/test_hra_vulytsia.py (через Node.js). Спільне з першою грою (дата за Києвом, «подія дня»,
 // відстань) — з hra-yadro.js, щоб обидві гри рахували однаково.
 (function (korin) {
@@ -73,19 +73,29 @@
 
   // Які підказки відкриті після k невдалих спроб (сталий порядок; перевіряє тест).
   // 0 — район; 3 — подія з колоди на цій вулиці; 5 — перша літера назви (тип і так видно з першої спроби — гра на папері).
+  // Спальні райони (ZAVDANNYA-114: далі 7 км від центру; без знання назв там важко): після 1-ї — частина району,
+  // після 2-ї — подія, після 4-ї — літера.
   var PIDKAZKY = [{ pislia: 0, pole: 'rayon' }, { pislia: 3, pole: 'podiia' }, { pislia: 5, pole: 'litera' }];
+  var PIDKAZKY_SPALNI = [{ pislia: 0, pole: 'rayon' }, { pislia: 1, pole: 'chastyna' }, { pislia: 2, pole: 'podiia' },
+    { pislia: 4, pole: 'litera' }];
+  function pidkazkyDlia(zahadka) { return zahadka && zahadka.spalnyi && zahadka.chastyna ? PIDKAZKY_SPALNI : PIDKAZKY; }
 
   // «вулиця Івана Кавалерідзе» → «І»; «Дарницький бульвар» → «Д».
   function persha(v) {
     var n = v.nazva.split(' ').filter(function (s) { return s !== v.typ; }).join(' ');
     return n.charAt(0).toUpperCase();
   }
-  function vidkryti(nevdali) {
-    return PIDKAZKY.filter(function (p) { return nevdali >= p.pislia; }).map(function (p) { return p.pole; });
+  function vidkryti(nevdali, zahadka) {
+    return pidkazkyDlia(zahadka).filter(function (p) { return nevdali >= p.pislia; }).map(function (p) { return p.pole; });
   }
 
   // Загадка дня — так само, як «подія дня» першої гри: коло по всіх загадках, однакова для всіх.
   function zahadkaDnya(zahadky, data) { return Y.podiyaDnya(zahadky.map(function (z, i) { return { id: z.slug, i: i }; }), data); }
+
+  // Дата з адреси (?data=РРРР-ММ-ДД) — лише минулі дні й сьогодні: майбутню загадку наперед не відкриваємо.
+  function dataZAdresy(zapyt, sohodni) {
+    return /^\d{4}-\d{2}-\d{2}$/.test(zapyt || '') && zapyt <= sohodni ? zapyt : sohodni;
+  }
 
   // Текст «Поділитися» без назви вулиці (спойлер-захист): клітинки район · подій · вирізняє · тип.
   function tekstPodilytysia(data, sproby, rozghadano, maks, sait) {
@@ -95,13 +105,13 @@
     });
     var d = /^(\d{4})-(\d{2})-(\d{2})$/.exec(data);
     var dd = d ? d[3] + '.' + d[2] : data;
-    var pidsumok = rozghadano ? 'з ' + sproby.length + '-ї спроби з ' + maks : 'не розгадав за ' + maks + ' спроб';
+    var pidsumok = rozghadano ? 'з ' + sproby.length + '-ї спроби з ' + maks : 'не розгадано за ' + maks + ' спроб';
     return 'Моя вулиця · Вулиця дня ' + dd + ' — ' + pidsumok + '\n' + ryadky.join('\n') + (sait ? '\n' + sait : '');
   }
 
   var Yadro = {
     vulytsia: vulytsia, azymut: azymut, porivnyaty: porivnyaty, normalizuvaty: normalizuvaty, shukaty: shukaty,
-    PIDKAZKY: PIDKAZKY, vidkryti: vidkryti, persha: persha, zahadkaDnya: zahadkaDnya, tekstPodilytysia: tekstPodilytysia
+    PIDKAZKY: PIDKAZKY, PIDKAZKY_SPALNI: PIDKAZKY_SPALNI, pidkazkyDlia: pidkazkyDlia, vidkryti: vidkryti, persha: persha, zahadkaDnya: zahadkaDnya, dataZAdresy: dataZAdresy, tekstPodilytysia: tekstPodilytysia
   };
   if (typeof module === 'object' && module.exports) module.exports = Yadro;
   korin.MvVulytsiaYadro = Yadro;
