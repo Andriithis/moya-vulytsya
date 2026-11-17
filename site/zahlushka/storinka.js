@@ -62,6 +62,11 @@
   document.querySelectorAll('[data-vybir]').forEach(function (el) {
     el.addEventListener('click', function () { $('shcho').value = el.getAttribute('data-vybir'); });
   });
+  // Посилання з сайту з наперед вибраним «Що цікавить» (?shcho=kompaniya — запит «Для бізнесу», MV-102).
+  var shchoZAdresy = new URLSearchParams(window.location.search).get('shcho');
+  if (shchoZAdresy && $('shcho').querySelector('option[value="' + shchoZAdresy.replace(/[^a-z]/g, '') + '"]')) {
+    $('shcho').value = shchoZAdresy;
+  }
 
   function pokazatyPomylku(tekst, pole) {
     stan.textContent = tekst;

@@ -664,7 +664,7 @@
       tilo += '<nav class="k-dali" aria-label="Більше про це місце">' +
         '<a class="klav" href="' + KOREN + 'zahlushka/?dzherelo=sota-pidpyska#tsiny">Що саме тут було → підписка</a>' +
         '<a class="klav" href="' + KOREN + 'zahlushka/?dzherelo=sota-analiz#tsiny">Аналіз адреси</a></nav>';
-      var mezha = 'Лише те, що дійшло до суду' + (G.id === 'S' ? ' · справи про домашнє насильство й щодо дітей — лише у великих сотах' : '') +
+      var mezha = 'Лише те, що дійшло до суду' + (G.id === 'S' ? ' · статеві злочини й справи щодо дітей — лише у великих сотах' : '') +
         (VERSIIA ? ' · дані станом на ' + esc(VERSIIA) : '');
       el.innerHTML = '<div class="k-ruchka"></div><div class="k-shap"><div><h2>' + esc(nazva) + '</h2><p>' + esc(pidnazva) + '</p></div>' +
         '<button class="k-x" type="button" aria-label="Закрити">×</button></div>' + tilo + '<p class="mezha">' + mezha + '</p>';
