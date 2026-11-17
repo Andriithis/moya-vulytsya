@@ -107,7 +107,7 @@ def main(argv: list[str]) -> int:
                 znimok('2-detektyv-slid')
                 # 3. Неділя після 20:00 — розкриття
                 zaity('/karta/?hra=detektyv&ihry-den=7&ihry-hodyna=21')
-                s.evaluate('() => document.querySelector(".i-rozkr").scrollIntoView()')
+                s.evaluate('() => { const p = document.getElementById("ihry"); p.scrollTop = document.querySelector(".i-rozkr").offsetTop - 64; window.scrollTo(0, 0); }')
                 znimok('3-detektyv-rozkryttia')
                 # 4. «Вгадай, де це було» на карті
                 zaity('/karta/?hra=vgadai&ihry-den=2')
