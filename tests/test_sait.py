@@ -122,6 +122,19 @@ def stvoryty_bazu(shlyakh: Path) -> None:
     con.close()
 
 
+BUDYNKY = {   # зведення будинків, як його дає dani-edrsr/src/budynky_sait.py (лише числа)
+    'versiia': '2026-11-08', 'r_susidy_m': 300, 'dzherelo_1551': 'набір 1551, CC BY',
+    'skarhy_misiatsi': [f'2025-{m:02d}' for m in (11, 12)] + [f'2026-{m:02d}' for m in range(1, 11)],
+    'budynky': [
+        {'k': 'хрещатик|22', 'vulytsia': 'вулиця Хрещатик', 'nomer': '22', 'lat': 50.4475, 'lon': 30.523, 'rayon': 'Печерський',
+         'skarhy': {'світло': 2, 'вода': 5}, 'susidiv': 6, 'susidy': {'вода': 1, 'світло': 0},
+         'podii': {'2019': {'mai': 1}, '2025': {'dtp': 3}}},
+        {'k': 'хрещатик|24А', 'vulytsia': 'вулиця Хрещатик', 'nomer': '24-А', 'lat': 50.4477, 'lon': 30.5232, 'rayon': 'Печерський',
+         'skarhy': {'ліфт': 1}},
+        {'k': 'невідома|1', 'vulytsia': 'вулиця Невідома', 'nomer': '1', 'lat': 50.40, 'lon': 30.50, 'skarhy': {'вода': 4}},
+    ]}
+
+
 def stvoryty_pereimenuvannya(shlyakh: Path) -> None:
     # шапка — як у dani-edrsr/config/pereimenuvannia-kyiv.csv
     shlyakh.write_text('stara_nazva,nova_nazva,typ,rayon,nomer_rishennia,data_rishennia,posylannia,perelik_kmda,prymitka\n'
@@ -255,14 +268,19 @@ class Sait(unittest.TestCase):
             p = os.environ.get('MV_PEREIMENUVANNYA')
             cls.pereim = Path(p) if p else None
             cls.spravzhnii = True
+            b = os.environ.get('MV_BUDYNKY')
+            cls.budynky = Path(b) if b else None
         else:
             cls.baza = tmp / 'events.db'
             stvoryty_bazu(cls.baza)
             cls.pereim = tmp / 'pereim.csv'
             stvoryty_pereimenuvannya(cls.pereim)
             cls.spravzhnii = False
+            cls.budynky = tmp / 'budynky.json'
+            cls.budynky.write_text(json.dumps(BUDYNKY, ensure_ascii=False), encoding='utf-8')
         cls.sait = tmp / 'sait'
-        cls.zvit = zibraty_sait.zibraty_sait(cls.baza, cls.sait, cls.pereim, KORIN / 'data' / 'borders.json')
+        cls.zvit = zibraty_sait.zibraty_sait(cls.baza, cls.sait, cls.pereim, KORIN / 'data' / 'borders.json',
+                                             budynky=cls.budynky, mezha_failiv=10 ** 6 if cls.spravzhnii else 20000)
         cls.storinky = sorted(cls.sait.rglob('*.html'))
 
     @classmethod
@@ -302,12 +320,15 @@ class Sait(unittest.TestCase):
         self.assertEqual(znaideno, [])
 
     def test_failiv_menshe_mezhi_cloudflare(self):
+        if self.spravzhnii and self.budynky:
+            self.skipTest('зі сторінками будинків справжній випуск більший за 20 000 файлів — платний план (ZVIT-85)')
         n = sum(1 for p in self.sait.rglob('*') if p.is_file())
         self.assertLess(n, 20000)
 
     def test_povtornyi_zapusk_daye_ti_sami_faily(self):
         druhyi = Path(self.tmp.name) / 'sait2'
-        self.zs.zibraty_sait(self.baza, druhyi, self.pereim, KORIN / 'data' / 'borders.json')
+        self.zs.zibraty_sait(self.baza, druhyi, self.pereim, KORIN / 'data' / 'borders.json',
+                             budynky=self.budynky, mezha_failiv=10 ** 6)
         self.assertEqual(vidbytok_teky(self.sait), vidbytok_teky(druhyi))
 
     def test_sitemap_robots_i_rozmitka(self):
@@ -391,11 +412,11 @@ class Sait(unittest.TestCase):
         self.assertEqual(znaideno, [])
         t = (next(p for p in self.storinky if p.parts[-3] == 'vulytsia' and 'refresh' not in p.read_text(encoding='utf-8'))
              .read_text(encoding='utf-8'))
-        self.assertIn('Події по будинках цієї вулиці — у підписці', t)
+        self.assertIn('Що саме сталося біля кожного будинку — у довідці й підписці', t)
 
     def test_try_knopky_na_storintsi_vulytsi(self):
         t = next(p for p in self.storinky if p.parts[-3] == 'vulytsia' and 'refresh' not in p.read_text(encoding='utf-8')).read_text(encoding='utf-8')
-        self.assertIn('Звіт по адресі — 690', t)
+        self.assertIn('Довідка про будинок — 199', t)   # MV-100
         self.assertIn('>Грати<', t)
         self.assertIn('в іншому місті — повідомимо', t)
 
@@ -438,7 +459,7 @@ class Sait(unittest.TestCase):
             return
         # Хрещатик: 8 подій за 2025 + 7 за 2019 + 1 без дати — на сайті лише 8 і замок на 2016–2023.
         khr = (self.sait / 'vulytsia' / 'khreshchatyk' / 'index.html').read_text(encoding='utf-8')
-        self.assertIn('8 подій у даних судів за 2024–2026', khr)
+        self.assertIn('Вулиця Хрещатик: за 2024–2026 у даних судів — 8 подій', khr)
         self.assertIn('rik--zamok', khr)
         self.assertIn('<th scope="row">2016–2023</th><td>у підписці</td>', khr)
         for zayve in ('16 подій', '15 подій', '>16<', '>15<', '>7<'):
@@ -457,6 +478,93 @@ class Sait(unittest.TestCase):
         vsogo8 = sum(f['properties']['all3'] for f in
                      json.loads((self.sait / 'karta' / 'soty-8.json').read_text(encoding='utf-8'))['soty']['features'])
         self.assertEqual(vsogo8, 51)        # 48 відкритих + 3 чутливі, усі за 2025; старих 14 — не враховано
+
+
+    # ---------------------------------------------------------------- ZAVDANNYA-85: будинки, райони, вітрини
+
+    def budynok(self, shl):
+        return (self.sait / 'budynok' / shl / 'index.html').read_text(encoding='utf-8')
+
+    def test_storinka_budynku_lyshe_chysla(self):
+        """MV-99, MV-100: скарги 1551 відкрито, події з рішень — лише числом за роками й групами; без описів і посилань."""
+        if self.spravzhnii:
+            self.skipTest('лише для штучного зведення')
+        t = self.budynok('khreshchatyk/22')
+        self.assertIn('<h1>вулиця Хрещатик, 22</h1>', t)
+        self.assertIn('href="/vulytsia/khreshchatyk/"', t)          # будинок → вулиця
+        self.assertIn('href="/rayon/pecherskyi/"', t)               # будинок → район
+        self.assertIn('надійшло 7 звернень. Найчастіше — вода (5) і світло (2)', t)
+        self.assertLess(t.index('>Вода<'), t.index('>Світло<'))      # теми — від більшої
+        self.assertIn('Сусідній будинок у радіусі 300', t)
+        for k in ('Довідка — 199', '3 довідки — 449', 'Повний звіт — 599'):
+            self.assertIn(k, t)
+        self.assertIn('Події за 2016–2023 з адресою будинку теж є — у підписці', t)
+        tabl = t.split('Події з рішень')[1].split('</table>')[0]
+        self.assertIn('<th scope="row">ДТП</th><td>—</td><td>3</td><td>—</td>', tabl)
+        self.assertNotIn('2019', tabl)                                # старші роки — без чисел (MV-32)
+        self.assertIn('"@type": "BreadcrumbList"', t)
+        self.assertIn('/oplata/?tovar=dovidka', t)
+
+    def test_budynky_bez_opysiv_i_posylan(self):
+        opys = re.compile(r'керуючи|зіткнення|порушив|визнав|reyestr\.court\.gov\.ua|doc_url|fabula|ОСОБА_', re.I)
+        storinky = sorted((self.sait / 'budynok').rglob('index.html'))
+        self.assertTrue(storinky)
+        for f in storinky:
+            m = opys.search(f.read_text(encoding='utf-8'))
+            self.assertIsNone(m, f'{f.relative_to(self.sait)}: {m and m.group(0)}')
+
+    def test_vulytsia_posylaietsia_na_budynky_i_tonki_ne_v_poshuku(self):
+        if self.spravzhnii:
+            self.skipTest('лише для штучного зведення')
+        khr = (self.sait / 'vulytsia' / 'khreshchatyk' / 'index.html').read_text(encoding='utf-8')
+        self.assertIn('href="/budynok/khreshchatyk/22/"', khr)
+        self.assertIn('href="/budynok/khreshchatyk/24-a/"', khr)
+        tonka = self.budynok('khreshchatyk/24-a')
+        self.assertIn('noindex', tonka)                              # 1 звернення — не для пошуку Google
+        mapa = (self.sait / 'sitemap.xml').read_text(encoding='utf-8')
+        self.assertIn('/budynok/khreshchatyk/22/', mapa)
+        self.assertNotIn('/budynok/khreshchatyk/24-a/', mapa)
+        self.assertTrue((self.sait / 'budynok' / 'nevidoma' / '1' / 'index.html').is_file())   # вулиця без сторінки
+
+    def test_rayony_vitryny_i_dovidkovi(self):
+        for shl in ('rayony', 'rayon/pecherskyi', 'miy-budynok', 'osbb', 'sudova-praktyka', 'biznes', 'oplata', 'vydalyty', 'pro-dani'):
+            self.assertTrue((self.sait / shl / 'index.html').is_file(), shl)
+        mb = (self.sait / 'miy-budynok' / 'index.html').read_text(encoding='utf-8')
+        for k in ('199', '449', '599', '399', 'по 99', 'Підписка для рієлтора'):
+            self.assertIn(k, mb)
+        self.assertIn('10 робочих днів', (self.sait / 'vydalyty' / 'index.html').read_text(encoding='utf-8'))
+        oplata = (self.sait / 'oplata' / 'index.html').read_text(encoding='utf-8')
+        self.assertIn('noindex', oplata)
+        self.assertIn('/zahlushka/?dzherelo=oplata#peredzamovlennya', oplata)
+        self.assertNotIn('name="poshta"', oplata)                    # пошта не йде в адресу сторінки
+        self.assertIn('скоро', (self.sait / 'sudova-praktyka' / 'index.html').read_text(encoding='utf-8'))
+        self.assertIn('оферт', (self.sait / 'biznes' / 'index.html').read_text(encoding='utf-8'))
+        holovna = (self.sait / 'index.html').read_text(encoding='utf-8')
+        for shl in ('/miy-budynok/', '/osbb/', '/sudova-praktyka/', '/biznes/', '/rayon/'):
+            self.assertIn(f'href="{shl}', holovna)
+
+    def test_tsiny_lyshe_z_mv100(self):
+        """На сторінках — лише ціни MV-100 (199, 449, 599, 399, 99); 690 (MV-11) на нових сторінках немає."""
+        import storinky_mv100 as M
+        dozvoleni = {v for v in M.TSINY.values() if v}
+        self.assertEqual(dozvoleni, {199, 449, 599, 399, 99})
+        for f in self.nashi_storinky():
+            for n in re.findall(r'(\d[\d\u00a0]*)\u00a0грн', f.read_text(encoding='utf-8')):
+                self.assertIn(int(n.replace('\u00a0', '')), dozvoleni, f'{f.relative_to(self.sait)}: {n} грн')
+
+    def test_sitemap_dilytsia_na_chastyny(self):
+        if self.spravzhnii:
+            self.skipTest('лише для штучної бази')
+        stara = self.zs.MEZHA_SITEMAP
+        self.zs.MEZHA_SITEMAP = 5
+        try:
+            teka = Path(self.tmp.name) / 'sait-sitemap'
+            self.zs.zibraty_sait(self.baza, teka, self.pereim, KORIN / 'data' / 'borders.json', budynky=self.budynky)
+        finally:
+            self.zs.MEZHA_SITEMAP = stara
+        indeks = (teka / 'sitemap.xml').read_text(encoding='utf-8')
+        self.assertIn('<sitemapindex', indeks)
+        self.assertTrue((teka / 'sitemap-2.xml').is_file())
 
 
 def brauzer_dlya_karty() -> str | None:
