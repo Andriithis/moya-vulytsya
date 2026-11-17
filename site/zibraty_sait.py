@@ -190,14 +190,18 @@ def og_kartynka(adresa_saitu: str, url: str, alt: str) -> str:
 def storinka(*, shlyakh: str, title: str, opys: str, tilo: str, adresa_saitu: str, aktyvne: str = '',
              skrypty: tuple[str, ...] = (), dodatkovo_head: str = '', mapa: bool = False, indeksuvaty: bool = True,
              pered_main: str = '', kartynka: tuple[str, str] | None = None) -> str:
-    # Вітрини (MV-99): на телефоні в шапці — карта, вулиці, «Мій будинок»; решта — у підвалі.
+    # Вітрини (MV-99): на телефоні в шапці — карта, вулиці, «Мій будинок»; решта — під «Ще» і в підвалі.
     menyu = [('karta/', 'Карта', 0), ('vulytsi/', 'Вулиці', 0), ('miy-budynok/', 'Мій будинок', 0), ('osbb/', 'Для ОСББ', 1),
              ('sudova-praktyka/', 'Судова практика', 1), ('biznes/', 'Для бізнесу', 1), ('zahlushka/hra/', 'Грати', 1)]
-    punkty = []
+    punkty, shche = [], []
     for h, n, lyshe_komp in menyu:
         klas = ' class="lyshe-komp"' if lyshe_komp else ''
         cur = ' aria-current="page"' if h == aktyvne else ''
         punkty.append(f'<a{klas} href="/{h}"{cur}>{n}</a>')
+        if lyshe_komp:
+            shche.append(f'<a href="/{h}"{cur}>{n}</a>')
+    # Д-5 (ZAVDANNYA-114): на телефоні решта вітрин — під «Ще» (розкривний список без скриптів).
+    punkty.append('<details class="menyu__shche"><summary>Ще</summary><div class="menyu__spysok">' + ''.join(shche) + '</div></details>')
     # Д-1 (ZAVDANNYA-110): Google обрізає заголовки за ≈ 70 знаків і описи за ≈ 170 — довгим знімаємо « | Моя вулиця»
     # (назва сайту є в og:site_name), опис скорочуємо по слову.
     if len(title) > 70 and title.endswith(' | Моя вулиця'):
@@ -244,7 +248,7 @@ def storinka(*, shlyakh: str, title: str, opys: str, tilo: str, adresa_saitu: st
 <footer class="pidval">
 <div class="pidval__vnutri">
 <p>Дані — з рішень судів у Єдиному державному реєстрі судових рішень. Це лише те, що дійшло до суду, а не всі події на вулиці.</p>
-<p>Колір і числа показують, скільки подій у даних, а не те, наскільки тут «страшно». Ми не стверджуємо причин і не прогнозуємо.</p>
+<p>Колір і числа показують лише кількість подій у даних — це не оцінка вулиці, будинку чи району. Ми не стверджуємо причин і не прогнозуємо.</p>
 <p><a href="/miy-budynok/">Мій будинок</a> · <a href="/osbb/">Для ОСББ</a> · <a href="/sudova-praktyka/">Судова практика</a> · <a href="/biznes/">Для бізнесу</a> · <a href="/rayony/">Райони</a> · <a href="/zahlushka/hra/">Грати</a></p>
 <p><a href="/pro-dani/">Як ми працюємо з даними</a> · <a href="/vydalyty/">Видалити або виправити подію</a> · <a href="/zahlushka/polityka.html">Політика конфіденційності</a> · <a href="/zahlushka/oferta.html">Оферта</a> · Карта: <a href="https://www.openstreetmap.org/copyright">© учасники OpenStreetMap</a></p>
 </div>
@@ -436,10 +440,11 @@ def storinka_vulytsi(dn: D.Dani, v: D.Vulytsia, pr: dict, adresa_saitu: str, sus
     import storinky_mv100 as M
     head = M.ld_skrypt(place, M.kryhty_ld(kryhty_p, adresa_saitu))
     return storinka(shlyakh=f'/vulytsia/{v.slug}/', title=title, opys=opys, tilo='\n'.join(chastyny),
-                    adresa_saitu=adresa_saitu, aktyvne='vulytsi/', mapa=True, dodatkovo_head=head,
+                    adresa_saitu=adresa_saitu, aktyvne='vulytsi/', dodatkovo_head=head,
                     kartynka=(f'/vulytsia/{v.slug}/kartynka.png', alt_vulytsi(v, vsogo, roky_t, budynky)),
                     indeksuvaty=vsogo >= MIN_PODII_DLYA_POSHUKU,
-                    skrypty=('/sait/biblioteka/maplibre-gl-csp.js', '/sait/karta.js'))
+                    # Т-12 (ZAVDANNYA-114): бібліотеку карти й її стилі karta.js довантажує, коли людина догортає до карти.
+                    skrypty=('/sait/karta.js',))
 
 
 def alt_vulytsi(v: D.Vulytsia, vsogo: int, roky_t: str, budynky: list | None) -> str:
@@ -666,7 +671,7 @@ def ekran_karty(dn: D.Dani) -> str:
 <section id="info" class="plashka" hidden aria-label="Як читати карту">
 <button class="i-x" type="button" aria-label="Закрити">×</button>
 <h2>Як читати карту</h2>
-<p>Кожна сота — ділянка міста. Колір показує, <b>скільки подій є в даних</b>, — а не те, наскільки тут «страшно». Лише те, що дійшло до суду, а не всі події.</p>
+<p>Кожна сота — ділянка міста. Колір показує лише, <b>скільки подій є в даних</b>, — це не оцінка місця. Лише те, що дійшло до суду, а не всі події.</p>
 <h3>Колір соти (на цьому масштабі)</h3>
 <div class="shkala" id="shkala"></div>
 <p>Число подій — у підказці при наведенні й у картці соти (натисніть на соту). Великі соти — близько 5 і 0,7 км², при наближенні — близько 0,1 км².</p>

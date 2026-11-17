@@ -37,7 +37,7 @@ from html import escape as html_escape  # noqa: E402
 ZABORONENO_V_HTML = re.compile(r'ОСОБА_|АДРЕСА_|\bкв\.\s*№?\s*\d|квартир[аиіу]?\s*№?\s*\d', re.I)
 # «не «небезпечніше»» у легенді — обов'язковий підпис системи дизайну, не оцінка.
 DOZVOLENI_FRAZY = ('не «небезпечніше»',)
-ZABORONENI_SLOVA = re.compile(r'небезпечн|безпечн|рейтинг', re.I)
+ZABORONENI_SLOVA = re.compile(r'небезпечн|безпечн|рейтинг|страшн', re.I)   # «страшно» — Д-8, ZAVDANNYA-114
 POROZHNI_TEHY = {'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr'}
 
 SKHEMA = '''
@@ -432,6 +432,27 @@ class Sait(unittest.TestCase):
                     znaideno.append((str(p.relative_to(self.sait)), 'уривок рішення', ' '.join(s[j:j + n])))
                     break
         self.assertEqual(znaideno[:10], [])
+
+    def test_storinka_vulytsi_bez_biblioteky_karty_na_starti(self):
+        """Т-12 (ZAVDANNYA-114): бібліотеку карти сторінка вулиці не вантажить одразу — karta.js довантажує її біля карти."""
+        p = next((self.sait / 'vulytsia').glob('*/index.html'))
+        t = p.read_text(encoding='utf-8')
+        if 'id="karta-vulytsi"' not in t:
+            self.skipTest('вулиця без карти')
+        self.assertNotIn('maplibre-gl-csp.js', t)
+        self.assertNotIn('maplibre-gl.css', t)
+        self.assertIn('IntersectionObserver', (KORIN / 'site' / 'sait' / 'karta.js').read_text(encoding='utf-8'))
+
+    def test_menyu_na_telefoni_maie_vsi_vitryny(self):
+        """Д-5 (ZAVDANNYA-114): що сховано на телефоні (lyshe-komp), те є під «Ще»."""
+        for p in [self.sait / 'index.html', self.sait / 'vulytsi' / 'index.html']:
+            t = p.read_text(encoding='utf-8')
+            nav = t[t.index('<nav class="menyu"'):t.index('</nav>', t.index('<nav class="menyu"'))]
+            skhovani = re.findall(r'<a class="lyshe-komp" href="([^"]+)"', nav)
+            self.assertTrue(skhovani, p)
+            shche = nav[nav.index('<details class="menyu__shche">'):]
+            for h in skhovani:
+                self.assertIn(f'href="{h}"', shche, f'{p}: {h}')
 
     def test_nemaye_sliv_pro_nebezpeku(self):
         znaideno = []

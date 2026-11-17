@@ -17,6 +17,12 @@
   * для публікації демо-колода НЕ проходить: з демо-колодою збирання падає,
     а без --koloda гра просто не збирається (заглушку можна публікувати й без гри).
 
+Друга гра «Вулиця дня» (MV-126, ZAVDANNYA-114) — у тій самій підтеці hra/, вхід з меню ігор:
+  * загадки — з --vulytsia-dnia (site/hra/vulytsia_dnia.py з того самого випуску й колоди; для перегляду —
+    site/hra/vulytsia-dnia.json, якщо він є);
+  * файл звіряється з колодою: не демо, кожна подія-підказка — з цієї колоди (там уже відкинуто MV-12 / MV-4);
+  * без файла «Вулиці дня» немає ні сторінки, ні пункту в меню ігор.
+
 Режим --dlya-publikatsiyi падає, якщо:
   * не задано адресу або ключ сховища, або адреса не https://<проєкт>.supabase.co;
   * ключ схожий на секретний (service_role, sb_secret_) — такий ключ у сторінці
@@ -93,7 +99,7 @@ def klyuch_sekretnyi(klyuch: str) -> bool:
 
 
 def zibraty(vykhid: Path, adresa: str, klyuch: str, zapovnennya: dict[str, str],
-            dlya_publikatsiyi: bool, koloda: Path | None = None) -> list[str]:
+            dlya_publikatsiyi: bool, koloda: Path | None = None, vulytsia_dnia: Path | None = None) -> list[str]:
     """Збирає сайт. Повертає список незаповнених місць (порожній — усе заповнено)."""
     adresa = adresa.strip().rstrip('/')
     klyuch = klyuch.strip()
@@ -145,7 +151,7 @@ def zibraty(vykhid: Path, adresa: str, klyuch: str, zapovnennya: dict[str, str],
     else:
         shutil.copy2(DZHERELO / 'config.example.js', vykhid / 'config.js')
 
-    nezapovneni += zibraty_hru(vykhid, adresa, zapovnennya, dlya_publikatsiyi, koloda)
+    nezapovneni += zibraty_hru(vykhid, adresa, zapovnennya, dlya_publikatsiyi, koloda, vulytsia_dnia)
 
     zibraty_sw(vykhid)
 
@@ -154,8 +160,34 @@ def zibraty(vykhid: Path, adresa: str, klyuch: str, zapovnennya: dict[str, str],
     return nezapovneni
 
 
+VULYTSIA_DNIA_PEREHLIAD = DZHERELO_HRY / 'vulytsia-dnia.json'
+MENYU_VD = re.compile(r'\s*<!--vulytsia-dnia-->.*?<!--/vulytsia-dnia-->', re.S)
+
+
+def pidhotuvaty_vulytsiu_dnia(shlyakh: Path, gotova: dict, dlya_publikatsiyi: bool) -> dict:
+    """Читає й звіряє файл «Вулиці дня» з колодою цієї збірки. Помилка — PomylkaZbyrannya."""
+    try:
+        d = json.loads(shlyakh.read_text(encoding='utf-8'))
+    except (OSError, json.JSONDecodeError) as e:
+        raise PomylkaZbyrannya(f'«Вулиця дня»: не прочитати {shlyakh}: {e}') from e
+    if not d.get('zahadky') or not d.get('vulytsi'):
+        raise PomylkaZbyrannya('«Вулиця дня»: немає загадок або вулиць.')
+    if dlya_publikatsiyi and (d.get('demo') or gotova['demo']):
+        raise PomylkaZbyrannya('«Вулиця дня»: зібрано з демо-колоди — не публікується.')
+    if dlya_publikatsiyi and d.get('koloda') != gotova.get('zibrano'):
+        raise PomylkaZbyrannya(f'«Вулиця дня»: зібрано з колоди {d.get("koloda")!r}, а гра — з {gotova.get("zibrano")!r}.')
+    slugy = {v[0] for v in d['vulytsi']}
+    urly = {p.get('rishennya_url') for p in gotova['podii']}
+    for z in d['zahadky']:
+        if z.get('slug') not in slugy:
+            raise PomylkaZbyrannya(f'«Вулиця дня»: загадки {z.get("slug")!r} немає серед вулиць.')
+        if dlya_publikatsiyi and (z.get('podiia') or {}).get('url') not in urly:
+            raise PomylkaZbyrannya(f'«Вулиця дня»: подія-підказка вулиці {z["slug"]!r} не з колоди цієї збірки (MV-12).')
+    return d
+
+
 def zibraty_hru(vykhid: Path, adresa: str, zapovnennya: dict[str, str],
-                dlya_publikatsiyi: bool, koloda: Path | None) -> list[str]:
+                dlya_publikatsiyi: bool, koloda: Path | None, vulytsia_dnia: Path | None = None) -> list[str]:
     """Збирає гру в vykhid/hra/. Повертає незаповнені місця гри."""
     if dlya_publikatsiyi and koloda is None:
         # Демо-колоду не публікуємо ніколи; без справжньої колоди — сайт без гри і без ярлика «Грати».
@@ -175,6 +207,10 @@ def zibraty_hru(vykhid: Path, adresa: str, zapovnennya: dict[str, str],
     if not gotova['podii']:
         raise PomylkaZbyrannya('Колода гри: немає жодної придатної події.')
 
+    if vulytsia_dnia is None and not dlya_publikatsiyi and VULYTSIA_DNIA_PEREHLIAD.is_file():
+        vulytsia_dnia = VULYTSIA_DNIA_PEREHLIAD
+    vd = pidhotuvaty_vulytsiu_dnia(vulytsia_dnia, gotova, dlya_publikatsiyi) if vulytsia_dnia else None
+
     tsil = vykhid / 'hra'
     for f in sorted(DZHERELO_HRY.rglob('*')):
         vidn = f.relative_to(DZHERELO_HRY)
@@ -182,23 +218,30 @@ def zibraty_hru(vykhid: Path, adresa: str, zapovnennya: dict[str, str],
             continue
         if f.name == 'koloda.json' or (f.name == 'koloda-demo.json' and not gotova['demo']):
             continue
-        # «Вулиця дня» (ZAVDANNYA-101) — поки прототип: лише для перегляду, у збірку для публікації не йде.
-        if f.name.startswith('vulytsia') and (dlya_publikatsiyi or f.suffix == '.py'):
+        # «Вулиця дня»: файли сторінки — лише разом із загадками; загадки пишемо нижче, звірені.
+        if f.name.startswith('vulytsia') and (vd is None or f.suffix == '.py' or f.name == 'vulytsia-dnia.json'):
             continue
         (tsil / vidn).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(f, tsil / vidn)
     (tsil / 'koloda.json').write_text(json.dumps(gotova, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+    if vd is not None:
+        (tsil / 'vulytsia-dnia.json').write_text(json.dumps(vd, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
 
-    storinka = tsil / 'index.html'
-    tekst = storinka.read_text(encoding='utf-8')
-    for mistse, znachennya in zapovnennya.items():
-        znachennya = str(znachennya).strip()
-        if znachennya:
-            tekst = tekst.replace(f'[{mistse}]', html.escape(znachennya))
-    if adresa:
-        tekst = tekst.replace('https://*.supabase.co', adresa)
-    storinka.write_text(tekst, encoding='utf-8')
-    return [f'hra/index.html: {m}' for m in sorted(set(MISTSE.findall(tekst)))]
+    nezapovneni = []
+    for nazva in ['index.html'] + (['vulytsia.html'] if vd is not None else []):
+        storinka = tsil / nazva
+        tekst = storinka.read_text(encoding='utf-8')
+        if vd is None:
+            tekst = MENYU_VD.sub('', tekst)   # без загадок — без пункту в меню ігор
+        for mistse, znachennya in zapovnennya.items():
+            znachennya = str(znachennya).strip()
+            if znachennya:
+                tekst = tekst.replace(f'[{mistse}]', html.escape(znachennya))
+        if adresa:
+            tekst = tekst.replace('https://*.supabase.co', adresa)
+        storinka.write_text(tekst, encoding='utf-8')
+        nezapovneni += [f'hra/{nazva}: {m}' for m in sorted(set(MISTSE.findall(tekst)))]
+    return nezapovneni
 
 
 def zibraty_sw(vykhid: Path) -> None:
@@ -224,6 +267,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument('--zapovnennya', type=Path, help='JSON зі значеннями для місць у квадратних дужках')
     p.add_argument('--dlya-publikatsiyi', action='store_true', help='сувора перевірка перед публікацією')
     p.add_argument('--koloda', type=Path, help='справжня колода гри з конвеєра (без неї — демо-колода для перегляду)')
+    p.add_argument('--vulytsia-dnia', type=Path, help='загадки «Вулиці дня» (site/hra/vulytsia_dnia.py) з тієї самої колоди')
     a = p.parse_args(argv)
     zapovnennya = {}
     if a.zapovnennya:
@@ -231,7 +275,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         nezapovneni = zibraty(a.vykhid, os.environ.get('MV_SUPABASE_URL', ''),
                               os.environ.get('MV_SUPABASE_PUBLICHNYI_KLYUCH', ''),
-                              zapovnennya, a.dlya_publikatsiyi, a.koloda)
+                              zapovnennya, a.dlya_publikatsiyi, a.koloda, a.vulytsia_dnia)
     except PomylkaZbyrannya as e:
         print('ЗБИРАННЯ ЗУПИНЕНО:', e, file=sys.stderr)
         return 1

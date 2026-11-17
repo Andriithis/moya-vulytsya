@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-"""Друга гра «Вулиця дня» (ZAVDANNYA-101, прототип): дані гри з випуску events-<дата>.db і колоди.
+"""Друга гра «Вулиця дня» (MV-126; прототип — ZAVDANNYA-101, робоча версія — ZAVDANNYA-114): дані гри з випуску
+events-<дата>.db і колоди.
 
   python site/hra/vulytsia_dnia.py --baza events-<дата>.db --koloda koloda-<дата>.json \
       [--pereimenuvannia ../dani-edrsr/config/pereimenuvannia-kyiv.csv] [--vykhid site/hra/vulytsia-dnia.json]
@@ -16,7 +17,12 @@
    - кожна підказка відсікає кандидатів;
    - є подія з колоди гри (MV-12) на цій вулиці — це підказка після третьої спроби;
    - головна група — не група насильства (у грі його не показуємо).
-4. Пише один JSON: вулиці для спроб (без подій) і перелік загадок.
+4. Спальні райони (ZAVDANNYA-114): загадана вулиця далі ніж за 7 км від центру (Майдану) — гравцеві важче без знання
+   назв, тож підказки відкриваються раніше і є ще одна — у якій частині району вулиця (з середин вулиць гри, без адрес).
+5. Пише один JSON: вулиці для спроб (без подій) і перелік загадок.
+
+Збирання сайту (`site/zahlushka/zibraty.py --vulytsia-dnia`) звіряє файл із колодою: подія-підказка мусить бути в колоді
+тієї самої збірки (MV-12 там уже перевірено), демо не публікується.
 
 Колода — приватна (S-В.5 dani-edrsr), тож і цей файл у git не кладемо (`.gitignore`); у грі він публічний, як і колода (MV-12).
 """
@@ -40,6 +46,11 @@ MIN_PODII_SPROBA = 5      # вулиця, яку можна назвати як 
 MIN_PODII_VIDPOVID = 20   # вулиця-відповідь (гра на папері: тихі вулиці спальних районів — перебір)
 MIN_STARTU = 25           # кандидатів після першої підказки (лише район) — щонайменше
 SPROB = 7
+TSENTR = {'lat': 50.4501, 'lon': 30.5234}   # Майдан Незалежності — центр для «спальних» районів
+SPALNYI_KM = 7.0          # далі від центру — підказки раніше (ZAVDANNYA-114)
+SEREDYNA_RAYONU_KM = 1.5  # ближче до середини району — «ближче до середини району»
+CHASTYNY = ['північна', 'північно-східна', 'східна', 'південно-східна', 'південна', 'південно-західна', 'західна',
+            'північно-західна']
 ZABORONENI = re.compile(r'небезпечн|безпечн|рейтинг', re.I)
 
 HRUPY = dict(D.HRUPY)
@@ -66,7 +77,7 @@ def profil(dn, v) -> dict | None:
     podii = [p for p in podii if not p.chutlyva and not D.domashnie(p.stattia) and p.lat is not None]
     if len(podii) < MIN_PODII_SPROBA:
         return None
-    hrupy = Counter(D.HRUPA_VYDU.get(p.vyd) for p in podii if D.HRUPA_VYDU.get(p.vyd))
+    hrupy = Counter(h for p in podii if (h := D.HR.hrupa(p.vyd, p.stattia)))
     hrupa = max(hrupy, key=lambda h: (hrupy[h], h)) if hrupy else None
     rayon = v.rayony.most_common(1)[0][0] if v.rayony else None
     lat = statistics.median(p.lat for p in podii)
@@ -119,6 +130,30 @@ def perevirka_zahadky(vidp: dict, vulytsi: list[dict], chysla: list[int]) -> tup
     return True, zvuzhennia
 
 
+def azymut(a: dict, b: dict) -> float:
+    f1, f2 = math.radians(a['lat']), math.radians(b['lat'])
+    dl = math.radians(b['lon'] - a['lon'])
+    y = math.sin(dl) * math.cos(f2)
+    x = math.cos(f1) * math.sin(f2) - math.sin(f1) * math.cos(f2) * math.cos(dl)
+    return (math.degrees(math.atan2(y, x)) + 360) % 360
+
+
+def seredyny_rayoniv(vulytsi: list[dict]) -> dict:
+    """Середина району — медіана середин його вулиць гри (без адрес і меж районів)."""
+    za = {}
+    for v in vulytsi:
+        za.setdefault(v['rayon'], []).append(v)
+    return {r: {'lat': statistics.median(v['lat'] for v in vs), 'lon': statistics.median(v['lon'] for v in vs)}
+            for r, vs in za.items()}
+
+
+def chastyna_rayonu(v: dict, seredyna: dict) -> str:
+    """«Північно-східна частина району» або «ближче до середини району» — підказка для спальних районів."""
+    if vidstan_km(seredyna, v) < SEREDYNA_RAYONU_KM:
+        return 'ближче до середини району'
+    return CHASTYNY[round(azymut(seredyna, v) / 45) % 8] + ' частина району'
+
+
 def podii_kolody(koloda: dict, dn) -> dict:
     """slug вулиці → події колоди на ній (лише короткий опис, вид, рік, посилання — без адреси)."""
     za_slug = {}
@@ -149,6 +184,7 @@ def zibraty(baza: Path, koloda_shlyakh: Path, pereim: Path | None, mezhi: Path) 
             stari.setdefault(slugy[0], []).append(stara)
     koloda = json.loads(koloda_shlyakh.read_text(encoding='utf-8'))
     kol = podii_kolody(koloda, dn)
+    seredyny = seredyny_rayoniv(vulytsi)
     zahadky, vidkynuto = [], Counter()
     for v in vulytsi:
         if v['n'] < MIN_PODII_VIDPOVID or v['hrupa'] in (None, 'nas') or not v['vyrizn']:
@@ -169,11 +205,13 @@ def zibraty(baza: Path, koloda_shlyakh: Path, pereim: Path | None, mezhi: Path) 
         p = sorted(podii, key=lambda p: (not re.match(r'^[А-ЯІЇЄҐ0-9]', p['opys_korotkyi']),
                                          re.match(r'^[А-ЯІЇЄҐ][а-яіїєґ]\b', p['opys_korotkyi']) is not None,
                                          -len(p['opys_korotkyi']), p['id']))[0]
-        zahadky.append({'slug': v['slug'], 'zvuzhennia': zv,
+        spalnyi = vidstan_km(TSENTR, v) >= SPALNYI_KM
+        zahadky.append({'slug': v['slug'], 'zvuzhennia': zv, 'spalnyi': spalnyi,
+                        'chastyna': chastyna_rayonu(v, seredyny[v['rayon']]) if spalnyi else None,
                         'podiia': {'vyd': p['vyd'], 'rik': p['rik'], 'opys': chystyi_opys(p['opys_korotkyi']),
                                    'url': p['rishennya_url'], 'nomer': p['rishennya_nomer']}})
     return {
-        'versiia': 1, 'vypusk': dn.versiia, 'koloda': koloda.get('zibrano'), 'demo': bool(koloda.get('demo')),
+        'versiia': 2, 'vypusk': dn.versiia, 'koloda': koloda.get('zibrano'), 'demo': bool(koloda.get('demo')),
         'zibrano': datetime.date.today().isoformat(), 'sprob': SPROB,
         'roky': f'{D.VIDKRYTI_ROKY[0]}–{D.VIDKRYTI_ROKY[-1]}',
         'hrupy': HRUPY,
