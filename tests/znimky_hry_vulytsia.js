@@ -1,11 +1,12 @@
-// Знімки прототипу «Вулиця дня» (ZAVDANNYA-101): 390 px і 1280 px, світла й темна тема.
+// Знімки «Вулиці дня» (ZAVDANNYA-101, ZAVDANNYA-114): 390 px і 1280 px, світла й темна тема.
 //
 // Запуск:  python site/zahlushka/zibraty.py            (збирає _site/zahlushka з грою)
-//          node tests/znimky_hry_vulytsia.js [тека]    (за замовчуванням — tmp/znimky/zavdannya-101/)
+//          node tests/znimky_hry_vulytsia.js [тека]    (за замовчуванням — tmp/znimky/zavdannya-114/)
 // Потрібен site/hra/vulytsia-dnia.json (site/hra/vulytsia_dnia.py з випуску й колоди; поза git).
 // Сервер — простий локальний у цьому ж процесі, лише читає _site/zahlushka. Підкладка карти — з мережі
 // (tiles.openfreemap.org), якщо вона є; без мережі видно лише межу Києва.
-// Сценарій: загадка дня на 17.11.2026; спроби — далека вулиця, ближча, поруч у тому ж районі, потім відповідь.
+// Сценарій: меню ігор; загадка дня на 17.11.2026; спроби — далека вулиця, ближча, поруч у тому ж районі, потім відповідь.
+// Ще один день — найближчий до 17.11 зі спальним районом (підказки раніше): старт і три спроби.
 'use strict';
 const http = require('http');
 const fs = require('fs');
@@ -14,8 +15,19 @@ const { chromium } = require('playwright');
 
 const KORIN = path.resolve(__dirname, '..');
 const SAIT = path.join(KORIN, '_site', 'zahlushka');
-const TEKA = path.resolve(process.argv[2] || path.join(KORIN, 'tmp', 'znimky', 'zavdannya-101'));
+const TEKA = path.resolve(process.argv[2] || path.join(KORIN, 'tmp', 'znimky', 'zavdannya-114'));
 const DATA = '2026-11-17';
+const Y = require(path.join(KORIN, 'site', 'hra', 'vulytsia-yadro.js'));
+
+// Найближчий до DATA минулий день, коли загадано вулицю спального району.
+function denSpalnoho() {
+  const d = JSON.parse(fs.readFileSync(path.join(SAIT, 'hra', 'vulytsia-dnia.json'), 'utf-8'));
+  for (let i = 1; i < 120; i++) {
+    const den = new Date(Date.parse(DATA + 'T12:00:00Z') - i * 864e5).toISOString().slice(0, 10);
+    if (d.zahadky[Y.zahadkaDnya(d.zahadky, den).i].spalnyi) return den;
+  }
+  return DATA;
+}
 const TYPY = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
   '.geojson': 'application/json', '.woff2': 'font/woff2', '.png': 'image/png', '.webmanifest': 'application/json' };
 
@@ -67,6 +79,10 @@ async function sproba(s, v) {
       const s = await k.newPage();
       s.on('console', (m) => { if (m.type() === 'error') console.log('консоль:', m.text().slice(0, 160)); });
       const imya = (n) => path.join(TEKA, `${n}-${shyryna}${tema === 'dark' ? '-temna' : ''}.png`);
+      await s.goto(`${url}/hra/index.html`);
+      await s.evaluate(() => document.fonts.ready);
+      await s.waitForTimeout(500);
+      await s.screenshot({ path: imya('0-menyu'), fullPage: telefon });
       await s.goto(`${url}/hra/vulytsia.html?data=${DATA}`);
       await s.waitForFunction(() => window.MvVulytsia && MvVulytsia.stan().zahadana);
       await s.waitForFunction(() => MvHraKarta.ostannia && MvHraKarta.ostannia.karta.loaded(), null, { timeout: 30000 })
@@ -82,6 +98,15 @@ async function sproba(s, v) {
       await s.waitForTimeout(2500);
       await s.screenshot({ path: imya('3-kinets'), fullPage: telefon });
       console.log(shyryna, tema, p.map((v) => v.nazva).join(' → '));
+      const den = denSpalnoho();
+      await s.goto(`${url}/hra/vulytsia.html?data=${den}`);
+      await s.waitForFunction(() => window.MvVulytsia && MvVulytsia.stan().zahadana);
+      await s.waitForTimeout(1500);
+      const ps = plan(await s.evaluate(() => MvVulytsia.stan()));
+      for (const v of ps.slice(0, 3)) if (v) await sproba(s, v);
+      await s.waitForTimeout(2000);
+      await s.screenshot({ path: imya('4-spalnyi-sproby'), fullPage: telefon });
+      console.log('спальний', den, ps.map((v) => v && v.nazva).join(' → '));
       await k.close();
     }
   } finally {

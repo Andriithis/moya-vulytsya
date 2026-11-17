@@ -1,4 +1,4 @@
-/* «Вулиця дня» (ZAVDANNYA-101, прототип). Змінні й клавіші — з hra.css (docs/STYL.md, MV-58).
+/* «Вулиця дня» (MV-126; ZAVDANNYA-101, ZAVDANNYA-114). Змінні й клавіші — з hra.css (docs/STYL.md, MV-58).
    Збіг — accent-soft і жирний текст; незбіг — світла клітинка. Ні зеленого, ні червоного. */
 
 .vd { display: flex; flex-direction: column; min-height: calc(100vh - var(--shapka)); }
@@ -82,3 +82,6 @@
   .vd__panel--nyz { padding-top: var(--space-3); min-height: calc(100vh - var(--shapka)); }
   .vd__karta { position: fixed; top: var(--shapka); left: 620px; right: 0; bottom: 0; height: auto; min-height: 0; border: 0; }
 }
+
+.kinets-vd__zavtra { font-size: 14px; line-height: 20px; color: var(--muted); }
+.kinets-vd__zavtra a { color: var(--accent); }

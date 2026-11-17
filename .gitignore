@@ -90,6 +90,9 @@ site/hra/vulytsia-dnia.json
 !site/kartynky.py
 !site/worker/
 !site/sait/
+# === ІГРИ В КАРТІ (ZAVDANNYA-117) ===
+# Код ігор, перевірка справ «Детектива тижня», справи-зразки, «Кваліфікуй» і налаштування балів — у git.
+!site/ihry/
 # === РОЛИКИ (ZAVDANNYA-11) ===
 # Готові .mp4 у git не кладемо: їх завжди можна відрендерити заново (video/rendery.py).
 video/vyhid/

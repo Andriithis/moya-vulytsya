@@ -97,3 +97,17 @@ brend/
 
 Перевірки: `python -m unittest tests/test_brend.py`. Знімок аватара в колі 110 px:
 `python tests/znimky_brend.py` → `tmp/znimky/zavdannya-12/avatar-kolo-110.png`.
+
+## Візуал публічного місця для медіа (MV-113)
+
+`media/` — шаблон картки «цифри + карта» (1:1, 16:9) і 8 слайдів. Числа дає `dani-edrsr/src/vizual_mistsia.py` (лише публічні
+місця з `config/mistsia-media.csv`), картинки малює:
+
+```
+python brend/media/zrobyty_media.py <місце>.json <тека media>/<slug>
+python site/zibraty_sait.py … --media <тека media>
+```
+
+Тека `<slug>/` потрапляє на сторінку місця (`/vulytsia/<slug>/media/`) з блоком «Для медіа». Як і колода гри, готові
+візуали — результат збирання, у git їх немає; перший справжній (Вокзальна площа) — `docs/znimky-113/vokzalna-ploshcha/`. Умови: безкоштовно з підписом
+«Джерело: Моя вулиця» і посиланням на сторінку місця.
