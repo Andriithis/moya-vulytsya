@@ -286,7 +286,7 @@ def storinka_budynku(b: dict, bud: Budynky, adresa_saitu: str, susidni: list, pe
     ch.append(f'''<section class="rozdil"><h2>Довідка про будинок</h2>
 <p class="rozdil__pidpys">У довідці: теми звернень 1551 по місяцях і статуси простими словами, порівняння з сусідніми будинками,
 події біля будинку й на вулиці коротко — прочитати за 2–3 хвилини. Повний звіт «перед купівлею» — ще й {podii_zvitu(period_podii)},
-карта району й порівняння зі схожими місцями.</p>
+рік за роком, що повторюється на вулиці й поруч, порівняння зі схожими будинками й карта будинку та вулиці.</p>
 {knopky_dovidky(b['url'], 'budynok', b['adresa'])}
 <p class="prymitka">Оплата ще не працює — кнопка відкриє сторінку, де можна залишити пошту. <a href="/miy-budynok/">Що входить і підписка</a>.</p></section>''')
 
@@ -441,7 +441,8 @@ def vitryna_miy_budynok(adresa_saitu: str, prykl: list, kartynka: tuple | None =
         kartka_tovaru('try', 'Три будинки — порівняти перед орендою чи купівлею', [
             'три довідки на вибір', 'дешевше, ніж три окремо'], dzherelo='miy-budynok'),
         kartka_tovaru('zvit', 'Перед купівлею житла', [
-            'усе з довідки', podii_zvitu(period_podii), 'карта району й порівняння зі схожими місцями'],
+            'усе з довідки', podii_zvitu(period_podii), 'рік за роком і що повторюється на вулиці',
+            'порівняння зі схожими будинками, карта будинку й вулиці'],
             dzherelo='miy-budynok'),
         kartka_tovaru('pidpyska', 'Щомісяця', [
             '1 довідка на місяць включено', f'додаткові довідки — по {tsina("dodatkova")}',
