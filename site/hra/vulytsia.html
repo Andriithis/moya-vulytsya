@@ -31,7 +31,7 @@
 </header>
 
 <main class="vd" id="vd">
-  <section class="vd__panel" aria-labelledby="vd-nazva">
+  <section class="vd__panel vd__panel--verkh" aria-labelledby="vd-nazva">
     <div class="vd__shapka">
       <p class="nadpys" id="vd-data">Вулиця дня</p>
       <h1 class="vd__nazva" id="vd-nazva">Яка це вулиця?</h1>
@@ -49,10 +49,17 @@
       <ul class="vybir" id="vybir" role="listbox" hidden></ul>
       <p class="sproba__stan" id="sproba-stan" role="status"></p>
     </div>
+  </section>
 
+  <div class="vd__karta">
+    <div class="karta" id="karta" role="img" aria-label="Карта Києва зі спробами"></div>
+    <p class="karta__zboi" id="karta-zboi" hidden>Підкладка карти не завантажилася — видно лише межу міста.</p>
+  </div>
+
+  <section class="vd__panel vd__panel--nyz" aria-label="Спроби й результат">
     <div class="tablytsia" id="tablytsia" hidden>
       <div class="tablytsia__shapka" aria-hidden="true">
-        <span>Вулиця</span><span>Відстань</span><span>Район</span><span>Подій</span><span>Вирізняє</span><span>Тип</span>
+        <span>Вулиця</span><span>Відстань</span><span>Район</span><span>Подій</span><span>Тип</span><span>Вирізняє</span>
       </div>
       <ol class="sproby" id="sproby"></ol>
       <p class="tablytsia__lehenda"><i class="kl kl--tak" aria-hidden="true"></i> збігається з загаданою · стрілка в «Подій» — у загаданої більше чи менше</p>
@@ -84,11 +91,6 @@
 
     <p class="vd__prymitka">Числа — події з рішень судів за <span id="vd-roky">2024–2026</span> роки: лише те, що дійшло до суду. Це не рейтинг і не оцінка безпеки вулиці. Без реєстрації — результат зберігається лише на вашому пристрої.</p>
   </section>
-
-  <div class="vd__karta">
-    <div class="karta" id="karta" role="img" aria-label="Карта Києва зі спробами"></div>
-    <p class="karta__zboi" id="karta-zboi" hidden>Підкладка карти не завантажилася — видно лише межу міста.</p>
-  </div>
 </main>
 
 <p class="zavantazhennya" id="zavantazhennya" role="status">Завантажуємо вулиці…</p>

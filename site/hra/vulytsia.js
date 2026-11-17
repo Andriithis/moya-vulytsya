@@ -138,8 +138,10 @@
     var n = klitynka(H.chyslo(v.n) + (p.n > 0 ? ' ↑' : p.n < 0 ? ' ↓' : ''), p.n === 0, 'Подій');
     if (p.n !== 0) n.setAttribute('aria-label', 'Подій: ' + v.n + ', у загаданої ' + (p.n > 0 ? 'більше' : 'менше'));
     li.appendChild(n);
-    li.appendChild(klitynka(v.vyrizn || 'нічим особливим', p.vyrizn, 'Вирізняє'));
     li.appendChild(klitynka(v.typ, p.typ, 'Тип'));
+    var vz = klitynka(v.vyrizn || 'нічим особливим', p.vyrizn, 'Вирізняє');
+    vz.classList.add('kl--vyrizn');
+    li.appendChild(vz);
     return li;
   }
 
@@ -169,8 +171,8 @@
     $('kinets-sproby').textContent = rozghadano ? sproby.length + ' з ' + dani.sprob : '—';
     $('kinets-vyrizn').textContent = 'Що вирізняє вулицю: ' + zahadana.vyrizn.toLowerCase() + ' — частка вища, ніж по місту.';
     var zv = zahadka.zvuzhennia;
-    $('kinets-detektyv').textContent = 'Як вивести відповідь: з ' + H.chyslo(zv.vsi) + ' вулиць у районі ' + zv.rayon +
-      ', з тим самим «вирізняє» — ' + zv.vyrizn + ', з таким числом подій — ' + zv.n + ', з цим типом — ' + zv.typ + '.';
+    $('kinets-detektyv').textContent = 'Як вивести відповідь: у грі ' + H.chyslo(zv.vsi) + ' вулиць; у цьому районі — ' + zv.rayon +
+      '; з тим самим «вирізняє» — ' + zv.vyrizn + '; і з таким числом подій — ' + zv.n + '. Відповідь одна — це перевіряє програма.';
     var pd = zahadka.podiia;
     var box = $('kinets-podiia');
     box.textContent = '';
@@ -191,6 +193,7 @@
     var n = kolektsiia();
     $('kolektsiia').textContent = 'Вулиця додана до вашої колекції: відкрито ' + n + ' ' + (n % 10 === 1 && n % 100 !== 11 ? 'вулицю' : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14)) ? 'вулиці' : 'вулиць') + '.';
     onovytyKartu(true);
+    if (window.matchMedia('(min-width: 900px)').matches) $('kinets').scrollIntoView({ block: 'start' });
   }
 
   // ---------- Спроба ----------
@@ -321,6 +324,9 @@
     .catch(function () {
       $('zavantazhennya').textContent = 'Не вдалося завантажити гру. Спробуйте оновити сторінку.';
     });
+
+  // Для знімків і перевірок (tests/znimky_hry_vulytsia.py): що загадано і які спроби.
+  window.MvVulytsia = { stan: function () { return { zahadana: zahadana, sproby: sproby, vulytsi: vulytsi, kinets: kinets }; } };
 
   $('pole').addEventListener('input', pokazatyVybir);
   $('pole').addEventListener('keydown', klavishi);
