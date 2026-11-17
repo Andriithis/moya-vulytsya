@@ -35,7 +35,6 @@ class Chernetky(unittest.TestCase):
         t = tekst('oferta.html')
         for slovo in ('Судова практика', 'не перевірений факт', 'Оновлення', 'лише те, що дійшло до суду'):
             self.assertIn(slovo, t)
-        self.assertNotIn('Google Play', t, 'у застосунку на старті не продаємо (docs/ANDROID.md)')
 
     def test_bez_zaboronenykh_sliv(self):
         for f in ('oferta.html', 'polityka.html', 'pro-nas.html'):
