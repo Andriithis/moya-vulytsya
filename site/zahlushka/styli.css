@@ -61,6 +61,7 @@ h2.rozdil { margin: 0; font-family: Plex, system-ui, sans-serif; font-size: 32px
 .kartka__nazva { font-weight: 700; font-size: 18px; }
 .kartka__tsina { font-family: Plex, system-ui, sans-serif; font-size: 30px; font-weight: 800; }
 .kartka__tsina small { font-size: 16px; font-weight: 600; color: #5F6275; }
+.kartka__haslo { font-weight: 600; font-size: 15px; color: #4447A6; }
 .kartka ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 15px; }
 .knopka-kontur { margin-top: auto; text-align: center; border: 1.5px solid #4447A6; color: #4447A6; text-decoration: none; font-weight: 600; padding: 11px; border-radius: 12px; }
 .kartka__knopky { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }

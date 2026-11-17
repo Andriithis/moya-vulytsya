@@ -528,14 +528,14 @@ def storinka_pokazhchyka(vulytsi: list, rayony: list, adresa_saitu: str, rayon: 
 def holovna(dn: D.Dani, vulytsi: list, rayony: list, adresa_saitu: str) -> str:
     """Головна — одразу карта Києва з пошуком (AGENTS.md, розд. 3: без вступу), під нею — входи."""
     tilo = f'''<section class="vstup-ryad">
-<div><h1 class="h-mala">Що суди розповіли про вашу вулицю</h1>
+<div><h1 class="h-mala">Що відбувається під боком</h1>
 <p class="prymitka">{chyslo(len(vulytsi))} вулиць Києва зі своєю сторінкою: скільки подій, коли, яких видів. Дані станом на {e(dn.versiia)};
 безкоштовно — {PERIOD_VIDKRYTYI}, {PERIOD_ZAMKNENYI} — у підписці.</p></div>
 </section>
 <section class="vkhody" aria-label="Куди далі">
 <a class="vkhid" href="/vulytsi/"><span class="mikro">Покажчик</span><b>Усі вулиці</b><span>за абеткою й районами</span></a>
 <a class="vkhid" href="/zahlushka/hra/"><span class="mikro">Гра</span><b>Вгадай, де це було</b><span>опис події — ваша точка на карті</span></a>
-<a class="vkhid" href="/miy-budynok/"><span class="mikro">Мій будинок</span><b>Довідка — {TSINA_DOVIDKY}{NBSP}грн</b><span>скарги 1551 і події біля будинку</span></a>
+<a class="vkhid" href="/miy-budynok/"><span class="mikro">Мій будинок</span><b>Що болить вашому будинку</b><span>скарги 1551 і події біля будинку; довідка — {TSINA_DOVIDKY}{NBSP}грн</span></a>
 </section>
 <section class="vkhody" aria-label="Розділи">
 <a class="vkhid" href="/osbb/"><span class="mikro">Для ОСББ</span><b>Будинок щомісяця</b><span>звернення мешканців до 1551</span></a>
@@ -549,8 +549,8 @@ def holovna(dn: D.Dani, vulytsi: list, rayony: list, adresa_saitu: str) -> str:
                       'inLanguage': 'uk'},
                      {'@context': 'https://schema.org', '@type': 'Organization', 'name': 'Моя вулиця', 'url': adresa_saitu + '/',
                       'logo': adresa_saitu + '/zahlushka/ikony/ikona-192.png'})
-    return storinka(shlyakh='/', title='Моя вулиця — що суди розповіли про вашу вулицю у Києві', dodatkovo_head=ld,
-                    opys='Карта Києва з подіями із судових рішень: скільки, коли, яких видів — на кожній вулиці. Покажчик вулиць, гра.',
+    return storinka(shlyakh='/', title='Моя вулиця — що відбувається під боком: вулиці й будинки Києва', dodatkovo_head=ld,
+                    opys='Що відбувається під боком: скарги мешканців і події з рішень судів — на кожній вулиці й по кожному будинку Києва. Карта, покажчик вулиць, гра.',
                     tilo=tilo, adresa_saitu=adresa_saitu, mapa=True, pered_main=ekran_karty(dn),
                     skrypty=('/sait/biblioteka/maplibre-gl-csp.js', '/sait/karta.js'))
 
