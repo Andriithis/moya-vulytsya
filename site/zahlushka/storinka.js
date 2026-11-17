@@ -67,6 +67,9 @@
   if (shchoZAdresy && $('shcho').querySelector('option[value="' + shchoZAdresy.replace(/[^a-z]/g, '') + '"]')) {
     $('shcho').value = shchoZAdresy;
   }
+  // Будинок, для якого хотіли купити довідку (зі сторінки оплати, ZAVDANNYA-110, Т-3), — у поле «Адреса».
+  var adresaZAdresy = new URLSearchParams(window.location.search).get('adresa');
+  if (adresaZAdresy && !$('adresa2').value) $('adresa2').value = adresaZAdresy.slice(0, 200);
 
   function pokazatyPomylku(tekst, pole) {
     stan.textContent = tekst;

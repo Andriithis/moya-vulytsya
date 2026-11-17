@@ -243,6 +243,44 @@ class ZbyrannyaHryTests(unittest.TestCase):
         with self.assertRaises(zibraty.PomylkaZbyrannya):
             zibraty.zibraty(self.tmp / 'z', self.URL, 'test-publichnyi', self.ZAPOVNENNYA, True, self.zapysaty(fail))
 
+    def test_b4_spravzhni_posylannia_bez_osoby_i_dat(self):
+        """ZAVDANNYA-110, Б-4: посилання з Release (od.reyestr…/files/…rtf) проходять; «ОСОБА_N» і дати — ні."""
+        fail = spravzhnia_koloda()
+        for i, p in enumerate(fail['podii']):
+            p['rishennya_url'] = f'https://od.reyestr.court.gov.ua/files/58/{i:032x}.rtf'
+        fail['podii'][0]['opys_povnyi'] = 'ОСОБА_1 12.03.2025 року, керуючи автомобілем, не надав переваги пішоходу. ОСОБА_2 — свідок.'
+        fail['podii'][1]['opys_korotkyi'] = 'Подія 01.02.24 біля магазину; ІНФОРМАЦІЯ_3 приховано.'
+        zibraty.zibraty(self.tmp / 'z', self.URL, 'test-publichnyi', self.ZAPOVNENNYA, True, self.zapysaty(fail))
+        k = (self.tmp / 'z' / 'hra' / 'koloda.json').read_text(encoding='utf-8')
+        self.assertNotRegex(k, r'ОСОБА|_\d|\d{1,2}\.\d{1,2}\.\d{2,4}')
+        self.assertIn('Особа, керуючи автомобілем', k)
+        for zle in ('https://od.reyestr.court.gov.ua/files/58/x.rtf', 'https://example.org/files/58/' + '0' * 32 + '.rtf'):
+            self.assertIsNone(koloda.POSYLANNYA.match(zle))
+        # Те, що не вдалося прибрати, не проходить перевірку для публікації.
+        with self.assertRaises(koloda.PomylkaKolody):
+            koloda.dlya_publikatsiyi(dict(koloda.pidhotuvaty(fail), podii=[dict(p, opys_povnyi='ОСОБА_1') for p in fail['podii']]))
+
+    def test_b4_sait_zi_spravzhnoiu_kolodoiu_bez_obkhodu(self):
+        """Б-4: збирач сайту з --koloda перевіряє колоду для публікації (раніше — без перевірки)."""
+        import importlib.util
+        if importlib.util.find_spec('h3') is None:
+            self.skipTest('немає h3')
+        sys.path.insert(0, str(KORIN / 'site'))
+        sys.path.insert(0, str(KORIN / 'tests'))
+        import zibraty_sait
+        from test_sait import stvoryty_bazu
+        baza = self.tmp / 'e.db'
+        stvoryty_bazu(baza)
+        demo_jak_spravzhnia = self.zapysaty(dict(demo(), demo=False))
+        with self.assertRaises(SystemExit):
+            zibraty_sait.zibraty_sait(baza, self.tmp / 's', None, None, koloda=demo_jak_spravzhnia)
+        fail = spravzhnia_koloda()
+        fail['podii'][0]['opys_povnyi'] = 'ОСОБА_1 12.03.2025 року вчинив ДТП.'
+        zibraty_sait.zibraty_sait(baza, self.tmp / 's', None, None, koloda=self.zapysaty(fail))
+        k = (self.tmp / 's' / 'zahlushka' / 'hra' / 'koloda.json').read_text(encoding='utf-8')
+        self.assertNotIn('ОСОБА_', k)
+        self.assertNotRegex(k, r'\d{2}\.\d{2}\.\d{4}')
+
     def test_publikatsiya_bez_saitu(self):
         z = dict(self.ZAPOVNENNYA)
         del z['САЙТ']

@@ -47,6 +47,18 @@ def period_1551(ms: list) -> str:
     return f'{misiats(ms[0])} — {misiats(ms[-1])}' if ms else ''
 
 
+# Б-2 (ZAVDANNYA-110): квартира, офіс, приміщення, поверх — не частина номера будинку; те саме правило, що
+# dani-edrsr/src/budynky_sait.py (KVARTYRA) — тут на випадок старого зведення.
+KVARTYRA = re.compile(r'\s*,?\s*(?:оф(?:іс)?|кв(?:артира)?|прим(?:іщення)?|кімн(?:ата)?|\d*\s*поверх|секція)\b\.?.*$'
+                      r'|\s*,?\s*(?:оф(?:іс)?|кв|прим)\.?\s*№?\s*\d.*$', re.I)
+
+
+def bez_kvartyry(n: str) -> str:
+    """«43 кв32» → «43», «15/5 оф73» → «15/5»."""
+    t = KVARTYRA.sub('', n or '').strip(' ,')
+    return t or n
+
+
 def slug_nomera(n: str) -> str:
     """«17-А» → «17-a», «12/4» → «12-4», «37 к6» → «37-k6»."""
     return D.translit(re.sub(r'[/\s]+', '-', n)) or 'bud'
@@ -88,8 +100,9 @@ def ld_skrypt(*obiekty) -> str:
                    for o in obiekty)
 
 
-def knopky_dovidky(budynok: str = '', dzherelo: str = '') -> str:
-    q = f'&amp;budynok={e(budynok)}' if budynok else ''
+def knopky_dovidky(budynok: str = '', dzherelo: str = '', adresa: str = '') -> str:
+    from urllib.parse import quote
+    q = (f'&amp;budynok={e(budynok)}' if budynok else '') + (f'&amp;adresa={quote(adresa)}' if adresa else '')
     d = f'&amp;dzherelo={e(dzherelo)}' if dzherelo else ''
     return (f'<div class="tsiny">'
             f'<a class="knopka knopka--holovna" href="/oplata/?tovar=dovidka{q}{d}">Довідка — {tsina("dovidka")}</a>'
@@ -115,6 +128,7 @@ class Budynky:
         self.spysok = []
         zainiati = set()
         for b in z['budynky']:
+            b = dict(b, nomer=bez_kvartyry(b['nomer']))
             r = D.rozibraty_vulytsiu(b['vulytsia'])
             v = za_kliuchem.get((r[0], D.kliuch(r[1]))) if r else None
             if v:
@@ -268,7 +282,7 @@ def storinka_budynku(b: dict, bud: Budynky, adresa_saitu: str, susidni: list) ->
 <p class="rozdil__pidpys">У довідці: теми звернень 1551 по місяцях і статуси простими словами, порівняння з сусідніми будинками,
 події біля будинку й на вулиці коротко — прочитати за 2–3 хвилини. Повний звіт «перед купівлею» — ще й 10 років подій, карта району
 й порівняння зі схожими місцями.</p>
-{knopky_dovidky(b['url'], 'budynok')}
+{knopky_dovidky(b['url'], 'budynok', b['adresa'])}
 <p class="prymitka">Оплата ще не працює — кнопка відкриє сторінку, де можна залишити пошту. <a href="/miy-budynok/">Що входить і підписка</a>.</p></section>''')
 
     if susidni:
@@ -291,6 +305,8 @@ def storinka_budynku(b: dict, bud: Budynky, adresa_saitu: str, susidni: list) ->
              'geo': {'@type': 'GeoCoordinates', 'latitude': round(b['lat'], 5), 'longitude': round(b['lon'], 5)}}
     if b['rayon']:
         place['containedInPlace'] = {'@type': 'Place', 'name': f'{b["rayon"]} район, Київ'}
+    if re.match(r'^\d{4}-\d{2}-\d{2}$', bud.versiia or ''):
+        place['dateModified'] = bud.versiia           # Д-2 (ZAVDANNYA-110), як на сторінці вулиці (MV-101)
     title = f'{b["adresa"]}, Київ: скарги 1551 і події з рішень судів | Моя вулиця'
     opys = (f'{b["adresa"]} ({rayon_t}): {skarhy_slovo(b["skarh"])} до 1551 за 12 місяців'
             + (f' (найчастіше — {next(iter(b["skarhy"]))})' if b['skarh'] else '')
@@ -318,7 +334,7 @@ def kartynka_budynku(b: dict, kolory: dict) -> bytes:
 # ---------------------------------------------------------------- сторінка району
 
 def storinka_rayonu(dn: D.Dani, rayon: str, vulytsi: list, bud: Budynky | None, podii_hrupy: Counter,
-                    adresa_saitu: str) -> str:
+                    adresa_saitu: str, kolory: dict | None = None, vykhid: Path | None = None) -> str:
     slug = Z.slug_rayonu(rayon)
     roky_t = Z.PERIOD_VIDKRYTYI
     vsogo = sum(podii_hrupy.values())
@@ -354,7 +370,7 @@ def storinka_rayonu(dn: D.Dani, rayon: str, vulytsi: list, bud: Budynky | None, 
                       f'<div class="por__ryad por__ryad--1"><span class="por__nazva">{e(z_velykoi(h))}</span>'
                       f'<span class="por__smuha"><i class="sh-{shyryna(n, maks)} por--tut"></i></span><b>{chyslo(n)}</b></div>'
                       for h, n in skarhy.most_common(10)) + '</div></section>')
-    vs = sorted(vulytsi, key=lambda v: (Z.kliuch_abetky(v.korotka), v.slug))
+    vs = sorted((v for v in vulytsi if v.nedavni), key=lambda v: (Z.kliuch_abetky(v.korotka), v.slug))   # Д-6: без «0»
     ch.append(f'<section class="rozdil"><h2>Вулиці району</h2><p class="rozdil__pidpys">За абеткою; поруч — подій за {roky_t}. '
               f'<a href="/vulytsi/{slug}/">Покажчик вулиць району</a>.</p>{Z.spysok_vulyts(vs)}</section>')
     ch.append(f'<section class="rozdil"><h2>Мій будинок</h2><p class="rozdil__pidpys">Знайдіть свою вулицю — на її сторінці є '
@@ -364,8 +380,17 @@ def storinka_rayonu(dn: D.Dani, rayon: str, vulytsi: list, bud: Budynky | None, 
             f'{chyslo(len(vulytsi))} вулиць зі своєю сторінкою.')
     place = {'@context': 'https://schema.org', '@type': 'Place', 'name': f'{rayon} район, Київ',
              'url': f'{adresa_saitu}/rayon/{slug}/', 'containedInPlace': {'@type': 'City', 'name': 'Київ'}}
+    kartynka = None
+    if kolory is not None and vykhid is not None:      # Д-2 (ZAVDANNYA-110): картинка для поширення — лише числа
+        import kartynky as K
+        chysla = [(chyslo(vsogo), f'{vidminok(vsogo, ("подія", "події", "подій"))} з рішень судів за {roky_t}')]
+        if skarhy:
+            n = sum(skarhy.values())
+            chysla.append((chyslo(n), f'{vidminok(n, ("звернення", "звернення", "звернень"))} до 1551 за 12 місяців'))
+        Z.zapysaty_bajty(vykhid / 'rayon' / slug / 'kartynka.png', K.kartynka('Київ · район', f'{rayon} район', chysla, kolory))
+        kartynka = (f'/rayon/{slug}/kartynka.png', f'{rayon} район: ' + ', '.join(f'{a} {p}' for a, p in chysla))
     return Z.storinka(shlyakh=f'/rayon/{slug}/', title=title, opys=opys, tilo='\n'.join(ch), adresa_saitu=adresa_saitu,
-                      aktyvne='vulytsi/', dodatkovo_head=ld_skrypt(place, kryhty_ld(kryhty, adresa_saitu)))
+                      aktyvne='vulytsi/', dodatkovo_head=ld_skrypt(place, kryhty_ld(kryhty, adresa_saitu)), kartynka=kartynka)
 
 
 def storinka_rayoniv(rayony: list, adresa_saitu: str) -> str:
@@ -420,12 +445,12 @@ def vitryna_miy_budynok(adresa_saitu: str, prykl: list, kartynka: tuple | None =
     ])
     pryklady = ''.join(f'<li><a href="{b["url"]}">{e(b["adresa"])}</a></li>' for b in prykl)
     tilo = f'''<section class="rozdil"><h2>Знайдіть свій будинок</h2>
-<p class="rozdil__pidpys">Відкрийте свою вулицю — на її сторінці є список будинків. Сторінка будинку безкоштовна: скарги 1551 і події з рішень
-судів числом.</p>
-<form class="poshuk" role="search" action="/vulytsi/"><label class="prykhovano" for="poshuk-vulytsi">Назва вулиці</label>
-<input id="poshuk-vulytsi" type="search" autocomplete="off" placeholder="Назва вулиці, наприклад: Хрещатик">
+<p class="rozdil__pidpys">Введіть вулицю й номер будинку або відкрийте свою вулицю — на її сторінці є список будинків. Сторінка будинку
+безкоштовна: скарги 1551 і події з рішень судів числом.</p>
+<form class="poshuk" role="search" action="/vulytsi/"><label class="prykhovano" for="poshuk-vulytsi">Вулиця і номер будинку</label>
+<input id="poshuk-vulytsi" type="search" autocomplete="off" placeholder="Вулиця і будинок, наприклад: Хрещатик 22">
 <ul class="poshuk__spysok" id="poshuk-spysok" hidden></ul></form>
-{f'<p class="prymitka">Наприклад:</p><ul class="spysok-vulyts">{pryklady}</ul>' if pryklady else ''}</section>
+{f'<p class="prymitka">Наприклад, вулиці:</p><ul class="spysok-vulyts">{pryklady}</ul>' if pryklady else ''}</section>
 <section class="rozdil"><h2>Що можна замовити</h2><div class="tovary">{tovary}</div>
 <p class="prymitka">Довідка — не оцінка будинку й не порада, де жити. Скарги 1551 — звернення людей, не перевірені факти; події — те,
 що дійшло до суду. Оплата ще не працює: кнопка відкриє сторінку, де можна залишити пошту.</p></section>'''
@@ -475,7 +500,7 @@ def vitryna_sudova(adresa_saitu: str, kartynka: tuple | None = None) -> str:
 
 def vitryna_biznes(adresa_saitu: str, kartynka: tuple | None = None) -> str:
     tilo = f'''<section class="rozdil"><h2>Набори й доступ</h2><div class="tovary">
-{kartka_tovaru('biznes', 'Користування базою на рік за договором — не продаж', [
+{kartka_tovaru('biznes', 'Користування базою на місяць або рік за договором — не продаж (MV-92)', [
         'події з рішень судів з адресами й точками на карті (Київ, 10 років)', 'скарги 1551 по будинках',
         'вивантаження файлом або доступ для програм', 'оновлення щомісяця'], True, dzherelo='biznes')}
 <div class="kartka tovar"><h3>Для кого</h3><ul><li>забудовники й агенції нерухомості</li><li>страхові й банки</li>
@@ -483,25 +508,28 @@ def vitryna_biznes(adresa_saitu: str, kartynka: tuple | None = None) -> str:
 <p class="prymitka">Умови — в <a href="/zahlushka/oferta.html">оферті</a> і договорі. Вивантаження бази — лише компаніям за договором.
 Платежі й договори оформлює партнер проєкту.</p></section>'''
     return vitryna('/biznes/', 'Для бізнесу', 'Для компаній',
-                   'База подій із судових рішень і скарг 1551 — у користування на рік за договором. Ціна — за домовленістю: залиште запит, відповість партнер проєкту.',
+                   'База подій із судових рішень і скарг 1551 — у користування на місяць або рік за договором. Ціна — за домовленістю: залиште запит, відповість партнер проєкту.',
                    tilo, 'Дані для бізнесу: події з судових рішень і скарги 1551 Києва | Моя вулиця',
-                   'Дані для компаній: події з судових рішень з адресами, скарги 1551 по будинках. Користування на рік за договором.',
+                   'Дані для компаній: події з судових рішень з адресами, скарги 1551 по будинках. Користування на місяць або рік за договором.',
                    adresa_saitu, kartynka=kartynka)
 
 
 def storinka_oplaty(adresa_saitu: str) -> str:
     tovary = ''.join(f'<li><b>{e(TOVARY[k])}</b> — {tsina(k)}</li>' for k in TOVARY)
+    # Т-3 (ZAVDANNYA-110): що й для якого будинку обрали — читає sait/oplata.js і передає у форму передзамовлення.
+    nazvy = {k: f'{TOVARY[k]} — {tsina(k)}' for k in TOVARY}
     tilo = f'''{kryhty_html([('/', 'Головна'), ('', 'Оплата')])}
 <section class="zaholovok"><span class="mitka">Скоро</span><h1>Оплата скоро</h1>
-<p>Ми ще не приймаємо оплату. Залиште пошту — напишемо один раз, коли довідку можна буде замовити.</p></section>
+<p>Ми ще не приймаємо оплату. Залиште пошту — напишемо один раз, коли довідку можна буде замовити.</p>
+<p class="kartka vybir" id="vybir" data-tovary="{e(json.dumps(nazvy, ensure_ascii=False))}" hidden></p></section>
 <section class="rozdil"><div class="diyi">
-<a class="knopka knopka--holovna" href="/zahlushka/?dzherelo=oplata#peredzamovlennya">Залишити пошту</a>
+<a class="knopka knopka--holovna" id="oplata-poshta" href="/zahlushka/?dzherelo=oplata#peredzamovlennya">Залишити пошту</a>
 <a class="knopka" href="/miy-budynok/">Що входить у довідку</a></div>
 <p class="prymitka">Пошту залишаєте у формі передзамовлення; її зберігають за <a href="/zahlushka/polityka.html">політикою конфіденційності</a>
-і пишуть лише про запуск.</p></section>
+і пишуть лише про запуск. Обраний товар і будинок збережемо разом із поштою.</p></section>
 <section class="rozdil"><h2>Ціни</h2><div class="kartka"><ul class="spysok-tekst">{tovary}</ul></div></section>'''
     return Z.storinka(shlyakh='/oplata/', title='Оплата скоро | Моя вулиця', opys='Оплата ще не працює — залиште пошту.',
-                      tilo=tilo, adresa_saitu=adresa_saitu, indeksuvaty=False)
+                      tilo=tilo, adresa_saitu=adresa_saitu, indeksuvaty=False, skrypty=('/sait/oplata.js',))
 
 
 def storinka_vydalyty(adresa_saitu: str) -> str:
@@ -623,24 +651,26 @@ def zibraty_vse(dn: D.Dani, rayony: list, za_rayonom: dict, bud: Budynky | None,
     pr = podii_rayoniv(dn)
     for r in rayony:
         Z.zapysaty(vykhid / 'rayon' / Z.slug_rayonu(r) / 'index.html',
-                   storinka_rayonu(dn, r, za_rayonom[r], bud, pr.get(r, Counter()), adresa_saitu))
+                   storinka_rayonu(dn, r, za_rayonom[r], bud, pr.get(r, Counter()), adresa_saitu, kolory, vykhid))
         adresy.append(f'/rayon/{Z.slug_rayonu(r)}/')
     Z.zapysaty(vykhid / 'rayony' / 'index.html', storinka_rayoniv(rayony, adresa_saitu))
     adresy.append('/rayony/')
     prykl = []
     if bud:
-        # Приклади — будинки з «середньою» кількістю даних з різних районів: не добірка тих, де найбільше
-        kandydaty = sorted((b for b in bud.spysok if b['vulytsia_slug'] and Budynky.indeksuvaty(b) and b['skarh'] and b['podii_vidkr']),
-                           key=lambda b: (b['skarh'] + b['podii_vidkr'], b['slug']))
-        kandydaty = kandydaty[len(kandydaty) // 2:] + kandydaty[:len(kandydaty) // 2]
+        # Т-7 (ZAVDANNYA-110, MV-25): приклади — вулиці зі сторінками будинків, без номерів житлових будинків; «середні» за
+        # кількістю будинків, з різних районів (не добірка тих, де найбільше).
+        vulytsi_b = sorted(((len(sp), sl) for sl, sp in bud.za_vulytseyu.items() if sl in dn.vulytsi and len(sp) >= 2))
+        vulytsi_b = vulytsi_b[len(vulytsi_b) // 2:] + vulytsi_b[:len(vulytsi_b) // 2]
         bachyly = set()
-        for b in kandydaty:
-            if b['rayon'] not in bachyly:
-                bachyly.add(b['rayon'])
-                prykl.append(b)
+        for _n, sl in vulytsi_b:
+            v = dn.vulytsi[sl]
+            r = v.rayony.most_common(1)[0][0] if v.rayony else ''
+            if r not in bachyly:
+                bachyly.add(r)
+                prykl.append({'url': f'/vulytsia/{sl}/', 'adresa': v.nazva})
             if len(prykl) == 3:
                 break
-        prykl.sort(key=lambda b: b['slug'])
+        prykl.sort(key=lambda b: b['url'])
     import kartynky as K
     kv = {}
     for shl, (mitka, nazva, chysla) in chysla_vitryn(dn, bud, vulyts).items():

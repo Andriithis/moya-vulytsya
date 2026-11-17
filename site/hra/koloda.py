@@ -5,7 +5,8 @@
   * відкидає події заборонених категорій MV-12 / MV-4 (статеві злочини, щодо дітей,
     домашнє насильство) — навіть якщо вони трапилися у файлі;
   * відкидає неповні події й події з координатами поза Києвом;
-  * для публікації — не пропускає демо-колоду і події без посилання на рішення.
+  * прибирає з описів «ОСОБА_N» (→ «особа») і дати; не вдалося — подію не бере (ZAVDANNYA-110, Б-4);
+  * для публікації — не пропускає демо-колоду, події без посилання на рішення в реєстрі й описи з «ОСОБА_» чи датою.
 
 Ті самі правила відсіву повторює сама гра (hra-yadro.js), тож заборонена подія
 не з'явиться на екрані навіть з «сирого» файлу.
@@ -23,12 +24,32 @@ ZABORONENI_KATEHORII = frozenset({'statevi_zlochyny', 'shchodo_ditei', 'domashni
 POLYA = ('id', 'vyd', 'kategoriia', 'rik', 'opys_korotkyi', 'opys_povnyi', 'adresa', 'lat', 'lon')
 MEZHI = {'pivden': 50.21, 'pivnich': 50.60, 'zakhid': 30.23, 'skhid': 30.83}
 ID_SPRAVZHNII = re.compile(r'^[0-9]{5,12}-[0-9]{1,3}$')
-# Посилання на рішення — лише офіційний реєстр (doc_url з архівів data.gov.ua, MV-7).
-POSYLANNYA = re.compile(r'^https://reyestr\.court\.gov\.ua/Review/[0-9]{5,12}$')
+# Посилання на рішення — лише офіційний реєстр (doc_url з архівів data.gov.ua, MV-7): файл рішення
+# od.reyestr…/files/<NN>/<32 знаки>.rtf (так у випуску й колоді з Release, ZAVDANNYA-110, Б-4) або сторінка Review/<номер>.
+POSYLANNYA = re.compile(r'^https://(reyestr\.court\.gov\.ua/Review/[0-9]{5,12}'
+                        r'|od\.reyestr\.court\.gov\.ua/files/[0-9]{1,3}/[0-9a-f]{32}\.rtf)$')
+# Знеособлення реєстру й дати в описах (Б-4): «ОСОБА_1» → «особа», дата — геть; що лишилося — подію не беремо.
+OSOBA = re.compile(r'ОСОБА_\d+')
+DATA = re.compile(r'\b\d{1,2}\s?\.\s?\d{1,2}\s?\.\s?(?:\d{4}|\d{2})(?!\d)(?:\s*(?:року|р\.))?')
+SLIDY = re.compile(r'[А-ЯІЇЄҐ]{3,}_\d|ОСОБА|\b\d{1,2}\s?\.\s?\d{1,2}\s?\.\s?\d{2,4}\b')
+TEKSTY = ('opys_korotkyi', 'opys_povnyi')
 
 
 class PomylkaKolody(Exception):
     pass
+
+
+def ochystyty(t: str) -> str:
+    """«ОСОБА_1 12.03.2025 року, керуючи…» → «Особа, керуючи…»: без міток реєстру й дат."""
+    t = OSOBA.sub('особа', t or '')
+    t = re.sub(r'АДРЕСА_\d+', '(адресу приховано судом)', t)
+    t = re.sub(r'\s*(ІНФОРМАЦІЯ|НОМЕР|ПІБ|ДАТА)_\d+', '', t)
+    t = DATA.sub('', t)
+    t = re.sub(r'\s+([,.;:])', r'\1', t)
+    t = re.sub(r',\s*,', ',', t)
+    t = re.sub(r'\s{2,}', ' ', t).strip(' ,')
+    t = re.sub(r'(^|[.!?]\s+)([а-яіїєґ])', lambda m: m.group(1) + m.group(2).upper(), t)
+    return t
 
 
 def zaboronena(podiya: dict) -> bool:
@@ -58,6 +79,9 @@ def pidhotuvaty(fail: dict) -> dict:
     for p in fail['podii']:
         if not prydatna(p) or p['id'] in bachyly:
             continue
+        p = dict(p, **{k: ochystyty(p[k]) for k in TEKSTY})
+        if any(SLIDY.search(p[k]) for k in TEKSTY) or not prydatna(p):
+            continue
         bachyly.add(p['id'])
         podii.append(p)
     podii.sort(key=lambda p: p['id'])
@@ -78,6 +102,8 @@ def dlya_publikatsiyi(koloda: dict) -> None:
             raise PomylkaKolody(f'{p["id"]}: немає номера рішення.')
         if not POSYLANNYA.match(str(p.get('rishennya_url') or '')):
             raise PomylkaKolody(f'{p["id"]}: немає посилання на рішення в реєстрі.')
+        if any(SLIDY.search(str(p.get(k) or '')) for k in TEKSTY):
+            raise PomylkaKolody(f'{p["id"]}: в описі лишилися «ОСОБА_» чи дата.')
 
 
 def prochytaty(shlyakh: Path) -> dict:
