@@ -12,7 +12,7 @@
 
   // Рядок файлу → об'єкт вулиці.
   function vulytsia(r) {
-    return { slug: r[0], nazva: r[1], typ: r[2], rayon: r[3], n: r[4], vyrizn: r[5], lat: r[6], lon: r[7] };
+    return { slug: r[0], nazva: r[1], typ: r[2], rayon: r[3], n: r[4], vyrizn: r[5], lat: r[6], lon: r[7], stara: r[8] || '' };
   }
 
   // Азимут від спроби до загаданої, градуси за годинниковою (0 — північ).
@@ -58,7 +58,7 @@
     for (var i = 0; i < vulytsi.length; i++) {
       var v = vulytsi[i];
       if (krim && krim[v.slug]) continue;
-      var nz = ' ' + normalizuvaty(v.nazva);
+      var nz = ' ' + normalizuvaty(v.nazva) + ' ' + normalizuvaty(v.stara);
       var vse = slova.every(function (s) { return nz.indexOf(' ' + s) !== -1; });
       if (vse) vykhid.push(v);
     }
@@ -72,8 +72,14 @@
   }
 
   // Які підказки відкриті після k невдалих спроб (сталий порядок; перевіряє тест).
-  // 0 — район; 3 — подія з колоди на цій вулиці; 5 — тип вулиці.
-  var PIDKAZKY = [{ pislia: 0, pole: 'rayon' }, { pislia: 3, pole: 'podiia' }, { pislia: 5, pole: 'typ' }];
+  // 0 — район; 3 — подія з колоди на цій вулиці; 5 — перша літера назви (тип і так видно з першої спроби — гра на папері).
+  var PIDKAZKY = [{ pislia: 0, pole: 'rayon' }, { pislia: 3, pole: 'podiia' }, { pislia: 5, pole: 'litera' }];
+
+  // «вулиця Івана Кавалерідзе» → «І»; «Дарницький бульвар» → «Д».
+  function persha(v) {
+    var n = v.nazva.split(' ').filter(function (s) { return s !== v.typ; }).join(' ');
+    return n.charAt(0).toUpperCase();
+  }
   function vidkryti(nevdali) {
     return PIDKAZKY.filter(function (p) { return nevdali >= p.pislia; }).map(function (p) { return p.pole; });
   }
@@ -95,7 +101,7 @@
 
   var Yadro = {
     vulytsia: vulytsia, azymut: azymut, porivnyaty: porivnyaty, normalizuvaty: normalizuvaty, shukaty: shukaty,
-    PIDKAZKY: PIDKAZKY, vidkryti: vidkryti, zahadkaDnya: zahadkaDnya, tekstPodilytysia: tekstPodilytysia
+    PIDKAZKY: PIDKAZKY, vidkryti: vidkryti, persha: persha, zahadkaDnya: zahadkaDnya, tekstPodilytysia: tekstPodilytysia
   };
   if (typeof module === 'object' && module.exports) module.exports = Yadro;
   korin.MvVulytsiaYadro = Yadro;

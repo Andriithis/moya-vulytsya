@@ -37,7 +37,7 @@ sys.path.insert(0, str(KORIN / 'site' / 'sait'))
 import dani as D  # noqa: E402
 
 MIN_PODII_SPROBA = 5      # вулиця, яку можна назвати як спробу (має сторінку й профіль)
-MIN_PODII_VIDPOVID = 15   # вулиця-відповідь
+MIN_PODII_VIDPOVID = 20   # вулиця-відповідь (гра на папері: тихі вулиці спальних районів — перебір)
 MIN_STARTU = 25           # кандидатів після першої підказки (лише район) — щонайменше
 SPROB = 7
 ZABORONENI = re.compile(r'небезпечн|безпечн|рейтинг', re.I)
@@ -142,6 +142,11 @@ def zibraty(baza: Path, koloda_shlyakh: Path, pereim: Path | None, mezhi: Path) 
     vulytsi = [p for v in dn.vulytsi.values() if (p := profil(dn, v)) and p['rayon']]
     vulytsi.sort(key=lambda v: v['slug'])
     chysla = [v['n'] for v in vulytsi]
+    # Старі назви (довідник перейменувань): гравець шукає й так — «Шамо (кол. Давидова)».
+    stari = {}
+    for stara, slugy in dn.zvedennia.pereimenuvannia:
+        if len(slugy) == 1:
+            stari.setdefault(slugy[0], []).append(stara)
     koloda = json.loads(koloda_shlyakh.read_text(encoding='utf-8'))
     kol = podii_kolody(koloda, dn)
     zahadky, vidkynuto = [], Counter()
@@ -172,7 +177,8 @@ def zibraty(baza: Path, koloda_shlyakh: Path, pereim: Path | None, mezhi: Path) 
         'zibrano': datetime.date.today().isoformat(), 'sprob': SPROB,
         'roky': f'{D.VIDKRYTI_ROKY[0]}–{D.VIDKRYTI_ROKY[-1]}',
         'hrupy': HRUPY,
-        'vulytsi': [[v['slug'], v['nazva'], v['typ'], v['rayon'], v['n'], v['vyrizn'], v['lat'], v['lon']]
+        'vulytsi': [[v['slug'], v['nazva'], v['typ'], v['rayon'], v['n'], v['vyrizn'], v['lat'], v['lon'],
+                     ' · '.join(sorted(stari.get(v['slug'], [])))]
                     for v in vulytsi],
         'zahadky': zahadky,
         'vidkynuto': dict(vidkynuto),

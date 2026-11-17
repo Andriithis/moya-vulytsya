@@ -81,8 +81,8 @@
         tekst.textContent = 'Відкриється після ' + p.pislia + '-ї невдалої спроби';
       } else if (p.pole === 'rayon') {
         tekst.textContent = zahadana.rayon + ' район';
-      } else if (p.pole === 'typ') {
-        tekst.textContent = 'Це ' + zahadana.typ;
+      } else if (p.pole === 'litera') {
+        tekst.textContent = 'Назва починається на «' + Y.persha(zahadana) + '»';
       } else {
         var pd = zahadka.podiia;
         var em = document.createElement('span');
@@ -188,8 +188,7 @@
     box.appendChild(t); box.appendChild(m);
     var storinka = '/vulytsia/' + zahadana.slug + '/';
     $('kinets-storinka').href = storinka + '?dzherelo=hra-vulytsia';
-    $('pidpyska').href = storinka + '?dzherelo=hra-vulytsia#stezhyty';
-    $('pidpyska-opys').textContent = 'Усі ' + H.chyslo(zahadana.n) + ' подій з адресами й описами і нове щотижня — у підписці, 399 грн/міс.';
+    $('pidpyska').href = '/vulytsi/?dzherelo=hra-vulytsia';
     var n = kolektsiia();
     $('kolektsiia').textContent = 'Вулиця додана до вашої колекції: відкрито ' + n + ' ' + (n % 10 === 1 && n % 100 !== 11 ? 'вулицю' : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14)) ? 'вулиці' : 'вулиць') + '.';
     onovytyKartu(true);
@@ -227,7 +226,7 @@
       li.setAttribute('role', 'option');
       li.id = 'vybir-' + i;
       li.className = 'vybir__ryadok';
-      var n = document.createElement('span'); n.textContent = v.nazva;
+      var n = document.createElement('span'); n.textContent = v.nazva + (v.stara ? ' (кол. ' + v.stara + ')' : '');
       var r = document.createElement('small'); r.textContent = v.rayon;
       li.appendChild(n); li.appendChild(r);
       li.addEventListener('mousedown', function (e) { e.preventDefault(); obraty(v); });

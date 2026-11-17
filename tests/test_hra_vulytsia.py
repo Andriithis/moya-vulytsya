@@ -74,10 +74,11 @@ class Yadro(unittest.TestCase):
         r = node(r'''
 const Y = require('./vulytsia-yadro.js');
 const a = Y.vulytsia(['a', 'вулиця Хрещатик', 'вулиця', 'Шевченківський', 100, 'ДТП', 50.4470, 30.5220]);
-const b = Y.vulytsia(['b', 'вулиця Мечникова', 'вулиця', 'Печерський', 62, 'Наркотики', 50.4385, 30.5400]);
+const b = Y.vulytsia(['b', 'вулиця Мечникова', 'вулиця', 'Печерський', 62, 'Наркотики', 50.4385, 30.5400, 'вулиця Стара']);
 const p = Y.porivnyaty(a, b), t = Y.porivnyaty(b, b);
 process.stdout.write(JSON.stringify({ p, t, v0: Y.vidkryti(0), v3: Y.vidkryti(3), v5: Y.vidkryti(5),
-  poshuk: Y.shukaty([a, b], 'мечн').map(x => x.slug), poshuk2: Y.shukaty([a, b], 'хрещ', { a: true }).length,
+  poshuk: Y.shukaty([a, b], 'мечн').map(x => x.slug), stara: Y.shukaty([a, b], 'стара').map(x => x.slug),
+  litera: Y.persha(b), poshuk2: Y.shukaty([a, b], 'хрещ', { a: true }).length,
   tekst: Y.tekstPodilytysia('2026-11-17', [p, t], true, 7, 'sait') }));''')
         p, t = r['p'], r['t']
         self.assertFalse(p['tak'])
@@ -89,7 +90,9 @@ process.stdout.write(JSON.stringify({ p, t, v0: Y.vidkryti(0), v3: Y.vidkryti(3)
         self.assertTrue(t['tak'] and t['vidstanM'] == 0 and t['n'] == 0)
         self.assertEqual(r['v0'], ['rayon'])
         self.assertEqual(r['v3'], ['rayon', 'podiia'])
-        self.assertEqual(r['v5'], ['rayon', 'podiia', 'typ'])
+        self.assertEqual(r['v5'], ['rayon', 'podiia', 'litera'])
+        self.assertEqual(r['litera'], 'М')
+        self.assertEqual(r['stara'], ['b'], 'вулицю знаходимо й за старою назвою')
         self.assertEqual(r['poshuk'], ['b'])
         self.assertEqual(r['poshuk2'], 0, 'уже названу вулицю вдруге не пропонуємо')
         self.assertNotIn('Мечникова', r['tekst'], '«Поділитися» без назви вулиці')

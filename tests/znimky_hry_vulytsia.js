@@ -47,7 +47,7 @@ async function sproba(s, v) {
   await s.dispatchEvent('#pole', 'input');
   await s.waitForTimeout(100);
   await s.evaluate((nazva) => {
-    const r = [...document.querySelectorAll('.vybir__ryadok')].find((l) => l.firstChild.textContent === nazva);
+    const r = [...document.querySelectorAll('.vybir__ryadok')].find((l) => l.firstChild.textContent.startsWith(nazva));
     if (r) r.dispatchEvent(new MouseEvent('mousedown'));
   }, v.nazva);
   await s.click('#vidpravyty');
