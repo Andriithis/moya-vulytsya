@@ -166,7 +166,7 @@ class Cherha:
         self.db.commit()
 
     def zaboroneno(self) -> dict:
-        r = {'podiia': {}, 'mistse': {}, 'tekst': {}}
+        r = {'podiia': {}, 'mistse': {}, 'tekst': {}, 'pozytsiia': {}}
         for x in self.db.execute('SELECT typ, znachennia, prychyna FROM zaboroneno'):
             r.setdefault(x['typ'], {})[x['znachennia']] = x['prychyna']
         return r

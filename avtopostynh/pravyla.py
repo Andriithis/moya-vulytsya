@@ -190,6 +190,8 @@ def pereviryty(o: dict, adresa_saitu: str, teka_media: Path | None = None, zabor
             zh.append(f'подію {p} прибирали: {z["podiia"][p]}')
         if nedavni_podii and p in nedavni_podii:
             zh.append(f'подія {p} вже виходила за останні {DNIV_BEZ_POVTORU} днів')
+    if o.get('pozytsiia') and o['pozytsiia'] in z.get('pozytsiia', {}):
+        zh.append(f'цей ролик чи картку прибирали: {z["pozytsiia"][o["pozytsiia"]]}')
     if mistse.get('shliakh') in z.get('mistse', {}):
         zh.append(f'про це місце більше не пишемо: {z["mistse"][mistse["shliakh"]]}')
     if khesh_tekstu(o.get('tekst', '')) in z.get('tekst', {}):
