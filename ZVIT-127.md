@@ -152,7 +152,7 @@
 
 ## 6. Як відтворити, де що лежить
 
-- Код — `video/vau/` (README там же), тести — `tests/test_vau.py`. PR: @@PR@@
+- Код — `video/vau/` (README там же), тести — `tests/test_vau.py`. PR: https://github.com/Andriithis/moya-vulytsya/pull/118
 - Повні ролики (1080×1920, H.264 + AAC) — ПК, `moya-vulytsya/video/vyhid/*.mp4`; субтитри голосу — `*.srt` поруч.
 - Легкі копії й аркуші — гілка `rolyky-127` (не зливати).
 - Команди: `python video/vau/stsenarii.py <events.db> --koloda <koloda.json>` → `video/vau/vse.sh` (рендер двома потоками) →
