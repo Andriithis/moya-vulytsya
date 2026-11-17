@@ -10,6 +10,7 @@
 > [`docs/STRUKTURA.md`](docs/STRUKTURA.md), план передачі
 > [`docs/PEREDACHA-Z-KARTY-2026-11-06.md`](docs/PEREDACHA-Z-KARTY-2026-11-06.md), що можна
 > показувати — [`docs/03-dani-i-etyka.md`](docs/03-dani-i-etyka.md), право — [`docs/02-pravo.md`](docs/02-pravo.md).
+> **Реклама, пости, ролики, тексти сайту, нові завдання — спершу [`docs/KOMPAS.md`](docs/KOMPAS.md)** (одна лінія від гасла до покупки).
 > Конвеєр даних — приватний `dani-edrsr`; продукт — тут. Старий вміст (теки `arkhiv/`, `legacy/`, старий конвеєр) видалено 11.11.2026 — він лише в історії git.
 
 ---
