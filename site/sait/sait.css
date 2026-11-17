@@ -431,3 +431,7 @@ body.z-kartoyu .shapka__vnutri { max-width: none; padding: 6px 16px; min-height:
   .vr-pyt { display: none; }
   .ekran-karty.shukayu .chas, .ekran-karty.shukayu .vau-rayony { display: none; }
 }
+/* «Для медіа» на сторінці публічного місця (MV-113) */
+.media-pryklad { display: block; width: 100%; height: auto; border-radius: var(--radius-m, 12px); border: 1.5px solid var(--mezha); margin: 12px 0; }
+.media-faily { list-style: none; padding: 0; margin: 0 0 12px; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+.media-faily .knopka span { color: var(--muted); font-weight: 400; margin-left: 4px; }

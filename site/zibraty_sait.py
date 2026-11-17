@@ -33,6 +33,10 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 DZHERELO = Path(__file__).resolve().parent
+# Візуали публічних місць для медіа (MV-113): тека <slug>/ від brend/media/zrobyty_media.py — параметр --media (як колода, поза git)
+MEDIA_PUBLICHNI = ('площа', 'вокзал', 'метро', 'ТЦ', 'ринок', 'парк', 'міст')
+MEDIA_FAILY = (('kartka-1x1.png', 'Картка 1:1', '1080×1080'), ('kartka-16x9.png', 'Картка 16:9', '1920×1080'),
+               ('slaidy.pdf', '8 слайдів', 'PDF'))
 KORIN = DZHERELO.parent
 sys.path.insert(0, str(DZHERELO / 'sait'))
 sys.path.insert(0, str(DZHERELO / 'zahlushka'))
@@ -297,7 +301,34 @@ def abzats_vulytsi(v: D.Vulytsia, pr: dict, roky_t: str) -> str:
     return t
 
 
-def storinka_vulytsi(dn: D.Dani, v: D.Vulytsia, pr: dict, adresa_saitu: str, susidy: list, budynky: list | None = None) -> str:
+def media_mistsia(media: Path | None, v: D.Vulytsia) -> dict | None:
+    """MV-113: візуал для медіа — лише для публічного місця, чия сторінка — ця (площа на сторінці «вулиці»); інакше None"""
+    if not media: return None
+    f = media / v.slug / 'vizual.json'
+    if not f.exists(): return None
+    d = json.loads(f.read_text(encoding='utf-8'))
+    if d.get('typ') not in MEDIA_PUBLICHNI or v.typ not in MEDIA_PUBLICHNI or d.get('storinka') != f'/vulytsia/{v.slug}/':
+        return None
+    if any(not (media / v.slug / n).exists() for n, _, _ in MEDIA_FAILY): return None
+    return d
+
+
+def blok_media(d: dict, slug: str) -> str:
+    """MV-113: «Для медіа» — завантажити картку чи слайди безкоштовно; умови: підпис і посилання на цю сторінку"""
+    faily = ''.join(f'<li><a class="knopka" href="/vulytsia/{slug}/media/{n}" download>{e(t)} <span>· {e(r)}</span></a></li>'
+                    for n, t, r in MEDIA_FAILY)
+    return f'''<section class="rozdil" id="dlia-media"><h2>Для медіа</h2>
+<p class="rozdil__pidpys">Пишете про це місце? Візьміть готовий візуал: скільки подій у колі {d['radius']} м, порівняння з типовим
+колом Києва, з чого складаються події, роки й години — {e(d['period'])}. Безкоштовно.</p>
+<a href="/vulytsia/{slug}/media/kartka-16x9.png"><img class="media-pryklad" src="/vulytsia/{slug}/media/kartka-16x9.png" width="960" height="540"
+ loading="lazy" alt="{e(d['nazva'])}: {d['podii']} подій з рішень судів у колі {d['radius']} м — картка для медіа"></a>
+<ul class="media-faily">{faily}</ul>
+<p class="prymitka"><b>Умови:</b> {e(d['umovy'])} Числа — станом на
+{e('.'.join(reversed(d['versiia'].split('-'))))}; оновлюються з кожним випуском.</p></section>'''
+
+
+def storinka_vulytsi(dn: D.Dani, v: D.Vulytsia, pr: dict, adresa_saitu: str, susidy: list, budynky: list | None = None,
+                     media: dict | None = None) -> str:
     rayon = v.rayony.most_common(1)[0][0] if v.rayony else None
     inshi_rayony = [r for r, _ in v.rayony.most_common()[1:] if v.rayony[r] >= 3]
     vsogo = pr['vsogo']
@@ -406,6 +437,8 @@ def storinka_vulytsi(dn: D.Dani, v: D.Vulytsia, pr: dict, adresa_saitu: str, sus
 <ul class="spysok-vulyts spysok-bud">{"".join(f'<li><a href="{b["url"]}">{e(b["nomer"])}</a></li>' for b in budynky)}</ul></section>''')
 
     # Дії
+    if media:
+        chastyny.append(blok_media(media, v.slug))
     chastyny.append(f'''<section class="rozdil"><h2>Що далі</h2>
 <div class="diyi">
 <a class="knopka knopka--holovna" href="/miy-budynok/">Довідка про будинок — {TSINA_DOVIDKY}{NBSP}грн</a>
@@ -765,7 +798,7 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
                  adresa_saitu: str = ADRESA_SAITU, koloda: Path | None = None,
                  zvit_zvedennia: Path | None = None, budynky: Path | None = None,
                  mezha_failiv: int | None = None, khostynh: str = 'pages', perekazy: Path | None = None,
-                 kandydaty_istorii: Path | None = None) -> dict:
+                 kandydaty_istorii: Path | None = None, media: Path | None = None) -> dict:
     """khostynh: 'pages' — кожна сторінка файлом (межа 20 000); 'workers' — будинки в пачках (site/khostynh.py)."""
     import khostynh as KH
     if khostynh not in KH.VARIANTY:
@@ -796,6 +829,7 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
     adresy = ['/', '/karta/', '/vulytsi/']
     tsentry_vulyts = {}
     kand_istorii, istorii = {}, 0
+    media_mists = 0
     for v in vulytsi:
         pr = D.profil_vulytsi(dn, v)
         if pr['kandydaty_istorii']:
@@ -814,7 +848,11 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
             vikno = kandydaty[max(0, i - 4):i] + kandydaty[i + 1:i + 5]
             susidy = [(x.slug, x.nazva, len(x.nedavni)) for x in vikno]
         b_vul = bud.za_vulytseyu.get(v.slug) if bud else None
-        zapysaty(vykhid / 'vulytsia' / v.slug / 'index.html', storinka_vulytsi(dn, v, pr, adresa_saitu, susidy, b_vul))
+        md = media_mistsia(media, v)
+        if md:      # MV-113: файли візуалу — поруч зі сторінкою місця
+            shutil.copytree(media / v.slug, vykhid / 'vulytsia' / v.slug / 'media', dirs_exist_ok=True)
+            media_mists += 1
+        zapysaty(vykhid / 'vulytsia' / v.slug / 'index.html', storinka_vulytsi(dn, v, pr, adresa_saitu, susidy, b_vul, md))
         zapysaty_bajty(vykhid / 'vulytsia' / v.slug / 'kartynka.png', kartynka_vulytsi(v, pr['vsogo'], b_vul, kolory))
         if len(v.nedavni) >= MIN_PODII_DLYA_POSHUKU:
             adresy.append(f'/vulytsia/{v.slug}/')
@@ -919,6 +957,7 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
         'adres_u_sitemap': len(adresy), 'khostynh': khostynh,
         'pachok_budynkiv': pachky.n if pachky is not None else 0,
         'istorii_vulyts': istorii, 'perekaziv_u_faili': len(dn.perekazy),
+        'media_mists': media_mists,
     }
     if khostynh == 'workers':
         zvit['teka_workera'] = str(KH.pidhotuvaty_worker(vykhid, pachky.n if pachky is not None else 1))
@@ -954,10 +993,12 @@ def main(argv=None) -> int:
     p.add_argument('--perekazy', type=Path, help='перекази ШІ для історій вулиць (dani-edrsr/src/perekazy_istorii.py); '
                    'без них блоку «Одна історія з вулиці» немає')
     p.add_argument('--kandydaty-istorii', type=Path, help='куди записати події-кандидати історій вулиць (вхід кроку переказів)')
+    p.add_argument('--media', type=Path, help='візуали публічних місць для медіа (brend/media/zrobyty_media.py, тека <slug>/ на місце); '
+                   'без них блоку «Для медіа» немає')
     p.add_argument('--mezha-failiv', type=int, help='межа кількості файлів (план хостингу; без ключа — 20 000)')
     a = p.parse_args(argv)
     zvit = zibraty_sait(a.baza, a.vykhid, a.pereimenuvannya, a.mezhi_rayoniv, a.adresa_saitu, a.koloda,
-                        a.zvit_zvedennia, a.budynky, a.mezha_failiv, a.khostynh, a.perekazy, a.kandydaty_istorii)
+                        a.zvit_zvedennia, a.budynky, a.mezha_failiv, a.khostynh, a.perekazy, a.kandydaty_istorii, a.media)
     for k, v in zvit.items():
         print(f'{k}: {v}')
     return 0
