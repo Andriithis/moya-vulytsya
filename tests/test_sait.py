@@ -794,7 +794,7 @@ class KartaUBrauzeri(unittest.TestCase):
         cls.server.shutdown()
         cls.tmp.cleanup()
 
-    def storinka(self, shyryna=1280, vysota=800):
+    def storinka(self, shyryna=1280, vysota=800, vau='0'):
         k = self.b.new_context(viewport={'width': shyryna, 'height': vysota}, reduced_motion='reduce',
                                is_mobile=shyryna < 700, has_touch=shyryna < 700)
         k.route('https://tiles.openfreemap.org/**', lambda r: r.abort())
@@ -802,7 +802,7 @@ class KartaUBrauzeri(unittest.TestCase):
         s = k.new_page()
         pomylky = []
         s.on('pageerror', lambda e: pomylky.append(str(e)))
-        s.goto(self.url + '/#14.5/50.4477/30.5231/0/40')
+        s.goto(self.url + ('/?vau=' + vau if vau is not None else '/') + '#14.5/50.4477/30.5231/0/40')
         s.wait_for_function('() => window.MvKarta && MvKarta.gotovo', timeout=60000)
         s.wait_for_timeout(500)
         return s, pomylky
@@ -826,6 +826,12 @@ class KartaUBrauzeri(unittest.TestCase):
             self.assertTrue(s.evaluate('document.getElementById("kartka").hidden'))
             self.assertEqual(s.evaluate(ZNIMOK), do, f'{shyryna}: щось зсунулося при закритті картки')
             self.assertEqual(pomylky, [])
+
+    def test_vau_za_zamovchuvanniam(self):
+        """MV-120: без параметра — «Роки оживають» (лічильник місяців), сторінка без помилок."""
+        s, pomylky = self.storinka(vau=None)
+        s.wait_for_selector('.vau-lich', timeout=15000)
+        self.assertEqual(pomylky, [])
 
     def test_poshuk_vulytsi_z_danykh(self):
         s, pomylky = self.storinka()
