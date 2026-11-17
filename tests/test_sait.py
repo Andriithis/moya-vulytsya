@@ -594,6 +594,137 @@ class Sait(unittest.TestCase):
         self.assertIn('799\u00a0грн на місяць', mb)
         self.assertIn('1\u00a0490\u00a0грн на рік', (self.sait / 'osbb' / 'index.html').read_text(encoding='utf-8'))
 
+    def test_onovleno_na_budynku_i_vulytsi(self):
+        """ZAVDANNYA-88, п. 3: «Оновлено: місяць рік» на сторінках будинку й вулиці — з дати випуску."""
+        versiia = self.zvit['versiia']
+        m = re.match(r'(\d{4})-(\d{2})', versiia)
+        ochikuvano = f'Оновлено: {self.zs.MISIATSI[int(m.group(2)) - 1]} {m.group(1)}'
+        storinky = [p for p in self.storinky if p.relative_to(self.sait).parts[0] in ('budynok', 'vulytsia')
+                    and 'http-equiv="refresh"' not in p.read_text(encoding='utf-8')]
+        self.assertTrue(any(p.parts[-4] == 'budynok' or p.relative_to(self.sait).parts[0] == 'budynok' for p in storinky))
+        for p in storinky:
+            self.assertIn(ochikuvano, p.read_text(encoding='utf-8'), p.relative_to(self.sait))
+        if not self.spravzhnii:
+            self.assertEqual(ochikuvano, 'Оновлено: листопад 2026')
+
+    def test_kartynky_dlia_soczmerezh(self):
+        """ZAVDANNYA-88, п. 3: картинка для поширення (og:image) у будинку, вулиці й вітринах — 1200 × 630 PNG; підпис —
+        лише назва й числа, без описів подій."""
+        from PIL import Image
+        mozhna = re.compile(r'^[^:]+: \d[\d\u00a0]* [^,\d]+( \d[\d–]*[^,]*)?(, \d[\d\u00a0]* [^,]+)*$')
+        opys = re.compile(r'ОСОБА|керуючи|зіткнення|порушив|reyestr|ґвалт|дитин', re.I)
+        z_kartynkoyu = 0
+        for p in self.nashi_storinky():
+            t = p.read_text(encoding='utf-8')
+            chastyny = p.relative_to(self.sait).parts
+            potribna = chastyny[0] in ('budynok', 'vulytsia', 'miy-budynok', 'osbb', 'sudova-praktyka', 'biznes') \
+                and 'http-equiv="refresh"' not in t
+            m = re.search(r'<meta property="og:image" content="([^"]+)">', t)
+            if not potribna:
+                continue
+            self.assertIsNotNone(m, f'{p.relative_to(self.sait)}: немає og:image')
+            url = m.group(1).split('://', 1)[1].split('/', 1)[1]
+            f = self.sait / url
+            self.assertTrue(f.is_file(), url)
+            with Image.open(f) as im:
+                self.assertEqual((im.format, im.size), ('PNG', (1200, 630)), url)
+            alt = html.unescape(re.search(r'<meta property="og:image:alt" content="([^"]+)">', t).group(1))
+            self.assertRegex(alt, mozhna)
+            self.assertIsNone(opys.search(alt), alt)
+            self.assertIsNone(ZABORONENI_SLOVA.search(alt), alt)
+            self.assertIn('<meta name="twitter:card" content="summary_large_image">', t)
+            z_kartynkoyu += 1
+        self.assertGreater(z_kartynkoyu, 4)
+        if not self.spravzhnii:
+            t = self.budynok('khreshchatyk/22')
+            self.assertIn('content="вулиця Хрещатик, 22: 7 звернень до 1551 за 12 місяців, 3 події з рішень судів за 2024–2026"', t)
+
+    def test_khostynh_workers_pachky(self):
+        """ZAVDANNYA-88, п. 1: варіант workers — будинки в пачках; кожен будинок дістається з пачки байт у байт таким,
+        як у варіанті pages; файлів менше; скрипт worker/index.js віддає ту саму сторінку (перевірка в Node)."""
+        if self.spravzhnii:
+            self.skipTest('лише для штучної бази')
+        import khostynh as KH
+        teka = Path(self.tmp.name) / 'sait-workers'
+        stare, KH.BUDYNKIV_U_PACHTSI = KH.BUDYNKIV_U_PACHTSI, 1      # по пачці на будинок: перевіряє і хеш
+        try:
+            zv = self.zs.zibraty_sait(self.baza, teka, self.pereim, KORIN / 'data' / 'borders.json', budynky=self.budynky,
+                                      khostynh='workers')
+        finally:
+            KH.BUDYNKIV_U_PACHTSI = stare
+        self.assertFalse((teka / 'budynok').exists())
+        self.assertEqual(zv['pachok_budynkiv'], len(BUDYNKY['budynky']))
+        # файлів: як у pages, але замість двох файлів на будинок — дві пачки на кожні BUDYNKIV_U_PACHTSI будинків
+        self.assertEqual(zv['failiv'], self.zvit['failiv'] - 2 * len(BUDYNKY['budynky']) + 2 * zv['pachok_budynkiv'])
+        budynky = sorted(p.parent.relative_to(self.sait / 'budynok').as_posix()
+                         for p in (self.sait / 'budynok').rglob('index.html'))
+        self.assertTrue(budynky)
+        for slug in budynky:
+            self.assertRegex(slug, r'^[a-z0-9-]+/[a-z0-9-]+$')
+            n = KH.fnv1a(slug) % zv['pachok_budynkiv']
+            s = (teka / '_budynky' / KH.nazva_pachky(n, False)).read_bytes()
+            k = (teka / '_budynky' / KH.nazva_pachky(n, True)).read_bytes()
+            self.assertEqual(KH.rozpakuvaty(s, slug), (self.sait / 'budynok' / slug / 'index.html').read_bytes())
+            self.assertEqual(KH.rozpakuvaty(k, slug), (self.sait / 'budynok' / slug / 'kartynka.png').read_bytes())
+        konfig = (Path(zv['teka_workera']) / 'wrangler.jsonc').read_text(encoding='utf-8')
+        konfig = json.loads(konfig.split('\n', 1)[1])
+        self.assertEqual(konfig['vars']['PACHOK'], str(zv['pachok_budynkiv']))
+        self.assertEqual(konfig['assets']['run_worker_first'], ['/budynok/*'])
+        self.assertEqual(konfig['assets']['directory'], f'../{teka.name}')
+        self.assertNotRegex(json.dumps(konfig), r'(?i)token|key|secret|ключ')
+        # FNV-1a — як у JavaScript (контрольне значення для «a»).
+        self.assertEqual(KH.fnv1a('a'), 0xE40C292C)
+        import shutil
+        import subprocess
+        if not shutil.which('node'):
+            self.skipTest('немає Node — скрипт Workers не запущено')
+        skrypt = Path(self.tmp.name) / 'perevirka-workera.mjs'
+        skrypt.write_text(f"""
+import fs from 'node:fs';
+const w = (await import({json.dumps((Path(zv['teka_workera']) / 'index.js').as_uri())})).default;
+const koren = {json.dumps(str(teka))};
+const env = {{ PACHOK: {json.dumps(str(zv['pachok_budynkiv']))}, ASSETS: {{ async fetch(req) {{
+  const p = new URL(req.url).pathname;
+  const f = koren + (p.endsWith('/') ? p + 'index.html' : p);
+  if (!fs.existsSync(f)) return new Response('nema', {{ status: 404 }});
+  return new Response(fs.readFileSync(f));
+}} }} }};
+const out = {{}};
+for (const shl of process.argv.slice(2)) {{
+  const r = await w.fetch(new Request('https://x.ua' + shl), env);
+  const b = Buffer.from(await r.arrayBuffer());
+  out[shl] = [r.status, r.headers.get('content-type'), r.headers.get('location'), b.toString('base64')];
+}}
+console.log(JSON.stringify(out));
+""", encoding='utf-8')
+        self.assertGreater(len({KH.fnv1a(s) % zv['pachok_budynkiv'] for s in budynky}), 1, 'будинки — у різних пачках')
+        slug = budynky[0]
+        shliakhy = ([f'/budynok/{s}/' for s in budynky] + [f'/budynok/{s}/kartynka.png' for s in budynky]
+                    + [f'/budynok/{slug}', '/budynok/nema/1/', '/vulytsi/'])
+        r = json.loads(subprocess.run(['node', str(skrypt), *shliakhy], capture_output=True, text=True, check=True).stdout)
+        import base64
+        for s in budynky:
+            st, typ, _, tilo = r[f'/budynok/{s}/']
+            self.assertEqual((st, typ), (200, 'text/html; charset=utf-8'))
+            self.assertEqual(base64.b64decode(tilo), (self.sait / 'budynok' / s / 'index.html').read_bytes())
+            st, typ, _, tilo = r[f'/budynok/{s}/kartynka.png']
+            self.assertEqual((st, typ), (200, 'image/png'))
+            self.assertEqual(base64.b64decode(tilo), (self.sait / 'budynok' / s / 'kartynka.png').read_bytes())
+        self.assertEqual(r[f'/budynok/{slug}'][0], 301)
+        self.assertTrue(r[f'/budynok/{slug}'][2].endswith(f'/budynok/{slug}/'))
+        self.assertEqual(r['/budynok/nema/1/'][0], 404)
+        self.assertEqual(r['/vulytsi/'][0], 200)      # решта сайту — звичайні файли
+
+    def test_mezha_failiv_pages(self):
+        """Межа 20 000 файлів лишається для варіанта pages (ZAVDANNYA-88: не прибирати, доки не вибрано)."""
+        import khostynh as KH
+        self.assertEqual(KH.MEZHA_FAILIV['pages'], 20000)
+        if self.spravzhnii:
+            self.skipTest('лише для штучної бази')
+        with self.assertRaises(SystemExit):
+            self.zs.zibraty_sait(self.baza, Path(self.tmp.name) / 'sait-mezha', self.pereim, KORIN / 'data' / 'borders.json',
+                                 budynky=self.budynky, mezha_failiv=50)
+
     def test_sitemap_dilytsia_na_chastyny(self):
         if self.spravzhnii:
             self.skipTest('лише для штучної бази')

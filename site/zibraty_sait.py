@@ -25,6 +25,7 @@ import argparse
 import functools
 import html
 import json
+import re
 import shutil
 import sys
 from collections import Counter, defaultdict
@@ -164,9 +165,30 @@ def slug_rayonu(r: str) -> str:
 
 # ---------------------------------------------------------------- рамка сторінки
 
+MISIATSI = ('січень', 'лютий', 'березень', 'квітень', 'травень', 'червень', 'липень', 'серпень', 'вересень',
+            'жовтень', 'листопад', 'грудень')
+
+
+def onovleno(versiia: str) -> str:
+    """Рядок «Оновлено: листопад 2026» з дати випуску (ZAVDANNYA-88, п. 3); дата не розпізнана — порожньо."""
+    m = re.match(r'^(\d{4})-(\d{2})', versiia or '')
+    if not m or not 1 <= int(m.group(2)) <= 12:
+        return ''
+    return (f'<p class="onovleno"><time datetime="{e(versiia)}">Оновлено: {MISIATSI[int(m.group(2)) - 1]} {m.group(1)}</time></p>')
+
+
+def og_kartynka(adresa_saitu: str, url: str, alt: str) -> str:
+    """Мітки картинки для поширення (Open Graph і X): 1200 × 630 PNG, лише числа (site/kartynky.py)."""
+    return (f'<meta property="og:image" content="{e(adresa_saitu + url)}">\n'
+            '<meta property="og:image:type" content="image/png">\n'
+            '<meta property="og:image:width" content="1200">\n<meta property="og:image:height" content="630">\n'
+            f'<meta property="og:image:alt" content="{e(alt)}">\n'
+            '<meta name="twitter:card" content="summary_large_image">\n')
+
+
 def storinka(*, shlyakh: str, title: str, opys: str, tilo: str, adresa_saitu: str, aktyvne: str = '',
              skrypty: tuple[str, ...] = (), dodatkovo_head: str = '', mapa: bool = False, indeksuvaty: bool = True,
-             pered_main: str = '') -> str:
+             pered_main: str = '', kartynka: tuple[str, str] | None = None) -> str:
     # Вітрини (MV-99): на телефоні в шапці — карта, вулиці, «Мій будинок»; решта — у підвалі.
     menyu = [('karta/', 'Карта', 0), ('vulytsi/', 'Вулиці', 0), ('miy-budynok/', 'Мій будинок', 0), ('osbb/', 'Для ОСББ', 1),
              ('sudova-praktyka/', 'Судова практика', 1), ('biznes/', 'Для бізнесу', 1), ('zahlushka/hra/', 'Грати', 1)]
@@ -194,7 +216,7 @@ def storinka(*, shlyakh: str, title: str, opys: str, tilo: str, adresa_saitu: st
 <meta property="og:title" content="{e(title)}">
 <meta property="og:description" content="{e(opys)}">
 <meta property="og:url" content="{e(adresa_saitu + shlyakh)}">
-<meta name="theme-color" content="{kolory_tem()['svitla']['ground']}">
+{og_kartynka(adresa_saitu, *kartynka) if kartynka else ''}<meta name="theme-color" content="{kolory_tem()['svitla']['ground']}">
 <link rel="icon" type="image/png" sizes="192x192" href="/zahlushka/ikony/ikona-192.png">
 <link rel="preload" href="/sait/shryfty/ibm-plex-sans-cyrillic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/sait/shryfty/ibm-plex-sans-cyrillic-700-normal.woff2" as="font" type="font/woff2" crossorigin>
@@ -288,7 +310,7 @@ def storinka_vulytsi(dn: D.Dani, v: D.Vulytsia, pr: dict, adresa_saitu: str, sus
 <span class="mitka">{e(rayon_t)}</span>
 <h1>{e(v.nazva)}</h1>
 <p>{abzats_vulytsi(v, pr, roky_t)}{dodatkovi_rayony}</p>
-</section>''')
+{onovleno(dn.versiia)}</section>''')
 
     # Коротко: числа
     ostannii = pr['roky'].get(D.ROKY[-1], 0)
@@ -408,8 +430,24 @@ def storinka_vulytsi(dn: D.Dani, v: D.Vulytsia, pr: dict, adresa_saitu: str, sus
     head = M.ld_skrypt(place, M.kryhty_ld(kryhty_p, adresa_saitu))
     return storinka(shlyakh=f'/vulytsia/{v.slug}/', title=title, opys=opys, tilo='\n'.join(chastyny),
                     adresa_saitu=adresa_saitu, aktyvne='vulytsi/', mapa=True, dodatkovo_head=head,
+                    kartynka=(f'/vulytsia/{v.slug}/kartynka.png', alt_vulytsi(v, vsogo, roky_t, budynky)),
                     indeksuvaty=vsogo >= MIN_PODII_DLYA_POSHUKU,
                     skrypty=('/sait/biblioteka/maplibre-gl-csp.js', '/sait/karta.js'))
+
+
+def alt_vulytsi(v: D.Vulytsia, vsogo: int, roky_t: str, budynky: list | None) -> str:
+    return (f'{v.nazva}: {podii_slovo(vsogo)} з рішень судів за {roky_t}'
+            + (f', {chyslo(len(budynky))} {vidminok(len(budynky), ("будинок", "будинки", "будинків"))} зі своєю сторінкою'
+               if budynky else ''))
+
+
+def kartynka_vulytsi(v: D.Vulytsia, vsogo: int, budynky: list | None, kolory: dict) -> bytes:
+    import kartynky as K
+    rayon = v.rayony.most_common(1)[0][0] if v.rayony else None
+    chysla = [(chyslo(vsogo), f'{vidminok(vsogo, ("подія", "події", "подій"))} з рішень судів за {PERIOD_VIDKRYTYI}')]
+    if budynky:
+        chysla.append((chyslo(len(budynky)), f'{vidminok(len(budynky), ("будинок", "будинки", "будинків"))} зі своєю сторінкою'))
+    return K.kartynka(f'{rayon} район · вулиця' if rayon else 'Київ · вулиця', v.nazva, chysla, kolory)
 
 
 def storinka_pereadresatsii(stara: str, tsili: list, dn: D.Dani, adresa_saitu: str) -> str:
@@ -678,6 +716,11 @@ def storinka_404(adresa_saitu: str) -> str:
 
 # ---------------------------------------------------------------- збирання
 
+def zapysaty_bajty(shlyakh: Path, dani: bytes) -> None:
+    shlyakh.parent.mkdir(parents=True, exist_ok=True)
+    shlyakh.write_bytes(dani)
+
+
 def zapysaty(shlyakh: Path, tekst: str) -> None:
     shlyakh.parent.mkdir(parents=True, exist_ok=True)
     shlyakh.write_text(tekst, encoding='utf-8', newline='\n')
@@ -701,7 +744,13 @@ def kopiyuvaty_spilne(vykhid: Path) -> None:
 def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_rayoniv: Path | None,
                  adresa_saitu: str = ADRESA_SAITU, koloda: Path | None = None,
                  zvit_zvedennia: Path | None = None, budynky: Path | None = None,
-                 mezha_failiv: int = MEZHA_FAILIV) -> dict:
+                 mezha_failiv: int | None = None, khostynh: str = 'pages') -> dict:
+    """khostynh: 'pages' — кожна сторінка файлом (межа 20 000); 'workers' — будинки в пачках (site/khostynh.py)."""
+    import khostynh as KH
+    if khostynh not in KH.VARIANTY:
+        raise SystemExit(f'Невідомий варіант хостингу {khostynh!r}: {", ".join(KH.VARIANTY)}')
+    if mezha_failiv is None:
+        mezha_failiv = KH.MEZHA_FAILIV[khostynh]
     adresa_saitu = adresa_saitu.rstrip('/')
     dn = D.zibraty_dani(baza, pereimenuvannya, mezhi_rayoniv)
     if vykhid.exists():
@@ -719,6 +768,7 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
 
     import storinky_mv100 as M
     bud = M.Budynky(budynky, dn, vulytsi) if budynky else None
+    kolory = kolory_tem()['svitla']
 
     adresy = ['/', '/karta/', '/vulytsi/']
     tsentry_vulyts = {}
@@ -736,8 +786,9 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
             i = kandydaty.index(v)
             vikno = kandydaty[max(0, i - 4):i] + kandydaty[i + 1:i + 5]
             susidy = [(x.slug, x.nazva, len(x.nedavni)) for x in vikno]
-        zapysaty(vykhid / 'vulytsia' / v.slug / 'index.html',
-                 storinka_vulytsi(dn, v, pr, adresa_saitu, susidy, bud.za_vulytseyu.get(v.slug) if bud else None))
+        b_vul = bud.za_vulytseyu.get(v.slug) if bud else None
+        zapysaty(vykhid / 'vulytsia' / v.slug / 'index.html', storinka_vulytsi(dn, v, pr, adresa_saitu, susidy, b_vul))
+        zapysaty_bajty(vykhid / 'vulytsia' / v.slug / 'kartynka.png', kartynka_vulytsi(v, pr['vsogo'], b_vul, kolory))
         if len(v.nedavni) >= MIN_PODII_DLYA_POSHUKU:
             adresy.append(f'/vulytsia/{v.slug}/')
 
@@ -776,7 +827,10 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
     zapysaty(vykhid / '404.html', storinka_404(adresa_saitu))
 
     # Будинки, райони, вітрини, оплата-заглушка, видалення, про дані (ZAVDANNYA-85).
-    adresy += M.zibraty_vse(dn, rayony, za_rayonom, bud, vykhid, adresa_saitu)
+    pachky = KH.Pachky(len(bud.spysok)) if (bud and khostynh == 'workers') else None
+    adresy += M.zibraty_vse(dn, rayony, za_rayonom, bud, vykhid, adresa_saitu, pachky, len(vulytsi))
+    if pachky is not None:
+        pachky.zapysaty(vykhid)
 
     # Заглушка з грою — її власним збирачем, без змін.
     import zibraty as zahlushka
@@ -810,8 +864,11 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
         'pereadresatsii': pereadresatsii, 'sot_riven_8': len(dn.soty[8]), 'sot_riven_9': len(dn.soty[9]), 'failiv': failiv,
         'budynkiv': len(bud.spysok) if bud else 0,
         'budynkiv_u_poshuku': sum(1 for b in bud.spysok if M.Budynky.indeksuvaty(b)) if bud else 0,
-        'adres_u_sitemap': len(adresy),
+        'adres_u_sitemap': len(adresy), 'khostynh': khostynh,
+        'pachok_budynkiv': pachky.n if pachky is not None else 0,
     }
+    if khostynh == 'workers':
+        zvit['teka_workera'] = str(KH.pidhotuvaty_worker(vykhid, pachky.n if pachky is not None else 1))
     if zvit_zvedennia:
         import csv
         zvit_zvedennia.parent.mkdir(parents=True, exist_ok=True)
@@ -823,8 +880,9 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
                 for var, n in sorted(v.varianty.items()):
                     w.writerow([var, v.slug, v.nazva, n, sumn.get(var, '')])
     if failiv >= mezha_failiv:
-        raise SystemExit(f'Файлів {failiv} — більше межі {mezha_failiv} (Cloudflare Pages: безкоштовно 20 000; '
-                         f'більше — платний план і --mezha-failiv).')
+        raise SystemExit(f'Файлів {failiv} — більше межі {mezha_failiv} (Cloudflare, безкоштовно — 20 000 файлів; '
+                         f'варіант --khostynh workers складає будинки в пачки; платний план — --mezha-failiv 100000; '
+                         f'docs/HOSTYNG.md).')
     return zvit
 
 
@@ -838,10 +896,12 @@ def main(argv=None) -> int:
     p.add_argument('--koloda', type=Path, help='справжня колода гри (без неї — демо-колода)')
     p.add_argument('--zvit-zvedennia', type=Path, help='куди записати таблицю зведення назв (CSV) для перевірки')
     p.add_argument('--budynky', type=Path, help='зведення будинків з dani-edrsr (src/budynky_sait.py) — сторінки будинків')
-    p.add_argument('--mezha-failiv', type=int, default=MEZHA_FAILIV, help='межа кількості файлів (план хостингу)')
+    p.add_argument('--khostynh', choices=('pages', 'workers'), default='pages',
+                   help='pages — кожна сторінка файлом; workers — будинки в пачках для Cloudflare Workers (docs/HOSTYNG.md)')
+    p.add_argument('--mezha-failiv', type=int, help='межа кількості файлів (план хостингу; без ключа — 20 000)')
     a = p.parse_args(argv)
     zvit = zibraty_sait(a.baza, a.vykhid, a.pereimenuvannya, a.mezhi_rayoniv, a.adresa_saitu, a.koloda,
-                        a.zvit_zvedennia, a.budynky, a.mezha_failiv)
+                        a.zvit_zvedennia, a.budynky, a.mezha_failiv, a.khostynh)
     for k, v in zvit.items():
         print(f'{k}: {v}')
     return 0
