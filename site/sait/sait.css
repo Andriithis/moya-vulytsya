@@ -60,6 +60,7 @@ body.z-kartoyu .shapka__vnutri { max-width: none; padding: 6px 16px; min-height:
 .zaholovok { display: flex; flex-direction: column; gap: 10px; max-width: 760px; }
 .zaholovok h1 { margin: 0; font-size: 40px; line-height: 1.12; font-weight: 700; letter-spacing: -0.5px; }
 .zaholovok p { margin: 0; font-size: 18px; color: var(--ink-2); }
+.zaholovok p.onovleno { font-size: 14px; color: var(--muted); }
 .mitka { align-self: flex-start; font-size: 13px; font-weight: 600; background: var(--accent-soft); color: var(--ink); padding: 4px 12px; border-radius: var(--radius-pill); }
 .mitka--chernetka { background: var(--surface-tint); color: var(--ink-2); border: 1px dashed var(--mezha); }
 .rozdil { display: flex; flex-direction: column; gap: 16px; }
@@ -186,7 +187,6 @@ body.z-kartoyu .shapka__vnutri { max-width: none; padding: 6px 16px; min-height:
   .shapka__vnutri { padding: 8px 14px; gap: 12px; }
   .lohotyp__nazva { font-size: 17px; }
   .menyu { gap: 14px; font-size: 14px; }
-  .menyu .lyshe-komp { display: none; }
   .storinka { padding: 20px 16px 40px; gap: 28px; }
   .zaholovok h1 { font-size: 30px; line-height: 36px; }
   .zaholovok p { font-size: 16px; }
@@ -344,3 +344,46 @@ body.z-kartoyu .shapka__vnutri { max-width: none; padding: 6px 16px; min-height:
   .k-roky .r { height: 76px; }
 }
 .k-roky .r u.nul { background: var(--line-strong); }
+
+/* Шапка: вітрини (ZAVDANNYA-85) — на вузьких екранах лише «Карта», «Вулиці», «Мій будинок»; решта — у підвалі */
+@media (max-width: 1100px) { .menyu .lyshe-komp { display: none; } }
+
+/* Сторінка будинку й району (ZAVDANNYA-85): два числа поруч, колір — кількість (шкала даних), не страх */
+.por { display: flex; flex-direction: column; gap: 10px; }
+.por__shapka, .por__ryad { display: grid; grid-template-columns: minmax(140px, 1.3fr) 1fr 44px 1fr 44px; align-items: center; gap: 10px; }
+.por__ryad--1 { grid-template-columns: minmax(140px, 1.3fr) 2fr 56px; }
+.por__shapka { font-size: 12px; color: var(--muted); }
+.por__nazva { font-size: 15px; }
+.por__smuha { height: 10px; background: var(--surface-tint); border-radius: var(--radius-pill); overflow: hidden; }
+.por__smuha i { display: block; height: 100%; border-radius: var(--radius-pill); }
+.por--tut { background: var(--data-4); }
+.por--sus { background: var(--data-city); }
+.por__ryad b { font-variant-numeric: tabular-nums; text-align: right; }
+.por__sus { color: var(--muted); font-weight: 600; }
+.sh-0 { width: 0; } .sh-1 { width: 5%; } .sh-2 { width: 10%; } .sh-3 { width: 15%; } .sh-4 { width: 20%; } .sh-5 { width: 25%; } .sh-6 { width: 30%; } .sh-7 { width: 35%; } .sh-8 { width: 40%; } .sh-9 { width: 45%; } .sh-10 { width: 50%; } .sh-11 { width: 55%; } .sh-12 { width: 60%; } .sh-13 { width: 65%; } .sh-14 { width: 70%; } .sh-15 { width: 75%; } .sh-16 { width: 80%; } .sh-17 { width: 85%; } .sh-18 { width: 90%; } .sh-19 { width: 95%; } .sh-20 { width: 100%; } 
+.tabl { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.tabl th, .tabl td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: right; }
+.tabl th:first-child { text-align: left; }
+.tabl thead th { font-size: 13px; color: var(--muted); font-weight: 600; }
+.tsiny { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.spysok-bud { columns: 6 90px; }
+.spysok-tekst { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
+
+/* Вітрини */
+.tovary { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.tovar { display: flex; flex-direction: column; gap: 8px; padding: 16px; border: 1px solid var(--line); border-radius: var(--radius-l); background: var(--surface); }
+.tovar h3 { margin: 0; font-size: 18px; line-height: 22px; }
+.tovar ul { margin: 0 0 8px; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 15px; color: var(--ink-2); flex: 1; }
+.tovar--holovnyi { border: 1.5px solid var(--accent); }
+.tovar__tsina { margin: 0; font-size: 26px; line-height: 32px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tovar__tsina--nema { font-size: 17px; line-height: 24px; color: var(--muted); }
+.tovar__pidpys { margin: 0; color: var(--muted); font-size: 14px; }
+@media (max-width: 600px) {
+  .por__shapka, .por__ryad { grid-template-columns: 1fr 1fr 34px 1fr 34px; gap: 6px; }
+  .por__ryad--1 { grid-template-columns: 1fr 1.4fr 44px; }
+  .por__nazva { font-size: 13px; }
+  .tovar__tsina { font-size: 22px; line-height: 28px; }
+}
+.menyu a, .lohotyp__nazva { white-space: nowrap; }
+@media (max-width: 600px) { .menyu { gap: 12px; } }
+@media (max-width: 430px) { .lohotyp__nazva { display: none; } }

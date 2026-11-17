@@ -7,8 +7,9 @@
   * шестикутники H3 рівня 9 для головної карти.
 
 Правила (AGENTS.md, MV-3, MV-4):
-  * чутливі справи (прапорець chutlyva) і подібні до них за статтею — лише числом у шестикутнику:
-    їх немає у видах, будинках, точках і історіях;
+  * домашнє насильство (MV-102, за статтею — DOMASHNI_STATTI) — нарівні з іншими: на вулиці, у районі, у сотах;
+  * статеві й щодо дітей (прапорець chutlyva випуску і подібні за статтею) — лише числом у великому шестикутнику:
+    їх немає у видах, будинках, вулицях, районах, точках і історіях (MV-102);
   * сайт нічого не вигадує: якщо подій мало, розділ не показується.
 """
 from __future__ import annotations
@@ -41,10 +42,21 @@ def vidkryta(p) -> bool:
     return bool(p.rik) and VIDKRYTI_ROKY[0] <= p.rik <= VIDKRYTI_ROKY[-1]
 
 # Додатково до прапорця chutlyva: статті, що стосуються домашнього насильства й дітей, але
-# не позначені у випуску (MV-4). На сайті вони — лише числом у шестикутнику.
+# не позначені у випуску (MV-4).
 CHUTLYVI_STATTI = re.compile(
     r'ст\.390-1 КК|заборонного припису|ст\.173-2|ст\.126-1|ст\.15[2-6] КК|ст\.180 КУпАП|ст\.180-1 КУпАП'
     r'|ст\.184 КУпАП|сексуальн|ст\.135 КК|ст\.166 КК|неповнолітн|дит')
+# MV-102: домашнє насильство на відкритих сторінках — нарівні з іншими (той самий перелік, що dani-edrsr/src/chutlyvi.py,
+# DOMASHNIE); статеві й щодо дітей — ні. Якщо в статті є ще й ознака дітей чи статевого — лишається прихованою.
+DOMASHNI_STATTI = re.compile(r'ст\.173-2 КУпАП|ст\.173-8 КУпАП|ст\.126-1 КК|ст\.390-1 КК|заборонн\w* припис|обмежувальн\w* припис')
+STATEVI_DITY = re.compile(r'ст\.15[2-6] КК|ст\.117 КК|ст\.135 КК|ст\.166 КК|ст\.180(-1)? КУпАП|ст\.184 КУпАП|ст\.303 КК'
+                          r'|сексуальн|статев|неповнолітн|дит')
+
+
+def domashnie(stattia: str | None) -> bool:
+    """Стаття — домашнє насильство без ознак статевого чи щодо дітей (MV-102)."""
+    st = stattia or ''
+    return bool(DOMASHNI_STATTI.search(st)) and not STATEVI_DITY.search(st)
 
 # Слова, яких на сайті немає (docs/STYL.md): ні в наших текстах, ні в уривках історій.
 ZABORONENI_SLOVA = re.compile(r'небезпечн|безпечн|рейтинг', re.I)
@@ -376,7 +388,7 @@ class Podiia:
     lon: float | None
     adresa: str
     tochnist: str
-    chutlyva: bool
+    chutlyva: bool        # MV-102: не рахується на відкритих сторінках (статеві, щодо дітей); домашнє насильство — False
     sota: str | None
     url: str | None
 
@@ -401,7 +413,7 @@ def prochytaty_podii(con: sqlite3.Connection) -> list[Podiia]:
     podii = []
     for (eid, data, chas, vyd, stattia, fabula, chut, sota, lat, lon, adresa, tochnist, url) in rows:
         rik = int(data[:4]) if data and data[:4].isdigit() else None
-        chutlyva = bool(chut) or bool(CHUTLYVI_STATTI.search(stattia or ''))
+        chutlyva = (bool(chut) or bool(CHUTLYVI_STATTI.search(stattia or ''))) and not domashnie(stattia)
         podii.append(Podiia(eid, rik, data, chas, vyd, stattia or '', fabula, lat, lon, adresa or '',
                             tochnist or '', chutlyva, sota, url))
     return podii
@@ -558,7 +570,7 @@ def zibraty_dani(baza: Path, pereimenuvannia: Path | None, mezhi_rayoniv: Path |
     for i, (p, vv) in enumerate(zip(podii, vulytsi_podii)):
         bachyly = set()
         if p.chutlyva:
-            continue                      # чутливі — лише числом у шестикутнику, не на вулиці
+            continue                      # статеві й щодо дітей — лише числом у шестикутнику, не на вулиці (MV-102)
         for (t, n, _) in vv:
             slug = varianty_slug[(t, n)]
             if slug in bachyly:
@@ -663,13 +675,14 @@ def hodyna_pik(hodyny: Counter) -> str | None:
 
 
 def soty_rivnia(podii: list, vulytsi_podii: list, varianty_slug: dict, problemy: list, riven: int) -> dict:
-    """Соти одного рівня H3. Чутливі справи (MV-4) — лише у великих сотах (рівні 7 і 8) і лише числом
-    у групі «Насильство». Лише події за останні 3 роки (MV-32); старші — лише прапорець «stari» у соті,
+    """Соти одного рівня H3. Статеві й щодо дітей (MV-4, MV-102) — лише у великих сотах (рівні 7 і 8) і лише числом
+    у групі «Насильство»; домашнє насильство з точкою — як усі події, без точки — як чутливі (числом по соті випуску). Лише події за останні 3 роки (MV-32); старші — лише прапорець «stari» у соті,
     де є й нові події (сота лише зі старими подіями на безкоштовну карту не потрапляє)."""
     soty = {}
     stari_k = set()
     for i, p in enumerate(podii):
-        if p.chutlyva:
+        lyshe_chyslo = p.chutlyva or (p.lat is None and p.vyd == 'НАС' and domashnie(p.stattia))
+        if lyshe_chyslo:
             if riven not in (7, 8):
                 continue
             if p.lat is not None:
@@ -689,11 +702,11 @@ def soty_rivnia(podii: list, vulytsi_podii: list, varianty_slug: dict, problemy:
             continue
         s = soty.setdefault(k, {'chysla': Counter(), 'roky': Counter(), 'hodyny': Counter(), 'stari': False,
                                 'tsili': defaultdict(Counter), 'vulytsi': Counter(), 'z_adresoyu': 0, 'problemy': []})
-        hrupa = 'nas' if p.chutlyva else HRUPA_VYDU.get(p.vyd)
+        hrupa = 'nas' if lyshe_chyslo else HRUPA_VYDU.get(p.vyd)
         for h in ((hrupa, 'all') if hrupa else ('all',)):
             s['chysla'][f'{h}3'] += 1
         s['roky'][p.rik] += 1
-        if p.chutlyva:
+        if lyshe_chyslo:
             continue                      # далі — лише відкриті події
         s['z_adresoyu'] += 1
         if p.chas and re.match(r'^\d{1,2}:', p.chas) and 0 <= int(p.chas.split(':')[0]) < 24:
@@ -778,6 +791,7 @@ def profil_vulytsi(dani: Dani, v: Vulytsia) -> dict:
     return {
         'vsogo': len(podii), 'roky': {r: roky.get(r, 0) for r in VIDKRYTI_ROKY}, 'stari': stari,
         'vyriznennia': vyriznennia, 'rytm': rytm, 'z_chasom': z_chasom,
+        'naichastishe': sorted(vydy.items(), key=lambda x: (-x[1], x[0]))[:3],
         'soty': sorted(soty.items()), 'mists': mists, 'istoriia': istoriia,
         'pershyi_rik': min(roky, default=None),
         'ostannii_rik': max(roky, default=None),
