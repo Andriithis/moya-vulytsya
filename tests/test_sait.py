@@ -417,7 +417,8 @@ class Sait(unittest.TestCase):
         }
         znaideno = []
         for p in sorted(self.sait.rglob('*')):
-            if not p.is_file() or p.suffix not in ('.html', '.json') or 'zahlushka' in p.relative_to(self.sait).parts:
+            # Колода гри й дані ігор у карті — виняток MV-12 / MV-129 (перевіряє tests/test_ihry.py).
+            if not p.is_file() or p.suffix not in ('.html', '.json') or {'zahlushka', 'ihry'} & set(p.relative_to(self.sait).parts):
                 continue
             t = p.read_text(encoding='utf-8')
             if p.suffix == '.html':
@@ -564,7 +565,7 @@ class Sait(unittest.TestCase):
     def test_try_knopky_na_storintsi_vulytsi(self):
         t = next(p for p in self.storinky if p.parts[-3] == 'vulytsia' and 'refresh' not in p.read_text(encoding='utf-8')).read_text(encoding='utf-8')
         self.assertIn('Довідка про будинок — 199', t)   # MV-100
-        self.assertIn('>Грати<', t)
+        self.assertIn('>Вулиця дня<', t)   # гра в карті (ZAVDANNYA-117)
         self.assertIn('в іншому місті — повідомимо', t)
 
     def test_shtuchna_baza_nazvy_zvedeni(self):

@@ -66,7 +66,7 @@ def profil(dn, v) -> dict | None:
     podii = [p for p in podii if not p.chutlyva and not D.domashnie(p.stattia) and p.lat is not None]
     if len(podii) < MIN_PODII_SPROBA:
         return None
-    hrupy = Counter(D.HRUPA_VYDU.get(p.vyd) for p in podii if D.HRUPA_VYDU.get(p.vyd))
+    hrupy = Counter(h for p in podii if (h := D.HR.hrupa(p.vyd, p.stattia)))   # групи — один словник (MV-116)
     hrupa = max(hrupy, key=lambda h: (hrupy[h], h)) if hrupy else None
     rayon = v.rayony.most_common(1)[0][0] if v.rayony else None
     lat = statistics.median(p.lat for p in podii)
@@ -139,6 +139,11 @@ def chystyi_opys(t: str) -> str:
 
 def zibraty(baza: Path, koloda_shlyakh: Path, pereim: Path | None, mezhi: Path) -> dict:
     dn = D.zibraty_dani(baza, pereim, mezhi)
+    return zibraty_z_dani(dn, json.loads(koloda_shlyakh.read_text(encoding='utf-8')))
+
+
+def zibraty_z_dani(dn, koloda: dict) -> dict:
+    """Те саме з уже зібраних даних сайту й колоди (збирач сайту, гра в карті — ZAVDANNYA-117)."""
     vulytsi = [p for v in dn.vulytsi.values() if (p := profil(dn, v)) and p['rayon']]
     vulytsi.sort(key=lambda v: v['slug'])
     chysla = [v['n'] for v in vulytsi]
@@ -147,7 +152,6 @@ def zibraty(baza: Path, koloda_shlyakh: Path, pereim: Path | None, mezhi: Path) 
     for stara, slugy in dn.zvedennia.pereimenuvannia:
         if len(slugy) == 1:
             stari.setdefault(slugy[0], []).append(stara)
-    koloda = json.loads(koloda_shlyakh.read_text(encoding='utf-8'))
     kol = podii_kolody(koloda, dn)
     zahadky, vidkynuto = [], Counter()
     for v in vulytsi:
