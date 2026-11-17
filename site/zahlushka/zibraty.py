@@ -54,8 +54,10 @@ FAILY = ['index.html', 'polityka.html', 'zrazok.html', 'styli.css', 'zrazok.css'
          'nadsylannya.js', 'storinka.js',
          # ZAVDANNYA-06: оферта, звернення, встановлення на телефон
          'oferta.html', 'zvernennya.html', 'zvernennya.js', 'vstanovlennya.js',
-         'manifest.webmanifest', 'sw.js']
-STORINKY = ['index.html', 'polityka.html', 'zrazok.html', 'oferta.html', 'zvernennya.html']
+         'manifest.webmanifest', 'sw.js',
+         # ZAVDANNYA-103: «Хто ми» і ліцензії даних (чернетка для юриста)
+         'pro-nas.html']
+STORINKY = ['index.html', 'polityka.html', 'zrazok.html', 'oferta.html', 'zvernennya.html', 'pro-nas.html']
 # Ціни — ОДНА таблиця сайту (site/tsiny.py, MV-100, MV-102): у тексті головної й оферти стоять {{tsina.dovidka}},
 # {{tsina.pidpyska}} тощо, підставляє збирання. Змінили ціну рішенням MV — змінити лише в site/tsiny.py.
 sys.path.insert(0, str(KORIN / 'site'))
