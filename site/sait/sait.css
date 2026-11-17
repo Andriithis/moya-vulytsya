@@ -387,3 +387,32 @@ body.z-kartoyu .shapka__vnutri { max-width: none; padding: 6px 16px; min-height:
 .menyu a, .lohotyp__nazva { white-space: nowrap; }
 @media (max-width: 600px) { .menyu { gap: 12px; } }
 @media (max-width: 430px) { .lohotyp__nazva { display: none; } }
+
+/* ZAVDANNYA-105 (прототип): смуга «роки · місяці» і «вау». Колір — лише наш (індиго й м'ята), без червоного. */
+.chas { position: absolute; z-index: 5; left: 16px; bottom: 16px; display: flex; align-items: center; gap: 8px; padding: 6px 8px; flex-wrap: wrap; max-width: calc(100% - 32px); }
+.ch-kroky { display: flex; border: 1.5px solid var(--mezha); border-radius: 10px; overflow: hidden; }
+.ch-kroky .seg { padding: 0 10px; }
+.ch-per { display: inline-flex; align-items: center; gap: 4px; }
+.ch-per[hidden] { display: none; }
+.ch-strilka, .ch-gra { min-width: 36px; min-height: 36px; border-radius: var(--radius-m); background: var(--surface); color: var(--ink); font: 700 16px/1 var(--sans); }
+.ch-strilka:disabled { color: var(--muted); opacity: .5; }
+.ch-znach { min-width: 112px; text-align: center; font: 600 14px/20px var(--sans); color: var(--ink); font-variant-numeric: tabular-nums; }
+.ch-skilky { font: 400 13px/18px var(--sans); color: var(--muted); font-variant-numeric: tabular-nums; padding-right: 4px; }
+.vau-lich { position: absolute; z-index: 5; left: 50%; top: 76px; transform: translateX(-50%); padding: 8px 16px; text-align: center; transition: opacity .8s; }
+.vau-lich b { display: block; font: 700 20px/26px var(--sans); color: var(--ink); }
+.vau-lich span { font: 400 13px/18px var(--sans); color: var(--muted); font-variant-numeric: tabular-nums; }
+.vau-lich--hasne { opacity: 0; }
+.vau-rayony { position: absolute; z-index: 5; left: 50%; bottom: 76px; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 8px 10px; max-width: min(860px, calc(100% - 32px)); }
+.vr-pyt { font: 600 14px/20px var(--sans); color: var(--ink); white-space: nowrap; }
+.vr-chipy { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.vr-chipy .seg { border-radius: var(--radius-pill); padding: 0 12px; white-space: nowrap; border: 1.5px solid var(--mezha); }
+.vr-x { border: 0; background: none; font-size: 20px; color: var(--muted); min-width: 32px; min-height: 32px; }
+@media (max-width: 700px) {
+  .chas { left: 8px; right: 8px; bottom: 8px; max-width: none; justify-content: space-between; }
+  .ch-skilky { display: none; }
+  .ch-znach { min-width: 96px; }
+  .vau-lich { top: 120px; }
+  .vau-rayony { left: 8px; right: 8px; transform: none; bottom: 70px; max-width: none; }
+  .vr-pyt { display: none; }
+  .ekran-karty.shukayu .chas, .ekran-karty.shukayu .vau-rayony { display: none; }
+}

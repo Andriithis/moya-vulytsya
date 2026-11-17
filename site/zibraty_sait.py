@@ -557,6 +557,9 @@ def soty_geojson(dn: D.Dani, riven: int) -> dict:
         for kl, n in sorted(s['chysla'].items()):
             vl[kl] = n
         vl['y'] = [s['roky'].get(r, 0) for r in D.VIDKRYTI_ROKY]
+        # m — місяці (ZAVDANNYA-105): {група: [[номер місяця від січня першого відкритого року, скільки], …]}, лише непорожні.
+        if s['misiatsi']:
+            vl['m'] = {h: sorted([i, n] for i, n in lich.items()) for h, lich in sorted(s['misiatsi'].items())}
         if s['stari']:
             vl['o'] = 1
         pik = D.hodyna_pik(s['hodyny'])

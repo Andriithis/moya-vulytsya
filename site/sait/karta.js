@@ -224,7 +224,11 @@
       if (vsiAktyvni()) return Number(p['all' + PERIOD] || 0);
       var n = 0; HRUPY.forEach(function (h) { if (AKTYVNI[h[0]]) n += chysloG(p, h[0]); }); return n;
     }
-    function nazvaPeriodu() { return ROKY[ROKY.length - 3] + '–' + ROKY[ROKY.length - 1]; }
+    function nazvaPeriodu() { return CHAS.mitka || (ROKY[ROKY.length - 3] + '–' + ROKY[ROKY.length - 1]); }
+    // Смуга «роки · місяці» (ZAVDANNYA-105): крок і місяць-якір; mitka — підпис обраного періоду для картки й «ⓘ».
+    var CHAS = { krok: 'usi', cm: 0, ost: -1, mitka: '' };
+    // Еталон для «оживання»: класи рахуються за підсумковим розподілом сот, тож місто «наливається» до звичайного вигляду.
+    var ETALON = null;
 
     // Шкала частками: частка соти q — її місце серед непорожніх сот рівня (скільки менші + половина рівних) / усіх.
     function pererakhuvaty() {
@@ -232,6 +236,15 @@
         var bs = Array.from(HEXB[G.id].values());
         bs.forEach(function (b) { b.nf = chysloSoty(b.p); b.kr = 0; b.q = 0; });
         var zi = bs.filter(function (b) { return b.nf > 0; }).sort(function (a, b) { return a.nf - b.nf; }), L = zi.length;
+        if (ETALON) {   // місце серед підсумкових чисел рівня (не серед поточних)
+          var E = ETALON[G.id], LE = E.length || 1;
+          zi.forEach(function (b) {
+            var lo = 0, hi = E.length; while (lo < hi) { var md = (lo + hi) >> 1; if (E[md] < b.nf) lo = md + 1; else hi = md; }
+            var r = lo; while (r < E.length && E[r] === b.nf) r++;
+            b.q = (lo + (r - lo) / 2) / LE; b.kr = KVANT.filter(function (x) { return b.q >= x; }).length;
+          });
+          return;
+        }
         for (var i = 0; i < L;) {
           var j = i; while (j < L && zi[j].nf === zi[i].nf) j++;
           var q = (i + (j - i) / 2) / L;
@@ -260,7 +273,8 @@
     }
     function colData(G) {
       var VYSOTA = G.R * G.H, KANT = G.R / 10, f = [];
-      Array.from(HEXB[G.id].values()).filter(vershyna).forEach(function (b) {
+      // b.vp === 0 — вершина ще не «виросла» (хвиля «вау»): пласка кромка нульової висоти теж видна, тож її не малюємо.
+      Array.from(HEXB[G.id].values()).filter(function (b) { return vershyna(b) && b.vp !== 0; }).forEach(function (b) {
         var h = VYSOTA * chastkaVysoty(b), k = koloryVershyny(b), poly = { type: 'Polygon', coordinates: [zmenshyty(b, G.k)] };
         var ch = function (c, bh, eb, eh, kant) {
           return { type: 'Feature', geometry: poly, properties: { k: b.k, c: c, cl: zmishaty(c, '#FFFFFF', 0.45),
@@ -275,10 +289,12 @@
     var NAVED = ['boolean', ['feature-state', 'naved'], false];
     var SEL = ['boolean', ['feature-state', 'sel'], false];
     var TYSK = ['-', 1, ['*', 0.16, ['coalesce', ['feature-state', 'tysk'], 0]]];
-    var TYSK_SEL = ['*', TYSK, ['case', SEL, SEL_K, 1]];
+    // «Поява» (ZAVDANNYA-105, «вау»): 0 — соти ще немає, 1 — звичайна; стан ставить анімація появи.
+    var POYAVA = ['coalesce', ['feature-state', 'p'], 1];
+    var TYSK_SEL = ['*', TYSK, ['case', SEL, SEL_K, 1], POYAVA];
     function proz2d(id) {
       var F = TEMA === 'svitla' ? FADE_SV[id] || FADE[id] : FADE[id];
-      return zaZumom(TOCHKY[id], function (z) { return ['*', ['case', SEL, 0.92, NAVED, ['min', 0.95, ['+', ['get', 'a'], 0.2]], ['get', 'a']], interp(F, z)]; });
+      return zaZumom(TOCHKY[id], function (z) { return ['*', ['case', SEL, 0.92, NAVED, ['min', 0.95, ['+', ['get', 'a'], 0.2]], ['get', 'a']], interp(F, z), ['min', 1, POYAVA]]; });
     }
     function vysota(id, H, E) {
       return zaZumom(TOCHKY[id], function (z) { return ['max', 0, ['*', interp(MN[id], z), TYSK_SEL, ['+', ['get', H], ['get', E]]]]; });
@@ -425,6 +441,7 @@
           zafarbuvaty(); namalyuvatyInfo(); pidpysZumu();
           if (ZARAZ) vydilyty(ZARAZ.G, ZARAZ.b, false);
           MV.gotovo = true;
+          pochatyVau();
         });
       };
       map.on('style.load', naStyl);
@@ -793,6 +810,197 @@
       });
       NAV = h;
     }
+
+    // =================================================================================================
+    // ZAVDANNYA-105 (прототип): смуга «роки · місяці» і три варіанти «вау». Лише числа по сотах (MV-3);
+    // колір — кількість, не небезпека; рух — для всіх, при «менше руху» в системі — коротший і без нахилу (MV-58).
+    // =================================================================================================
+    var MISN = ['січень', 'лютий', 'березень', 'квітень', 'травень', 'червень', 'липень', 'серпень', 'вересень', 'жовтень', 'листопад', 'грудень'];
+    var MISR = ['січня', 'лютого', 'березня', 'квітня', 'травня', 'червня', 'липня', 'серпня', 'вересня', 'жовтня', 'листопада', 'грудня'];
+    function rik0() { return ROKY[ROKY.length - 3]; }
+    function mitkaMisiatsia(i) { return MISN[i % 12] + ' ' + (rik0() + Math.floor(i / 12)); }
+    function ostanniiMisiats() {
+      var ost = -1;
+      HEXB.XL.forEach(function (b) { ((b.p.m && b.p.m.all) || []).forEach(function (x) { if (x[0] > ost) ost = x[0]; }); });
+      return ost;
+    }
+    // Числа обраного проміжку місяців [a, b] — у властивості «<група>_x»; PERIOD = '_x'. a = null — назад до «3 роки».
+    function zastosuvatyMisiatsi(a, b) {
+      if (a == null) { PERIOD = '3'; return; }
+      RIVNI.forEach(function (G) {
+        HEXB[G.id].forEach(function (s) {
+          var m = s.p.m || {};
+          HRUPY.concat([['all']]).forEach(function (h) {
+            var n = 0; (m[h[0]] || []).forEach(function (x) { if (x[0] >= a && x[0] <= b) n += x[1]; }); s.p[h[0] + '_x'] = n;
+          });
+        });
+      });
+      PERIOD = '_x';
+    }
+    function promizhok() {
+      if (CHAS.krok === 'usi') return null;
+      if (CHAS.krok === 'rik') { var a = CHAS.cm - CHAS.cm % 12; return [a, Math.min(a + 11, CHAS.ost)]; }
+      return [CHAS.cm, CHAS.cm];
+    }
+    function zastosuvatyChas() {
+      var r = promizhok();
+      CHAS.mitka = !r ? '' : CHAS.krok === 'rik' ? String(rik0() + Math.floor(r[0] / 12)) : mitkaMisiatsia(r[0]);
+      zastosuvatyMisiatsi(r ? r[0] : null, r ? r[1] : null);
+      pislyaFiltra(); namalyuvatySmuhu();
+    }
+    function suma() { var n = 0; HEXB.XL.forEach(function (b) { n += chysloSoty(b.p); }); return n; }
+
+    // ---------- смуга часу: «2024–2026 · Рік · Місяць», ‹ значення ›, ▶ ----------
+    var SM = null, GRA = null;
+    function namalyuvatySmuhu() {
+      if (!SM) return;
+      var r = promizhok();
+      SM.querySelectorAll('[data-krok]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-krok') === CHAS.krok)); });
+      SM.querySelector('.ch-per').hidden = !r;
+      SM.querySelector('.ch-znach').textContent = r ? CHAS.mitka : '';
+      SM.querySelector('[data-krok-nav="-1"]').disabled = !r || r[0] <= 0;
+      SM.querySelector('[data-krok-nav="1"]').disabled = !r || r[1] >= CHAS.ost;
+      var gr = SM.querySelector('.ch-gra'); gr.textContent = GRA ? '❚❚' : '▶'; gr.setAttribute('aria-pressed', String(!!GRA));
+      gr.setAttribute('aria-label', GRA ? 'Пауза' : 'Програти місяці');
+      SM.querySelector('.ch-skilky').textContent = chyslo(suma()) + ' ' + slovo(suma(), ['подія', 'події', 'подій']);
+    }
+    function hraty(uvim) {
+      clearInterval(GRA); GRA = null;
+      if (uvim) {
+        if (CHAS.krok !== 'misiats') { CHAS.krok = 'misiats'; CHAS.cm = 0; } else if (CHAS.cm >= CHAS.ost) CHAS.cm = 0;
+        zastosuvatyChas();
+        GRA = setInterval(function () { if (CHAS.cm >= CHAS.ost) { hraty(false); return; } CHAS.cm++; zastosuvatyChas(); }, TYKHO ? 1400 : 900);
+      }
+      namalyuvatySmuhu();
+    }
+    function zbuduvatySmuhu() {
+      if (SM || CHAS.ost < 0) return;
+      SM = document.createElement('div'); SM.className = 'chas plashka'; SM.setAttribute('role', 'group'); SM.setAttribute('aria-label', 'Період');
+      SM.innerHTML = '<div class="ch-kroky">' + [['usi', nazvaPeriodu()], ['rik', 'Рік'], ['misiats', 'Місяць']].map(function (k) {
+        return '<button type="button" class="seg" data-krok="' + k[0] + '">' + k[1] + '</button>'; }).join('') + '</div>' +
+        '<span class="ch-per"><button type="button" class="ch-strilka klav" data-krok-nav="-1" aria-label="Раніше">‹</button>' +
+        '<span class="ch-znach" aria-live="polite"></span><button type="button" class="ch-strilka klav" data-krok-nav="1" aria-label="Пізніше">›</button></span>' +
+        '<button type="button" class="ch-gra klav"></button><span class="ch-skilky"></span>';
+      SM.addEventListener('click', function (e) {
+        var k = e.target.closest('[data-krok]'), n = e.target.closest('[data-krok-nav]');
+        if (e.target.closest('.ch-gra')) { hraty(!GRA); return; }
+        if (k) { hraty(false); CHAS.krok = k.getAttribute('data-krok'); zastosuvatyChas(); return; }
+        if (n) {
+          hraty(false); var r = promizhok(), d = +n.getAttribute('data-krok-nav'); if (!r) return;
+          if (d < 0 && r[0] > 0) CHAS.cm = r[0] - 1; else if (d > 0 && r[1] < CHAS.ost) CHAS.cm = r[1] + 1; else return;
+          zastosuvatyChas();
+        }
+      });
+      // Будь-який дотик до карти — пауза програвання на тому місяці, де зупинились.
+      konteiner.addEventListener('pointerdown', function () { if (GRA) hraty(false); });
+      ekran.appendChild(SM);
+      namalyuvatySmuhu();
+    }
+
+    // ---------- «вау» 1: місто проступає від центру — соти з'являються хвилею, вершини виростають і пружинять ----------
+    function stanPoyavy(id, k, v) {
+      ['k-hex-', 'k-col-'].forEach(function (s) { if (map.getSource(s + id)) map.setFeatureState({ source: s + id, id: k }, { p: v }); });
+    }
+    // Темп лише для записів екрана без відеокарти (?tempo=3 — утричі повільніше); людям — завжди 1.
+    var TEMPO = +((location.search.match(/[?&]tempo=([\d.]+)/) || [])[1] || 1);
+    // Хвилю починаємо, коли підкладка домальована (подія idle, але не довше 2,5 с), — щоб її не «з'їло» завантаження.
+    function koly_hotova(f) { var zrob = false, g = function () { if (!zrob) { zrob = true; f(); } }; map.once('idle', g); setTimeout(g, 2500); }
+    function vauProstupaie(hotovo) {
+      var id = colG(), c = map.getCenter(), bs = Array.from(HEXB[id].values()).filter(function (b) { return b.nf > 0; });
+      var d = bs.map(function (b) { return Math.hypot((b.cx - c.lng) * 0.64, b.cy - c.lat); }), mx = Math.max.apply(null, d.concat([1e-6]));
+      var KHVYLIA = TYKHO ? 0.35 : 1.1, TRYV = TYKHO ? 0.25 : 0.55;   // секунди: хвиля від центру й поява однієї соти
+      bs.forEach(function (b) { b.vp = 0; stanPoyavy(id, b.k, 0); });
+      var t0 = 0, zalyshok = bs.length, G = GI[id];
+      if (map.getSource('k-col-' + id)) map.getSource('k-col-' + id).setData(colData(G));
+      koly_hotova(function () { t0 = performance.now(); requestAnimationFrame(krok); });
+      var krok = function (t) {
+        var x = (t - t0) / 1000 / TEMPO, noviVershyny = false; zalyshok = 0;
+        bs.forEach(function (b, i) {
+          var u = clamp((x - KHVYLIA * d[i] / mx - (vershyna(b) ? 0.12 : 0)) / TRYV, 0, 1);
+          // пружина: трохи вище за 1 і назад (лише без «менше руху»)
+          var v = TYKHO ? 1 - Math.pow(1 - u, 3) : u < 1 ? 1 - Math.pow(1 - u, 3) + 0.22 * Math.sin(Math.PI * u) * (1 - u) : 1;
+          if (u < 1) zalyshok++;
+          if (b.vp !== v) { if (b.vp === 0 && vershyna(b)) noviVershyny = true; b.vp = v; stanPoyavy(id, b.k, v); }
+        });
+        if (noviVershyny && map.getSource('k-col-' + id)) map.getSource('k-col-' + id).setData(colData(G));
+        if (zalyshok) requestAnimationFrame(krok); else if (hotovo) hotovo();
+      };
+    }
+
+    // ---------- «вау» 2: роки оживають — місяць за місяцем від січня 2024 соти «наливаються» до сьогоднішнього вигляду ----------
+    var OZHYVA = null;
+    function vauOzhyvannia(pislia) {
+      if (CHAS.ost < 1) { if (pislia) pislia(); return; }
+      ETALON = {};
+      RIVNI.forEach(function (G) { ETALON[G.id] = Array.from(HEXB[G.id].values()).map(function (b) { return b.nf; }).filter(function (n) { return n > 0; }).sort(function (a, b) { return a - b; }); });
+      var lich = ekran.querySelector('.vau-lich') || document.createElement('div');
+      lich.className = 'vau-lich plashka'; lich.setAttribute('aria-live', 'off'); ekran.appendChild(lich);
+      var i = 0, KROK_MS = (TYKHO ? 60 : 140) * TEMPO;
+      var kinets = function () {
+        clearInterval(OZHYVA); OZHYVA = null; ETALON = null; CHAS.krok = 'usi'; zastosuvatyChas();
+        lich.classList.add('vau-lich--hasne'); setTimeout(function () { lich.remove(); }, 900);
+        konteiner.removeEventListener('pointerdown', kinets);
+        if (pislia) { var p = pislia; pislia = null; p(); }
+      };
+      var krok = function () {
+        zastosuvatyMisiatsi(0, i); pererakhuvaty(); zafarbuvaty();
+        var n = suma();
+        lich.innerHTML = '<b>' + MISN[i % 12] + ' ' + (rik0() + Math.floor(i / 12)) + '</b><span>' + chyslo(n) + ' ' + slovo(n, ['подія', 'події', 'подій']) + ' з січня ' + rik0() + '</span>';
+        if (++i > CHAS.ost) { clearInterval(OZHYVA); OZHYVA = null; setTimeout(kinets, 1200); }
+      };
+      konteiner.addEventListener('pointerdown', kinets);   // дотик — одразу звичайна карта
+      krok(); koly_hotova(function () { if (!ETALON) return; OZHYVA = setInterval(krok, KROK_MS); });
+    }
+
+    // ---------- «вау» 3: «Де ви живете?» — переліт до свого району (лише за натиском, як пошук; MV-58) ----------
+    function vauRayony() {
+      var rr = {};
+      HEXB.L.forEach(function (b) {
+        var r = b.p.r; if (!r || !b.nf) return;
+        var x = rr[r] || (rr[r] = { w: 180, e: -180, s: 90, n: -90, soty: [] });
+        x.w = Math.min(x.w, b.cx); x.e = Math.max(x.e, b.cx); x.s = Math.min(x.s, b.cy); x.n = Math.max(x.n, b.cy); x.soty.push(b);
+      });
+      var imena = Object.keys(rr).sort(function (a, b) { return a.localeCompare(b, 'uk'); });
+      if (!imena.length) return;
+      var ryad = document.createElement('div'); ryad.className = 'vau-rayony plashka';
+      ryad.innerHTML = '<span class="vr-pyt">Де ви живете?</span><div class="vr-chipy">' + imena.map(function (r) {
+        return '<button type="button" class="seg klav" data-rayon="' + esc(r) + '">' + esc(r) + '</button>'; }).join('') +
+        '</div><button type="button" class="vr-x" aria-label="Закрити">×</button>';
+      ryad.addEventListener('click', function (e) {
+        if (e.target.closest('.vr-x')) { ryad.remove(); return; }
+        var b = e.target.closest('[data-rayon]'); if (!b) return;
+        var x = rr[b.getAttribute('data-rayon')];
+        ryad.querySelectorAll('[data-rayon]').forEach(function (c) { c.setAttribute('aria-pressed', String(c === b)); });
+        var kam = map.cameraForBounds([[x.w, x.s], [x.e, x.n]], { padding: telefon() ? { top: 140, bottom: 160, left: 30, right: 30 } : { top: 150, bottom: 140, left: 120, right: 120 } });
+        map.flyTo({ center: kam.center, zoom: Math.min(kam.zoom, 12.2), pitch: TYKHO ? map.getPitch() : 52, bearing: TYKHO ? map.getBearing() : -12,
+          duration: (TYKHO ? 600 : 2600) * TEMPO, curve: 1.5, essential: true });
+        // після перельоту вершини району по черзі «натискаються» — район відгукується
+        map.once('moveend', function () {
+          var G = GI[colG()]; if (!G) return;
+          Array.from(HEXB[G.id].values()).filter(function (s) { return s.p.r === b.getAttribute('data-rayon') && vershyna(s); }).slice(0, 40)
+            .forEach(function (s, i) { setTimeout(function () { natysnuty(G, s); }, i * 45); });
+        });
+      });
+      ekran.appendChild(ryad);
+    }
+
+    // «Вау» за MV-120: за замовчуванням — «Роки оживають», після нього — запрошення «Де ви живете?».
+    // ?vau=0 — без «вау»; ?vau=1|2|3 — окремі варіанти (для перевірок і знімків).
+    var VAU_ZROBLENO = false;
+    function pochatyVau() {
+      if (VAU_ZROBLENO) return; VAU_ZROBLENO = true;
+      CHAS.ost = ostanniiMisiats(); CHAS.cm = Math.max(0, CHAS.ost);
+      zbuduvatySmuhu();
+      var v = (location.search.match(/[?&]vau=(\d)/) || [])[1];
+      if (v === '0') return;
+      if (v === '1') vauProstupaie();
+      else if (v === '2') vauOzhyvannia();
+      else if (v === '3') vauProstupaie(vauRayony);
+      else vauOzhyvannia(vauRayony);
+    }
+    MV.chas = function (krok, cm) { CHAS.krok = krok; if (cm != null) CHAS.cm = cm; zastosuvatyChas(); return nazvaPeriodu(); };
+    MV.vau = function (v) { if (v === 1) vauProstupaie(); else if (v === 2) vauOzhyvannia(); else if (v === 3) vauRayony(); };
+    MV.ostanniiMisiats = function () { return CHAS.ost; };
 
     // Для перевірок і знімків.
     MV.vidkryty = function (id, k) { var b = HEXB[id].get(k); if (b) vidkryty(GI[id], b); };

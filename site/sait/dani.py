@@ -675,6 +675,16 @@ def hodyna_pik(hodyny: Counter) -> str | None:
     return f'{chastyna} {naikrashche}–{(naikrashche + 3) % 24 or 24}'
 
 
+def indeks_misiatsia(data: str | None) -> int | None:
+    """Номер місяця від січня першого відкритого року (0, 1, …) або None, якщо місяця в даті немає."""
+    if not data or len(data) < 7 or not data[:4].isdigit() or not data[5:7].isdigit():
+        return None
+    rik, mis = int(data[:4]), int(data[5:7])
+    if not (1 <= mis <= 12) or not (VIDKRYTI_ROKY[0] <= rik <= VIDKRYTI_ROKY[-1]):
+        return None
+    return (rik - VIDKRYTI_ROKY[0]) * 12 + mis - 1
+
+
 def soty_rivnia(podii: list, vulytsi_podii: list, varianty_slug: dict, problemy: list, riven: int) -> dict:
     """Соти одного рівня H3. Статеві й щодо дітей (MV-4, MV-102) — лише у великих сотах (рівні 7 і 8) і лише числом
     у групі насильства (`nas`, brend/hrupy.json); домашнє насильство з точкою — як усі події, без точки — як чутливі (числом по соті випуску). Лише події за останні 3 роки (MV-32); старші — лише прапорець «stari» у соті,
@@ -701,12 +711,18 @@ def soty_rivnia(podii: list, vulytsi_podii: list, varianty_slug: dict, problemy:
         if not vidkryta(p):
             stari_k.add(k)
             continue
-        s = soty.setdefault(k, {'chysla': Counter(), 'roky': Counter(), 'hodyny': Counter(), 'stari': False,
+        s = soty.setdefault(k, {'chysla': Counter(), 'roky': Counter(), 'misiatsi': defaultdict(Counter), 'hodyny': Counter(), 'stari': False,
                                 'tsili': defaultdict(Counter), 'vulytsi': Counter(), 'z_adresoyu': 0, 'problemy': []})
         hrupa = 'nas' if lyshe_chyslo else HR.hrupa(p.vyd, p.stattia)
         for h in ((hrupa, 'all') if hrupa else ('all',)):
             s['chysla'][f'{h}3'] += 1
         s['roky'][p.rik] += 1
+        mi = indeks_misiatsia(p.data) if not p.chutlyva else None
+        # ZAVDANNYA-105: місяці для смуги «роки · місяці» й «оживання» (лише числа). Статеві й щодо дітей — без місяця:
+        # число за місяць у малій кількості легше пов'язати з конкретною справою, ніж число за 3 роки.
+        if mi is not None:
+            for h in ((hrupa, 'all') if hrupa else ('all',)):
+                s['misiatsi'][h][mi] += 1
         if lyshe_chyslo:
             continue                      # далі — лише відкриті події
         s['z_adresoyu'] += 1
