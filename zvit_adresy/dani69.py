@@ -21,6 +21,8 @@ from scipy.stats import binomtest
 DE = os.environ.get('DANI_EDRSR')
 sys.path.insert(0, os.path.join(DE, 'src'))
 import adr_kliuch as AK  # noqa: E402
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'brend'))
+import hrupy as HRP  # noqa: E402  групи подій — один словник (MV-116)
 
 # ------------------------------------------------------------------ сталі методики (документ, розд. «Як рахувалось»)
 VID, DO = '2024-01-01', '2026-11-05'          # події випуску з датою й точкою
@@ -36,9 +38,8 @@ R_MALYI_INSHI = 50
 R_VELYKYI = 250                                  # більший радіус — квартал довкола
 R_VUL = 400                                      # м: адреса вулиці далі від її осі — однойменна вулиця деінде
 PORIH_SKUP = 5                                   # скупчення — адреса з ≥ 5 подій (MV-76)
-VAHY = {'НАС': 4, 'МАЙ': 3, 'НАР': 2, 'ГП': 2, 'АЛК': 2, 'ДОР': 1, 'ДТП': 1}   # насильство > майнові > порядок > дорога
-HR = {'ДТП': 'ДТП', 'ДОР': 'Дороги', 'ГП': 'Громадський порядок', 'МАЙ': 'Майно', 'НАР': 'Наркотики', 'АЛК': 'Алкоголь',
-      'НАС': 'Насильство'}
+# ваги груп (brend/hrupy.json): насильство й грабежі > крадіжки > порядок, наркотики, алкоголь > дорога
+VAHY = {'nas': 4, 'kra': 3, 'nar': 2, 'por': 2, 'alk': 2, 'vod': 1, 'dtp': 1}
 DOROZHNI = {'ДТП', 'ДОР'}
 NE_PRO_MISTSE = 'не про місце'
 G_VUL = ['дороги, тротуари, ліхтарі', 'паркування й покинуті авто', 'торгівля з рук і МАФи', 'шум і незручності від закладів',
@@ -125,13 +126,13 @@ def zvesty_podii(rows):
         if not data or not (VID <= data <= DO):
             continue
         if lat is None:
-            bez_tochky.append(dict(id=eid, data=data, vyd=vyd, st=st or '', fab=fab or '', url=url))
+            bez_tochky.append(dict(id=eid, data=data, vyd=vyd, hr=HRP.hrupa(vyd, st), st=st or '', fab=fab or '', url=url))
             continue
         k = (round(lat, 6), round(lon, 6), data, vyd)
         e = po.get(k)
         if e is None:
             x, y = xy(lat, lon)
-            e = po[k] = dict(id=eid, data=data, chas=chas, vyd=vyd, st=st or '', fab=fab or '', adr=adr or '', toch=toch,
+            e = po[k] = dict(id=eid, data=data, chas=chas, vyd=vyd, hr=HRP.hrupa(vyd, st), st=st or '', fab=fab or '', adr=adr or '', toch=toch,
                              x=x, y=y, rishennia=[])
         e['rishennia'].append(dict(doc=doc, url=url, st=st or '', forma=forma))
     return list(po.values()), bez_tochky
@@ -613,7 +614,7 @@ def main():
         vzhe = set(vlasnyk)
         for k, (o, d, rm, dd_) in enumerate(kand):
             ii = [i for i in dd_ if vlasnyk[i][1] == k]
-            hrr = collections.Counter(P[i]['vyd'] for i in ii)
+            hrr = collections.Counter(P[i]['hr'] for i in ii)
             ms, mv = rozpodil_typiv[o['typ']]
             porivn = None
             # розрахунок як у карті Києва — лише коли тип міряний (≥ 20 об'єктів у місті) і подій достатньо (≥ 5 своїх)
@@ -625,7 +626,7 @@ def main():
                               velykyi_krok=krok(len(ivel), mv), obiektiv=len(ms))
             mistsia.append(dict(rid='o' + o['osm'], vid='obiekt', typ=o['typ'], typ_n=TYPY_OB[o['typ']], nazva=o['nazva'],
                                 x=round(o['x'] - hx), y=round(o['y'] - hy), d=round(d), r=rm, podii=len(ii), spilni=len(dd_) - len(ii),
-                                hrupy=dict(hrr), vaha=sum(VAHY[v] * n for v, n in hrr.items()), ids=[P[i]['id'] for i in ii],
+                                hrupy=dict(hrr), vaha=sum(VAHY.get(v, 0) * n for v, n in hrr.items()), ids=[P[i]['id'] for i in ii],
                                 roky=dict(collections.Counter(P[i]['data'][:4] for i in ii)),
                                 ostannia=max((P[i]['data'] for i in ii), default=None), porivn=porivn))
         # скупчення без об'єкта
@@ -645,10 +646,10 @@ def main():
             if d is None:
                 continue
             adr = P[ii[0]]['adr']
-            hrr = collections.Counter(P[i]['vyd'] for i in ii)
+            hrr = collections.Counter(P[i]['hr'] for i in ii)
             mistsia.append(dict(rid=f's{len(mistsia)}', vid='skupchennia', typ='skup', typ_n='скупчення', nazva=adr,
                                 toch=P[ii[0]]['toch'], x=round(lx - hx), y=round(ly - hy), d=round(d), r=0, podii=len(ii),
-                                hrupy=dict(hrr), vaha=sum(VAHY[v] * n for v, n in hrr.items()), ids=[P[i]['id'] for i in ii],
+                                hrupy=dict(hrr), vaha=sum(VAHY.get(v, 0) * n for v, n in hrr.items()), ids=[P[i]['id'] for i in ii],
                                 roky=dict(collections.Counter(P[i]['data'][:4] for i in ii)),
                                 ostannia=max(P[i]['data'] for i in ii), porivn=None))
         # скарги «вуличних» груп біля місця (у тих самих r, для скупчення — 50 м)
@@ -692,7 +693,7 @@ def main():
         nom_bud = bk.split('|')[1]
         vul_list = []
         for n, ii in vl.items():
-            vul_list.append(dict(n=n, k=len(ii), hr=collections.Counter(HR[P[i]['vyd']] for i in ii).most_common(),
+            vul_list.append(dict(n=n, k=len(ii), hr=collections.Counter(HRP.NAZVA.get(P[i]['hr'], 'інше') for i in ii).most_common(),
                                  x=[round(P[ii[0]]['x'] - hx, 1), round(P[ii[0]]['y'] - hy, 1)], skup=len(ii) >= PORIH_SKUP and n != 'перехрестя',
                                  ty=(n == nom_bud), roky=dict(collections.Counter(P[i]['data'][:4] for i in ii)),
                                  ostannia=max(P[i]['data'] for i in ii)))
@@ -727,10 +728,10 @@ def main():
         out['ridki'] = [ev(int(i), math.hypot(P[i]['x'] - hx, P[i]['y'] - hy)) for i in ridki[:3]]
         k300 = [i for i in bil if dd[i] <= 300]
         out['roky'] = dict(collections.Counter(P[i]['data'][:4] for i in k300))
-        out['hr300'] = collections.Counter(HR[P[i]['vyd']] for i in k300).most_common()
+        out['hr300'] = collections.Counter(HRP.NAZVA.get(P[i]['hr'], 'інше') for i in k300).most_common()
         out['st300'] = collections.Counter(P[i]['st'] for i in k300).most_common(10)
         ri = np.where(PR == rn)[0]
-        out['ob_h'] = collections.Counter(HR[P[i]['vyd']] for i in ri).most_common()
+        out['ob_h'] = collections.Counter(HRP.NAZVA.get(P[i]['hr'], 'інше') for i in ri).most_common()
         out['ob_n'] = len(ri)
         out['ob_roky'] = dict(collections.Counter(P[i]['data'][:4] for i in ri))
         # медіана подій у 300 м навколо житлових будинків району (та сама вибірка, що для «довкола»)

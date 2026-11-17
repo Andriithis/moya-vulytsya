@@ -16,9 +16,10 @@ KROKY = ['значно менше', 'менше', 'як зазвичай', 'бі
 MIS = ['січень', 'лютий', 'березень', 'квітень', 'травень', 'червень', 'липень', 'серпень', 'вересень', 'жовтень', 'листопад', 'грудень']
 MIS_R = ['січня', 'лютого', 'березня', 'квітня', 'травня', 'червня', 'липня', 'серпня', 'вересня', 'жовтня', 'листопада', 'грудня']
 MIS_M = ['січні', 'лютому', 'березні', 'квітні', 'травні', 'червні', 'липні', 'серпні', 'вересні', 'жовтні', 'листопаді', 'грудні']
-HR = {'ДТП': 'ДТП', 'ДОР': 'Дороги', 'ГП': 'Громадський порядок', 'МАЙ': 'Майно', 'НАР': 'Наркотики', 'АЛК': 'Алкоголь', 'НАС': 'Насильство'}
-HR_SLOVA = {'МАЙ': 'крадіжки та інші майнові', 'НАР': 'наркотики', 'ГП': 'порушення порядку', 'АЛК': 'алкоголь',
-            'ДОР': 'водії напідпитку чи без прав', 'ДТП': 'ДТП', 'НАС': 'насильство'}
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'brend'))
+import hrupy as HRP  # noqa: E402  групи подій — один словник (MV-116)
+HR_SLOVA = HRP.SLOVO                    # група в реченні: «крадіжки й шкода майну»
+SLOVO_NAZVY = {HRP.NAZVA[k]: HRP.SLOVO[k] for k in HRP.KLIUCHI}
 RAION_R = {'Оболонський': 'Оболонського', 'Шевченківський': 'Шевченківського', 'Дарницький': 'Дарницького',
            'Голосіївський': 'Голосіївського', 'Деснянський': 'Деснянського', 'Дніпровський': 'Дніпровського',
            'Печерський': 'Печерського', 'Подільський': 'Подільського', 'Святошинський': 'Святошинського',
@@ -447,7 +448,7 @@ def kartka(e, PEREKAZY, de_tekst=None):
                 f'<dt>Коли</dt><dd>{E(koly)}</dd><dt>Стаття</dt><dd>{E(st)}</dd></dl>'
                 f'<p class="podiya__dzh"><span>Переказу в макеті немає: його пише ШІ з тексту рішення, нічого не додаючи (MV-78).</span>{rish(e)}</p>')
     return (f'<article class="podiya" data-id="{E(e["id"])}"><button class="podiya__shap" type="button" aria-expanded="false">'
-            f'<span class="podiya__hrupa">{HR[e["vyd"]]}</span><span class="podiya__nazva">{E(nz)}</span>'
+            f'<span class="podiya__hrupa">{HRP.nazva(e["vyd"], e["st"])}</span><span class="podiya__nazva">{E(nz)}</span>'
             f'<span class="podiya__meta">{E(meta)}</span><span class="podiya__str">{STR}</span></button>'
             f'<div class="podiya__tilo">{tilo}</div></article>')
 
@@ -470,7 +471,7 @@ def ryadok(e):
 
 
 def smuhy_hrup(dani):
-    rows = [(h, dani.get(h, 0)) for h in ['ДТП', 'Дороги', 'Наркотики', 'Громадський порядок', 'Майно', 'Алкоголь', 'Насильство']]
+    rows = [(h, dani.get(h, 0)) for h in (HRP.NAZVA[k] for k in HRP.KLIUCHI)]
     mx = max([n for _, n in rows] + [1])
     out = ['<div class="smuhy">']
     for h, n in rows:
@@ -482,7 +483,7 @@ def smuhy_hrup(dani):
 
 
 def smuhy_pary(tut, tut_n, ob, ob_n):
-    rows = ['ДТП', 'Дороги', 'Наркотики', 'Громадський порядок', 'Майно', 'Алкоголь']
+    rows = [HRP.NAZVA[k] for k in HRP.KLIUCHI if k != 'nas']   # насильство — лише числом
     mx = max(max(tut.get(h, 0) / max(tut_n, 1), ob.get(h, 0) / max(ob_n, 1)) for h in rows) or 1
     out = ['<div class="smuhy smuhy--pary">']
     for h in rows:
@@ -516,9 +517,9 @@ def roky_krapky(roky):
 def opys_skup(v):
     hr = v['hr']
     if len(hr) == 1:
-        return f'усі — {hr[0][0]}' if hr[0][0] != 'Дороги' else 'усі — водії'
+        return f'усі — {SLOVO_NAZVY.get(hr[0][0], hr[0][0])}'
     h, n = hr[0]
-    slovo = {'Дороги': 'водії напідпитку чи без прав', 'ДТП': 'ДТП'}.get(h, h.lower())
+    slovo = SLOVO_NAZVY.get(h, h)
     return f'здебільшого {slovo} ({n})'
 
 
@@ -532,9 +533,9 @@ def nyzhni_rozdily(D, PEREKAZY):
     p100 = sorted(D['p100'], key=lambda e: e['data'], reverse=True)
     p300 = sorted(D['p300'], key=lambda e: e['data'], reverse=True)
     k300 = dim + p100 + p300
-    hr_dim = collections.Counter(HR[e['vyd']] for e in dim)
+    hr_dim = collections.Counter(HRP.nazva(e['vyd'], e['st']) for e in dim)
     hr300 = collections.Counter(dict(D['hr300']))
-    hr_p300 = collections.Counter(HR[e['vyd']] for e in p300)
+    hr_p300 = collections.Counter(HRP.nazva(e['vyd'], e['st']) for e in p300)
     rn = D['raion']; rn_r = RAION_R.get(rn, rn)
     # 1. Моя адреса
     hrupy_dim = collections.OrderedDict()
@@ -544,7 +545,7 @@ def nyzhni_rozdily(D, PEREKAZY):
     shar1 = ''.join(zhortka(L, lambda e: kartka(e, PEREKAZY, 'у будинку')) for L in hrupy_dim.values())
     p300_t = collections.OrderedDict()
     for e in p300:
-        p300_t.setdefault(HR[e['vyd']], collections.OrderedDict()).setdefault(nazva(e['st']), []).append(e)
+        p300_t.setdefault(HRP.nazva(e['vyd'], e['st']), collections.OrderedDict()).setdefault(nazva(e['st']), []).append(e)
     shar3 = []
     for h in sorted(p300_t, key=lambda h: -sum(len(x) for x in p300_t[h].values())):
         vs = sum(len(x) for x in p300_t[h].values())
@@ -599,7 +600,7 @@ def nyzhni_rozdily(D, PEREKAZY):
     st300 = D['st300']
     statti = ''.join(f'<span>{E(nazva(s))}</span><b>{n}</b>' for s, n in st300[:6])
     K300 = D['k300']
-    dorohy = hr300['ДТП'] + hr300['Дороги']
+    dorohy = hr300[HRP.NAZVA['dtp']] + hr300[HRP.NAZVA['vod']]
     B3 = blok('analityka', '3', 'Аналітика',
               E(f'Довкола будинку, до 300 м — {podii_s(K300)}; ' + (f'передусім дорога: {dorohy}' if dorohy * 2 >= K300 else
                                                                       f'найбільше — {hr300.most_common(1)[0][0].lower()}: {hr300.most_common(1)[0][1]}')),
@@ -643,7 +644,7 @@ def problema_html(p):
     if z_datoiu < p['podii']:
         roky = f'з датою {z_datoiu}: {roky}'
     nm = (p.get('masshtab') or {}).get('name')
-    nazva_p = f'{E(p["mekh"] or HR.get(p["vyd"], ""))}' + (f' · «{E(nm)}»' if nm else '')
+    nazva_p = f'{E(p["mekh"] or HRP.nazva(p["vyd"]))}' + (f' · «{E(nm)}»' if nm else '')
     ost = f' Остання — {misiats(p["ostannia"])}.' if p.get('ostannia') else ''
     stan = 'Триває' if p.get('ostannia') and p['ostannia'] >= '2025-11-01' else 'Рано казати'
     return (f'<div class="problema"><span class="problema__znak"><svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><path d="M2 7V2h5M15 2h5v5M20 15v5h-5M7 20H2v-5" fill="none" stroke="#3C3CA1" stroke-width="2"/></svg></span>'
