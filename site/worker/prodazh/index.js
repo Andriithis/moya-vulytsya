@@ -9,6 +9,7 @@
 //   GET  /dovidka/<id>/?k=<ключ>           довідка: ключ із листа або вхід у кабінет власника
 //   /kabinet/…                             вхід за посиланням на пошту, мої довідки, «Стежу», підписка, видалення даних
 //   /api/vnutr/…                           для видавача (site/prodazh/vydavach.py), заголовок Authorization: Bearer VYDACHA_KLIUCH
+//   POST /kabinet/obmin                    обмін балів ігор на довідку / місяць підписки — лише з OBMIN_BALIV = 'tak' (ZAVDANNYA-123)
 //   POST /api/admin/vydalyty               видалення даних на запит людини (партнер), Authorization: Bearer ADMIN_KLIUCH
 import TS from './tsiny.js';
 import { vypadkovyi, sha256, rivni } from './bezpeka.js';
@@ -16,6 +17,7 @@ import { perekhidnyk, pidpysTestu, PomylkaPidpysu, NePidtrymano } from './perekh
 import { nadislaty } from './poshta.js';
 import * as L from './logika.js';
 import * as S from './storinky.js';
+import * as B from './bali.js';
 
 export const MARSHRUTY = ['/oplata/*', '/api/*', '/kabinet/*', '/dovidka/*', '/prodazh/*'];
 const SESIIA_S = 30 * 86400, VKHID_S = 30 * 60, LYSTIV_NA_HODYNU = 5;
@@ -193,7 +195,9 @@ async function kabinet(env, ja, povidomlennia = '') {
   const stezhu = await L.vsi(env, 'SELECT budynok, adresa FROM stezhu WHERE korystuvach_id = ? ORDER BY stvoreno', ja.id);
   const d = await L.dostupno(env, ja.id);
   const pidpysky = (await L.stanPidpysok(env, ja.id)).filter((p) => p.diie);
-  return S.kabinet({ poshta: ja.poshta, dovidky, stezhu, pidpysky, dostupno: d, povidomlennia });
+  for (const p of pidpysky) p.zaBali = (await L.odyn(env, 'SELECT servis FROM zamovlennia WHERE id = ?', p.zamovlennia_id))?.servis === 'bali';
+  const bali = B.uvimkneno(env) ? { balans: await B.balans(env, ja.id), kurs: B.KURS, zapyt: vypadkovyi(16) } : null;
+  return S.kabinet({ poshta: ja.poshta, dovidky, stezhu, pidpysky, dostupno: d, povidomlennia, bali });
 }
 
 async function diiaKabinetu(request, env, url, ja, dia) {
@@ -209,6 +213,20 @@ async function diiaKabinetu(request, env, url, ja, dia) {
     if (v.dovidka) return kabinet(env, ja, `Довідку на ${adresa} готуємо — посилання прийде на пошту.`);
     if (v.dodatkova) return doOplaty(env, url, { tovar: 'dodatkova', budynok: f.budynok, adresa, korystuvach_id: ja.id, pidpyska_id: v.dodatkova.id });
     return pereity(url, `/oplata/?tovar=dovidka&budynok=${encodeURIComponent(f.budynok)}`);
+  }
+  if (dia === 'obmin') {
+    if (!B.uvimkneno(env)) return S.nemaie();
+    // Користувач — лише з сесії (ja.id); korystuvach_id чи пошта з форми не читаються взагалі.
+    let budynok = null, adresa = null;
+    if (f.tovar === 'dovidka') {
+      budynok = String(f.budynok || '');
+      adresa = await L.perevirytyBudynok(env, budynok, url);
+      if (!adresa) return kabinet(env, ja, 'Для довідки за бали оберіть будинок зі списку «Стежу».');
+    }
+    const v = await B.obminiaty(env, ja.id, { tovar: String(f.tovar || ''), budynok, adresa, zapyt: f.zapyt });
+    if (!v.ok) return kabinet(env, ja, v.chomu);
+    if (v.povtor) return kabinet(env, ja, 'Цей обмін уже зроблено.');
+    return kabinet(env, ja, v.dovidka ? `Обміняно: довідку на ${adresa} готуємо — посилання прийде на пошту.` : 'Обміняно: місяць підписки діє з сьогодні.');
   }
   if (dia === 'stezhu/prybraty') {
     await L.zrobyty(env, 'DELETE FROM stezhu WHERE korystuvach_id = ? AND budynok = ?', ja.id, String(f.budynok || ''));

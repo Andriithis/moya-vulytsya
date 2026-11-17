@@ -806,6 +806,7 @@ def zibraty_ihry(dn: D.Dani, vykhid: Path, koloda: Path | None) -> dict:
         s = DT.prochytaty(f)
         try:
             DT.perevirka(s)
+            DT.zvirka_osm(s)        # координати — з еталона OpenStreetMap (ZAVDANNYA-123)
         except DT.PomylkaSpravy as pomylka:
             raise SystemExit(f'Справа детектива не проходить перевірку: {pomylka}') from pomylka
         spravy.append(DT.dlia_saitu(s))
@@ -814,6 +815,7 @@ def zibraty_ihry(dn: D.Dani, vykhid: Path, koloda: Path | None) -> dict:
     kv = json.loads((DZHERELO / 'ihry' / 'kvalifikuy.json').read_text(encoding='utf-8'))
     for s in kv['spravy']:
         s.pop('uryvky', None)
+    kv.pop('dzherelo_poroha', None)   # службова примітка для перевірки (ZAVDANNYA-123), на сайт не йде
     zapysaty(tsil / 'kvalifikuy.json', json.dumps(kv, ensure_ascii=False, separators=(',', ':')))
     IHRY_DANI['kvalifikuy'] = '/ihry/kvalifikuy.json'
     shutil.copyfile(DZHERELO / 'ihry' / 'nalashtuvannia.json', tsil / 'nalashtuvannia.json')

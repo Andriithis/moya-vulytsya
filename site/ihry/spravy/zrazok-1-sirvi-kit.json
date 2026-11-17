@@ -52,8 +52,8 @@
     {
      "id": "zhytomyrska",
      "nazva": "«Житомирська»",
-     "lat": 50.4561,
-     "lon": 30.3655,
+     "lat": 50.45617,
+     "lon": 30.36587,
      "oznaky": {
       "liniia": "червона",
       "kintseva": false,
@@ -62,115 +62,125 @@
      },
      "slova": [
       "Житомир"
-     ]
+     ],
+     "osm": "zhytomyrska"
     },
     {
      "id": "akademmistechko",
      "nazva": "«Академмістечко»",
-     "lat": 50.4649,
-     "lon": 30.3552,
+     "lat": 50.4647,
+     "lon": 30.35508,
      "oznaky": {
       "liniia": "червона",
       "kintseva": true,
       "nazva_vid_mista": false,
       "susid_kintsevoi": false
-     }
+     },
+     "osm": "akademmistechko"
     },
     {
      "id": "sviatoshyn",
      "nazva": "«Святошин»",
-     "lat": 50.4578,
-     "lon": 30.3911,
+     "lat": 50.45782,
+     "lon": 30.3908,
      "oznaky": {
       "liniia": "червона",
       "kintseva": false,
       "nazva_vid_mista": false,
       "susid_kintsevoi": false
-     }
+     },
+     "osm": "sviatoshyn"
     },
     {
      "id": "nyvky",
      "nazva": "«Нивки»",
-     "lat": 50.4587,
-     "lon": 30.4044,
+     "lat": 50.4586,
+     "lon": 30.4042,
      "oznaky": {
       "liniia": "червона",
       "kintseva": false,
       "nazva_vid_mista": false,
       "susid_kintsevoi": false
-     }
+     },
+     "osm": "nyvky"
     },
     {
      "id": "beresteiska",
      "nazva": "«Берестейська»",
-     "lat": 50.4588,
-     "lon": 30.4197,
+     "lat": 50.45909,
+     "lon": 30.41969,
      "oznaky": {
       "liniia": "червона",
       "kintseva": false,
       "nazva_vid_mista": true,
       "susid_kintsevoi": false
-     }
+     },
+     "osm": "beresteiska"
     },
     {
      "id": "shuliavska",
      "nazva": "«Шулявська»",
-     "lat": 50.455,
-     "lon": 30.4453,
+     "lat": 50.45507,
+     "lon": 30.44537,
      "oznaky": {
       "liniia": "червона",
       "kintseva": false,
       "nazva_vid_mista": false,
       "susid_kintsevoi": false
-     }
+     },
+     "osm": "shuliavska"
     },
     {
      "id": "politekhnichnyi",
      "nazva": "«Політехнічний інститут»",
-     "lat": 50.4508,
-     "lon": 30.4662,
+     "lat": 50.45079,
+     "lon": 30.46613,
      "oznaky": {
       "liniia": "червона",
       "kintseva": false,
       "nazva_vid_mista": false,
       "susid_kintsevoi": false
-     }
+     },
+     "osm": "politekhnichnyi"
     },
     {
      "id": "syrets",
      "nazva": "«Сирець»",
-     "lat": 50.4762,
-     "lon": 30.4307,
+     "lat": 50.47639,
+     "lon": 30.43083,
      "oznaky": {
       "liniia": "зелена",
       "kintseva": true,
       "nazva_vid_mista": false,
       "susid_kintsevoi": false
-     }
+     },
+     "osm": "syrets"
     },
     {
      "id": "dorohozhychi",
      "nazva": "«Дорогожичі»",
-     "lat": 50.4734,
-     "lon": 30.4486,
+     "lat": 50.47373,
+     "lon": 30.44878,
      "oznaky": {
       "liniia": "зелена",
       "kintseva": false,
       "nazva_vid_mista": false,
       "susid_kintsevoi": true
-     }
+     },
+     "osm": "dorohozhychi"
     },
     {
      "id": "lukianivska",
      "nazva": "«Лук'янівська»",
-     "lat": 50.4622,
+     "lat": 50.46236,
      "lon": 30.4818,
      "oznaky": {
       "liniia": "зелена",
       "kintseva": false,
       "nazva_vid_mista": false,
       "susid_kintsevoi": false
-     }
+     },
+     "osm": "lukianivska"
     }
    ]
   },
@@ -334,9 +344,10 @@
    "n": 1,
    "zahadka": "Почніть зі станції метро, що має ту саму назву, що й суд, який розглядав справу. Відшукайте станцію на карті й торкніться.",
    "tsil": {
-    "lat": 50.4578,
-    "lon": 30.3911,
-    "radius_m": 500
+    "lat": 50.45782,
+    "lon": 30.3908,
+    "radius_m": 500,
+    "osm": "sviatoshyn"
    },
    "rechennia": [
     {
@@ -357,9 +368,10 @@
    "n": 2,
    "zahadka": "Слід 2 — біля головного залізничного вокзалу міста.",
    "tsil": {
-    "lat": 50.441,
-    "lon": 30.4885,
-    "radius_m": 600
+    "lat": 50.44001,
+    "lon": 30.48848,
+    "radius_m": 600,
+    "osm": "vokzal"
    },
    "rechennia": [
     {
@@ -395,9 +407,10 @@
    "n": 3,
    "zahadka": "Слід 3 — біля станції метро, названої на честь великого технічного університету.",
    "tsil": {
-    "lat": 50.4508,
-    "lon": 30.4662,
-    "radius_m": 500
+    "lat": 50.45079,
+    "lon": 30.46613,
+    "radius_m": 500,
+    "osm": "politekhnichnyi"
    },
    "rechennia": [
     {
@@ -429,9 +442,10 @@
    "n": 4,
    "zahadka": "Слід 4 — на площі, з якої починається проспект Берестейський (поруч — цирк). Торкніться самої площі.",
    "tsil": {
-    "lat": 50.4497,
-    "lon": 30.485,
-    "radius_m": 600
+    "lat": 50.44684,
+    "lon": 30.49257,
+    "radius_m": 600,
+    "osm": "halytska"
    },
    "rechennia": [
     {
@@ -463,9 +477,10 @@
    "n": 5,
    "zahadka": "Слід 5 — на кінцевій станції червоної лінії на заході міста.",
    "tsil": {
-    "lat": 50.4649,
-    "lon": 30.3552,
-    "radius_m": 500
+    "lat": 50.4647,
+    "lon": 30.35508,
+    "radius_m": 500,
+    "osm": "akademmistechko"
    },
    "rechennia": [
     {
@@ -501,9 +516,10 @@
    "n": 6,
    "zahadka": "Останній слід — там, де, на вашу думку, усе сталося. Якщо місце правильне, слід з'явиться.",
    "tsil": {
-    "lat": 50.4561,
-    "lon": 30.3655,
-    "radius_m": 400
+    "lat": 50.45617,
+    "lon": 30.36587,
+    "radius_m": 400,
+    "osm": "zhytomyrska"
    },
    "rechennia": [
     {
