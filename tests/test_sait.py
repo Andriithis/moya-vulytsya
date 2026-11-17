@@ -31,6 +31,7 @@ except ImportError:
     YE_H3 = False
 
 import dani as D  # noqa: E402
+from html import escape as html_escape  # noqa: E402
 
 ZABORONENO_V_HTML = re.compile(r'ОСОБА_|АДРЕСА_|\bкв\.\s*№?\s*\d|квартир[аиіу]?\s*№?\s*\d', re.I)
 # «не «небезпечніше»» у легенді — обов'язковий підпис системи дизайну, не оцінка.
@@ -255,12 +256,22 @@ class ZvedenniaNazv(unittest.TestCase):
         self.assertEqual(D.translit('Кадетський Гай'), 'kadetskyi-hai')
         self.assertEqual(D.translit("Юрія Іллєнка"), 'yuriia-illienka')
 
-    def test_istoriia_bez_imen_i_kvartyr(self):
-        t = D.ochyshchena_istoriia('ОСОБА_1 вчинив ДТП біля буд. 5 і мешкає в кв. 12, ОСОБА_2 свідок. ' * 3)
-        self.assertNotIn('ОСОБА_', t)
-        self.assertIsNone(re.search(r'кв\.\s*\d', t))
-        self.assertIsNone(D.ochyshchena_istoriia('Водій Іваненко І.І. порушив правила дорожнього руху на перехресті вулиць.'))
-        self.assertLessEqual(len(t), 301)
+    def test_perevirka_perekazu(self):
+        """ZAVDANNYA-110, Б-1: переказ для відкритої сторінки — без дат, годин, сум, марок авто, імен і уривків рішення."""
+        import perekazy as PK
+        fab = FABULA_CHYSTA.format(d='01.03.2025', b='4', v='вул. Хрещатик')
+        self.assertEqual(PK.vady(PEREKAZ_DOBRYI, fab), [])
+        for zle in ('Водій 01.03.2025 року врізався в авто попереду на Хрещатику, ніхто не постраждав.',
+                    'Увечері о десятій годині водій врізався в авто попереду на вулиці, ніхто не постраждав.',
+                    'Водій Toyota врізався в інше авто на вулиці; збитки оцінили в тисячу гривень.',
+                    'ОСОБА_1 врізався в авто попереду на вулиці, ніхто не постраждав, потерпілих немає.',
+                    'Водій Іваненко І.І. врізався в авто попереду на вулиці, ніхто не постраждав.',
+                    'Постановою судді водія визнано винним у зіткненні з автомобілем на вулиці.',
+                    'Водій не врахував дорожньої обстановки та допустив зіткнення з автомобілем, що рухався попереду.'):
+            self.assertNotEqual(PK.vady(zle, fab), [], zle)
+
+
+PEREKAZ_DOBRYI = 'Водій легковика не втримав дистанцію й врізався в авто попереду. Обійшлося без постраждалих.'
 
 
 @unittest.skipUnless(YE_H3, 'немає бібліотеки h3 (pip install h3) — збирання сайту пропущено')
@@ -287,9 +298,26 @@ class Sait(unittest.TestCase):
             cls.spravzhnii = False
             cls.budynky = tmp / 'budynky.json'
             cls.budynky.write_text(json.dumps(BUDYNKY, ensure_ascii=False), encoding='utf-8')
+        # Перекази ШІ для історій вулиць (ZAVDANNYA-110): на справжньому — MV_PEREKAZY (файл кроку
+        # dani-edrsr/src/perekazy_istorii.py); на штучній — добрий переказ для Хрещатика, на решті — переказ
+        # з датою й уривком рішення (сайт мусить його відкинути, і тоді історії немає).
+        pk = os.environ.get('MV_PEREKAZY')
+        if pk or cls.spravzhnii:
+            cls.perekazy = Path(pk) if pk else None
+        else:
+            con = sqlite3.connect(cls.baza)
+            ryady = con.execute("SELECT e.event_id, l.adresa FROM event e JOIN location l USING (location_id)").fetchall()
+            con.close()
+            cls.perekazy = tmp / 'perekazy.json'
+            cls.perekazy.write_text(json.dumps({'perekazy': {
+                eid: {'perekaz': PEREKAZ_DOBRYI if 'Хрещатик' in adr else
+                      'Водій 01.03.2025 року о 14 год. 20 хв. не врахував дорожньої обстановки та допустив зіткнення з автомобілем.'}
+                for eid, adr in ryady}}, ensure_ascii=False), encoding='utf-8')
+        cls.kandydaty = tmp / 'kandydaty.json'
         cls.sait = tmp / 'sait'
         cls.zvit = zibraty_sait.zibraty_sait(cls.baza, cls.sait, cls.pereim, KORIN / 'data' / 'borders.json',
-                                             budynky=cls.budynky, mezha_failiv=10 ** 6 if cls.spravzhnii else 20000)
+                                             budynky=cls.budynky, mezha_failiv=10 ** 6 if cls.spravzhnii else 20000,
+                                             perekazy=cls.perekazy, kandydaty_istorii=cls.kandydaty)
         cls.storinky = sorted(cls.sait.rglob('*.html'))
 
     @classmethod
@@ -317,6 +345,61 @@ class Sait(unittest.TestCase):
                     znaideno.append((str(p.relative_to(self.sait)), m.group(0)))
         self.assertEqual(znaideno, [])
 
+    def test_b1_istoriia_lyshe_perekaz_shi(self):
+        """ZAVDANNYA-110, Б-1: історія вулиці — лише перевірений переказ ШІ; переказу немає — блоку немає."""
+        kand = json.loads(self.kandydaty.read_text(encoding='utf-8'))['vulytsi']
+        self.assertTrue(kand)
+        if self.spravzhnii:
+            self.skipTest('на справжньому — лише перевірка публічних файлів нижче')
+        khr = (self.sait / 'vulytsia' / 'khreshchatyk' / 'index.html').read_text(encoding='utf-8')
+        self.assertIn('Одна історія з вулиці', khr)
+        self.assertIn(html_escape(PEREKAZ_DOBRYI), khr)
+        self.assertIn('Переказ ШІ', khr)
+        self.assertNotIn('Чернетка', khr)
+        lob = next(self.sait.glob('vulytsia/*lobanovskoho*/index.html')).read_text(encoding='utf-8')
+        self.assertNotIn('Одна історія з вулиці', lob)           # переказ з датою відкинуто — блоку немає
+
+    def test_b1_u_publichnykh_failakh_nemaye_uryvkiv_rishen(self):
+        """ZAVDANNYA-110, Б-1: у публічних файлах немає уривків рішень, дат з годиною, сум, марок авто, посилань на рішення."""
+        import perekazy as PK
+        kand = json.loads(self.kandydaty.read_text(encoding='utf-8'))['vulytsi']
+        ids = sorted({i for v in kand.values() for i in v})
+        con = sqlite3.connect(f'file:{self.baza}?mode=ro', uri=True)
+        fabuly = []
+        for i in range(0, len(ids), 500):
+            ch = ids[i:i + 500]
+            fabuly += [f for (f,) in con.execute(f'SELECT fabula FROM event WHERE event_id IN ({",".join("?" * len(ch))})', ch) if f]
+        con.close()
+        n = PK.SPILNYKH_SLIV
+        uryvky = set()
+        for f in fabuly:
+            s = PK.slova(f)
+            uryvky |= {tuple(s[j:j + n]) for j in range(len(s) - n + 1)}
+        shablony = {
+            'дата': re.compile(r'\b\d{1,2}\.\d{1,2}\.\d{4}\b'),
+            'година': re.compile(r'\d{1,2}\s*год\.?\s*\d{1,2}\s*хв'),
+            'сума з рішення': re.compile(r'\d[\d\s]*грн\.?\s*\d+\s*коп|\d+\s*(гривень|доларів|USD)', re.I),
+            'марка авто': PK.MARKY,
+            'посилання на рішення': re.compile(r'reyestr\.court\.gov\.ua/(Review|files)'),
+        }
+        znaideno = []
+        for p in sorted(self.sait.rglob('*')):
+            if not p.is_file() or p.suffix not in ('.html', '.json') or 'zahlushka' in p.relative_to(self.sait).parts:
+                continue
+            t = p.read_text(encoding='utf-8')
+            if p.suffix == '.html':
+                t = re.sub(r'<script[^>]*>.*?</script>|<[^>]+>', ' ', t, flags=re.S)
+            for nazva, sh in shablony.items():
+                m = sh.search(t)
+                if m:
+                    znaideno.append((str(p.relative_to(self.sait)), nazva, m.group(0)))
+            s = PK.slova(t)
+            for j in range(len(s) - n + 1):
+                if tuple(s[j:j + n]) in uryvky:
+                    znaideno.append((str(p.relative_to(self.sait)), 'уривок рішення', ' '.join(s[j:j + n])))
+                    break
+        self.assertEqual(znaideno[:10], [])
+
     def test_nemaye_sliv_pro_nebezpeku(self):
         znaideno = []
         for p in self.nashi_storinky():
@@ -337,7 +420,7 @@ class Sait(unittest.TestCase):
     def test_povtornyi_zapusk_daye_ti_sami_faily(self):
         druhyi = Path(self.tmp.name) / 'sait2'
         self.zs.zibraty_sait(self.baza, druhyi, self.pereim, KORIN / 'data' / 'borders.json',
-                             budynky=self.budynky, mezha_failiv=10 ** 6)
+                             budynky=self.budynky, mezha_failiv=10 ** 6, perekazy=self.perekazy)
         self.assertEqual(vidbytok_teky(self.sait), vidbytok_teky(druhyi))
 
     def test_sitemap_robots_i_rozmitka(self):

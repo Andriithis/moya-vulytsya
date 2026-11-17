@@ -2,6 +2,7 @@
 
     python site/zibraty_sait.py <events.db> <тека> [--pereimenuvannya CSV] [--mezhi-rayoniv JSON]
                                 [--adresa-saitu https://…] [--koloda КОЛОДА]
+                                [--perekazy perekazy.json] [--kandydaty-istorii kandydaty.json]
 
 Що збирає (лише файли, без сервера — під Cloudflare Pages):
   /                         головна: пошук вулиці, входи в карту, покажчик, гру, звіт
@@ -379,14 +380,14 @@ def storinka_vulytsi(dn: D.Dani, v: D.Vulytsia, pr: dict, adresa_saitu: str, sus
 <p class="prymitka">Описи подій і коли. Числа по будинку й скарги 1551 — безкоштовно на сторінках будинків{" нижче" if budynky else ""}.</p></div></div>
 <script type="application/json" id="soty-vulytsi">{json.dumps(soty_vulytsi, separators=(",", ":"))}</script></section>''')
 
-    # Історія
+    # Історія (ZAVDANNYA-110, Б-1): лише переказ ШІ, перевірений програмою (sait/perekazy.py); без дати, години,
+    # суми й посилання на рішення — на відкритих сторінках описів справ і посилань на рішення немає.
     if pr['istoriia']:
         ist = pr['istoriia']
-        dzherelo = f' <a href="{e(ist["url"])}" rel="nofollow noopener" target="_blank">Рішення суду</a>.' if ist.get('url') else ''
         chastyny.append(f'''<section class="rozdil"><h2>Одна історія з вулиці</h2>
-<div class="kartka istoriia"><span class="mitka mitka--chernetka">Чернетка, перепише ШІ</span>
+<div class="kartka istoriia"><span class="mitka">Переказ ШІ</span>
 <blockquote>{e(ist["tekst"])}</blockquote>
-<p>{e(ist["vyd"])}{", " + str(ist["rik"]) + " рік" if ist.get("rik") else ""}. Уривок з рішення суду; імена й номери квартир прибрано.{dzherelo}</p></div></section>''')
+<p>{e(ist["vyd"])}{", " + str(ist["rik"]) + " рік" if ist.get("rik") else ""}. Переказ рішення суду простими словами: без імен, дат і адрес, нічого не додано.</p></div></section>''')
 
     # Будинки вулиці (MV-99, MV-100): лише посилання; числа — на сторінках будинків.
     if budynky:
@@ -747,7 +748,8 @@ def kopiyuvaty_spilne(vykhid: Path) -> None:
 def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_rayoniv: Path | None,
                  adresa_saitu: str = ADRESA_SAITU, koloda: Path | None = None,
                  zvit_zvedennia: Path | None = None, budynky: Path | None = None,
-                 mezha_failiv: int | None = None, khostynh: str = 'pages') -> dict:
+                 mezha_failiv: int | None = None, khostynh: str = 'pages', perekazy: Path | None = None,
+                 kandydaty_istorii: Path | None = None) -> dict:
     """khostynh: 'pages' — кожна сторінка файлом (межа 20 000); 'workers' — будинки в пачках (site/khostynh.py)."""
     import khostynh as KH
     if khostynh not in KH.VARIANTY:
@@ -756,6 +758,8 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
         mezha_failiv = KH.MEZHA_FAILIV[khostynh]
     adresa_saitu = adresa_saitu.rstrip('/')
     dn = D.zibraty_dani(baza, pereimenuvannya, mezhi_rayoniv)
+    import perekazy as PK
+    dn.perekazy = PK.prochytaty(perekazy)
     if vykhid.exists():
         shutil.rmtree(vykhid)
     vykhid.mkdir(parents=True)
@@ -775,8 +779,12 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
 
     adresy = ['/', '/karta/', '/vulytsi/']
     tsentry_vulyts = {}
+    kand_istorii, istorii = {}, 0
     for v in vulytsi:
         pr = D.profil_vulytsi(dn, v)
+        if pr['kandydaty_istorii']:
+            kand_istorii[v.slug] = pr['kandydaty_istorii']
+        istorii += bool(pr['istoriia'])
         if pr['soty']:
             # Куди летіти з пошуку: центр соти вулиці, де найбільше подій (центр соти, не адреса).
             k = max(pr['soty'], key=lambda x: (x[1], x[0]))[0]
@@ -794,6 +802,10 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
         zapysaty_bajty(vykhid / 'vulytsia' / v.slug / 'kartynka.png', kartynka_vulytsi(v, pr['vsogo'], b_vul, kolory))
         if len(v.nedavni) >= MIN_PODII_DLYA_POSHUKU:
             adresy.append(f'/vulytsia/{v.slug}/')
+
+    if kandydaty_istorii:   # для кроку перекладів ШІ (dani-edrsr/src/perekazy_istorii.py)
+        zapysaty(kandydaty_istorii, json.dumps({'versiia': dn.versiia, 'vulytsi': kand_istorii}, ensure_ascii=False,
+                                               indent=0, sort_keys=True))
 
     # Переадресації зі старих назв.
     zainiati = {v.slug for v in dn.vulytsi.values()}
@@ -869,6 +881,7 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
         'budynkiv_u_poshuku': sum(1 for b in bud.spysok if M.Budynky.indeksuvaty(b)) if bud else 0,
         'adres_u_sitemap': len(adresy), 'khostynh': khostynh,
         'pachok_budynkiv': pachky.n if pachky is not None else 0,
+        'istorii_vulyts': istorii, 'perekaziv_u_faili': len(dn.perekazy),
     }
     if khostynh == 'workers':
         zvit['teka_workera'] = str(KH.pidhotuvaty_worker(vykhid, pachky.n if pachky is not None else 1))
@@ -901,10 +914,13 @@ def main(argv=None) -> int:
     p.add_argument('--budynky', type=Path, help='зведення будинків з dani-edrsr (src/budynky_sait.py) — сторінки будинків')
     p.add_argument('--khostynh', choices=('pages', 'workers'), default='pages',
                    help='pages — кожна сторінка файлом; workers — будинки в пачках для Cloudflare Workers (docs/HOSTYNG.md)')
+    p.add_argument('--perekazy', type=Path, help='перекази ШІ для історій вулиць (dani-edrsr/src/perekazy_istorii.py); '
+                   'без них блоку «Одна історія з вулиці» немає')
+    p.add_argument('--kandydaty-istorii', type=Path, help='куди записати події-кандидати історій вулиць (вхід кроку переказів)')
     p.add_argument('--mezha-failiv', type=int, help='межа кількості файлів (план хостингу; без ключа — 20 000)')
     a = p.parse_args(argv)
     zvit = zibraty_sait(a.baza, a.vykhid, a.pereimenuvannya, a.mezhi_rayoniv, a.adresa_saitu, a.koloda,
-                        a.zvit_zvedennia, a.budynky, a.mezha_failiv, a.khostynh)
+                        a.zvit_zvedennia, a.budynky, a.mezha_failiv, a.khostynh, a.perekazy, a.kandydaty_istorii)
     for k, v in zvit.items():
         print(f'{k}: {v}')
     return 0

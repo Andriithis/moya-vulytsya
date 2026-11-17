@@ -29,6 +29,7 @@ except ImportError:  # pragma: no cover — без h3 немає лише кар
     h3 = None
 
 RIVEN_H3 = 9
+KANDYDATIV_ISTORII = 3      # скільки найсвіжіших подій вулиці віддаємо на переказ ШІ (ZAVDANNYA-110)
 ROKY = list(range(2016, 2027))      # MV-2: Київ, 2016–2026
 OSTANNI_ROKY = 3
 # MV-32: безкоштовно — лише останні 3 роки. Числа за старші роки (і за події без року) не потрапляють
@@ -457,39 +458,7 @@ class Dani:
     soty: dict                                  # рівень H3 (7, 8, 9) → {клітинка: дані соти}
     vulytsi_podii: list = field(default_factory=list)
     rayony: object = None                       # межі районів (Rayony) — для назви району соти й пошуку
-
-
-def ochyshchena_istoriia(fabula: str | None, mezha: int = 300) -> str | None:
-    """Перші ~300 знаків фабули без імен і номерів квартир. None — якщо прибрати не вдалося."""
-    if not fabula:
-        return None
-    t = chystyi(fabula)
-    t = re.sub(r'ОСОБА_\d+', 'особа', t)
-    t = re.sub(r'(в|у)?\s*(кв\.|квартир[аиіу]|квартирі)\s*(№\s*)?\d+[-\w]*', '', t, flags=re.I)
-    t = re.sub(r'АДРЕСА_\d+', 'за адресою', t)
-    t = re.sub(r'\b(АДРЕСА|ІНФОРМАЦІЯ|НОМЕР|ДАТА|ПІБ)_\d+', '…', t)
-    # Номери будинків (MV-3: на безкоштовній сторінці немає адрес): «вул. Хрещатик, 42» → «вул. Хрещатик»,
-    # «біля будинку 12» → «біля будинку», «буд. 5» → «будинку».
-    t = re.sub(r'((?:вул|просп|пр-т|пр|бульв|пров|пл|наб|вулиц[яіі]|проспект[уі]?|бульвар[уі]?|провул[ок]\w*|площ[аіу]|шосе|узвіз)\.?\s+'
-               r'[А-ЯІЇЄҐA-Z0-9][^,;.]{0,50}?)\s*,\s*(буд\.\s*|будинок\s*|№\s*)?\d+[\w/-]*', r'\1', t)
-    t = re.sub(r'\b(будинок|будинку|будинком|будинка)\s*(№\s*)?\d+[а-яa-z]?([/-]\d*[а-яa-z]?)*', r'\1', t, flags=re.I)
-    t = re.sub(r'\bбуд\.\s*(№\s*)?\d+[а-яa-z]?([/-]\d*[а-яa-z]?)*', 'будинку', t, flags=re.I)
-    t = re.sub(r'№\s*\d+[\w/-]*', '', t)
-    t = re.sub(r'\s+([,.;:])', r'\1', t)
-    t = re.sub(r'\s{2,}', ' ', t).strip()
-    if NOMER_BUDYNKU.search(t):
-        return None
-    # Імена, що могли лишитися: «Іванов І.І.», «гр. Петренко».
-    if re.search(r'[А-ЯІЇЄҐ][а-яіїєґ\']+\s+[А-ЯІЇЄҐ]\.\s?[А-ЯІЇЄҐ]\.', t) or re.search(r'\bгр\.\s*[А-ЯІЇЄҐ]', t):
-        return None
-    if re.search(r'кв\.|квартир', t, re.I) or '_' in t:
-        return None
-    if ZABORONENI_SLOVA.search(t):
-        return None
-    t = t[:1].upper() + t[1:]
-    if len(t) > mezha:
-        t = t[:mezha].rsplit(' ', 1)[0].rstrip(',;:—-') + '…'
-    return t
+    perekazy: dict = field(default_factory=dict)   # event_id → переказ ШІ для історії вулиці (perekazy.py)
 
 
 def zibraty_dani(baza: Path, pereimenuvannia: Path | None, mezhi_rayoniv: Path | None) -> Dani:
@@ -753,9 +722,10 @@ DNI = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'нд']
 
 
 def profil_vulytsi(dani: Dani, v: Vulytsia) -> dict:
-    """Узагальнене для безкоштовної сторінки: без адрес подій і описів, крім однієї чернетки історії
-    (MV-27, MV-25). Лише події за останні 3 роки (MV-32); про старші — лише прапорець «stari»."""
+    """Узагальнене для безкоштовної сторінки: без адрес подій і описів, крім однієї історії — переказу ШІ
+    (MV-27, MV-25, ZAVDANNYA-110). Лише події за останні 3 роки (MV-32); про старші — лише прапорець «stari»."""
     import datetime
+    import perekazy as PK
     podii = [dani.podii[i] for i in v.nedavni]
     vidkryti = [p for p in podii if not p.chutlyva]
     roky = Counter(p.rik for p in podii)
@@ -794,14 +764,16 @@ def profil_vulytsi(dani: Dani, v: Vulytsia) -> dict:
     soty = Counter(h3.latlng_to_cell(p.lat, p.lon, 9) for p in vidkryti if p.lat is not None) if h3 else Counter()
     mists = len({(round(p.lat, 5), round(p.lon, 5)) for p in vidkryti if p.lat is not None})
 
-    # Історія: найсвіжіша подія з придатною фабулою (не насильство, не чутлива).
+    # Історія (ZAVDANNYA-110, Б-1; MV-25, MV-110): лише переказ ШІ, що пройшов перевірку програмою; сирої фабули
+    # на відкритій сторінці немає. Кандидати — найсвіжіші події з фабулою (не насильство, не чутливі); переказ —
+    # з файлу кроку dani-edrsr/src/perekazy_istorii.py. Переказу немає — історії немає.
+    kandydaty = [p for p in sorted(vidkryti, key=lambda p: (p.data or '', p.event_id), reverse=True)
+                 if p.vyd not in ('НАС',) and p.fabula][:KANDYDATIV_ISTORII]
     istoriia = None
-    for p in sorted(vidkryti, key=lambda p: (p.data or '', p.event_id), reverse=True):
-        if p.vyd in ('НАС',) or not p.fabula:
-            continue
-        t = ochyshchena_istoriia(p.fabula)
-        if t and len(t) >= 80:
-            istoriia = {'tekst': t, 'rik': p.rik, 'vyd': vyd_lyudskoyu(p.stattia, p.vyd), 'url': p.url}
+    for p in kandydaty:
+        t = dani.perekazy.get(p.event_id)
+        if t and not PK.vady(t, p.fabula):
+            istoriia = {'tekst': t, 'rik': p.rik, 'vyd': vyd_lyudskoyu(p.stattia, p.vyd), 'event_id': p.event_id}
             break
 
     return {
@@ -809,6 +781,7 @@ def profil_vulytsi(dani: Dani, v: Vulytsia) -> dict:
         'vyriznennia': vyriznennia, 'rytm': rytm, 'z_chasom': z_chasom,
         'naichastishe': sorted(vydy.items(), key=lambda x: (-x[1], x[0]))[:3],
         'soty': sorted(soty.items()), 'mists': mists, 'istoriia': istoriia,
+        'kandydaty_istorii': [p.event_id for p in kandydaty],
         'pershyi_rik': min(roky, default=None),
         'ostannii_rik': max(roky, default=None),
     }
