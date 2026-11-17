@@ -996,6 +996,7 @@ class SaitUBrauzeri(unittest.TestCase):
         self.assertIn('shcho=analiz', href)
         s.click('#oplata-poshta')
         s.wait_for_selector('#adresa2')
+        s.wait_for_function("() => document.querySelector('#adresa2').value !== ''", timeout=5000)   # поле заповнює скрипт після завантаження
         self.assertEqual(s.input_value('#adresa2'), 'вулиця Хрещатик, 22')
         self.assertEqual(s.input_value('#shcho'), 'analiz')
         self.assertEqual(pomylky, [])
