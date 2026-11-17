@@ -336,5 +336,79 @@ class Sait(unittest.TestCase):
         self.assertNotIn('/zahlushka/hra/', (self.sait / 'karta' / 'index.html').read_text(encoding='utf-8'))
 
 
+class Osm(unittest.TestCase):
+    """ZAVDANNYA-123: координати станцій і схованок — з еталона OpenStreetMap (site/ihry/osm-tochky.json), не з пам'яті."""
+
+    def test_zrazky_prokhodiat(self):
+        for f in SPRAVY:
+            DT.zvirka_osm(DT.prochytaty(f))
+
+    def test_zsunutyi_variant_ne_prokhodyt(self):
+        s = DT.prochytaty(SPRAVY[0])
+        s['polia']['de']['kandydaty'][0]['lat'] += 0.003          # ≈ 330 м
+        with self.assertRaisesRegex(DT.PomylkaSpravy, 'OSM: варіант'):
+            DT.zvirka_osm(s)
+
+    def test_skhovanka_daleko_vid_oriientyra(self):
+        s = DT.prochytaty(SPRAVY[0])
+        s['slidy'][3]['tsil'].update(lat=50.4497, lon=30.485)      # стара точка «площі» — ≈ 620 м від Галицької площі
+        with self.assertRaisesRegex(DT.PomylkaSpravy, 'схованка сліду 4'):
+            DT.zvirka_osm(s)
+
+    def test_bez_osm_ne_prokhodyt(self):
+        s = DT.prochytaty(SPRAVY[1])
+        s['slidy'][0]['tsil'].pop('osm')
+        with self.assertRaisesRegex(DT.PomylkaSpravy, 'без точки еталона'):
+            DT.zvirka_osm(s)
+
+    def test_etalon(self):
+        e = json.loads((IHRY / 'osm-tochky.json').read_text(encoding='utf-8'))
+        self.assertIn('OpenStreetMap', e['pro'])
+        for k, t in e['tochky'].items():
+            self.assertRegex(t['osm'], r'^(node|way|relation)/\d+$', k)
+            self.assertTrue(50.2 < t['lat'] < 50.6 and 30.2 < t['lon'] < 30.9, k)
+
+    def test_kvalifikuy_tochky(self):
+        e = DT.osm_tochky()
+        for s in json.loads((IHRY / 'kvalifikuy.json').read_text(encoding='utf-8'))['spravy']:
+            if s.get('tochka'):
+                self.assertLess(DT.vidstan_m(s['tochka'], e[s['tochka']['osm']]), DT.OSM_STANTSIIA_M, s['id'])
+
+
+class Porih(unittest.TestCase):
+    """ZAVDANNYA-123: межа дрібного викрадення — з джерелом (закон № 3886-IX, чинний з 09.08.2024), не з пам'яті."""
+
+    def test_k1_za_novoiu_redaktsiieiu(self):
+        d = json.loads((IHRY / 'kvalifikuy.json').read_text(encoding='utf-8'))
+        t = ' '.join(s['chomu'] for s in d['spravy'])
+        self.assertNotIn('0,2 неоподатк', t)
+        self.assertNotIn('близько 300 грн', t)
+        self.assertIn('3 028 грн', t)
+        self.assertIn('3886-IX', d['dzherelo_poroha']['tekst'])
+        self.assertTrue(all(u.startswith('https://') for u in d['dzherelo_poroha']['posylannia']))
+
+
+class VulytsiaVKarti(unittest.TestCase):
+    """ZAVDANNYA-123: «Вулиця дня» в карті — робоча версія ZAVDANNYA-114, без заглушки."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.t = (IHRY / 'ihry.js').read_text(encoding='utf-8')
+
+    def test_bez_zahlushky(self):
+        self.assertNotIn('з\'явиться з повним випуском', self.t)
+        self.assertNotIn("'скоро', !DZH.vulytsia", self.t)
+
+    def test_robocha_versiia(self):
+        for shcho in ('V.pidkazkyDlia(zah)', 'V.vidkryti(nevd, zah)', "zah.chastyna", 'zvuzhennia',
+                      "?dzherelo=hra-vulytsia", '/oplata/?tovar=pidpyska&amp;dzherelo=hra-vulytsia', 'navigator.share',
+                      'Наступна вулиця — завтра', "'/karta/?hra=vulytsia'"):
+            self.assertIn(shcho, self.t)
+
+    def test_podilytysia_bez_nazvy(self):
+        # Текст «Поділитися» — з ядра (без назви вулиці); посилання — гра без ?data=
+        self.assertIn('V.tekstPodilytysia(VD.data, por, vRozghadano(), VD.d.sprob, location.origin + \'/karta/?hra=vulytsia\')', self.t)
+
+
 if __name__ == '__main__':
     unittest.main()

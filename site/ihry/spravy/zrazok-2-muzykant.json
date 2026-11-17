@@ -40,8 +40,8 @@
     {
      "id": "maidan",
      "nazva": "«Майдан Незалежності»",
-     "lat": 50.4501,
-     "lon": 30.524,
+     "lat": 50.44994,
+     "lon": 30.52444,
      "oznaky": {
       "liniia": "синя",
       "pivden_vid_kontraktovoi": true,
@@ -50,115 +50,125 @@
      },
      "slova": [
       "Майдан"
-     ]
+     ],
+     "osm": "maidan"
     },
     {
      "id": "poshtova",
      "nazva": "«Поштова площа»",
-     "lat": 50.459,
-     "lon": 30.5253,
+     "lat": 50.45878,
+     "lon": 30.52489,
      "oznaky": {
       "liniia": "синя",
       "pivden_vid_kontraktovoi": true,
       "peresadka": false,
       "pislia_poshtovoi": false
-     }
+     },
+     "osm": "poshtova"
     },
     {
      "id": "kontraktova",
      "nazva": "«Контрактова площа»",
-     "lat": 50.4655,
-     "lon": 30.5151,
+     "lat": 50.46584,
+     "lon": 30.51508,
      "oznaky": {
       "liniia": "синя",
       "pivden_vid_kontraktovoi": false,
       "peresadka": false,
       "pislia_poshtovoi": false
-     }
+     },
+     "osm": "kontraktova"
     },
     {
      "id": "shevchenka",
      "nazva": "«Тараса Шевченка»",
-     "lat": 50.473,
-     "lon": 30.505,
+     "lat": 50.47354,
+     "lon": 30.50454,
      "oznaky": {
       "liniia": "синя",
       "pivden_vid_kontraktovoi": false,
       "peresadka": false,
       "pislia_poshtovoi": false
-     }
+     },
+     "osm": "shevchenka"
     },
     {
      "id": "huh",
      "nazva": "«Площа Українських Героїв»",
-     "lat": 50.4392,
-     "lon": 30.5163,
+     "lat": 50.43942,
+     "lon": 30.51664,
      "oznaky": {
       "liniia": "синя",
       "pivden_vid_kontraktovoi": true,
       "peresadka": true,
       "pislia_poshtovoi": false
-     }
+     },
+     "osm": "huh"
     },
     {
      "id": "olimpiiska",
      "nazva": "«Олімпійська»",
-     "lat": 50.4318,
-     "lon": 30.516,
+     "lat": 50.43228,
+     "lon": 30.5164,
      "oznaky": {
       "liniia": "синя",
       "pivden_vid_kontraktovoi": true,
       "peresadka": false,
       "pislia_poshtovoi": false
-     }
+     },
+     "osm": "olimpiiska"
     },
     {
      "id": "khreshchatyk",
      "nazva": "«Хрещатик»",
-     "lat": 50.4473,
-     "lon": 30.5228,
+     "lat": 50.44719,
+     "lon": 30.52295,
      "oznaky": {
       "liniia": "червона",
       "pivden_vid_kontraktovoi": false,
       "peresadka": true,
       "pislia_poshtovoi": false
-     }
+     },
+     "osm": "khreshchatyk"
     },
     {
      "id": "teatralna",
      "nazva": "«Театральна»",
-     "lat": 50.4451,
-     "lon": 30.5178,
+     "lat": 50.44521,
+     "lon": 30.51804,
      "oznaky": {
       "liniia": "червона",
       "pivden_vid_kontraktovoi": false,
       "peresadka": true,
       "pislia_poshtovoi": false
-     }
+     },
+     "osm": "teatralna"
     },
     {
      "id": "zoloti",
      "nazva": "«Золоті ворота»",
-     "lat": 50.4485,
-     "lon": 30.5135,
+     "lat": 50.44825,
+     "lon": 30.51348,
      "oznaky": {
       "liniia": "зелена",
       "pivden_vid_kontraktovoi": false,
       "peresadka": true,
       "pislia_poshtovoi": false
-     }
+     },
+     "osm": "zoloti"
     },
     {
      "id": "palats",
      "nazva": "«Палац спорту»",
-     "lat": 50.4381,
-     "lon": 30.521,
+     "lat": 50.43829,
+     "lon": 30.52087,
      "oznaky": {
       "liniia": "зелена",
       "pivden_vid_kontraktovoi": false,
       "peresadka": true,
       "pislia_poshtovoi": false
-     }
+     },
+     "osm": "palats"
     }
    ]
   },
@@ -319,9 +329,10 @@
    "n": 1,
    "zahadka": "Слід 1 — на площі на Подолі, де стоїть фонтан із Самсоном.",
    "tsil": {
-    "lat": 50.4652,
-    "lon": 30.5157,
-    "radius_m": 500
+    "lat": 50.464,
+    "lon": 30.517,
+    "radius_m": 500,
+    "osm": "samson"
    },
    "rechennia": [
     {
@@ -342,9 +353,10 @@
    "n": 2,
    "zahadka": "Слід 2 — біля барокової церкви на верху узвозу, що з'єднує Поділ і Старе місто.",
    "tsil": {
-    "lat": 50.4589,
-    "lon": 30.5178,
-    "radius_m": 400
+    "lat": 50.459,
+    "lon": 30.51799,
+    "radius_m": 400,
+    "osm": "andriivska"
    },
    "rechennia": [
     {
@@ -365,9 +377,10 @@
    "n": 3,
    "zahadka": "Слід 3 — біля монастиря із золотими банями на горі над Подолом.",
    "tsil": {
-    "lat": 50.4557,
-    "lon": 30.523,
-    "radius_m": 350
+    "lat": 50.45577,
+    "lon": 30.5229,
+    "radius_m": 350,
+    "osm": "mykhailivskyi"
    },
    "rechennia": [
     {
@@ -400,9 +413,10 @@
    "n": 4,
    "zahadka": "Слід 4 — біля відбудованої брами давнього Києва.",
    "tsil": {
-    "lat": 50.4488,
-    "lon": 30.5132,
-    "radius_m": 400
+    "lat": 50.44885,
+    "lon": 30.51337,
+    "radius_m": 400,
+    "osm": "zoloti_vorota"
    },
    "rechennia": [
     {
@@ -434,9 +448,10 @@
    "n": 5,
    "zahadka": "Слід 5 — біля нижньої станції фунікулера, де грає Данило.",
    "tsil": {
-    "lat": 50.4597,
-    "lon": 30.5255,
-    "radius_m": 400
+    "lat": 50.45922,
+    "lon": 30.52628,
+    "radius_m": 400,
+    "osm": "poshtova_ploshcha"
    },
    "rechennia": [
     {
@@ -472,9 +487,10 @@
    "n": 6,
    "zahadka": "Останній слід — там, де, на вашу думку, усе сталося. Якщо місце правильне, слід з'явиться.",
    "tsil": {
-    "lat": 50.4501,
-    "lon": 30.524,
-    "radius_m": 400
+    "lat": 50.44994,
+    "lon": 30.52444,
+    "radius_m": 400,
+    "osm": "maidan"
    },
    "rechennia": [
     {
