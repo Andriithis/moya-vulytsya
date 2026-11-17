@@ -922,8 +922,8 @@
 
     // ---------- «вау» 2: роки оживають — місяць за місяцем від січня 2024 соти «наливаються» до сьогоднішнього вигляду ----------
     var OZHYVA = null;
-    function vauOzhyvannia() {
-      if (CHAS.ost < 1) return;
+    function vauOzhyvannia(pislia) {
+      if (CHAS.ost < 1) { if (pislia) pislia(); return; }
       ETALON = {};
       RIVNI.forEach(function (G) { ETALON[G.id] = Array.from(HEXB[G.id].values()).map(function (b) { return b.nf; }).filter(function (n) { return n > 0; }).sort(function (a, b) { return a - b; }); });
       var lich = ekran.querySelector('.vau-lich') || document.createElement('div');
@@ -933,6 +933,7 @@
         clearInterval(OZHYVA); OZHYVA = null; ETALON = null; CHAS.krok = 'usi'; zastosuvatyChas();
         lich.classList.add('vau-lich--hasne'); setTimeout(function () { lich.remove(); }, 900);
         konteiner.removeEventListener('pointerdown', kinets);
+        if (pislia) { var p = pislia; pislia = null; p(); }
       };
       var krok = function () {
         zastosuvatyMisiatsi(0, i); pererakhuvaty(); zafarbuvaty();
@@ -976,16 +977,19 @@
       ekran.appendChild(ryad);
     }
 
-    // Який «вау» — з адреси сторінки (?vau=1|2|3; для вибору Андрієм). Без параметра — без «вау», як зараз.
+    // «Вау» за MV-120: за замовчуванням — «Роки оживають», після нього — запрошення «Де ви живете?».
+    // ?vau=0 — без «вау»; ?vau=1|2|3 — окремі варіанти (для перевірок і знімків).
     var VAU_ZROBLENO = false;
     function pochatyVau() {
       if (VAU_ZROBLENO) return; VAU_ZROBLENO = true;
       CHAS.ost = ostanniiMisiats(); CHAS.cm = Math.max(0, CHAS.ost);
       zbuduvatySmuhu();
       var v = (location.search.match(/[?&]vau=(\d)/) || [])[1];
+      if (v === '0') return;
       if (v === '1') vauProstupaie();
       else if (v === '2') vauOzhyvannia();
       else if (v === '3') vauProstupaie(vauRayony);
+      else vauOzhyvannia(vauRayony);
     }
     MV.chas = function (krok, cm) { CHAS.krok = krok; if (cm != null) CHAS.cm = cm; zastosuvatyChas(); return nazvaPeriodu(); };
     MV.vau = function (v) { if (v === 1) vauProstupaie(); else if (v === 2) vauOzhyvannia(); else if (v === 3) vauRayony(); };
