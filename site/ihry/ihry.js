@@ -89,6 +89,7 @@
   function zakryty() { panel.hidden = true; knopka.setAttribute('aria-expanded', 'false'); rezhym(null); prybratyMitky(); }
   knopka.addEventListener('click', function () { if (panel.hidden) vidkryty(); else zakryty(); });
   panel.addEventListener('click', function (e) {
+    if (panel.classList.contains('zghornuta') && e.target.closest('.i-shap') && !e.target.closest('[data-i]')) { panel.classList.remove('zghornuta'); return; }
     var t = e.target.closest('[data-i]'); if (!t) return;
     var dia = t.getAttribute('data-i');
     if (dia === 'x') zakryty();
@@ -100,6 +101,7 @@
       (bezNazad ? '' : '<button type="button" class="i-nazad" data-i="nazad" aria-label="До списку ігор">‹</button>') +
       '<h2>' + esc(nazva) + '</h2><button type="button" class="i-x" data-i="x" aria-label="Закрити ігри">×</button></div>' +
       '<div class="i-tilo">' + tilo + '</div>';
+    panel.scrollTop = 0;
   }
   function pokazaty(gra) {
     ZARAZ = gra;
