@@ -51,6 +51,9 @@ class Cherha:
         self.db.row_factory = sqlite3.Row
         self.db.executescript(SKHEMA)
 
+    def zakryty(self):
+        self.db.close()
+
     # ---------------------------------------------------------------- журнал
     def zapys(self, podiia: str, povidomlennia: str, o: dict | None = None, merezha: str = '', koly: datetime | None = None):
         o = o or {}
