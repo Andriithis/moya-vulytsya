@@ -664,7 +664,7 @@ class Sait(unittest.TestCase):
         self.assertIn('надійшло 7 звернень. Найчастіше — вода (5) і світло (2)', t)
         self.assertLess(t.index('>Вода<'), t.index('>Світло<'))      # теми — від більшої
         self.assertIn('Сусідній будинок у радіусі 300', t)
-        for k in ('Довідка — 199', '3 довідки — 449', 'Повний звіт — 599'):
+        for k in ('Довідка — 199', '3 довідки — 449', 'Повний звіт — 299'):
             self.assertIn(k, t)
         self.assertIn('Події за 2016–2023 з адресою будинку теж є — у підписці', t)
         tabl = t.split('Події з рішень')[1].split('</table>')[0]
@@ -712,7 +712,7 @@ class Sait(unittest.TestCase):
         for shl in ('rayony', 'rayon/pecherskyi', 'miy-budynok', 'osbb', 'sudova-praktyka', 'biznes', 'oplata', 'vydalyty', 'pro-dani'):
             self.assertTrue((self.sait / shl / 'index.html').is_file(), shl)
         mb = (self.sait / 'miy-budynok' / 'index.html').read_text(encoding='utf-8')
-        for k in ('199', '449', '599', '399', 'по 99', 'Підписка для рієлтора'):
+        for k in ('199', '449', '299', '399', 'по 99', 'Підписка для рієлтора'):
             self.assertIn(k, mb)
         # ZAVDANNYA-109, п. 5: період подій у продажу — з випуску (те саме правило, що в звіті), не «10 років»
         import sqlite3
@@ -745,7 +745,7 @@ class Sait(unittest.TestCase):
         і 0 за карту; 690 (MV-11) немає ніде; «Для бізнесу» — ціна за домовленістю з формою запиту."""
         import tsiny as T
         self.assertEqual({k: v for k, v in T.TSINY.items()},
-                         {'dovidka': 199, 'try': 449, 'zvit': 599, 'pidpyska': 399, 'dodatkova': 99, 'rieltor': 799,
+                         {'dovidka': 199, 'try': 449, 'zvit': 299, 'pidpyska': 399, 'dodatkova': 99, 'rieltor': 799,
                           'osbb': 1490, 'biznes': None})
         dozvoleni = T.dozvoleni_sumy()
         for f in self.storinky + sorted(self.sait.rglob('*.js')):
