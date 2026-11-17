@@ -457,6 +457,33 @@ class Dani:
     soty: dict                                  # рівень H3 (7, 8, 9) → {клітинка: дані соти}
     vulytsi_podii: list = field(default_factory=list)
     rayony: object = None                       # межі районів (Rayony) — для назви району соти й пошуку
+    roky_danykh: tuple | None = None            # (перший, останній) рік подій випуску — правило `roky_danykh`
+
+
+# Період подій для продажу (ZAVDANNYA-109, S-Зв.3 dani-edrsr): те саме правило, що й у звіті адреси
+# (`dani-edrsr/src/zvit/analityka.py`, `roky_danykh`) — рік береться, якщо рішень за нього у випуску щонайменше десята
+# частина від найповнішого року. Зараз — 2024–2026; після повного Києва — скільки буде. Не плутати з MV-2 (`ROKY`): це план
+# даних, а не те, що вже є.
+CHASTKA_ROKU = 10
+
+
+def roky_danykh(con) -> tuple | None:
+    rr = [(int(r), n) for r, n in con.execute(
+        'select substr(data_rishennia, 1, 4) r, count(*) n from document where data_rishennia is not null group by r order by r')
+        if r and r.isdigit()]
+    if not rr:
+        return None
+    mezha = max(n for _, n in rr) / CHASTKA_ROKU
+    roky = [r for r, n in rr if n >= mezha]
+    return roky[0], roky[-1]
+
+
+def period_podii(dn) -> str:
+    """«2024–2026» — роки подій, що вже є в даних (для вітрини й опису звіту)"""
+    r = getattr(dn, 'roky_danykh', None)
+    if not r:
+        return ''
+    return str(r[0]) if r[0] == r[1] else f'{r[0]}–{r[1]}'
 
 
 def ochyshchena_istoriia(fabula: str | None, mezha: int = 300) -> str | None:
@@ -606,8 +633,12 @@ def zibraty_dani(baza: Path, pereimenuvannia: Path | None, mezhi_rayoniv: Path |
             soty[riven] = soty_rivnia(podii, vulytsi_podii, varianty_slug, problemy, riven)
 
     zv = Zvedennia(vulytsi, varianty_slug, sumnivni, neodnoz, pereim_spysok)
+    try:
+        roky = roky_danykh(con)
+    except sqlite3.OperationalError:       # база без таблиці рішень — періоду не кажемо
+        roky = None
     con.close()
-    return Dani(versiia, podii, vulytsi, zv, misto_vydy, soty, vulytsi_podii, rayony)
+    return Dani(versiia, podii, vulytsi, zv, misto_vydy, soty, vulytsi_podii, rayony, roky)
 
 
 # ---------------------------------------------------------------- соти головної карти
