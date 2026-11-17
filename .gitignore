@@ -84,11 +84,15 @@ site/hra/vulytsia-dnia.json
 # Збирач сайту й спільні файли сторінок — у git; зібраний сайт (_site/) — ні.
 !site/zibraty_sait.py
 !site/storinky_mv100.py
+!site/storinky_sp.py
 !site/tsiny.py
 !site/khostynh.py
 !site/kartynky.py
 !site/worker/
 !site/sait/
+# === ІГРИ В КАРТІ (ZAVDANNYA-117) ===
+# Код ігор, перевірка справ «Детектива тижня», справи-зразки, «Кваліфікуй» і налаштування балів — у git.
+!site/ihry/
 # === РОЛИКИ (ZAVDANNYA-11) ===
 # Готові .mp4 у git не кладемо: їх завжди можна відрендерити заново (video/rendery.py).
 video/vyhid/

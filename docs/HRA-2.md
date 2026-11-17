@@ -1,5 +1,10 @@
 # Друга гра, що веде до підписки: варіанти й прототип «Вулиця дня»
 
+> **Стан після ZAVDANNYA-114 (17.11.2026, звіт — `docs/ZVIT-114.md`):** Андрій обрав «Вулицю дня» (MV-126). Робоча версія — у
+> меню ігор поруч із «Вгадай, де це було»; без кнопки «Ще одна загадка» й позначки «Прототип»; іде в збірку для публікації
+> лише з файлом загадок, звіреним із колодою (`site/zahlushka/zibraty.py --vulytsia-dnia`). Спальні райони (далі 7 км від
+> центру) — підказки раніше й ще одна: частина району. Рахунок подій `vd_*`. Нижче — як було на виборі, до цих змін.
+
 **ZAVDANNYA-101**, 17.11.2026. Писав виконавець (хмара). Лінія «Мій район» (`docs/KOMPAS.md`): гра приводить і повертає
 людей, прев'ю підписки (MV-12, MV-50, MV-52). Основа — `docs/IHRY.md`, `docs/IHRY-2.md`, гра «Вгадай, де це було»
 (`site/hra/`). **Видиме людям — лише варіанти й прототип на вибір Андрію; нічого не опубліковано.**
@@ -110,13 +115,14 @@
 | `site/hra/vulytsia_dnia.py` | збирач: випуск + колода → `site/hra/vulytsia-dnia.json` (поза git, бо з колоди, S-В.5) |
 | `site/hra/vulytsia.html`, `vulytsia.js`, `vulytsia.css` | сторінка гри; карта — та сама, що в «Де це було?» (`hra-karta.js`) |
 | `site/hra/vulytsia-yadro.js` | порівняння, пошук назв, підказки, загадка дня, текст «поділитися» |
-| `tests/test_hra_vulytsia.py` | перевірка однозначності, ядро, заборонені слова, «прототип не йде в публікацію» |
+| `tests/test_hra_vulytsia.py` | перевірка однозначності, ядро, заборонені слова, збирання для публікації (з ZAVDANNYA-114) |
 | `tests/znimky_hry_vulytsia.js` | знімки (Node.js і Playwright) → `docs/znimky-101/` |
 
 ```
 python site/hra/vulytsia_dnia.py --baza events-2026-11-08.db --koloda koloda-2026-11-08.json \
     --pereimenuvannia ../dani-edrsr/config/pereimenuvannia-kyiv.csv
-python site/zahlushka/zibraty.py            # прототип іде лише в збірку для перегляду
+python site/zahlushka/zibraty.py --koloda koloda-2026-11-08.json   # перегляд; для публікації — ще --dlya-publikatsiyi
+                                            #   і --vulytsia-dnia site/hra/vulytsia-dnia.json (з ZAVDANNYA-114)
 node tests/znimky_hry_vulytsia.js           # або відкрити _site/zahlushka/hra/vulytsia.html через локальний сервер
 ```
 

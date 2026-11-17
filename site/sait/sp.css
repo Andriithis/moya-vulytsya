@@ -1,0 +1,32 @@
+/* «Судова практика» (ZAVDANNYA-111, прототип ZAVDANNYA-86) — доповнення до sait.css (вигляд М7, docs/STYL.md). Без червоного, без градієнтів. */
+.sp-smuhy { display: flex; flex-direction: column; gap: 8px; max-width: 760px; }
+.sp-ryad { display: grid; grid-template-columns: minmax(150px, 260px) 1fr 52px 64px; align-items: center; gap: 12px; font-size: 15px; }
+.sp-ryad__nazva { color: var(--ink); }
+.sp-ryad b { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+.sp-ryad small { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+.sp-smuha { height: 12px; background: var(--surface-tint); border-radius: var(--radius-pill); overflow: hidden; }
+.sp-smuha i { display: block; height: 100%; background: var(--accent); border-radius: var(--radius-pill); }
+.sp-roky { grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); }
+.sp-tablytsia-ramka { overflow-x: auto; border: 1.5px solid var(--mezha); border-radius: var(--radius-m); background: var(--surface); box-shadow: 0 3px 0 var(--bort); }
+.sp-tablytsia { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.sp-tablytsia th, .sp-tablytsia td { padding: 8px 12px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.sp-tablytsia th:first-child { text-align: left; }
+.sp-tablytsia thead th { font-weight: 600; color: var(--muted); font-size: 12px; white-space: normal; vertical-align: bottom; }
+.sp-tablytsia tbody th { font-weight: 600; }
+.sp-tablytsia td.sp-malo { color: var(--muted); font-style: italic; }
+.sp-tablytsia--zamk td.sp-zamk { color: var(--muted); }
+.sp-filtry { flex-direction: row; flex-wrap: wrap; gap: 12px; }
+.sp-filtry label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.sp-filtry select { font: inherit; font-size: 15px; color: var(--ink); background: var(--surface); border: 1.5px solid var(--mezha);
+  border-radius: var(--radius-m); box-shadow: 0 3px 0 var(--bort); padding: 8px 12px; min-width: 150px; }
+.sp-spysok { margin: 0; padding-left: 20px; max-width: 760px; display: flex; flex-direction: column; gap: 8px; color: var(--ink-2); }
+.sp-faq h3 { margin: 0 0 6px; font-size: 17px; }
+.sp-faq p { margin: 0; color: var(--ink-2); max-width: 760px; }
+@media (max-width: 640px) {
+  .sp-ryad { grid-template-columns: 1fr 52px; row-gap: 4px; }
+  .sp-ryad .sp-smuha { grid-column: 1 / -1; grid-row: 2; }
+  .sp-ryad small { display: none; }
+}
+.sp-pidzaholovok { margin: 8px 0 0; font-size: 17px; font-weight: 700; }
+.sp-filtry { display: flex; }
+.sp-filtry--zamk select { opacity: .6; cursor: not-allowed; }
