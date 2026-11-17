@@ -1,0 +1,520 @@
+{
+ "id": "zrazok-1-sirvi-kit",
+ "nazva": "Справа сірого кота",
+ "poznachka": "Вигадана історія за мотивами справжньої справи",
+ "tyzhden": "2026-11-16",
+ "zrazok": true,
+ "rishennia": {
+  "nomer": "126333815",
+  "url": "https://reyestr.court.gov.ua/Review/126333815",
+  "sud": "Святошинський районний суд м. Києва",
+  "data": "2025-04-03",
+  "stattia": "ч. 4 ст. 186 КК",
+  "chas": "19:00",
+  "uryvky": [
+   "ОСОБА_3 09.09.2024 приблизно о 19.00 год. прослідував до виходу зі станції метро «Житомирська», що по пр. Берестейському, 136",
+   "ерпілого ОСОБА_7 та вихопив у останнього шкіряну сумку чорного кольору вартістю 35000 грн., в якій знаходився гаманець «Patek» чорного кольору вартістю 4000 грн., із гро",
+   "у потребу у коштах, в умовах воєнного стану, знаходячись поблизу виходу зі станції метро «Житомирська» по пр. Берестейському в м. Києві, вирішив вчинити грабіж чужого майна",
+   "визнати винуватим у вчиненні кримінального правопорушення, передбаченого ч.4 ст.186 КК України",
+   "Святошинський районний суд м. Києва (суд — з дампу ЄДРСР)"
+  ],
+  "spravzhni_nazvy": [
+   "Patek"
+  ]
+ },
+ "vulytsia": "проспект Берестейський",
+ "zaklady": [
+  {
+   "nazva": "кав'ярня «Сірий кіт»",
+   "rol": "навпроти виходу з метро; будь-яка схожість зі справжнім закладом випадкова",
+   "vyhadanyi": true
+  }
+ ],
+ "personazhi": [
+  {
+   "imia": "Бариста Марта",
+   "rol": "працює в кав'ярні «Сірий кіт» навпроти виходу з метро",
+   "vyhadanyi": true
+  },
+  {
+   "imia": "Таксист Орест",
+   "rol": "чекає на пасажирів біля того самого виходу",
+   "vyhadanyi": true
+  }
+ ],
+ "oriientyry": [],
+ "vyklyk": "Вересень 2024-го, понеділок. Біля одного з виходів київського метро в людини забрали річ — суд потім установив, як це було. Бариста Марта з кав'ярні «Сірий кіт» бачила все з-за вітрини, але її кав'ярні на карті немає: вона вигадана, як і всі свідки цієї історії. До неділі з'ясуйте: біля якої станції, що це за подія, о котрій порі доби і що саме забрали. Справу розглядав Святошинський районний суд.",
+ "polia": {
+  "de": {
+   "pytannia": "Біля якої станції метро?",
+   "vidpovid": "zhytomyrska",
+   "kandydaty": [
+    {
+     "id": "zhytomyrska",
+     "nazva": "«Житомирська»",
+     "lat": 50.4561,
+     "lon": 30.3655,
+     "oznaky": {
+      "liniia": "червона",
+      "kintseva": false,
+      "nazva_vid_mista": true,
+      "susid_kintsevoi": true
+     },
+     "slova": [
+      "Житомир"
+     ]
+    },
+    {
+     "id": "akademmistechko",
+     "nazva": "«Академмістечко»",
+     "lat": 50.4649,
+     "lon": 30.3552,
+     "oznaky": {
+      "liniia": "червона",
+      "kintseva": true,
+      "nazva_vid_mista": false,
+      "susid_kintsevoi": false
+     }
+    },
+    {
+     "id": "sviatoshyn",
+     "nazva": "«Святошин»",
+     "lat": 50.4578,
+     "lon": 30.3911,
+     "oznaky": {
+      "liniia": "червона",
+      "kintseva": false,
+      "nazva_vid_mista": false,
+      "susid_kintsevoi": false
+     }
+    },
+    {
+     "id": "nyvky",
+     "nazva": "«Нивки»",
+     "lat": 50.4587,
+     "lon": 30.4044,
+     "oznaky": {
+      "liniia": "червона",
+      "kintseva": false,
+      "nazva_vid_mista": false,
+      "susid_kintsevoi": false
+     }
+    },
+    {
+     "id": "beresteiska",
+     "nazva": "«Берестейська»",
+     "lat": 50.4588,
+     "lon": 30.4197,
+     "oznaky": {
+      "liniia": "червона",
+      "kintseva": false,
+      "nazva_vid_mista": true,
+      "susid_kintsevoi": false
+     }
+    },
+    {
+     "id": "shuliavska",
+     "nazva": "«Шулявська»",
+     "lat": 50.455,
+     "lon": 30.4453,
+     "oznaky": {
+      "liniia": "червона",
+      "kintseva": false,
+      "nazva_vid_mista": false,
+      "susid_kintsevoi": false
+     }
+    },
+    {
+     "id": "politekhnichnyi",
+     "nazva": "«Політехнічний інститут»",
+     "lat": 50.4508,
+     "lon": 30.4662,
+     "oznaky": {
+      "liniia": "червона",
+      "kintseva": false,
+      "nazva_vid_mista": false,
+      "susid_kintsevoi": false
+     }
+    },
+    {
+     "id": "syrets",
+     "nazva": "«Сирець»",
+     "lat": 50.4762,
+     "lon": 30.4307,
+     "oznaky": {
+      "liniia": "зелена",
+      "kintseva": true,
+      "nazva_vid_mista": false,
+      "susid_kintsevoi": false
+     }
+    },
+    {
+     "id": "dorohozhychi",
+     "nazva": "«Дорогожичі»",
+     "lat": 50.4734,
+     "lon": 30.4486,
+     "oznaky": {
+      "liniia": "зелена",
+      "kintseva": false,
+      "nazva_vid_mista": false,
+      "susid_kintsevoi": true
+     }
+    },
+    {
+     "id": "lukianivska",
+     "nazva": "«Лук'янівська»",
+     "lat": 50.4622,
+     "lon": 30.4818,
+     "oznaky": {
+      "liniia": "зелена",
+      "kintseva": false,
+      "nazva_vid_mista": false,
+      "susid_kintsevoi": false
+     }
+    }
+   ]
+  },
+  "shcho": {
+   "pytannia": "Що це за подія?",
+   "vidpovid": "hrabizh",
+   "kandydaty": [
+    {
+     "id": "kradizhka",
+     "nazva": "Крадіжка",
+     "stattia": "ст. 185",
+     "slova": [
+      "крадіж",
+      "викра"
+     ],
+     "oznaky": {
+      "vidkryto": false,
+      "nasylstvo": false,
+      "obman": false
+     }
+    },
+    {
+     "id": "hrabizh",
+     "nazva": "Грабіж",
+     "stattia": "ст. 186",
+     "slova": [
+      "грабі"
+     ],
+     "oznaky": {
+      "vidkryto": true,
+      "nasylstvo": false,
+      "obman": false
+     }
+    },
+    {
+     "id": "rozbii",
+     "nazva": "Розбій",
+     "stattia": "ст. 187",
+     "slova": [
+      "розбі"
+     ],
+     "oznaky": {
+      "vidkryto": true,
+      "nasylstvo": true,
+      "obman": false
+     }
+    },
+    {
+     "id": "shakhraistvo",
+     "nazva": "Шахрайство",
+     "stattia": "ст. 190",
+     "slova": [
+      "шахрай"
+     ],
+     "oznaky": {
+      "vidkryto": false,
+      "nasylstvo": false,
+      "obman": true
+     }
+    }
+   ]
+  },
+  "koly": {
+   "pytannia": "О котрій порі доби?",
+   "vidpovid": "vechir",
+   "kandydaty": [
+    {
+     "id": "ranok",
+     "nazva": "Ранок (6–12)",
+     "oznaky": {
+      "chastyna": "ranok"
+     },
+     "slova": [
+      "ранок",
+      "вранці",
+      "зранку"
+     ]
+    },
+    {
+     "id": "den",
+     "nazva": "День (12–17)",
+     "oznaky": {
+      "chastyna": "den"
+     },
+     "slova": [
+      "вдень",
+      "удень"
+     ]
+    },
+    {
+     "id": "vechir",
+     "nazva": "Вечір (17–23)",
+     "oznaky": {
+      "chastyna": "vechir"
+     },
+     "slova": [
+      "вечір",
+      "увечері",
+      "ввечері",
+      "вечора"
+     ]
+    },
+    {
+     "id": "nich",
+     "nazva": "Ніч (23–6)",
+     "oznaky": {
+      "chastyna": "nich"
+     },
+     "slova": [
+      "ніч",
+      "вночі",
+      "уночі"
+     ]
+    }
+   ]
+  },
+  "pole": {
+   "pytannia": "Що забрали?",
+   "vidpovid": "sumka",
+   "kandydaty": [
+    {
+     "id": "sumka",
+     "nazva": "Сумку",
+     "slova": [
+      "сумк"
+     ],
+     "oznaky": {
+      "mistkist": true,
+      "shkiriana": true
+     }
+    },
+    {
+     "id": "telefon",
+     "nazva": "Телефон",
+     "oznaky": {
+      "mistkist": false,
+      "shkiriana": false
+     }
+    },
+    {
+     "id": "hamanets",
+     "nazva": "Гаманець",
+     "oznaky": {
+      "mistkist": false,
+      "shkiriana": true
+     }
+    },
+    {
+     "id": "paket",
+     "nazva": "Пакет з покупками",
+     "oznaky": {
+      "mistkist": true,
+      "shkiriana": false
+     }
+    }
+   ]
+  }
+ },
+ "slidy": [
+  {
+   "n": 1,
+   "zahadka": "Почніть зі станції метро, що має ту саму назву, що й суд, який розглядав справу. Відшукайте станцію на карті й торкніться.",
+   "tsil": {
+    "lat": 50.4578,
+    "lon": 30.3911,
+    "radius_m": 500
+   },
+   "rechennia": [
+    {
+     "tekst": "Подія сталася в понеділок, близько 19:00.",
+     "dzherelo": "rishennia",
+     "tsytata": "09.09.2024 приблизно о 19.00 год.",
+     "umovy": [
+      {
+       "pole": "koly",
+       "oznaka": "chastyna",
+       "znachennia": "vechir"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "n": 2,
+   "zahadka": "Слід 2 — біля головного залізничного вокзалу міста.",
+   "tsil": {
+    "lat": 50.441,
+    "lon": 30.4885,
+    "radius_m": 600
+   },
+   "rechennia": [
+    {
+     "tekst": "Бариста Марта (кав'ярня «Сірий кіт») пам'ятає, що тієї години біля виходу було людно.",
+     "dzherelo": "vyhadka"
+    },
+    {
+     "tekst": "Річ не взяли потай — її вихопили.",
+     "dzherelo": "rishennia",
+     "tsytata": "вихопив у останнього",
+     "umovy": [
+      {
+       "pole": "shcho",
+       "oznaka": "vidkryto",
+       "znachennia": true
+      }
+     ]
+    },
+    {
+     "tekst": "Станція — на червоній лінії.",
+     "dzherelo": "pidkazka",
+     "umovy": [
+      {
+       "pole": "de",
+       "oznaka": "liniia",
+       "znachennia": "червона"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "n": 3,
+   "zahadka": "Слід 3 — біля станції метро, названої на честь великого технічного університету.",
+   "tsil": {
+    "lat": 50.4508,
+    "lon": 30.4662,
+    "radius_m": 500
+   },
+   "rechennia": [
+    {
+     "tekst": "Суд оцінив річ у 35 000 грн, а гаманець, що був усередині, — у 4 000 грн.",
+     "dzherelo": "rishennia",
+     "tsytata": "вартістю 35000 грн., в якій знаходився гаманець",
+     "umovy": [
+      {
+       "pole": "pole",
+       "oznaka": "mistkist",
+       "znachennia": true
+      }
+     ]
+    },
+    {
+     "tekst": "Потяги від потрібної станції їдуть далі: вона не кінцева.",
+     "dzherelo": "karta",
+     "umovy": [
+      {
+       "pole": "de",
+       "oznaka": "kintseva",
+       "znachennia": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "n": 4,
+   "zahadka": "Слід 4 — на площі, з якої починається проспект Берестейський (поруч — цирк). Торкніться самої площі.",
+   "tsil": {
+    "lat": 50.4497,
+    "lon": 30.485,
+    "radius_m": 600
+   },
+   "rechennia": [
+    {
+     "tekst": "Суд не встановив, що до людини застосували насильство.",
+     "dzherelo": "rishennia",
+     "tsytata": "передбаченого ч.4 ст.186 КК України",
+     "umovy": [
+      {
+       "pole": "shcho",
+       "oznaka": "nasylstvo",
+       "znachennia": false
+      }
+     ]
+    },
+    {
+     "tekst": "Назва потрібної станції походить від назви міста.",
+     "dzherelo": "karta",
+     "umovy": [
+      {
+       "pole": "de",
+       "oznaka": "nazva_vid_mista",
+       "znachennia": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "n": 5,
+   "zahadka": "Слід 5 — на кінцевій станції червоної лінії на заході міста.",
+   "tsil": {
+    "lat": 50.4649,
+    "lon": 30.3552,
+    "radius_m": 500
+   },
+   "rechennia": [
+    {
+     "tekst": "Річ була шкіряна, чорного кольору.",
+     "dzherelo": "rishennia",
+     "tsytata": "шкіряну сумку чорного кольору",
+     "umovy": [
+      {
+       "pole": "pole",
+       "oznaka": "shkiriana",
+       "znachennia": true
+      }
+     ]
+    },
+    {
+     "tekst": "Від місця події до кінцевої — лише одна зупинка.",
+     "dzherelo": "pidkazka",
+     "umovy": [
+      {
+       "pole": "de",
+       "oznaka": "susid_kintsevoi",
+       "znachennia": true
+      }
+     ]
+    },
+    {
+     "tekst": "Таксист Орест, що чекає біля виходу, киває: так, звідси до кінцевої недалеко.",
+     "dzherelo": "vyhadka"
+    }
+   ]
+  },
+  {
+   "n": 6,
+   "zahadka": "Останній слід — там, де, на вашу думку, усе сталося. Якщо місце правильне, слід з'явиться.",
+   "tsil": {
+    "lat": 50.4561,
+    "lon": 30.3655,
+    "radius_m": 400
+   },
+   "rechennia": [
+    {
+     "tekst": "Так, це тут: вихід зі станції на проспекті Берестейському.",
+     "dzherelo": "pidkazka"
+    }
+   ]
+  }
+ ],
+ "rozkryttia": {
+  "spravzhnie": "9 вересня 2024 року, близько 19:00, біля виходу зі станції метро «Житомирська» на проспекті Берестейському людина вихопила в іншої людини шкіряну сумку чорного кольору, у якій був гаманець. Суд установив, що це сталося, і кваліфікував як грабіж в умовах воєнного стану (ч. 4 ст. 186 КК).",
+  "vyhadka": "Вигадано: кав'ярня «Сірий кіт», бариста Марта, таксист Орест і все, що вони кажуть, а також місця, де сховано сліди 1–5. Справжні — станція, проспект, дата й час, вид події і річ. Будь-яка схожість зі справжніми закладами чи людьми випадкова."
+ }
+}

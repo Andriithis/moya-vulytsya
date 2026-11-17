@@ -196,7 +196,7 @@ def storinka(*, shlyakh: str, title: str, opys: str, tilo: str, adresa_saitu: st
              pered_main: str = '', kartynka: tuple[str, str] | None = None) -> str:
     # Вітрини (MV-99): на телефоні в шапці — карта, вулиці, «Мій будинок»; решта — під «Ще» і в підвалі.
     menyu = [('karta/', 'Карта', 0), ('vulytsi/', 'Вулиці', 0), ('miy-budynok/', 'Мій будинок', 0), ('osbb/', 'Для ОСББ', 1),
-             ('sudova-praktyka/', 'Судова практика', 1), ('biznes/', 'Для бізнесу', 1), ('zahlushka/hra/', 'Грати', 1)]
+             ('sudova-praktyka/', 'Судова практика', 1), ('biznes/', 'Для бізнесу', 1), ('karta/?ihry', 'Ігри', 1)]
     punkty, shche = [], []
     for h, n, lyshe_komp in menyu:
         klas = ' class="lyshe-komp"' if lyshe_komp else ''
@@ -253,7 +253,7 @@ def storinka(*, shlyakh: str, title: str, opys: str, tilo: str, adresa_saitu: st
 <div class="pidval__vnutri">
 <p>Дані — з рішень судів у Єдиному державному реєстрі судових рішень. Це лише те, що дійшло до суду, а не всі події на вулиці.</p>
 <p>Колір і числа показують лише кількість подій у даних — це не оцінка вулиці, будинку чи району. Ми не стверджуємо причин і не прогнозуємо.</p>
-<p><a href="/miy-budynok/">Мій будинок</a> · <a href="/osbb/">Для ОСББ</a> · <a href="/sudova-praktyka/">Судова практика</a> · <a href="/biznes/">Для бізнесу</a> · <a href="/rayony/">Райони</a> · <a href="/zahlushka/hra/">Грати</a></p>
+<p><a href="/miy-budynok/">Мій будинок</a> · <a href="/osbb/">Для ОСББ</a> · <a href="/sudova-praktyka/">Судова практика</a> · <a href="/biznes/">Для бізнесу</a> · <a href="/rayony/">Райони</a> · <a href="/karta/?ihry">Ігри</a></p>
 <p><a href="/pro-dani/">Як ми працюємо з даними</a> · <a href="/vydalyty/">Видалити або виправити подію</a> · <a href="/zahlushka/polityka.html">Політика конфіденційності</a> · <a href="/zahlushka/oferta.html">Оферта</a> · Карта: <a href="https://www.openstreetmap.org/copyright">© учасники OpenStreetMap</a></p>
 </div>
 </footer>
@@ -442,7 +442,7 @@ def storinka_vulytsi(dn: D.Dani, v: D.Vulytsia, pr: dict, adresa_saitu: str, sus
     chastyny.append(f'''<section class="rozdil"><h2>Що далі</h2>
 <div class="diyi">
 <a class="knopka knopka--holovna" href="/miy-budynok/">Довідка про будинок — {TSINA_DOVIDKY}{NBSP}грн</a>
-<a class="knopka" href="/zahlushka/hra/">Грати</a>
+<a class="knopka" href="/karta/?hra=vulytsia">Вулиця дня</a>
 <a class="knopka" href="/zahlushka/?dzherelo=vulytsia-misto#peredzamovlennya">Ваша вулиця в іншому місті — повідомимо</a>
 </div></section>''')
 
@@ -572,7 +572,7 @@ def holovna(dn: D.Dani, vulytsi: list, rayony: list, adresa_saitu: str) -> str:
 </section>
 <section class="vkhody" aria-label="Куди далі">
 <a class="vkhid" href="/vulytsi/"><span class="mikro">Покажчик</span><b>Усі вулиці</b><span>за абеткою й районами</span></a>
-<a class="vkhid" href="/zahlushka/hra/"><span class="mikro">Гра</span><b>Вгадай, де це було</b><span>опис події — ваша точка на карті</span></a>
+<a class="vkhid" href="/karta/?ihry"><span class="mikro">Ігри на карті</span><b>Детектив тижня</b><span>щодня слід на карті, у неділю — розкриття</span></a>
 <a class="vkhid" href="/miy-budynok/"><span class="mikro">Мій будинок</span><b>Довідка — {TSINA_DOVIDKY}{NBSP}грн</b><span>скарги 1551 і події біля будинку</span></a>
 </section>
 <section class="vkhody" aria-label="Розділи">
@@ -590,7 +590,7 @@ def holovna(dn: D.Dani, vulytsi: list, rayony: list, adresa_saitu: str) -> str:
     return storinka(shlyakh='/', title='Моя вулиця — що суди розповіли про вашу вулицю у Києві', dodatkovo_head=ld,
                     opys='Карта Києва з подіями із судових рішень: скільки, коли, яких видів — на кожній вулиці. Покажчик вулиць, гра.',
                     tilo=tilo, adresa_saitu=adresa_saitu, mapa=True, pered_main=ekran_karty(dn),
-                    skrypty=('/sait/biblioteka/maplibre-gl-csp.js', '/sait/karta.js'))
+                    skrypty=('/sait/biblioteka/maplibre-gl-csp.js', '/sait/karta.js') + SKRYPTY_IHOR)
 
 
 def soty_geojson(dn: D.Dani, riven: int) -> dict:
@@ -663,6 +663,16 @@ DZHERELA_KARTY = ('Підкладка: <a href="https://openfreemap.org" target=
                   '(<a href="https://creativecommons.org/licenses/by/4.0/deed.uk" target="_blank" rel="noopener">CC BY</a>)')
 
 
+# Ігри в карті (ZAVDANNYA-117): значок «Ігри» — сота з зірочкою; дані ігор — /ihry/*.json (збирає zibraty_ihry).
+IHRY_IK = svg_html('<path d="M12 3 19.8 7.5V16.5L12 21 4.2 16.5V7.5Z"/><path d="m12 8.6 1.1 2.3 2.5.3-1.8 1.7.5 2.5-2.3-1.2-2.3 1.2.5-2.5-1.8-1.7 2.5-.3Z"/>', 22)
+SKRYPTY_IHOR = ('/sait/hra-yadro.js', '/sait/vulytsia-yadro.js', '/sait/ihry-yadro.js', '/sait/ihry.js')
+IHRY_DANI: dict = {}
+
+
+def dani_ihor() -> str:
+    return ''.join(f' data-{k}="{e(v)}"' for k, v in sorted(IHRY_DANI.items()))
+
+
 def ekran_karty(dn: D.Dani) -> str:
     """Карта на весь екран у вигляді макета М7 (MV-58): угорі ліворуч — рядок пошуку зі значками 3D/2D, день/ніч і «ⓘ»,
     під ним — фільтр «Усі події ▾»; картка соти — «в повітрі» праворуч (телефон — шторка); джерела — правий нижній кут
@@ -686,6 +696,7 @@ def ekran_karty(dn: D.Dani) -> str:
 </form>
 <button id="f3d" class="znachok klav" type="button" aria-label="Зараз 3D (об’ємно). Натисніть — пласка карта 2D"><span class="zn-v">{kub}<small>3D</small></span></button>
 <button id="ftema" class="znachok klav" type="button" data-tema-perem aria-label="Нічна тема">{MISYATS}{SONTSE}</button>
+<button id="fihry" class="znachok klav" type="button" aria-label="Ігри на карті" title="Ігри" aria-expanded="false" aria-controls="ihry">{IHRY_IK}</button>
 <button id="finfo" class="znachok klav" type="button" aria-label="Як читати карту" title="Як читати карту" aria-expanded="false" aria-controls="info">{info_ik}</button>
 </div>
 <ul id="pidkazky" class="plashka" role="listbox" aria-label="Знайдені місця" hidden></ul>
@@ -717,6 +728,8 @@ def ekran_karty(dn: D.Dani) -> str:
 <div id="tykha" class="tykha" hidden>будинки — у підписці</div>
 <div id="dzherela" class="dzherela">{DZHERELA_KARTY}</div>
 <aside id="kartka" class="plashka kartka-soty" hidden aria-label="Картка соти"></aside>
+<aside id="ihry" class="plashka panel-ihor" hidden aria-label="Ігри на карті"{dani_ihor()}></aside>
+<div id="ihry-zaproshennia" class="plashka ihry-zaproshennia" role="status" hidden><button type="button" class="z-tekst"></button><button type="button" class="z-x" aria-label="Закрити запрошення">×</button></div>
 <div id="pidkazka" class="pidkazka-toast" role="status" aria-live="polite"></div>
 </section>
 '''
@@ -757,7 +770,7 @@ def storinka_karty(dn: D.Dani, adresa_saitu: str) -> str:
     return storinka(shlyakh='/karta/', title='Карта Києва — події з судових рішень | Моя вулиця',
                     opys='Карта Києва шестикутниками: скільки подій із судових рішень у кожній частині міста, яких видів і коли.',
                     tilo=tilo, adresa_saitu=adresa_saitu, aktyvne='karta/', mapa=True, pered_main=ekran_karty(dn),
-                    skrypty=('/sait/biblioteka/maplibre-gl-csp.js', '/sait/karta.js'))
+                    skrypty=('/sait/biblioteka/maplibre-gl-csp.js', '/sait/karta.js') + SKRYPTY_IHOR)
 
 
 def storinka_404(adresa_saitu: str) -> str:
@@ -765,6 +778,54 @@ def storinka_404(adresa_saitu: str) -> str:
             'Спробуйте <a href="/vulytsi/">покажчик вулиць</a> або <a href="/karta/">карту Києва</a>.</p></section>')
     return storinka(shlyakh='/404.html', title='Сторінку не знайдено | Моя вулиця', opys='Сторінку не знайдено.',
                     tilo=tilo, adresa_saitu=adresa_saitu, indeksuvaty=False)
+
+
+def storinka_hra_pereadresatsiia(tsil: str) -> str:
+    return f'''<!doctype html>
+<html lang="uk"><head><meta charset="utf-8"><meta name="robots" content="noindex, follow">
+<meta http-equiv="refresh" content="0; url={e(tsil)}"><link rel="canonical" href="{e(tsil)}">
+<title>Ігри тепер на карті — Моя вулиця</title></head>
+<body><p>Ігри тепер граються просто на карті: <a href="{e(tsil)}">відкрити</a>.</p></body></html>
+'''
+
+
+def zibraty_ihry(dn: D.Dani, vykhid: Path, koloda: Path | None) -> dict:
+    """Дані ігор у карті (ZAVDANNYA-117) у /ihry/: справи детектива (кожна — через перевірку site/ihry/detektyv.py; не
+    проходить — збирання падає), «Кваліфікуй» (без уривків рішень), налаштування балів, колода гри «Вгадай» (та сама, що й
+    у заглушці: справжня або демо) і «Вулиця дня» (якщо з цього випуску вийшла хоч одна загадка)."""
+    sys.path.insert(0, str(DZHERELO / 'ihry'))
+    sys.path.insert(0, str(DZHERELO / 'hra'))
+    import detektyv as DT
+    import vulytsia_dnia as VD
+    import koloda as KH_
+    IHRY_DANI.clear()
+    tsil = vykhid / 'ihry'
+    spravy = []
+    for f in sorted((DZHERELO / 'ihry' / 'spravy').glob('*.json')):
+        s = DT.prochytaty(f)
+        try:
+            DT.perevirka(s)
+        except DT.PomylkaSpravy as pomylka:
+            raise SystemExit(f'Справа детектива не проходить перевірку: {pomylka}') from pomylka
+        spravy.append(DT.dlia_saitu(s))
+    zapysaty(tsil / 'detektyv.json', json.dumps({'spravy': spravy}, ensure_ascii=False, separators=(',', ':')))
+    IHRY_DANI['spravy'] = '/ihry/detektyv.json'
+    kv = json.loads((DZHERELO / 'ihry' / 'kvalifikuy.json').read_text(encoding='utf-8'))
+    for s in kv['spravy']:
+        s.pop('uryvky', None)
+    zapysaty(tsil / 'kvalifikuy.json', json.dumps(kv, ensure_ascii=False, separators=(',', ':')))
+    IHRY_DANI['kvalifikuy'] = '/ihry/kvalifikuy.json'
+    shutil.copyfile(DZHERELO / 'ihry' / 'nalashtuvannia.json', tsil / 'nalashtuvannia.json')
+    IHRY_DANI['nalashtuvannia'] = '/ihry/nalashtuvannia.json'
+    gotova = KH_.pidhotuvaty(KH_.prochytaty(koloda or KH_.DEMO))
+    if gotova['podii']:
+        zapysaty(tsil / 'koloda.json', json.dumps(gotova, ensure_ascii=False, separators=(',', ':')))
+        IHRY_DANI['koloda'] = '/ihry/koloda.json'
+        vd = VD.zibraty_z_dani(dn, gotova)
+        if vd['zahadky']:
+            zapysaty(tsil / 'vulytsia-dnia.json', json.dumps(vd, ensure_ascii=False, separators=(',', ':')))
+            IHRY_DANI['vulytsia'] = '/ihry/vulytsia-dnia.json'
+    return dict(IHRY_DANI)
 
 
 # ---------------------------------------------------------------- збирання
@@ -784,8 +845,13 @@ def kopiyuvaty_spilne(vykhid: Path) -> None:
     (sait / 'shryfty').mkdir(parents=True, exist_ok=True)
     for f in ('karta.js', 'poshuk.js', 'tema.js', 'oplata.js'):
         shutil.copyfile(DZHERELO / 'sait' / f, sait / f)
-    # Кольори обох тем — на початок стилів (одна сторінка стилів, без зайвого запиту).
-    zapysaty(sait / 'sait.css', kolory_css() + (DZHERELO / 'sait' / 'sait.css').read_text(encoding='utf-8'))
+    for f in ('hra-yadro.js', 'vulytsia-yadro.js'):          # спільне ядро ігор (ZAVDANNYA-117)
+        shutil.copyfile(DZHERELO / 'hra' / f, sait / f)
+    for f in ('ihry-yadro.js', 'ihry.js'):
+        shutil.copyfile(DZHERELO / 'ihry' / f, sait / f)
+    # Кольори обох тем — на початок стилів (одна сторінка стилів, без зайвого запиту); ігри в карті — у кінець.
+    zapysaty(sait / 'sait.css', kolory_css() + (DZHERELO / 'sait' / 'sait.css').read_text(encoding='utf-8')
+             + '\n' + (DZHERELO / 'ihry' / 'ihry.css').read_text(encoding='utf-8'))
     for f in sorted((DZHERELO / 'sait' / 'shryfty').iterdir()):   # IBM Plex Sans і ліцензія OFL поруч
         shutil.copyfile(f, sait / 'shryfty' / f.name)
     (sait / 'biblioteka').mkdir(exist_ok=True)
@@ -897,6 +963,9 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
                            for (n, s), bs in sorted(za_vul.items())]
         zapysaty(vykhid / 'vulytsi' / 'budynky.json', json.dumps(budynky_poshuku, ensure_ascii=False, separators=(',', ':')))
 
+    # Ігри в карті (ZAVDANNYA-117): дані ігор — до сторінок з картою (панель знає, які ігри є).
+    zibraty_ihry(dn, vykhid, koloda)
+
     # Карта і головна.
     if D.h3 is None:
         raise SystemExit('Немає бібліотеки h3 (pip install h3) — карту шестикутників не зібрати.')
@@ -926,6 +995,10 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
             raise SystemExit(f'Колоду гри не можна публікувати: {pomylka}') from pomylka
     zahlushka.zibraty(vykhid / 'zahlushka', '', '', {}, False, koloda)
     adresy.append('/zahlushka/')
+    # Стара сторінка гри — переадресація на гру в карті (ZAVDANNYA-117, MV-129).
+    for stara, tsil in (('index.html', '/karta/?hra=vgadai'), ('vulytsia.html', '/karta/?hra=vulytsia')):
+        if (vykhid / 'zahlushka' / 'hra' / stara).exists():
+            zapysaty(vykhid / 'zahlushka' / 'hra' / stara, storinka_hra_pereadresatsiia(tsil))
 
     # Для пошуку Google.
     lastmod = dn.versiia if len(dn.versiia) == 10 else ''

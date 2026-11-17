@@ -453,6 +453,7 @@
       map.on('pitchend', function () { var d = map.getPitch() > 8; if (d !== D3) { D3 = d; d3Tekst(); } });
       map.on('zoom', pidpysZumu);
       map.on('click', function (e) {
+        if (MV.perekhopyty && MV.perekhopyty(e.lngLat)) return;   // гра в карті забрала дотик (ZAVDANNYA-117)
         var h = vluchannya(e.point, telefon());
         if (h) { TIP.remove(); natysnuty(h.G, h.b); vidkryty(h.G, h.b); } else { zakryty(); pidkazka('Тут немає подій у даних'); }
       });
