@@ -219,3 +219,7 @@ a { color: var(--accent); }
 .vidstup { margin-top: 12px; }
 .bez-vidstupu { margin: 0; }
 .kartka__chysla b.mensh { font-size: 16px; padding-top: 4px; }
+.varianty .klavisha:disabled { opacity: 1; color: var(--muted); }
+.varianty .klavisha.pravylno:disabled { color: var(--ink); }
+.plashka { white-space: nowrap; }
+@media (max-width: 600px) { .mitka-prototyp { display: none; } .znak { font-size: 14px; } .shapka { gap: 6px; } .plashka small { font-size: 12px; } }
