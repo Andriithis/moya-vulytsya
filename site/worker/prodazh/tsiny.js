@@ -62,7 +62,9 @@ export default {
   "zvit",
   "pidpyska",
   "rieltor",
-  "osbb"
+  "osbb",
+  "spdovidka",
+  "spyurist"
  ],
  "sudova": [
   "spdovidka",

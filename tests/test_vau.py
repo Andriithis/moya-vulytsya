@@ -260,6 +260,17 @@ class Soty129(unittest.TestCase):
         self.assertEqual(len(menshe['features']), 2)
 
 
+class SotyV1(unittest.TestCase):
+    """В1 «мурашник» (ZAVDANNYA-134): соти зі styl_sot лежать над дорогами (як на сайті), а не під ними."""
+
+    def test_styl_sot(self):
+        js = (VAU / 'stsena.js').read_text(encoding='utf-8')
+        self.assertIn('nadLiniiamy', js)                       # над останнім шаром ліній, під підписами
+        self.assertIn('sh.styl_sot ? nadLiniiamy : pershyiSymvol', js)
+        for styl in ("'sklo'", "'plytka'"):
+            self.assertIn(styl, js)
+
+
 class Holos129(unittest.TestCase):
     """ZAVDANNYA-129, крок 2: зовнішній голос — лише за змінною середовища, кеш, ключ ніде не пишеться."""
 
