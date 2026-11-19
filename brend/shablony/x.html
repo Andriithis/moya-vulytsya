@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="uk"><head><meta charset="utf-8"><title>Обкладинка X — Моя вулиця</title>
+<link rel="stylesheet" href="brend.css">
+<style>
+/* Макет 750×250, рендер ×2 = 1500×500 (ZAVDANNYA-131). На X аватар профілю перекриває нижній лівий кут
+   (≈ 150 px макета), а на телефоні обкладинку підрізає згори й знизу — тому текст у середній смузі, правіше аватара. */
+.polotno { width: 750px; height: 250px; }
+#soty { position: absolute; inset: 0; }
+.tekst { position: absolute; left: 170px; top: 0; bottom: 0; width: 400px;
+  display: flex; flex-direction: column; justify-content: center; gap: 8px; }
+.ryadok { display: flex; align-items: center; gap: 12px; }
+.nazva { font: 800 40px/1 Plex, system-ui, sans-serif; color: var(--ink); margin: 0; letter-spacing: -0.01em; }
+.gaslo { font: 400 15px/22px Plex, system-ui, sans-serif; color: var(--ink-2); margin: 0; }
+.gaslo b { font-weight: 600; color: var(--accent); }
+.ramka { position: absolute; left: 150px; top: 40px; width: 450px; height: 170px; outline: 1px dashed var(--attention); display: none; }
+.pokazaty-zonu .ramka { display: block; }
+</style></head>
+<body><div class="polotno" id="p">
+<svg id="soty" width="750" height="250" viewBox="0 0 750 250" aria-hidden="true"></svg>
+<div class="tekst"><div class="ryadok"><span id="znak"></span><p class="nazva" id="nazva"></p></div>
+<p class="gaslo"><span id="gaslo"></span> <b id="dzherelo"></b></p></div>
+<div class="ramka"></div>
+</div>
+<script src="brend.js"></script>
+<script>
+window.pokazaty = function (d) {
+  var svg = document.getElementById('soty');
+  var slab = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  slab.setAttribute('x', 600); slab.setAttribute('y', -10); slab.setAttribute('width', 160); slab.setAttribute('height', 270);
+  slab.style.fill = 'var(--accent)'; svg.appendChild(slab);
+  Brend.sotyPole(svg, 612, 20, 5, 6, 18, Brend.SHKALA.slice(0, 4).concat(['var(--ground)']));
+  Brend.sotyPole(svg, 20, 16, 4, 3, 16, Brend.SHKALA.slice(0, 3), function (x, y) { return x + y > 3; });
+  document.getElementById('znak').appendChild(Brend.znak(46));
+  Brend.tekst('nazva', d.kanal);
+  Brend.tekst('gaslo', d.gaslo);
+  Brend.tekst('dzherelo', d.dzherelo);
+  if (d.pokazaty_zonu) document.getElementById('p').classList.add('pokazaty-zonu');
+};
+</script></body></html>
