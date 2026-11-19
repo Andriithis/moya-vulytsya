@@ -54,3 +54,20 @@ SwiftShader), але з нею кадр ≈ 0,4 с замість кількох
 (`meta['publichni']`); насильство, статеві справи й щодо дітей у ролики не йдуть; колір — вид події, жодного червоного;
 кожен ролик закінчується посиланням на конкретне місце (`meta['kudy']`) або є обривом із продовженням.
 Великі файли (`video/vyhid/`) — не в git.
+
+## ZAVDANNYA-129: правила монтажу, нові типи, запис сайту, платний голос
+
+```bash
+video/vau/zb129.sh [--lyshe t1,n3]                                          # сценарії 129 → video/vyhid/kesh/stsenarii/129-*.json
+python video/vau/rushii.py video/vyhid/kesh/stsenarii/129-*.json --vykhid video/vyhid/129
+python site/zibraty_sait.py <events.db> video/vyhid/sait --koloda …          # сайт з того самого випуску (для запису екрана)
+python video/vau/zapys_saitu.py video/vyhid/sait [--lyshe z1]               # запис екрана справжнього сайту
+python video/vau/sluhaty.py video/vyhid/129/<id>.mp4 --stsenarii video/vyhid/kesh/stsenarii/   # С11: голос ↔ текст
+video/vau/montazh_kadriv.sh <префікс id> [ширина]                            # знімки --kadry → один рядок для перегляду
+```
+
+- `stsenarii129.py` — топ-5 (t1–t5) і нові типи (n1–n8); `zapys_saitu.py` — записи сайту (z1, z2).
+- `perevirka.py` з `meta['pravyla'] = 129` не пропускає: кінцівку довше 1 с і нерухому картку (С1), гачок не з кадру 0 (С2),
+  паузу без нового довше 2 с і переказ по букві (С4), < 3 компонувань (С6), світлу тему (С7), захисну фразу довше 1,5 с (С8),
+  лічильник без узгодження (С10), камеру ближче z 15,3 біля житла і номер рішення в ролику не з однією подією (MV-151).
+- Голос: `MV_HOLOS=elevenlabs|azure|teka` + ключ у `MV_HOLOS_KLUCH` (лише змінна середовища) — `holos_servis.py`; без них — Piper.

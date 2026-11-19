@@ -36,13 +36,17 @@ body { font-family: Plex, system-ui, sans-serif; color: var(--ink); -webkit-font
 [data-t="svitla"] #zat-f { background: rgba(244,245,251,.94); }
 #spalakh { background: #fff; opacity: 0; mix-blend-mode: screen; }
 
-#znak { position: absolute; left: 56px; top: 64px; display: flex; align-items: center; gap: 16px; font: 700 38px/1 Plex;
+#znak { position: absolute; left: 56px; top: 150px; display: flex; align-items: center; gap: 16px; font: 700 38px/1 Plex;
   color: var(--ink); text-shadow: 0 2px 12px var(--ten); opacity: .92; }
 #znak svg { width: 60px; height: 60px; }
 #znak .z1 { fill: var(--accent2); } #znak .z2 { fill: var(--accent); }
 [data-t="svitla"] #znak .z1 { fill: #4447A6; } [data-t="svitla"] #znak .z2 { fill: #DFE3FC; }
-#dzherelo { position: absolute; left: 56px; right: 170px; bottom: 270px; font: 400 26px/1.35 Plex; color: var(--muted);
-  text-shadow: 0 1px 6px var(--ground); }
+/* С5 (ZAVDANNYA-129): джерело й «Голос згенеровано» — під логотипом, великі й контрастні; верх 150–330 px вільний від
+   кнопок TikTok (вкладки — вище 150, кнопки праворуч — нижче 900, підпис — нижче 1500) */
+#dzherelo { position: absolute; left: 56px; top: 228px; max-width: 968px; display: flex; flex-wrap: wrap; gap: 8px 10px; }
+#dzherelo span { font: 600 30px/1.2 Plex; color: var(--ink); background: rgba(10, 12, 32, .66); padding: 8px 16px; border-radius: 14px; }
+#dzherelo span.hp { color: #11142A; background: #66E6BA; box-shadow: 0 0 0 3px #11142A; }
+[data-t="svitla"] #dzherelo span { background: rgba(255, 255, 255, .85); }
 
 /* ---------- кінетичний текст ---------- */
 .t { position: absolute; left: 60px; right: 150px; text-align: left; will-change: transform, opacity; }
@@ -85,7 +89,7 @@ body { font-family: Plex, system-ui, sans-serif; color: var(--ink); -webkit-font
   margin-right: 22px; color: var(--accent2); }
 .t.variant.pravylno { background: var(--accent); color: var(--on-accent); }
 .t.variant.pravylno b { background: rgba(255,255,255,.35); color: var(--on-accent); }
-.t.variant.ni { opacity: .35 !important; }
+.t.variant.ni { filter: opacity(.35); }   /* не !important: інакше варіант не зникає після t1 */
 .t.stovpchyky { left: 70px; right: 150px; }
 .t.stovpchyky .r { display: flex; align-items: center; gap: 18px; margin: 18px 0; font: 700 44px/1.1 Plex; color: var(--ink); text-shadow: 0 0 18px var(--ground); }
 .t.stovpchyky .r .s { height: 54px; border-radius: 14px; }
@@ -150,3 +154,44 @@ body { font-family: Plex, system-ui, sans-serif; color: var(--ink); -webkit-font
 /* персонаж «Сота» (MV-148): знак-шестикутник без обличчя, з тінню-«клавішею» */
 .ui.sota svg { width: 100%; height: 100%; filter: drop-shadow(0 10px 0 rgba(0,0,0,.35)) drop-shadow(0 0 24px rgba(102,230,186,.35)); }
 .ui.sota .z1 { fill: #6066C1; } .ui.sota .z2 { fill: #66E6BA; }
+
+/* ---------- ZAVDANNYA-129: різні компонування (С6), кінцівка ≤ 1 с (С1) ---------- */
+.t.baner { left: 60px; right: 170px; display: flex; align-items: center; gap: 24px; background: var(--surface); border-radius: 30px;
+  padding: 24px 30px; box-shadow: 0 12px 0 var(--ten), 0 24px 60px rgba(0,0,0,.45); }
+.t.baner .logo { width: 96px; height: 96px; flex: none; } .t.baner .logo .z1 { fill: var(--accent2); } .t.baner .logo .z2 { fill: var(--accent); }
+.t.baner b { display: block; font: 800 48px/1.08 Plex; color: var(--ink); }
+.t.baner span { display: block; font: 700 36px/1.2 Plex; color: var(--accent); margin-top: 8px; }
+.t.slovo { left: 0; right: 0; top: 0 !important; height: 1920px; display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
+  align-content: center; text-align: center; padding: 0 70px; background: #66E6BA; color: #11142A; font: 900 190px/0.98 Plex; letter-spacing: -6px; }
+.t.slovo .w.a { color: #3C3CA1; }
+.t.slovo.fiolet { background: #4447A6; color: #fff; } .t.slovo.fiolet .w.a { color: #66E6BA; }
+.t.slovo.temne { background: #0B0D1E; color: #fff; } .t.slovo.temne .w.a { color: #66E6BA; }
+.t.slovo.menshe { font-size: 112px; letter-spacing: -2px; }
+.t.split { left: 0; right: 0; display: flex; height: 820px; }
+.t.split .pol { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 40px 40px; background: rgba(102,230,186,.95); color: #11142A; }
+.t.split .pol + .pol { background: rgba(68,71,166,.96); color: #fff; }
+.t.split .zag { font: 700 32px/1.2 Plex; text-transform: uppercase; letter-spacing: 2px; opacity: .8; margin-bottom: 18px; }
+.t.split .n { font: 900 140px/1 Plex; letter-spacing: -4px; font-variant-numeric: tabular-nums; }
+.t.split .nz { font: 700 52px/1.12 Plex; margin-top: 16px; }
+.t.komentar { left: 70px; right: 170px; background: #fff; color: #161823; border-radius: 30px; padding: 30px 36px; font: 600 54px/1.22 Plex;
+  box-shadow: 0 16px 50px rgba(0,0,0,.5); }
+.t.komentar .khto { display: flex; align-items: center; gap: 16px; font: 600 32px/1 Plex; color: #7A7B82; margin-bottom: 16px; }
+.t.komentar .av { width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, #9C9DF0, #66E6BA); flex: none; }
+.t.kolony { left: 46px; right: 46px; height: 640px; display: flex; align-items: flex-end; gap: 8px; }
+.t.kolony .k { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; min-width: 0; }
+.t.kolony .s { width: 100%; border-radius: 10px 10px 4px 4px; background: #6066C1; }
+.t.kolony .k.akc .s { background: #66E6BA; box-shadow: 0 0 40px rgba(102,230,186,.55); }
+.t.kolony .nz { font: 700 26px/1 Plex; color: var(--ink2); margin-top: 12px; white-space: nowrap; }
+.t.kolony .k.akc .nz { color: var(--accent); }
+.t.kolony .n { font: 900 60px/1 Plex; color: var(--accent); margin-bottom: 14px; white-space: nowrap; font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 24px var(--ground); }
+.t.shtamp { left: 0; right: 0; text-align: center; }
+.t.shtamp span { display: inline-block; font: 900 170px/1 Plex; letter-spacing: 8px; padding: 18px 54px; border: 16px solid currentColor;
+  border-radius: 34px; color: #F2C46D; background: rgba(17,20,42,.78); }
+.t.shtamp.fakt span { color: #66E6BA; }
+.t.taimer { left: 60px; right: 60px; height: 34px; background: rgba(255,255,255,.14); border-radius: 17px; }
+.t.taimer .s { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 17px; background: #FFE45C; }
+.t.taimer .n { position: absolute; right: 0; top: 50px; font: 900 64px/1 Plex; color: #FFE45C; }
+.t.slovo small { flex-basis: 100%; display: block; font: 800 66px/1.15 Plex; letter-spacing: 0; margin-top: 28px; }
+.t.mala.zaklyk { color: var(--accent); font-weight: 700; }
+.t.slovo .vn { width: 100%; }

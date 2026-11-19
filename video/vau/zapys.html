@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<!-- Запис екрана справжнього сайту (ZAVDANNYA-129, MV-151): сайт у рамці «телефона», зверху — логотип, джерело, гачок.
+     Відкриває лише video/vau/zapys_saitu.py. Кадр 1080×1920 = вікно 540×960 × 2. Час — віртуальний (window.__krok). -->
+<title>Моя вулиця — запис сайту</title>
+<link rel="stylesheet" href="/__vau/stsena.css">
+<style>
+  html, body { width: 540px; height: 960px; }
+  #kadr { width: 540px; height: 960px; }
+  #nakladka-129, #verkh-129 { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; zoom: 0.5; pointer-events: none; }
+  #tlo { position: absolute; inset: 0; background: radial-gradient(ellipse 90% 60% at 50% 30%, #232849 0%, #11142A 70%); }
+  #telefon { position: absolute; left: 70px; top: 272px; width: 400px; height: 688px; border-radius: 26px; overflow: hidden;
+    box-shadow: 0 0 0 5px #2E3358, 0 0 0 6px #4447A6, 0 20px 60px rgba(0,0,0,.6); background: #11142A; }
+  #sait { width: 400px; height: 688px; border: 0; display: block; }
+  #palets { position: absolute; width: 92px; height: 92px; margin: -46px 0 0 -46px; border-radius: 50%; background: rgba(255,255,255,.35);
+    border: 5px solid rgba(255,255,255,.85); box-shadow: 0 0 30px rgba(102,230,186,.6); opacity: 0; }
+  #mitka-zapysu { position: absolute; right: 56px; top: 150px; font: 700 28px/1 Plex; color: #11142A; background: #F2C46D; padding: 10px 16px;
+    border-radius: 12px; }
+</style>
+</head>
+<body>
+<div id="kadr">
+  <div id="nakladka-129"><div id="tlo"></div></div>
+  <div id="telefon"><iframe id="sait" title="сайт"></iframe></div>
+  <div id="verkh-129" style="z-index: 5">
+    <div id="tekst"></div>
+    <div id="palets"></div>
+    <div id="znak"><svg viewBox="0 0 48 48" aria-hidden="true"><path class="z1" d="M24 2 43 13v22L24 46 5 35V13z"/><path class="z2" d="M24 15 32 19.5v9L24 33l-8-4.5v-9z"/></svg><span>Моя вулиця</span></div>
+    <div id="mitka-zapysu">запис екрана сайту</div>
+    <div id="dzherelo"></div>
+  </div>
+</div>
+<script src="/__vau/zapys.js"></script>
+</body>
+</html>

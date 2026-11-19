@@ -29,13 +29,15 @@ VYHID = KORIN / 'video' / 'vyhid' / 'kesh' / 'stsenarii'
 MEZHA = json.loads((KORIN / 'site' / 'hra' / 'mezha-kyieva.geojson').read_text(encoding='utf-8'))
 KYIV = (30.5234, 50.4501)        # Майдан — центр кадру міста
 PROFIL = 'посилання в профілі'
+TSIL = '#FFE45C'                 # колір «цілі» (група 6) — «Знайди точку»; не червоний (MV-58)
+FORMY = ['подія', 'події', 'подій']
 
 
 class Rolyk:
     """Збирач одного сценарію: доріжки камери, точок, тексту, звуку."""
 
     def __init__(self, id_, tryv, tema='temna', **meta):
-        self.S = {'id': id_, 'tryvalist': tryv, 'tema': tema, 'kolory': D.kolory_hrup(), 'kamera': [], 'tochky': [],
+        self.S = {'id': id_, 'tryvalist': tryv, 'tema': tema, 'kolory': D.kolory_hrup() + [TSIL, '#FFFFFF'], 'kamera': [], 'tochky': [],
                   'soty': [], 'lini': [], 'kiltsia': [], 'mitky': [], 'tekst': [], 'ui': [], 'spalakh': [], 'trus': [],
                   'mezha': MEZHA, 'zvuk': {'efekty': [], 'holos': []}}
         self.meta = dict(meta, id=id_, tryvalist=tryv)
@@ -56,8 +58,8 @@ class Rolyk:
         self.S['tochky'].append(dict({'dani': d, 'rozmir': [list(x) for x in rozmir], 'yaskravist': [list(x) for x in yaskr]}, **kw))
         return self
 
-    def soty(self, podii, riven=8, vysota=((0, 0),), prozorist=((0, 1),), **kw):
-        self.S['soty'].append(dict({'dani': D.soty(podii, riven), 'vysota': [list(x) for x in vysota],
+    def soty(self, podii, riven=8, vysota=((0, 0),), prozorist=((0, 1),), min_chastka=0.0, min_n=1, **kw):
+        self.S['soty'].append(dict({'dani': D.soty(podii, riven, min_chastka=min_chastka, min_n=min_n), 'vysota': [list(x) for x in vysota],
                                     'prozorist': [list(x) for x in prozorist]}, **kw))
         return self.S['soty'][-1]
 
@@ -80,6 +82,34 @@ class Rolyk:
         self.tekst(t0, t1 or self.S['tryvalist'] + 1, 'fin', tekst, zag=zag, knopka=knopka, y=kw.pop('y', 560), **kw)
         self.efekt(t0, 'dzvin', h=0.8, v=0.6)
         self.meta['kintsivka'] = knopka
+
+    # -- ZAVDANNYA-129: кінцівка ≤ 1 с поверх руху, петля, удар на весь кадр, підпис публікації
+    def baner(self, t0, zag, knopka=None, tryv=1.0, y=1180):
+        """С1: заклик — банер ≤ 1 с поверх руху (камера не зупиняється); сам заклик дублюється в підписі публікації."""
+        knopka = knopka or PROFIL
+        self.tekst(t0, t0 + tryv, 'baner', '', zag=zag, knopka=knopka, y=y, vykhid=0.12)
+        self.efekt(t0, 'dzvin', h=0.8, v=0.5)
+        self.meta['kintsivka'] = knopka
+
+    def petlia(self, tryv=0.45):
+        """С1: останній кадр стикується з першим — камера повертається на старт, гачок знову стоїть повністю."""
+        T = self.S['tryvalist']
+        k0 = sorted(self.S['kamera'], key=lambda k: k['t'])[0]
+        self.kam(T, k0['c'], k0['z'], k0['p'], k0['b'], e='io')
+        hook = [it for it in self.S['tekst'] if it['t0'] <= 1e-6]
+        if hook:
+            self.S['tekst'].append(dict(hook[0], t0=round(T - tryv, 3), t1=T + 1, odrazu=True))
+        self.efekt(T - tryv - 0.25, 'vzhukh', v=0.6)
+        self.meta['petlia'] = True
+
+    def slovo(self, t0, t1, tekst, klas='', **kw):
+        """С6: план-удар — одне слово чи число на весь кадр."""
+        self.tekst(t0, t1, 'slovo', tekst, klas=klas, anim='zhodnoi', krok=0, y=0, **kw)
+
+    def pidpys(self, *riady):
+        """Підпис публікації (С8): захисні фрази, джерело, заклик — сюди, а не в тіло ролика."""
+        self.S.setdefault('pidpys_publikatsii', []).extend(riady)
+        self.meta['pidpys'] = ' '.join(self.S['pidpys_publikatsii'])
 
     # -- звук
     def muzyka(self, styl, **kw):
