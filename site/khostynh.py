@@ -146,7 +146,8 @@ def pidhotuvaty_worker(vykhid: Path, pachok: int, nazva: str = 'moya-vulytsya', 
         if prodazh.get('karta'):
             # Карта підписника — приватне сховище R2, віддає лише скрипт після перевірки підписки (prodazh/karta.js)
             konfig['r2_buckets'].append({'binding': 'KARTA', 'bucket_name': R2_KARTY})
-        konfig['triggers'] = {'crons': ['17 2 * * *']}     # щодня: прибирання й лист ОСББ за 3 дні (logika.js)
+        # щодня: прибирання й лист ОСББ за 3 дні (logika.js); кожні 10 хв — черга видавача (prodazh/vydavach.js, ZAVDANNYA-133)
+        konfig['triggers'] = {'crons': ['17 2 * * *', '*/10 * * * *']}
     (t / 'wrangler.jsonc').write_text('// Зібрано site/zibraty_sait.py --khostynh workers (ZAVDANNYA-88, -99). Не редагувати руками.\n'
                                       + json.dumps(konfig, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     return t

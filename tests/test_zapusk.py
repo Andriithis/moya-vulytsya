@@ -117,7 +117,7 @@ class Zapusk(unittest.TestCase):
         k = wrangler_konfig(Path(self.zv_tak['teka_workera']))
         self.assertEqual((k['vars']['PRODAZH'], k['vars']['PLATIZHNYI_SERVIS']), ('tak', 'test'))
         self.assertIn('r2_buckets', k)
-        self.assertEqual(k['triggers'], {'crons': ['17 2 * * *']}, 'щодня: прибирання й лист ОСББ (П7)')
+        self.assertEqual(k['triggers'], {'crons': ['17 2 * * *', '*/10 * * * *']}, 'щодня: прибирання й лист ОСББ (П7); кожні 10 хв — черга видавача')
 
     def test_wrangler_skoro(self):
         k = wrangler_konfig(Path(self.zv_skoro['teka_workera']))

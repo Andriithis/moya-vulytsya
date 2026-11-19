@@ -1,5 +1,6 @@
 // Правила продажу (ZAVDANNYA-99): замовлення, оплата, підписки, лічильник довідок, видача, видалення даних.
 // База — Cloudflare D1 (env.BAZA), файли довідок — Cloudflare R2 (env.DOVIDKY). Схема — skhema.sql.
+import { shturhnuty } from './vydavach.js';
 import TS from './tsiny.js';
 import { vypadkovyi, sha256 } from './bezpeka.js';
 import { nadislaty } from './poshta.js';
@@ -80,6 +81,7 @@ export async function postavytyDovidku(env, { korystuvach_id, zamovlennia_id, pi
   const id = 'd' + vypadkovyi(15);
   await zrobyty(env, `INSERT INTO dovidky (id, korystuvach_id, zamovlennia_id, pidpyska_id, budynok, adresa, rezhym, stvoreno)
                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, id, korystuvach_id, zamovlennia_id, pidpyska_id, budynok, adresa, rezhym, teper(env));
+  await shturhnuty(env, 'dovidka');      // видавач у GitHub Actions (ZAVDANNYA-133): довідку ставлять лише після оплати
   return id;
 }
 

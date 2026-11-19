@@ -6,6 +6,9 @@
 import { prodazh } from './prodazh/index.js';
 import { prybraty, nahadatyOsbb } from './prodazh/logika.js';
 import { budynok } from './budynky.js';
+import { pidhaniaty } from './prodazh/vydavach.js';
+
+export const CHASTO = '*/10 * * * *';     // той самий рядок — у site/khostynh.py (triggers)
 
 export default {
   async fetch(request, env) {
@@ -15,8 +18,10 @@ export default {
   },
   // Щодня (Cron Trigger у wrangler.jsonc): прибирання (прострочені входи, старі файли довідок) і лист ОСББ
   // за 3 дні до річного списання (MV-155, П7).
+  // Кожні 10 хв (ZAVDANNYA-133): якщо оплачена довідка чекає довше за 5 хв — ще раз штовхнути видавача в GitHub Actions.
   async scheduled(event, env) {
     if (env.PRODAZH !== 'tak') return;
+    if (event?.cron === CHASTO) { await pidhaniaty(env); return; }
     await prybraty(env);
     await nahadatyOsbb(env, (env.ADRESA_SAITU || '').replace(/\/$/, ''));
   },

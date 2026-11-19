@@ -130,6 +130,26 @@ class Vydavach(unittest.TestCase):
         except urllib.error.HTTPError as e:
             return e.code, e.headers, e.read().decode('utf-8')
 
+    def oplatyty(self, tovar, budynok, poshta):
+        st, h, _ = self.vidkryty('/api/zamovlennia', {'tovar': tovar, 'budynok': budynok, 'poshta': poshta,
+                                                      'zghoda': 'tak', 'odrazu': 'tak'})
+        self.assertEqual(st, 303)
+        _, _, html = self.vidkryty(urllib.parse.urlparse(h['location']).path)
+        forma = re.search(r'<form method="post" action="/api/spovishchennia/test">([\s\S]*?)Оплата пройшла', html).group(1)
+        self.assertEqual(self.vidkryty('/api/spovishchennia/test', dict(re.findall(r'name="([^"]+)" value="([^"]*)"', forma)))[0], 303)
+
+    def test_do_porozhnoi_cherhy(self):
+        """Запуск GitHub Actions (ZAVDANNYA-133): видавач забирає всю чергу й виходить сам, з кодом 0."""
+        self.oplatyty('dovidka', '/budynok/obolonskyi/16/', 'bo@poshta.ua')
+        self.oplatyty('dovidka', '/budynok/zhylianska/5/', 'bo@poshta.ua')
+        p = subprocess.run([sys.executable, str(KORIN / 'site' / 'prodazh' / 'vydavach.py'), '--server', self.adresa,
+                            '--generator', str(self.generator), '--do-porozhnoi', '--maks-khvylyn', '2'],
+                           capture_output=True, text=True, timeout=120, env=dict(os.environ, VYDACHA_KLIUCH='kliuch-vydavacha'))
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertIn('видано за запуск: 2', p.stdout)
+        lysty = json.loads(urllib.request.urlopen(self.adresa + '/__lysty').read())
+        self.assertEqual(sum(1 for l in lysty if l['komu'] == 'bo@poshta.ua' and 'Довідка' in l['tema']), 2)
+
     def test_naskrizno(self):
         st, h, _ = self.vidkryty('/api/zamovlennia', {'tovar': 'zvit', 'budynok': '/budynok/obolonskyi/16/',
                                                       'poshta': 'ana@poshta.ua', 'zghoda': 'tak', 'odrazu': 'tak', 'suma': '1'})
