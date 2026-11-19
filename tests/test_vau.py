@@ -352,11 +352,18 @@ class Vyhliady139(unittest.TestCase):
             self.assertRegex(js, rf'\n    {tema}: {{ osnova: \'(temna|svitla)\'', tema)
 
     def test_teksty_vyhliadu_pereviriaiutsia(self):
+        # у video/ і site/sait/ є свої perevirka.py і dani.py — на час імпорту прибрати чужі з sys.modules
+        chuzhi = {k: sys.modules.pop(k) for k in ('dani', 'perevirka', 'stsenarii') if k in sys.modules}
         sys.path.insert(0, str(VAU))
         try:
             L = modul('vau_lab139', 'laboratoriia139.py')
         except ImportError as e:          # без numpy/h3 у середовищі перевірки
             self.skipTest(str(e))
+        finally:
+            sys.path.remove(str(VAU))
+            for k in ('dani', 'perevirka', 'stsenarii'):
+                sys.modules.pop(k, None)
+            sys.modules.update(chuzhi)
         S = {'styl': [{'typ': 'kartka_zvit', 'zag': 'вул. Проба, 12', 'pid': 'Тут небезпечно'}]}
         z = L.perevirty_styl(S, {})
         self.assertTrue(any('номер будинку' in x for x in z))
