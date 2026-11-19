@@ -1,0 +1,14 @@
+# Бібліотеки конвеєра голосу (ZAVDANNYA-148). Окремо від основних: важкі (torch ≈ 200 МБ для процесора).
+# Встановлення:  python -m pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+#                python -m pip install -r video/holos/vymohy.txt
+numpy
+scipy
+soundfile
+librosa
+noisereduce
+pyloudnorm
+pyarrow
+huggingface_hub
+# лише для оцінки (video/holos/otsinka.py):
+faster-whisper
+speechbrain

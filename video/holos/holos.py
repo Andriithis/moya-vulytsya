@@ -1,18 +1,18 @@
 """Перетворення голосу Андрія (ZAVDANNYA-148, MV-156): запис з телефона → чоловічий або жіночий голос, якого немає в живої людини.
 
-    python video/holos/holos.py pidhotuvaty                          # раз: моделі й два голоси (≈ 3 ГБ, 15–30 хв)
+    python video/holos/holos.py pidhotuvaty                          # раз: моделі й два голоси (≈ 2 ГБ, 15–30 хв)
     python video/holos/holos.py peretvoryty <файли або тека> [--holos cholovichyi|zhinochyi|oba] [--rushii knn|openvoice]
                                             [--vykhid video/vyhid/holos] [--teksty teksty.tsv]
 
 Кроки для кожного файлу (m4a, ogg, opus, mp3, wav — усе, що читає ffmpeg):
-  1) читання ffmpeg → моно; 2) очищення: зріз гулу нижче 70 Гц, шумозаглушення (ffmpeg afftdn + noisereduce), обрізка тиші
+  1) читання ffmpeg → моно; 2) очищення: зріз гулу нижче 70 Гц, м'яке шумозаглушення (noisereduce), обрізка тиші
   на краях; 3) перетворення голосу (kNN-VC — типово, OpenVoice V2 — запасний); 4) вирівнювання гучності до −16 LUFS, пік
   не вище −1,5 дБ; 5) wav 44,1 кГц 16 біт моно — `<вихід>/<голос>/<ім'я файлу>.wav`.
 З `--teksty` (рядки «ім'я_файлу<TAB>текст репліки») готовий голос ще й кладеться як `<вихід>/teka-<голос>/<sha1>.wav` —
 рушій роликів бере його без змін у сценарії: `MV_HOLOS=teka MV_HOLOS_TEKA=<вихід>/teka-<голос>` (video/vau/holos_servis.py).
 
-Голоси — суміш п'яти дикторів однієї статі з відкритого набору LibriTTS-R (CC BY 4.0, openslr.org/141): жодної живої людини
-не імітуємо. Моделі — лише з дозволом на комерційне використання (MIT): kNN-VC (github.com/bshall/knn-vc) і OpenVoice V2
+Голоси — суміш десятків дикторів однієї статі з українського набору «Голос Америки» (speech-uk/voice-of-america, CC BY 4.0):
+жодної живої людини не імітуємо. Моделі — лише з дозволом на комерційне використання (MIT): kNN-VC (github.com/bshall/knn-vc) і OpenVoice V2
 (github.com/myshell-ai/OpenVoice). Дослідження — video/holos/DOSLIDZHENNYA.md. Модель, навчена на некомерційних даних
 (Seed-VC), і so-vits-svc сюди не додаються (перевірка — tests/test_holos.py).
 
@@ -50,23 +50,29 @@ RUSHII = {
 }
 TYPOVYI_RUSHII = 'knn'
 
-# Голоси: по п'ять дикторів LibriTTS-R dev-clean (CC BY 4.0). Стать визначено за висотою голосу (медіана основного тону:
-# чоловіки 103–143 Гц, жінки 192–216 Гц) — див. README. Дикторів з проміжною висотою не брали.
-NABIR = {'repo': 'mythicinfinity/libritts_r',
-         'fayly': ['data/dev.clean/dev.clean-00000-of-00004.parquet', 'data/dev.clean/dev.clean-00001-of-00004.parquet'],
-         'licenziia': 'CC BY 4.0', 'dzherelo': 'LibriTTS-R, Koizumi et al. 2023, https://www.openslr.org/141/'}
-HOLOSY = {
-    'cholovichyi': ['2803', '3752', '2902', '2086', '2428'],
-    'zhinochyi': ['5895', '6319', '6313', '1919', '84'],
-}
-HVYLYN_NA_DYKTORA = 5          # kNN-VC: понад 5 хв цільового голосу якість майже не росте (README kNN-VC)
+# Голоси — суміш десятків дикторів «Голосу Америки» українською (speech-uk/voice-of-america, CC BY 4.0; той самий набір
+# у форматі opus — speech-uk/voa-opus). Беремо 4 перші файли набору, перемішуємо (seed 0) і відбираємо шматки 3–15 с без
+# латиниці в тексті, з тихим тлом (різниця гучних і тихих кадрів ≥ 25 дБ) і з голосом у ≥ 35 % кадрів. Стать — за висотою
+# голосу (медіана основного тону): < 150 Гц — до чоловічого, > 180 Гц — до жіночого, між ними — не беремо. По 12 хв на голос.
+# Перетворення бере кожні 20 мс звуку з цієї суміші, тож голос не належить жодній одній людині.
+# Англійський набір LibriTTS-R (CC BY 4.0) пробували першим: голос виходив схожішим на вихідний і гірше вимовляв українське
+# (README, «Як вибирали»).
+NABIR = {'repo': 'speech-uk/voa-opus', 'fayly': ['0.parquet', '1.parquet', '2.parquet', '3.parquet'],
+         'licenziia': 'CC BY 4.0',
+         'dzherelo': 'Voice of America for Ukrainian, Speech-UK initiative and Yehor Smoliakov, 2025, '
+                     'https://huggingface.co/datasets/speech-uk/voice-of-america (doi 10.57967/hf/6430)'}
+HOLOSY = {'cholovichyi': (0, 150), 'zhinochyi': (180, 1000)}       # межі медіани основного тону, Гц
+HVYLYN_NA_HOLOS = 12
 FORMATY = {'.m4a', '.ogg', '.opus', '.mp3', '.wav', '.flac', '.aac', '.amr', '.3gp', '.webm', '.mp4'}
 LUFS = -16.0
 PIK_DB = -1.5
 SR_VYKHID = 44100
 
-# Очищення ffmpeg: гул і «бубніння» нижче 70 Гц геть, шумозаглушення з відстеженням шуму, без зайвого верху.
-FILTR_OCHYSHCHENNIA = 'highpass=f=70,lowpass=f=11000,afftdn=nr=14:nf=-35:tn=1'
+# Очищення: гул і «бубніння» нижче 70 Гц геть (ffmpeg), потім м'яке шумозаглушення noisereduce (MIT). Сильніше (ffmpeg afftdn,
+# noisereduce 0,8, зріз верху) на тесті псувало голос: схожість з чистим записом падала з 0,80 до 0,55, помилки розпізнавання
+# росли — видно в README, «Очищення».
+FILTR_OCHYSHCHENNIA = 'highpass=f=70'
+SYLA_SHUMOZAHLUSHENNIA = 0.5
 
 
 # ------------------------------------------------------------------ легка частина (перевіряється в CI без torch)
@@ -145,12 +151,12 @@ def chytaty(f: Path, sr: int, filtr: str | None = None):
 
 
 def ochystyty(f: Path, sr: int = 48000):
-    """Очищення: ffmpeg (гул, шум) → noisereduce (залишковий рівний шум) → обрізка тиші на краях (лишаємо 0,15 с)."""
+    """Очищення: ffmpeg (гул) → noisereduce (рівний шум кімнати, вулиці) → обрізка тиші на краях (лишаємо 0,15 с)."""
     import numpy as np
     x = chytaty(f, sr, FILTR_OCHYSHCHENNIA)
     try:
         import noisereduce
-        x = noisereduce.reduce_noise(y=x, sr=sr, stationary=True, prop_decrease=0.8).astype(np.float32)
+        x = noisereduce.reduce_noise(y=x, sr=sr, stationary=True, prop_decrease=SYLA_SHUMOZAHLUSHENNIA).astype(np.float32)
     except ImportError:
         print('  (noisereduce не встановлено — лише ffmpeg)')
     ramka = int(0.02 * sr)
@@ -329,6 +335,18 @@ class OpenVoice:
     def vidbytok(self, wavs: list[Path]):
         return self.tc.extract_se([str(w) for w in wavs])
 
+    def vidbytok_sumishi(self, f: Path):
+        """Відбиток тембру суміші: середнє відбитків шматків по 10 с (увесь файл за раз не влазить у пам'ять)."""
+        import tempfile
+        import soundfile as sf
+        x, sr = sf.read(str(f), dtype='float32')
+        with tempfile.TemporaryDirectory() as t:
+            fs = []
+            for i in range(0, len(x) - sr * 3, sr * 10):
+                fs.append(Path(t) / f'{i}.wav')
+                sf.write(str(fs[-1]), x[i:i + sr * 10], sr)
+            return self.vidbytok(fs)
+
     def holos(self, imia: str):
         f = MODELI / 'holosy' / f'openvoice-{imia}.pt'
         if not f.is_file():
@@ -365,44 +383,71 @@ KLASY = {'knn': Knn, 'openvoice': OpenVoice}
 
 # ------------------------------------------------------------------ команди
 
-def pidhotuvaty(rushii: list[str]):
-    """Моделі + два голоси-суміші. Повторний запуск нічого не качає вдруге."""
-    import io
+def _vidibraty_sumishi(kudy: Path):
+    """Набір → два файли 16 кГц: kudy/cholovichyi.wav і kudy/zhinochyi.wav (по HVYLYN_NA_HOLOS хв). Правила — над NABIR."""
+    import random
     import numpy as np
     import soundfile as sf
+    import librosa
     import pyarrow.parquet as pq
     from huggingface_hub import hf_hub_download
-    dyk = MODELI / 'dyktory'
-    potribni = {s for v in HOLOSY.values() for s in v}
-    if not all((dyk / f'{s}.wav').is_file() for s in potribni):
-        dyk.mkdir(parents=True, exist_ok=True)
-        zibrano: dict[str, list] = {s: [] for s in potribni}
-        for f in NABIR['fayly']:
-            print(f'набір дикторів: {f}')
-            lok = hf_hub_download(NABIR['repo'], f, repo_type='dataset', local_dir=str(MODELI / 'nabir'))
-            for r in pq.read_table(lok, columns=['audio', 'speaker_id']).to_pylist():
-                if r['speaker_id'] in zibrano:
-                    zibrano[r['speaker_id']].append(r['audio']['bytes'])
-        for s, bs in zibrano.items():
-            x = np.concatenate([sf.read(io.BytesIO(b))[0] for b in bs])[: 24000 * 60 * HVYLYN_NA_DYKTORA]
-            sf.write(str(dyk / f'{s}.wav'), x, 24000)
-            print(f'  диктор {s}: {len(x) / 24000 / 60:.1f} хв')
-        shutil.rmtree(MODELI / 'nabir', ignore_errors=True)       # ≈ 0,8 ГБ — більше не треба
+    riadky = []
+    for f in NABIR['fayly']:
+        print(f'набір: {NABIR["repo"]}/{f}')
+        lok = hf_hub_download(NABIR['repo'], f, repo_type='dataset', local_dir=str(MODELI / 'nabir'))
+        riadky += pq.read_table(lok).to_pylist()
+    random.Random(0).shuffle(riadky)
+    shmatky = {v: [] for v in HOLOSY}
+    trv = {v: 0.0 for v in HOLOSY}
+    lim = HVYLYN_NA_HOLOS * 60
+    for r in riadky:
+        if not 3 <= r['duration'] <= 15 or re.search('[a-zA-Z]', r['transcription']):
+            continue
+        x = np.frombuffer(subprocess.run([ffmpeg(), '-v', 'error', '-i', '-', '-ac', '1', '-ar', '16000', '-f', 'f32le', '-'],
+                                         input=r['audio']['bytes'], capture_output=True).stdout, dtype=np.float32)
+        if len(x) < 32000:
+            continue
+        kadry = x[: len(x) // 320 * 320].reshape(-1, 320)
+        e = 10 * np.log10((kadry ** 2).mean(1) + 1e-10)
+        if np.percentile(e, 90) - np.percentile(e, 10) < 25:
+            continue
+        f0, dzv, _ = librosa.pyin(x, fmin=60, fmax=400, sr=16000, frame_length=1024)
+        if np.mean(dzv) < 0.35:
+            continue
+        m = np.nanmedian(f0)
+        v = next((v for v, (n, k) in HOLOSY.items() if n <= m < k), None)
+        if v is None or trv[v] >= lim:
+            continue
+        shmatky[v].append(np.concatenate([x, np.zeros(1600, np.float32)]))
+        trv[v] += len(x) / 16000
+        if all(t >= lim for t in trv.values()):
+            break
+    kudy.mkdir(parents=True, exist_ok=True)
+    for v, sh in shmatky.items():
+        sf.write(str(kudy / f'{v}.wav'), np.concatenate(sh), 16000)
+        print(f'  {v}: {len(sh)} шматків, {trv[v] / 60:.1f} хв')
+    shutil.rmtree(MODELI / 'nabir', ignore_errors=True)       # ≈ 0,5 ГБ — більше не треба
+
+
+def pidhotuvaty(rushii: list[str]):
+    """Моделі + два голоси-суміші. Повторний запуск нічого не качає вдруге."""
+    sumishi = MODELI / 'sumishi'
+    if not all((sumishi / f'{v}.wav').is_file() for v in HOLOSY):
+        _vidibraty_sumishi(sumishi)
     (MODELI / 'holosy').mkdir(parents=True, exist_ok=True)
     (MODELI / 'holosy' / 'DZHERELA.txt').write_text(
-        'Голоси-суміші «Моєї вулиці» складено з записів набору ' + NABIR['dzherelo'] + f' ({NABIR["licenziia"]}).\n'
-        + ''.join(f'{v}: диктори {", ".join(s)}\n' for v, s in HOLOSY.items()), encoding='utf-8')
+        'Голоси «Моєї вулиці» складено з записів набору ' + NABIR['dzherelo'] + f' ({NABIR["licenziia"]}).\n',
+        encoding='utf-8')
     for r in rushii:
         m = None
-        for v, dyktory in HOLOSY.items():
+        for v in HOLOSY:
             f = MODELI / 'holosy' / f'{r}-{v}.pt'
             if f.is_file():
                 continue
             m = m or KLASY[r]()
-            fs = [dyk / f'{s}.wav' for s in dyktory]
             t0 = time.time()
             import torch
-            torch.save(m.nabir(fs) if r == 'knn' else m.vidbytok(fs), f)
+            torch.save(m.nabir([sumishi / f'{v}.wav']) if r == 'knn' else m.vidbytok_sumishi(sumishi / f'{v}.wav'), f)
             print(f'{r}: голос {v} готовий за {time.time() - t0:.0f} с → {f}')
     print('готово:', MODELI)
 
