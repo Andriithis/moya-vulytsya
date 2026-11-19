@@ -231,3 +231,29 @@ test('звичайна підписка й довідка — без розді�
   await shchodnia(env);
   assert.equal(sql(env, 'SELECT COUNT(*) n FROM dovidky')[0].n, 0, 'розклад ставить довідки лише ОСББ');
 });
+
+test('довідка, яку не вдалося зібрати, ліміту рієлтора не з\'їдає; ОСББ — без щоденних повторів; сторінки — same-origin', async () => {
+  const env = seredovyshche();
+  await oplatyty(env, await zamovyty(env, 'rieltor', null, 'a@poshta.ua'));
+  const kuka = await uviity(env, 'a@poshta.ua');
+  await zapyt(env, 'POST', '/kabinet/dovidka', { kuka, forma: { budynok: '/budynok/zhylianska/5/' } });
+  for (let i = 0; i < 3; i++) {
+    const [d] = JSON.parse((await zapyt(env, 'GET', '/api/vnutr/cherha?n=10', { zaholovky: AVT })).text).dovidky;
+    await zapyt(env, 'POST', `/api/vnutr/pomylka/${d.id}`, { zaholovky: AVT });
+  }
+  assert.equal(sql(env, 'SELECT status FROM dovidky')[0].status, 'pomylka');
+  assert.match((await zapyt(env, 'GET', '/kabinet/', { kuka })).text, /<b>0 з 5<\/b>/);
+
+  await oplatyty(env, await zamovyty(env, 'osbb', '/budynok/obolonskyi/16/', 'o@poshta.ua'));
+  for (let i = 0; i < 3; i++) {
+    const ds = JSON.parse((await zapyt(env, 'GET', '/api/vnutr/cherha?n=10', { zaholovky: AVT })).text).dovidky;
+    for (const d of ds) await zapyt(env, 'POST', `/api/vnutr/pomylka/${d.id}`, { zaholovky: AVT });
+  }
+  await shchodnia(env); env.krok(DEN); await shchodnia(env);
+  assert.equal(sql(env, `SELECT COUNT(*) n FROM dovidky WHERE rezhym = 'osbb'`)[0].n, 1, 'не щодня знову');
+
+  // з no-referrer браузер шле формам «Origin: null» — і сервер відхиляв кожне замовлення та вхід
+  const { r, text } = await zapyt(env, 'GET', '/oplata/?tovar=osbb');
+  assert.equal(r.headers.get('referrer-policy'), 'same-origin');
+  assert.match(text, /<meta name="referrer" content="same-origin">/);
+});

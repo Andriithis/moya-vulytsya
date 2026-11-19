@@ -28,7 +28,7 @@ export function storinka(title, tilo, { status = 200, zaholovky = {}, kabinet = 
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="referrer" content="no-referrer">
+<meta name="referrer" content="same-origin">
 <meta name="robots" content="noindex, nofollow">
 <title>${e(title)} | Моя вулиця</title>
 <script src="/sait/tema.js"></script>
@@ -52,7 +52,9 @@ ${tilo}
     status,
     headers: {
       'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'content-security-policy': CSP,
-      'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer', 'x-robots-tag': 'noindex', ...zaholovky,
+      // same-origin, а не no-referrer (ZAVDANNYA-143): з no-referrer браузер шле формам «Origin: null», і перевірка
+      // zNashohoSaitu відхиляла кожне замовлення й вхід у кабінет. Чужим сайтам адреса сторінки однаково не йде.
+      'x-content-type-options': 'nosniff', 'referrer-policy': 'same-origin', 'x-robots-tag': 'noindex', ...zaholovky,
     },
   });
 }

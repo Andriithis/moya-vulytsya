@@ -110,7 +110,8 @@ export async function stanPidpysok(env, korystuvach_id) {
     // Лічильник — за поточний місяць підписки (і в річній ОСББ теж: 1 довідка на місяць).
     let vid = p.pochatok, k = 1;
     while (dodatyMisiatsi(p.pochatok, k) <= t) vid = dodatyMisiatsi(p.pochatok, k++);
-    const vziato = (await odyn(env, 'SELECT COUNT(*) AS n FROM dovidky WHERE pidpyska_id = ? AND stvoreno >= ?', p.id, vid)).n;
+    // Довідка, яку не вдалося зібрати (pomylka), ліміту не з'їдає (ZAVDANNYA-143): її можна взяти знову.
+    const vziato = (await odyn(env, `SELECT COUNT(*) AS n FROM dovidky WHERE pidpyska_id = ? AND stvoreno >= ? AND status != 'pomylka'`, p.id, vid)).n;
     p.zalyshok = p.diie ? Math.max(0, TS.dovidok[p.tovar] - vziato) : 0;
     // ZAVDANNYA-143: межі поточного місяця підписки — для кабінету («нові 5 — з …», «наступна довідка ОСББ — …»)
     p.misiats_vid = vid;
@@ -382,6 +383,8 @@ export async function shchomisiachnaOsbb(env) {
   for (const { k } of ids) {
     for (const p of await stanPidpysok(env, k)) {
       if (p.tovar !== 'osbb' || !p.diie || p.zalyshok <= 0 || !p.budynok) continue;
+      // Цього місяця вже була спроба, що не вдалася, — не ставимо щодня знову: партнер отримав лист і вирішує сам.
+      if ((await odyn(env, 'SELECT COUNT(*) AS n FROM dovidky WHERE pidpyska_id = ? AND stvoreno >= ?', p.id, p.misiats_vid)).n) continue;
       await postavytyDovidku(env, { korystuvach_id: k, zamovlennia_id: p.zamovlennia_id, pidpyska_id: p.id, budynok: p.budynok,
         adresa: p.adresa, rezhym: 'osbb', poshtovkh: false });
       n++;
