@@ -102,7 +102,9 @@
       Object.keys(LICH).forEach(function (k) {
         var l = LICH[k], r = l.tsil - l.pokaz;
         l.pokaz = Math.abs(r) < 0.5 ? l.tsil : l.pokaz + r * Math.min(1, dt * 9);
-        EL.querySelectorAll('[data-lich="' + k + '"]').forEach(function (e) { e.textContent = ch(l.pokaz); });
+        // «за секунду» до 10 — з десятими (читач дає 0,2 — «0» вводить в оману)
+        var tekst = k === 'za_sek' && l.pokaz > 0 && l.pokaz < 10 ? (Math.round(l.pokaz * 10) / 10).toFixed(1).replace('.', ',') : ch(l.pokaz);
+        EL.querySelectorAll('[data-lich="' + k + '"]').forEach(function (e) { e.textContent = tekst; });
       });
       // смуга до наступної вулиці — плавно, за показаним (а не стрибком)
       var sm = EL.querySelector('.lit-smuha i');
