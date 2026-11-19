@@ -1,5 +1,6 @@
 // Єдиний модуль відправки даних заглушки (ZAVDANNYA-02, п. 5).
-// Куди: таблиці сховища Supabase (MV-8) через його REST-адресу.
+// Куди: таблиці сховища Supabase (MV-8) через його REST-адресу — або, якщо сайт на Cloudflare Workers
+// (MV_CONFIG.skhovyshche = 'sait', ZAVDANNYA-132), у базу самого сайту: POST /api/forma/<таблиця> з тими самими полями.
 // Що: лише поля форми та назву події з каналом. Час ставить сховище саме.
 // Чого НЕ робимо: не надсилаємо кукі, нічого не пишемо в пам'ять браузера, не створюємо
 // ідентифікатор відвідувача, не передаємо адресу сторінки, з якої прийшли.
@@ -15,6 +16,7 @@
 
   function nalashtuvannya() {
     var c = window.MV_CONFIG || {};
+    if (c.skhovyshche === 'sait') return { sait: true };
     var adresa = String(c.adresaSkhovyshcha || '').replace(/\/+$/, '');
     var klyuch = String(c.publichnyiKlyuch || '');
     if (!adresa || !klyuch || adresa.indexOf('ZAMINITY') !== -1 || klyuch.indexOf('ZAMINITY') !== -1) {
@@ -46,9 +48,9 @@
   function vidpravyty(tablytsya, ryadok, dovho) {
     var n = nalashtuvannya();
     if (!n) return Promise.reject(new Error('Сховище не налаштоване'));
-    return fetch(n.adresa + '/rest/v1/' + tablytsya, {
+    return fetch(n.sait ? '/api/forma/' + tablytsya : n.adresa + '/rest/v1/' + tablytsya, {
       method: 'POST',
-      headers: zaholovky(n.klyuch),
+      headers: n.sait ? { 'Content-Type': 'application/json' } : zaholovky(n.klyuch),
       body: JSON.stringify(ryadok),
       credentials: 'omit',
       referrerPolicy: 'no-referrer',

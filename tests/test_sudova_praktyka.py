@@ -193,7 +193,7 @@ class SaitZRozdilomTests(unittest.TestCase):
                                   sudova_praktyka=tmp / 'sp.json')
             self.assertEqual(zvit['sudova_praktyka_u_sitemap'], 1)
             rozdil = (tmp / 'sait' / 'sudova-praktyka' / 'index.html').read_text(encoding='utf-8')
-            self.assertNotIn('Скоро', rozdil)
+            self.assertNotIn('<span class="mitka">Скоро</span>', rozdil, 'справжній розділ, а не вітрина «скоро»')
             self.assertIn('/sudova-praktyka/kupap/130/', (tmp / 'sait' / 'sitemap.xml').read_text(encoding='utf-8'))
             self.assertIn('чим закінчуються справи', (tmp / 'sait' / 'index.html').read_text(encoding='utf-8'))
             self.assertTrue((tmp / 'sait' / 'sait' / 'sp.js').is_file())

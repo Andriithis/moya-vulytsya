@@ -4,6 +4,7 @@ import TS from './tsiny.js';
 import { vypadkovyi, sha256 } from './bezpeka.js';
 import { nadislaty } from './poshta.js';
 import { budynok as zPachky } from '../budynky.js';
+import { nahaduvanniaOsbb } from './lysty.js';
 
 export const teper = (env) => (env.__CHAS ? env.__CHAS() : Math.floor(Date.now() / 1000));
 
@@ -275,4 +276,33 @@ export async function prybraty(env) {
     await zrobyty(env, `UPDATE dovidky SET fail = NULL, kliuch_hash = NULL, status = 'vydaleno' WHERE id = ?`, d.id);
   }
   return stari.length;
+}
+
+// ---------------------------------------------------------------- нагадування ОСББ (MV-155, П7; ZAVDANNYA-132)
+
+export const NAHADATY_ZA_S = 3 * 86400;
+
+/**
+ * Щодня (той самий Cron Trigger): активним річним підпискам ОСББ, у яких період закінчується протягом 3 днів, — один лист
+ * на кінець періоду (таблиця nahaduvannia). Скасовані не отримують: списання не буде. Повертає, скільки листів надіслано.
+ */
+export async function nahadatyOsbb(env, adresaSaitu) {
+  const t = teper(env);
+  const ps = await vsi(env, `SELECT p.id, p.adresa, p.diie_do, k.poshta FROM pidpysky p JOIN korystuvachi k ON k.id = p.korystuvach_id
+    WHERE p.tovar = 'osbb' AND p.status = 'aktyvna' AND p.diie_do > ? AND p.diie_do <= ?
+      AND NOT EXISTS (SELECT 1 FROM nahaduvannia n WHERE n.pidpyska_id = p.id AND n.diie_do = p.diie_do)`, t, t + NAHADATY_ZA_S);
+  let n = 0;
+  for (const p of ps) {
+    const r = await zrobyty(env, 'INSERT OR IGNORE INTO nahaduvannia (pidpyska_id, diie_do, nadislano) VALUES (?, ?, ?)', p.id, p.diie_do, t);
+    if (!r.meta?.changes) continue;
+    try {
+      await nadislaty(env, { komu: p.poshta, ...nahaduvanniaOsbb({ adresa: p.adresa, diie_do: p.diie_do, adresaSaitu }) });
+      n++;
+    } catch (err) {
+      // Лист не пішов — прибираємо позначку, щоб завтра спробувати ще раз (до списання лишається ≥ 2 дні).
+      await zrobyty(env, 'DELETE FROM nahaduvannia WHERE pidpyska_id = ? AND diie_do = ?', p.id, p.diie_do);
+      console.log(`нагадування ОСББ: ${err.message}`);
+    }
+  }
+  return n;
 }

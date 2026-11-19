@@ -1,6 +1,7 @@
 // Місцевий запуск сервера продажу без Cloudflare і без грошей (ZAVDANNYA-99): справжній site/worker/index.js,
 // база — SQLite у пам'яті, файли — у пам'яті, оплата — тестова, листи — у журнал і на /__lysty (лише тут).
 //   node site/worker/testy/mistsevyi.mjs [порт] [тека зібраного сайту]
+// PRODAZH=skoro node … — режим «Скоро — залиште пошту» (ZAVDANNYA-132); ADMIN_KLIUCH — для вивантаження форм.
 // Без теки сайту будинки — два вигадані (/budynok/zhylianska/5/, /budynok/obolonskyi/16/).
 // Для справжньої перевірки на Cloudflare — `npx wrangler dev` у теці <сайт>-worker (docs/PRODAZH-SERVER.md).
 import http from 'node:http';
@@ -15,7 +16,7 @@ const ADRESA = `http://127.0.0.1:${port}`;
 const VYHADANI = { '/budynok/zhylianska/5/': 'вулиця Жилянська, 5', '/budynok/obolonskyi/16/': 'проспект Оболонський, 16' };
 
 const env = {
-  PRODAZH: 'tak', PLATIZHNYI_SERVIS: 'test', TESTOVA_OPLATA: 'tak', ADRESA_SAITU: ADRESA,
+  PRODAZH: process.env.PRODAZH || 'tak', ADMIN_KLIUCH: process.env.ADMIN_KLIUCH || 'mistsevyi-admin', PLATIZHNYI_SERVIS: 'test', TESTOVA_OPLATA: 'tak', ADRESA_SAITU: ADRESA,
   TEST_KLIUCH: process.env.TEST_KLIUCH || 'mistsevyi-test', VYDACHA_KLIUCH: process.env.VYDACHA_KLIUCH || 'mistsevyi-vydavach',
   BAZA: d1(), DOVIDKY: r2(), __LYSTY: [],
   ASSETS: {
@@ -26,7 +27,10 @@ const env = {
       }
       const f = path.join(sait, p.endsWith('/') ? p + 'index.html' : p);
       if (!f.startsWith(path.resolve(sait)) || !fs.existsSync(f)) return new Response('немає', { status: 404 });
-      return new Response(fs.readFileSync(f));
+      const typ = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
+        '.png': 'image/png', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json',
+        '.xml': 'application/xml', '.txt': 'text/plain; charset=utf-8' }[path.extname(f)] || 'application/octet-stream';
+      return new Response(fs.readFileSync(f), { headers: { 'content-type': typ } });   // як Cloudflare: тип за розширенням
     },
   },
 };

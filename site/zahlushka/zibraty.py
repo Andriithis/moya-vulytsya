@@ -103,14 +103,21 @@ def klyuch_sekretnyi(klyuch: str) -> bool:
 
 
 def zibraty(vykhid: Path, adresa: str, klyuch: str, zapovnennya: dict[str, str],
-            dlya_publikatsiyi: bool, koloda: Path | None = None, vulytsia_dnia: Path | None = None) -> list[str]:
-    """Збирає сайт. Повертає список незаповнених місць (порожній — усе заповнено)."""
+            dlya_publikatsiyi: bool, koloda: Path | None = None, vulytsia_dnia: Path | None = None,
+            skhovyshche: str = 'supabase') -> list[str]:
+    """Збирає сайт. Повертає список незаповнених місць (порожній — усе заповнено).
+    skhovyshche: 'supabase' — форми йдуть у Supabase (MV-8, адреса й публічний ключ); 'sait' — у базу самого сайту на
+    Cloudflare Workers (/api/forma/…, ZAVDANNYA-132): ні адреси, ні ключа в сторінці немає."""
+    if skhovyshche not in ('supabase', 'sait'):
+        raise PomylkaZbyrannya(f'Невідоме сховище форм {skhovyshche!r}: supabase або sait.')
+    if skhovyshche == 'sait':
+        adresa, klyuch = '', ''
     adresa = adresa.strip().rstrip('/')
     klyuch = klyuch.strip()
     if klyuch and klyuch_sekretnyi(klyuch):
         raise PomylkaZbyrannya('Це секретний ключ (service_role / sb_secret_). '
                                'У сторінку можна класти лише публічний ключ.')
-    if dlya_publikatsiyi:
+    if dlya_publikatsiyi and skhovyshche == 'supabase':
         if not adresa or not klyuch:
             raise PomylkaZbyrannya('Не задано MV_SUPABASE_URL або MV_SUPABASE_PUBLICHNYI_KLYUCH.')
         if not ADRESA_SUPABASE.match(adresa):
@@ -142,11 +149,16 @@ def zibraty(vykhid: Path, adresa: str, klyuch: str, zapovnennya: dict[str, str],
             raise PomylkaZbyrannya(f'{nazva}: невідомі змінні {zalyshky}')
         if adresa and CSP_ZAHLUSHKA in tekst:
             tekst = tekst.replace(CSP_ZAHLUSHKA, f"connect-src 'self' {adresa}")
+        elif skhovyshche == 'sait' and CSP_ZAHLUSHKA in tekst:
+            tekst = tekst.replace(CSP_ZAHLUSHKA, "connect-src 'self'")
         shlyakh.write_text(tekst, encoding='utf-8')
         for m in sorted(set(MISTSE.findall(tekst))):
             nezapovneni.append(f'{nazva}: {m}')
 
-    if adresa and klyuch:
+    if skhovyshche == 'sait':
+        (vykhid / 'config.js').write_text('// Створено zibraty.py під час збирання (ZAVDANNYA-132): форми — у базу самого сайту.\n'
+                                          'window.MV_CONFIG = { skhovyshche: \'sait\' };\n', encoding='utf-8')
+    elif adresa and klyuch:
         config = ('// Створено zibraty.py під час збирання. У git не потрапляє.\n'
                   'window.MV_CONFIG = ' + json.dumps(
                       {'adresaSkhovyshcha': adresa, 'publichnyiKlyuch': klyuch},

@@ -107,3 +107,53 @@ CREATE TABLE IF NOT EXISTS bali_rukh (
   stvoreno       INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS bali_rukh_k ON bali_rukh(korystuvach_id);
+
+-- ZAVDANNYA-132: нагадування ОСББ за 3 дні до річного списання (MV-155, П7). Один лист на один кінець періоду.
+CREATE TABLE IF NOT EXISTS nahaduvannia (
+  pidpyska_id    TEXT NOT NULL,
+  diie_do        INTEGER NOT NULL,           -- кінець періоду, про який нагадали
+  nadislano      INTEGER NOT NULL,
+  PRIMARY KEY (pidpyska_id, diie_do)
+);
+
+-- ZAVDANNYA-132: сховище форм сайту (замість Supabase, якщо сайт на Workers; docs/ZAPUSK-SAITU.md).
+-- «Скоро — залиште пошту» (поки оплату не ввімкнено, PRODAZH = 'skoro'): пошта й що хотіли купити.
+CREATE TABLE IF NOT EXISTS skoro (
+  id             INTEGER PRIMARY KEY,
+  poshta         TEXT NOT NULL,              -- нижнім регістром
+  tovar          TEXT NOT NULL,              -- ключ site/tsiny.py
+  budynok        TEXT NOT NULL DEFAULT '',   -- /budynok/<вулиця>/<номер>/ (перевірено на сайті) або ''
+  adresa         TEXT NOT NULL DEFAULT '',   -- адреса із заголовка сторінки будинку
+  kanal          TEXT NOT NULL DEFAULT 'priamo',
+  stvoreno       INTEGER NOT NULL,
+  napysano       INTEGER,                    -- коли партнер написав про запуск (лист один раз)
+  UNIQUE (poshta, tovar, budynok)
+);
+-- Передзамовлення із заглушки (/zahlushka/#peredzamovlennya) — ті самі поля, що в Supabase (MV-8).
+CREATE TABLE IF NOT EXISTS zayavka (
+  id             INTEGER PRIMARY KEY,
+  shcho          TEXT NOT NULL,
+  misto          TEXT NOT NULL,
+  adresa         TEXT,
+  kontakt        TEXT NOT NULL,
+  kanal          TEXT NOT NULL,
+  stvoreno       INTEGER NOT NULL
+);
+-- Звернення «виправити або прибрати подію» (10 робочих днів). Про кожне нове — лист партнеру.
+CREATE TABLE IF NOT EXISTS zvernennya (
+  id             INTEGER PRIMARY KEY,
+  posylannya     TEXT NOT NULL,
+  shcho_ne_tak   TEXT NOT NULL,
+  poyasnennya    TEXT,
+  kontakt        TEXT NOT NULL,
+  stvoreno       INTEGER NOT NULL,
+  zakryto        INTEGER                     -- коли партнер відповів (ставить вручну)
+);
+-- Чотири числа (MV-5): лише лічильник за день, назвою події й каналом — без людей, кукі й адрес.
+CREATE TABLE IF NOT EXISTS podiya (
+  den            TEXT NOT NULL,              -- РРРР-ММ-ДД (UTC)
+  nazva          TEXT NOT NULL,
+  kanal          TEXT NOT NULL,
+  n              INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (den, nazva, kanal)
+);

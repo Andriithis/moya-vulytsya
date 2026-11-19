@@ -122,9 +122,9 @@ def knopky_dovidky(budynok: str = '', dzherelo: str = '', adresa: str = '') -> s
     q = (f'&amp;budynok={e(budynok)}' if budynok else '') + (f'&amp;adresa={quote(adresa)}' if adresa else '')
     d = f'&amp;dzherelo={e(dzherelo)}' if dzherelo else ''
     return (f'<div class="tsiny">'
-            f'<a class="knopka knopka--holovna" href="/oplata/?tovar=dovidka{q}{d}">Довідка — {tsina("dovidka")}</a>'
-            f'<a class="knopka" href="/oplata/?tovar=try{q}{d}">3 довідки — {tsina("try")}</a>'
-            f'<a class="knopka" href="/oplata/?tovar=zvit{q}{d}">Повний звіт — {tsina("zvit")}</a>'
+            + T.knopka_oplaty(f'/oplata/?tovar=dovidka{q}{d}', f'Довідка — {tsina("dovidka")}', True)
+            + T.knopka_oplaty(f'/oplata/?tovar=try{q}{d}', f'3 довідки — {tsina("try")}')
+            + T.knopka_oplaty(f'/oplata/?tovar=zvit{q}{d}', f'Повний звіт — {tsina("zvit")}') +
             f'</div>')
 
 
@@ -444,12 +444,13 @@ def kartka_tovaru(kl: str, pidpys: str, punkty: list, holovna: bool = False, dzh
     d = f'&amp;dzherelo={dzherelo}' if dzherelo else ''
     if TSINY[kl] is None:
         # Ціна за домовленістю (MV-102): форма запиту — передзамовлення заглушки з вибором «Для компанії»; відповідає партнер.
-        href, napys = f'/zahlushka/?shcho=kompaniya{d}#peredzamovlennya', 'Надіслати запит'
+        knopka = (f'<a class="knopka{" knopka--holovna" if holovna else ""}" '
+                  f'href="/zahlushka/?shcho=kompaniya{d}#peredzamovlennya">Надіслати запит</a>')
     else:
-        href, napys = f'/oplata/?tovar={kl}{d}', 'Замовити'
+        knopka = T.knopka_oplaty(f'/oplata/?tovar={kl}{d}', 'Замовити', holovna)
     return (f'<div class="kartka tovar{" tovar--holovnyi" if holovna else ""}"><h3>{e(TOVARY[kl])}</h3>'
             f'<p class="tovar__tsina{"" if TSINY[kl] is not None else " tovar__tsina--nema"}">{tsina(kl)}</p><p class="tovar__pidpys">{pidpys}</p><ul>{li}</ul>'
-            f'<a class="knopka{" knopka--holovna" if holovna else ""}" href="{href}">{napys}</a></div>')
+            f'{knopka}</div>')
 
 
 def vitryna_miy_budynok(adresa_saitu: str, prykl: list, kartynka: tuple | None = None, period_podii: str = '') -> str:
@@ -597,6 +598,11 @@ def storinka_pro_dani(adresa_saitu: str, versiia: str, period: str) -> str:
 стверджуємо причин.</li>
 <li>Скарга 1551 — звернення людини, а не перевірений факт.</li>
 <li>Подію, яку суд не підтвердив (виправдання, скасування), ми не показуємо.</li></ul></div></section>
+<section class="rozdil" id="zakonna-syla"><h2>Рішення, що ще не набрали законної сили</h2><div class="kartka">
+<p>Частина подій узята з рішень, які ще не набрали законної сили: не минув строк на оскарження або подано апеляцію. Доки
+рішення не набрало законної сили, людина вважається невинуватою, а вищий суд може рішення змінити чи скасувати. Біля
+кожної події ми цього окремо не позначаємо — пояснення одне для всього сайту. Якщо рішення скасують або людину виправдають,
+подію приберемо з найближчим оновленням даних; побачили таке раніше — <a href="/vydalyty/">напишіть нам</a>.</p></div></section>
 <section class="rozdil"><h2>Що ми не показуємо відкрито</h2><div class="kartka"><ul class="spysok-tekst">
 <li>Імен, номерів квартир і даних, які суд приховав, немає ніде.</li>
 <li>На безкоштовних сторінках немає описів подій і посилань на рішення — лише числа.</li>

@@ -132,6 +132,9 @@ body.z-kartoyu .shapka__vnutri { max-width: none; padding: 6px 16px; min-height:
 .knopka:hover { color: var(--ink); border-color: var(--accent); }
 .knopka--holovna { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 .knopka--holovna:hover { color: var(--on-accent); border-color: var(--ink); }
+/* Режим «скоро» (ZAVDANNYA-132): оплату не підключено — під написом кнопки другий рядок «Скоро — залиште пошту». */
+.knopka--skoro { flex-direction: column; gap: 2px; }
+.knopka__skoro { font-size: 12px; line-height: 16px; font-weight: 400; }
 
 /* Карта вулиці */
 .karta-ramka { position: relative; border: 1.5px solid var(--mezha); border-radius: var(--radius-l); overflow: hidden; background: var(--karta-tlo); box-shadow: 0 3px 0 var(--bort); }

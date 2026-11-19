@@ -85,14 +85,20 @@ def teka_workera(vykhid: Path) -> Path:
 MARSHRUTY_PRODAZHU = ['/oplata/*', '/api/*', '/kabinet/*', '/dovidka/*', '/prodazh/*']
 R2_DOVIDOK = 'moya-vulytsya-dovidky'
 SERVISY_OPLATY = ('liqpay', 'mono', 'test')
+# Не секретні змінні, які скрипт викладки може записати у wrangler.jsonc (ключі — лише `wrangler secret put`).
+DODATKOVI_ZMINNI = {'POSHTA_PARTNERA', 'POSHTA_VID', 'POSHTA_URL', 'LIQPAY_SANDBOX', 'LIQPAY_HESH', 'DOVIDKY_DNIV'}
 
 
-def pidhotuvaty_worker(vykhid: Path, pachok: int, nazva: str = 'moya-vulytsya', prodazh: dict | None = None) -> Path:
+def pidhotuvaty_worker(vykhid: Path, pachok: int, nazva: str = 'moya-vulytsya', prodazh: dict | None = None,
+                       oplata: str = 'tak', domen: str = '') -> Path:
     """Тека поруч із сайтом: скрипт і налаштування Cloudflare Workers (`npx wrangler deploy` з цієї теки).
     Ключів тут немає: вхід у Cloudflare — токеном партнера в налаштуваннях запуску, не у файлах; ключі оплати й пошти —
     секрети Workers (`npx wrangler secret put …`, docs/PRODAZH-SERVER.md).
     prodazh — {'d1': ідентифікатор бази D1, 'servis': liqpay | mono | test, 'adresa': адреса сайту}: увімкнути продаж
-    (ZAVDANNYA-99). Без нього адреси продажу віддають статичний сайт («Оплата скоро»)."""
+    (ZAVDANNYA-99). Без нього адреси продажу віддають статичний сайт («Оплата скоро»).
+    oplata (ZAVDANNYA-132): 'skoro' — з базою D1, але без оплати: PRODAZH = 'skoro' («Скоро — залиште пошту» і форми сайту
+    в базі), сервіс оплати не потрібен; 'tak' — PRODAZH = 'tak'. domen — свій домен (Workers Custom Domain, DNS і
+    сертифікат Cloudflare робить сам під час `wrangler deploy`)."""
     t = teka_workera(vykhid)
     if t.exists():
         shutil.rmtree(t)
@@ -111,16 +117,32 @@ def pidhotuvaty_worker(vykhid: Path, pachok: int, nazva: str = 'moya-vulytsya', 
         },
         'vars': {'PACHOK': str(pachok)},
     }
-    if prodazh:
+    if prodazh and prodazh.get('vars'):
+        # Звичайні (не секретні) змінні зі скрипта викладки: пошта партнера, відправник, пісочниця LiqPay.
+        zayvi = set(prodazh['vars']) - DODATKOVI_ZMINNI
+        if zayvi:
+            raise SystemExit(f'Невідомі змінні Workers: {sorted(zayvi)} (дозволено: {sorted(DODATKOVI_ZMINNI)})')
+        konfig['vars'].update({k: str(v) for k, v in prodazh['vars'].items() if v})
+    # Змінні, додані в панелі Cloudflare, не стирати під час викладки (ZAVDANNYA-132).
+    konfig['keep_vars'] = True
+    if domen:
+        konfig['routes'] = [{'pattern': domen, 'custom_domain': True}]
+    if prodazh and oplata == 'skoro':
+        if not prodazh.get('d1'):
+            raise SystemExit('Режим «скоро» на Workers: потрібен --d1 (база форм; docs/ZAPUSK-SAITU.md)')
+        konfig['vars'].update({'PRODAZH': 'skoro', 'ADRESA_SAITU': prodazh.get('adresa', ''),
+                               'POSHTA_SERVIS': prodazh.get('poshta', 'zahlushka')})
+        konfig['d1_databases'] = [{'binding': 'BAZA', 'database_name': f'{nazva}-prodazh', 'database_id': prodazh['d1']}]
+    elif prodazh:
         if prodazh.get('servis') not in SERVISY_OPLATY or not prodazh.get('d1'):
-            raise SystemExit(f'Продаж: потрібні --prodazh-d1 і --platizhnyi-servis ({", ".join(SERVISY_OPLATY)})')
+            raise SystemExit(f'Продаж: потрібні --d1 і --platizhnyi-servis ({", ".join(SERVISY_OPLATY)})')
         konfig['vars'].update({'PRODAZH': 'tak', 'PLATIZHNYI_SERVIS': prodazh['servis'],
                                'ADRESA_SAITU': prodazh.get('adresa', ''), 'POSHTA_SERVIS': prodazh.get('poshta', 'zahlushka')})
         if prodazh['servis'] == 'test':
             konfig['vars']['TESTOVA_OPLATA'] = 'tak'
         konfig['d1_databases'] = [{'binding': 'BAZA', 'database_name': f'{nazva}-prodazh', 'database_id': prodazh['d1']}]
         konfig['r2_buckets'] = [{'binding': 'DOVIDKY', 'bucket_name': R2_DOVIDOK}]
-        konfig['triggers'] = {'crons': ['17 2 * * *']}     # щоденне прибирання (logika.prybraty)
+        konfig['triggers'] = {'crons': ['17 2 * * *']}     # щодня: прибирання й лист ОСББ за 3 дні (logika.js)
     (t / 'wrangler.jsonc').write_text('// Зібрано site/zibraty_sait.py --khostynh workers (ZAVDANNYA-88, -99). Не редагувати руками.\n'
                                       + json.dumps(konfig, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     return t
