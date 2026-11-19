@@ -630,7 +630,8 @@
     (S.tekst || []).forEach(function (it) { onovytyTekst(it, t); });
     (S.ui || []).forEach(function (u) { onovytyUi(u, t); });
     var spalakh = 0; (S.spalakh || []).forEach(function (f) { var a = t - f.t; if (a >= 0 && a < 0.35) spalakh = Math.max(spalakh, (f.sila || 0.6) * Math.exp(-a * 12)); });
-    document.getElementById('spalakh').style.opacity = spalakh;
+    // спалах — лише підсвітка удару: повний білий шар засвічував весь кадр сірим (аркуші ZAVDANNYA-129)
+    document.getElementById('spalakh').style.opacity = spalakh * 0.35;
     var dx = 0, dy = 0; (S.trus || []).forEach(function (f) { var a = t - f.t; if (a >= 0 && a < 0.5) { var s = (f.sila || 14) * Math.exp(-a * 9); dx += s * Math.sin(a * 83); dy += s * Math.cos(a * 71); } });
     document.getElementById('karta').style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(' + (dx || dy ? 1.03 : 1) + ')';
     var zv = 0, zn = 0, zf = 0;

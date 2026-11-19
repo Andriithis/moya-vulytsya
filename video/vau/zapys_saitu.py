@@ -108,8 +108,8 @@ def z1():
             {'t': 7.6, 'dia': 'skrol', 'sel': '.stat, main h1', 'do_px': 250, 'tryv': 0.9},
             {'t': 8.8, 'dia': 'skrol', 'do_px': 640, 'tryv': 1.0},
             {'t': 9.9, 'dia': 'skrol', 'do_px': 900, 'tryv': 0.7},
-            {'t': 10.9, 'dia': 'skrol', 'do_px': 1380, 'tryv': 1.2},
-            {'t': 12.0, 'dia': 'skrol', 'do_px': 1560, 'tryv': 0.8},
+            {'t': 10.9, 'dia': 'skrol', 'do_px': 1150, 'tryv': 1.2},
+            {'t': 12.0, 'dia': 'skrol', 'do_px': 1260, 'tryv': 0.8}   # не до кнопки довідки (MV-151: довідку — лише зі справжнім зразком),
         ],
         'zvuk': {'muzyka': {'styl': 'lofi', 'bpm': 96}, 'efekty': [{'t': 0.9, 'typ': 'klik', 'h': 1.0}, {'t': 3.2, 'typ': 'klik', 'h': 1.2},
                  {'t': 3.3, 'typ': 'vzhukh', 'v': 0.6}, {'t': 6.7, 'typ': 'svish'}, {'t': 13.0, 'typ': 'dzvin', 'h': 0.8, 'v': 0.5}]

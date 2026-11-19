@@ -267,7 +267,7 @@ def _dyvna(B, id_, nomer, pod, hook, kartka, slovo_, slovo_pid, kudy, nazva, pid
     R.kam(0, (c[0], c[1] - 0.012), 12.6, 40, 15).kam(4.6, (c[0], c[1] - 0.006), 13.6, 50, 0, e='io')
     R.kam(8.0, (c[0], c[1] - 0.0022), 15.0, 58, -30, e='io', luk=0.4).kam(12, (c[0], c[1] - 0.002), 15.2, 60, -60, e='l')
     R.tekst(0, 2.0, 'hook', hook, y='verkh')
-    R.tekst(0, 2.0, 'mala', f'Найдивніша справа тижня · №{nomer}', y=640, klas='zaklyk')
+    R.tekst(0, 2.0, 'mala', f'Найдивніша справа тижня · №{nomer}', y=420 + 110 * (hook.count(chr(10)) + 1), klas='zaklyk')
     R.udar(0.02, 0.2, 14)
     R.tekst(2.1, 6.4, 'kartka', kartka, zag=f'Найдивніша справа тижня · №{nomer}',
             dz=(f'{D.vulytsia(pod[0].adresa)} · рішення суду № {pod[0].nomer_rishennia}' if odna else D.vulytsia(pod[0].adresa)), y='verkh')
@@ -348,15 +348,16 @@ def _mif(B, id_, nazva, tverdzhennia, riady, pravda, holos_, kudy, liniia, pidpy
     if prepare:
         prepare(R)
     R.slovo(0, 2.0, tverdzhennia, pid='Міф чи факт?', klas='temne menshe')
-    R.holos(0.2, 'Міф чи факт? ' + tverdzhennia.replace('*', '').replace('\n', ' '), 'mykyta')
+    # голос лише питає: «Міф» у кінці фрази Piper оглушує в «Мів» (перевірено розпізнаванням); «МІФ» — печаткою на екрані
+    R.holos(0.2, 'Це правда?', 'tetiana')
     R.tekst(2.1, 3.9, 'shtamp', 'МІФ')
     R.udar(2.1, 0.3, 20)
+    R.holos(2.2, holos_, 'tetiana')
     R.tekst(4.0, 7.6, 'split', riady=riady, y=560)
     R.efekt(4.0, 'vzhukh')
     R.efekt(5.6, 'kasa', v=0.5)
     R.S['novynky'] = [5.9]
     R.tekst(7.7, 9.9, 'velykyi', pravda, y='verkh', anim='slam')
-    R.holos(7.8, holos_, 'mykyta')
     R.udar(7.7, 0.2, 8)
     R.baner(9.6, 'Перевір свою вулицю', 'Карта подій · посилання в профілі')
     R.pidpys(*pidpys_)
@@ -500,7 +501,7 @@ def n8(B):
     vars_ = [('А', '13 тисяч'), ('Б', '50 тисяч'), ('В', f'{round(lift / 1000)} тисячі' if str(round(lift / 1000))[-1] in '234' else f'{round(lift / 1000)} тисяч')]
     for i, (b, v) in enumerate(vars_):
         R.tekst(0, 6.6, 'variant', v, bukva=b, y=1000 + 130 * i, pravylno=(b == 'В'), vidpovid=5.4)
-    R.holos(0.2, 'Скільки разів кияни скаржились у п\'ятнадцять п\'ятдесят один на ліфт? За п\'ятнадцять місяців.', 'mykyta')
+    R.holos(0.2, 'Скільки разів кияни скаржились у п\'ятнадцять п\'ятдесят один на ліфт? За п\'ятнадцять місяців.', 'tetiana')
     R.tekst(1.5, 5.4, 'mala', 'За 15 місяців · пиши букву в коментарях', y=1400, klas='zaklyk')
     R.tekst(2.4, 5.4, 'taimer', y=1480)
     for t in (2.4, 3.4, 4.4):
@@ -508,7 +509,7 @@ def n8(B):
     R.efekt(5.4, 'dzvin', h=1.2)
     R.slovo(6.7, 9.6, D.chyslo(lift), pid='звернень про ліфт\nза 15 місяців')
     R.udar(6.7, 0.2, 10)
-    R.holos(6.9, f'{lift // 1000} тисячі. Лише про ліфт.', 'mykyta')
+    R.holos(6.9, f'{lift // 1000} тисячі. Лише про ліфт.', 'tetiana')
     R.efekt(8.2, 'kasa', v=0.5)
     R.S['novynky'] = [8.2]
     R.tekst(9.7, 11, 'velykyi', 'А у вашому\n*будинку?*', y='verkh', anim='slam')
