@@ -134,7 +134,7 @@
         'variant--chastyny', x.chastyna, function (id, tak) { vybir.chastyna = id; poznachyty(2, tak); pidsumok(); });
     }
     function pidsumok() {
-      var r = Y.vidpovisty(S, x, vybir, sohodni(), opts.rezhym);
+      var r = Y.vidpovisty(S, x, vybir, sohodni(), opts.rezhym, D);
       zberehty();
       shapka();
       var st = D.statti[x.stattia];

@@ -77,13 +77,19 @@ def znaity_kvalifikatsiiu(tekst: str):
     if not m:
         return None
     rez = tekst[m[-1].end():m[-1].end() + 2500]
-    for rech in re.split(r'(?<=[.;])\s+(?=[А-ЯІЇЄҐ\d])', rez):
+    # речення — до крапки перед великою літерою (не перед цифрою: «ч. 2 ст. 130» — одне речення)
+    for rech in re.split(r'(?<=[.;])\s+(?=[А-ЯІЇЄҐ])', rez):
         if not VYNA.search(rech):
             continue
         # лише до «та призначити / накласти»: далі — покарання (там бувають інші статті: 75, 71 КК тощо)
         rech = re.split(r'\s(?:та|і|й)?\s*(?:призначити|накласти|застосувати|піддати|звільнити)', rech)[0]
         kv = {(kliuch(kod_kodeksu(k), n), ch or '') for ch, n, k in KVAL.findall(rech)}
-        return next(iter(kv)) if len(kv) == 1 else None
+        # «ст. 124, ч. 2 ст. 130 КУпАП», «ст.ст. 124, 130» — кодекс названо раз на кілька статей: теж неоднозначно
+        nomery = set(re.findall(r'ст(?:\.|атт\w+)\s*(\d+(?:-\d+)?)', rech))
+        if kv and (len(nomery) > 1 or re.search(r'ст\.\s*ст\.|статтями', rech)):
+            return None
+        if kv:
+            return next(iter(kv)) if len(kv) == 1 else None
     return None
 
 
@@ -180,6 +186,24 @@ def zibraty(baza: Path, teksty: list[Path], na_chastynu: int = 60) -> dict:
                 chomu = poiasnennia(z['tekst'], k, kv[1])
                 zibrano[(k, kv[1])].append({'doc': doc, 'fabula': fabula, 'chomu': chomu, 'url': url,
                                             'data': data, 'vyd': vyd})
+    # Частини, які справді є: для статей зачатку — його перелік (у ст. 173 КУпАП частин немає, хоч суди й пишуть «ч. 1»);
+    # для решти — частина щонайменше в 3 справах і 1 % справ статті. Справа з іншою частиною не йде.
+    zachatok = json.loads(KVAL_ZACHATOK.read_text(encoding='utf-8'))['statti'] if KVAL_ZACHATOK.exists() else {}
+    vsogo_st = Counter()
+    for (k, ch), sp in zibrano.items():
+        vsogo_st[k] += len(sp)
+    chysti = defaultdict(list)
+    for (k, ch), sp in zibrano.items():
+        if k in zachatok:
+            dozv = zachatok[k].get('chastyny') or []
+            if not dozv:
+                ch = ''
+            elif ch and ch not in dozv:
+                continue
+        elif ch and (len(sp) < 3 or len(sp) < 0.01 * vsogo_st[k]):
+            continue
+        chysti[(k, ch)] += sp
+    zibrano = chysti
     # Добір: на кожну пару «стаття + частина» — до na_chastynu справ, спершу з поясненням суду; порядок — сталий (хеш).
     spravy = []
     chastyny = defaultdict(Counter)
@@ -189,7 +213,6 @@ def zibraty(baza: Path, teksty: list[Path], na_chastynu: int = 60) -> dict:
         spravy += [dict(s, stattia=k, chastyna=ch) for s in sp[:na_chastynu]]
     poriadok = [k for k, _ in chastota.most_common() if k in chastyny]
     statti = {}
-    zachatok = json.loads(KVAL_ZACHATOK.read_text(encoding='utf-8'))['statti'] if KVAL_ZACHATOK.exists() else {}
     for i, k in enumerate(poriadok):
         riven = 1 if i < 4 else 2 if i < 10 else 3 if i < 20 else 4
         vsi_ch = sorted((set(chastyny[k]) | set((zachatok.get(k) or {}).get('chastyny') or [])) - {''}, key=int)

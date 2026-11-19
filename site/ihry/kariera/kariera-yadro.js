@@ -139,18 +139,20 @@
     if (!sprava.chastyna) return [];            // суд частину не назвав (або в статті частин немає) — кроку немає
     var ch = (D.statti[sprava.stattia].chastyny || []).slice();
     if (ch.indexOf(sprava.chastyna) < 0) ch.push(sprava.chastyna);
-    return ch.sort(function (a, b) { return a - b; });
+    // одна частина на вибір — не питання: крок пропускаємо (частину суду все одно показуємо у відповіді)
+    return ch.length < 2 ? [] : ch.sort(function (a, b) { return a - b; });
   }
 
   // ---------- відповідь ----------
-  function otsinyty(sprava, v) {
+  function otsinyty(sprava, v, D) {
+    var ye = D ? variantyChastyny(D, sprava).length > 0 : !!sprava.chastyna;
     var r = { kodeks: v.kodeks === sprava.stattia.split(' ')[0], stattia: v.stattia === sprava.stattia,
-      chastyna: sprava.chastyna ? v.chastyna === sprava.chastyna : null };
+      chastyna: ye ? v.chastyna === sprava.chastyna : null };
     r.vse = r.kodeks && r.stattia && r.chastyna !== false;
     return r;
   }
-  function vidpovisty(s, sprava, v, d, rezhym) {
-    var o = otsinyty(sprava, v);
+  function vidpovisty(s, sprava, v, d, rezhym, D) {
+    var o = otsinyty(sprava, v, D);
     var m = N.mnozhnyk[sprava.skladnist] || 1;
     var bal = (o.kodeks ? N.bal.kodeks : 0) + (o.stattia ? N.bal.stattia : 0) + (o.chastyna ? N.bal.chastyna : 0);
     bal = Math.round(bal * m);
