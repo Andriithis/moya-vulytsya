@@ -24,7 +24,7 @@ ZAKHYST_MAKS = 1.5
 ZUM_ZHYTLO = 15.3           # MV-151: житло — камера не ближче рівня вулиці (3D-план будинку = номер, MV-25)
 NOMER_RISHENNIA = re.compile(r'рішенн\w*\s+(?:суду\s+)?№', re.I)
 KOMPONUVANNIA = {'hook', 'velykyi', 'pytannia', 'lich', 'kartka', 'stovpchyky', 'variant', 'vidlik', 'godynnyk', 'slovo', 'split',
-                 'komentar', 'kolony', 'shtamp', 'taimer'}
+                 'komentar', 'kolony', 'shtamp', 'taimer', 'kalendar'}
 ZASTARILI = {'fin'}         # нерухома кінцева картка 3–5 с (С1) — заборонено
 LICH_PODII = re.compile(r'\bподі[яйї]', re.I)
 
@@ -35,10 +35,13 @@ def novynky(S: dict) -> list[float]:
     t = [x['t0'] for x in S.get('tekst', [])] + [x['t0'] for x in S.get('ui', [])] + [x['t0'] for x in S.get('mitky', [])]
     t += [x['t'] for x in S.get('spalakh', [])] + [x['t'] for x in S.get('kiltsia', [])]
     t += [x['t0'] for x in S.get('lini', [])]
+    t += [k[0] for u in S.get('ui', []) if u.get('typ') == 'sota' for k in u.get('kroky', [])]   # «Сота» стрибає (MV-148)
     for sh in S.get('soty', []):
         t += [r['t'] for r in sh.get('rozpad', [])]
-    for sh in S.get('tochky', []):
-        tt = sorted(sh['dani']['t'])
+    hvyli = [sh['dani']['t'] for sh in S.get('tochky', [])]
+    hvyli += [[f['properties']['t'] for f in sh['dani'].get('features', [])] for sh in S.get('adresy', [])]   # адреси (138)
+    for tt in hvyli:
+        tt = sorted(tt)
         if tt:
             t.append(tt[0])
             x = tt[0]          # довга хвиля точок теж «нове»: позначка кожні 1,5 с, поки точки ще з'являються

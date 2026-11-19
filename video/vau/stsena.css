@@ -202,9 +202,9 @@ body { font-family: Plex, system-ui, sans-serif; color: var(--ink); -webkit-font
 #druha-liniia { position: absolute; left: 0; right: 0; height: 6px; background: #66E6BA; box-shadow: 0 0 24px rgba(102,230,186,.8); opacity: 0; }
 .bez-nakladok #znak, .bez-nakladok #dzherelo, .bez-nakladok #vinietka, .bez-nakladok .maplibregl-ctrl-attrib { display: none; }
 /* «Календар року» (не карта): 12 місяців по 3 в ряд, клітинка = день, колір = скільки подій у даних того дня */
-.t.kalendar { left: 44px; right: 44px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px 30px; }
+.t.kalendar { left: 40px; right: 40px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 30px 26px; }
 .t.kalendar .mis b { display: block; font: 800 30px/1 Plex; color: var(--ink2); margin: 0 0 10px 4px; text-transform: uppercase; letter-spacing: 2px; }
-.t.kalendar .sitka { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+.t.kalendar .sitka { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
 .t.kalendar .d { aspect-ratio: 1; border-radius: 7px; background: var(--tint); opacity: .35; transform: scale(.6); }
 .t.kalendar .d.pust { visibility: hidden; }
 .t.kalendar .d.on { opacity: 1; transform: none; }
@@ -214,3 +214,7 @@ body { font-family: Plex, system-ui, sans-serif; color: var(--ink); -webkit-font
 [data-t="svitla"] .t.kalendar .d.k3 { background: #6066C1; } [data-t="svitla"] .t.kalendar .d.k4 { background: #31B88D; box-shadow: none; }
 .t.kalendar .d.akc { outline: 6px solid #FFE45C; outline-offset: 2px; transform: scale(1.25); z-index: 2; position: relative; }
 [data-t="svitla"] .t.kalendar .d.akc { outline-color: #1C1E2D; }
+/* текст на темній половині поділеного екрана (основна тема — світла) */
+.t.na-temnomu, .t.na-temnomu .w { color: #fff !important; text-shadow: 0 0 36px rgba(10, 12, 40, .9), 0 4px 0 rgba(0,0,0,.25) !important; }
+.t.na-temnomu .w.a, .t.na-temnomu .n { color: #66E6BA !important; }
+.t.na-temnomu small { color: #D1D3E2 !important; text-shadow: 0 0 18px #11142A !important; }

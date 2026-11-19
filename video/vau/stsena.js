@@ -604,7 +604,8 @@
       var cur = odrazu(it) && !it.kluchi ? 1e9 : trek(it.kluchi, t, 1e9);
       it._dni.forEach(function (d, i) {
         d.classList.toggle('on', i <= cur);
-        d.classList.toggle('akc', (it.akc || []).indexOf(i) !== -1 && t >= (it.akc_t || 0));
+        // akc: індекси днів-акцентів; кожен — число (з akc_t) або [індекс, з якої секунди]
+        d.classList.toggle('akc', (it.akc || []).some(function (a) { return Array.isArray(a) ? a[0] === i && t >= a[1] : a === i && t >= (it.akc_t || 0); }));
       });
     }
     if (it.styl === 'taimer') {
