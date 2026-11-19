@@ -77,6 +77,8 @@ python video/holos/otsinka.py --pochatkovi zapysy/ --pisla video/vyhid/holos/cho
   Ритм, паузи й слова перетворення не міняє.
 - Умови навчальних даних WavLM (GigaSpeech) для похідних моделей — не перевірено (`DOSLIDZHENNYA.md`).
 - Колаб для RVC — лише за правилами Colab, саме навчання не пробували.
+- Копія набору у форматі opus (`speech-uk/voa-opus`), з якої качаємо, власної позначки ліцензії не має; ліцензія CC BY 4.0 —
+  з картки основного набору `speech-uk/voice-of-america` того самого автора (ті самі 326 174 записи, 391 год).
 
 ## Файли
 
