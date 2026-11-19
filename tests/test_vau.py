@@ -225,8 +225,9 @@ class Pravyla129(unittest.TestCase):
         self.assertTrue(any('С4' in x for x in self.z(lambda s: s['tekst'].append(
             {'t0': 1, 't1': 2, 'styl': 'kartka', 'tekst': 'Коротко.', 'drukarka': True}))))
 
-    def test_s7_svitla(self):
-        self.assertTrue(any('С7' in x for x in self.z(lambda s: s.update(tema='svitla'))))
+    def test_s7_svitla_dozvoleno(self):
+        # С7 «лише темна» скасовано (MV-158, MV-161): світла тема — повноправна (ZAVDANNYA-138)
+        self.assertEqual(self.z(lambda s: s.update(tema='svitla')), [])
 
     def test_s8_zakhysna_fraza_dovho(self):
         self.assertTrue(any('С8' in x for x in self.z(lambda s: s['tekst'].append(
@@ -267,8 +268,8 @@ class SotyV1(unittest.TestCase):
         js = (VAU / 'stsena.js').read_text(encoding='utf-8')
         self.assertIn('nadLiniiamy', js)                       # над останнім шаром ліній, під підписами
         self.assertIn('sh.styl_sot ? nadLiniiamy : pershyiSymvol', js)
-        for styl in ("'sklo'", "'plytka'"):
-            self.assertIn(styl, js)
+        for styl in ('sait', 'sklo', 'plytka', 'stovpchyky'):          # рівноправні стилі в реєстрі (ZAVDANNYA-138)
+            self.assertIn(f'VAU.styliSot.{styl} =', js)
 
 
 class Holos129(unittest.TestCase):
@@ -323,6 +324,59 @@ class Holos129(unittest.TestCase):
         for f in Path(self.tmp.name).iterdir():
             self.assertNotIn('SEKRET', f.name)
             self.assertNotIn(b'SEKRET', f.read_bytes())
+
+
+class Rushii138(unittest.TestCase):
+    """ZAVDANNYA-138: стилі сот — явний вибір; світла тема; адреси — лише число; чергування роликів (В2)."""
+
+    META = dict(META, pravyla=138, shar='soty')
+
+    def S(self, **zminy):
+        S = copy.deepcopy(CHYSTYI129)
+        S.update(zminy)
+        return S
+
+    def test_styl_sot_obovyazkovyi(self):
+        S = self.S(soty=[{'dani': {'features': []}}])
+        self.assertTrue(any('styl_sot' in x for x in P.pereviryty(S, self.META)))
+        S['soty'][0]['styl_sot'] = 'plytka'
+        self.assertEqual(P.pereviryty(S, self.META), [])
+
+    def test_svitla_tema(self):
+        self.assertEqual(P.pereviryty(self.S(tema='svitla'), self.META), [])
+
+    def test_shar_obovyazkovyi(self):
+        self.assertTrue(any('шар' in x for x in P.pereviryty(self.S(), dict(self.META, shar=None))))
+
+    def test_adresy_lyshe_chyslo(self):
+        pt = {'type': 'Feature', 'geometry': {'type': 'Point', 'coordinates': [30.5, 50.45]}, 'properties': {'n': 3, 't': 0}}
+        S = self.S(adresy=[{'dani': {'features': [pt]}}])
+        self.assertEqual(P.pereviryty(S, self.META), [])
+        pt['properties']['adresa'] = 'вул. Тираспольська, 60'
+        self.assertTrue(any('MV-25' in x for x in P.pereviryty(S, self.META)))
+
+    def test_adresy_z_podii(self):
+        from types import SimpleNamespace as N
+        g = D.adresy([N(lat=50.45, lon=30.52)] * 3 + [N(lat=50.46, lon=30.5)], [2, 1, 3, 4])
+        self.assertEqual(sorted((f['properties']['n'], f['properties']['t']) for f in g['features']), [(1, 4), (3, 1)])
+
+    def test_cherguvannia_v2(self):
+        a = (self.S(tema='temna'), dict(self.META, id='a', shar='soty'))
+        b = (self.S(tema='temna'), dict(self.META, id='b', shar='adresy'))     # лише шар — замало
+        c = (self.S(tema='svitla'), dict(self.META, id='c', shar='adresy'))    # тема й шар — досить
+        self.assertTrue(P.pereviryty_pachku([a, b]))
+        self.assertEqual(P.pereviryty_pachku([a, c]), [])
+
+    def test_riven_za_zumom(self):
+        S = self.S(kamera=[{'t': 0, 'c': [30.52, 50.45], 'z': 15}, {'t': 10, 'c': [30.52, 50.45], 'z': 15}])
+        self.assertEqual(P.osi(S, self.META)['riven'], 'vulytsia')
+        self.assertEqual(P.osi(S, dict(self.META, shar='ne_karta'))['riven'], 'ne_karta')
+
+    def test_reiestr_u_stseni(self):
+        js = (VAU / 'stsena.js').read_text(encoding='utf-8')
+        for k in ('VAU.temy', 'VAU.styliSot', 'VAU.styliAdres', 'S.moduli', 'S.nad_dorohamy', "styl === 'kalendar'", 'S.druha'):
+            self.assertIn(k, js)
+        self.assertIn("l['source-layer'] === 'housenumber'", js)       # номерів будинків на карті немає (MV-25)
 
 
 class Vyhliady139(unittest.TestCase):
