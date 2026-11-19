@@ -1,19 +1,17 @@
-# Перевірка форми заглушки двічі на добу (ZAVDANNYA-02, п. 10; MV-8).
-# Додає тестову заявку й подію тим самим шляхом і тим самим публічним ключем,
-# що й сторінка (канал «perevirka»), перевіряє, що публічним ключем їх не
-# прочитати, і видаляє їх секретним ключем. Будь-який збій — червоний запуск;
-# GitHub надсилає лист про збій запланованого запуску власнику (налаштування
+# Перевірка форм сайту двічі на добу (ZAVDANNYA-02, п. 10; MV-8; з ZAVDANNYA-133 — база Cloudflare D1, MV-157).
+# Додає тестову заявку й подію тим самим шляхом, що й сторінка (POST /api/forma/…, канал «perevirka»), перевіряє,
+# що без ключа партнера їх не прочитати, читає вивантаженням з ключем і прибирає (лише канал «perevirka»).
+# Будь-який збій — червоний запуск; GitHub надсилає лист про збій запланованого запуску власнику (налаштування
 # Settings → Notifications → Actions → «Send notifications for failed workflows»).
 #
-# Поки сховища немає, перевірка вимкнена: вмикається змінною репозиторію
+# Поки сайт не викладено, перевірка вимкнена: вмикається змінною репозиторію
 # PEREVIRKA_FORMY = uvimknuto (Settings → Secrets and variables → Actions → Variables).
 # Потрібні:
-#   змінна  MV_SUPABASE_URL                — https://<проєкт>.supabase.co
-#   змінна  MV_SUPABASE_PUBLICHNYI_KLYUCH  — публічний ключ (той самий, що в сторінці)
-#   змінна  MV_ADRESA_SAITU                — необов'язково; якщо задано, адреса й ключ
-#                                            читаються з опублікованого config.js
-#   секрет  MV_SUPABASE_SEKRETNYI_KLYUCH   — ключ service_role / sb_secret_ (лише тут!)
-name: Перевірка форми заглушки
+#   змінна  MV_ADRESA_SAITU   — https://<сайт> (той самий, що ADRESA_SAITU у Workers)
+#   секрет  MV_ADMIN_KLIUCH   — той самий, що секрет ADMIN_KLIUCH у Workers (лише тут і в партнера!)
+# Запасний шлях — Supabase (як до MV-157): без MV_ADMIN_KLIUCH і з MV_SUPABASE_URL / MV_SUPABASE_PUBLICHNYI_KLYUCH /
+# секретом MV_SUPABASE_SEKRETNYI_KLYUCH (site/zahlushka/perevirka_formy.py).
+name: Перевірка форм сайту
 
 on:
   schedule:
@@ -37,10 +35,11 @@ jobs:
         with:
           sparse-checkout: site/zahlushka/perevirka_formy.py
           sparse-checkout-cone-mode: false
-      - name: Додати, прочитати й видалити тестові записи
+      - name: Додати, прочитати й прибрати тестові записи
         env:
+          MV_ADRESA_SAITU: ${{ vars.MV_ADRESA_SAITU }}
+          MV_ADMIN_KLIUCH: ${{ secrets.MV_ADMIN_KLIUCH }}
           MV_SUPABASE_URL: ${{ vars.MV_SUPABASE_URL }}
           MV_SUPABASE_PUBLICHNYI_KLYUCH: ${{ vars.MV_SUPABASE_PUBLICHNYI_KLYUCH }}
-          MV_ADRESA_SAITU: ${{ vars.MV_ADRESA_SAITU }}
           MV_SUPABASE_SEKRETNYI_KLYUCH: ${{ secrets.MV_SUPABASE_SEKRETNYI_KLYUCH }}
         run: python3 site/zahlushka/perevirka_formy.py

@@ -7,6 +7,7 @@
 //   POST /api/skoro                        заявка «скоро» (лише PRODAZH = 'skoro')
 //   POST /api/forma/<zayavka|zvernennya|podiya>   форми заглушки й чотири числа (JSON, як у Supabase) — 'skoro' і 'tak'
 //   GET  /api/admin/vyvantazhennia/<таблиця>      CSV для партнера, Authorization: Bearer ADMIN_KLIUCH
+//   POST /api/admin/perevirka                       прибрати тестові рядки щоденної перевірки форм (канал «perevirka»), той самий ключ
 //
 //   GET  /oplata/?tovar=…&budynok=…      форма замовлення (ціна — з таблиці)
 //   POST /api/zamovlennia                  створити замовлення → платіжний сервіс
@@ -307,6 +308,8 @@ async function admin(request, env, shliakh) {
   if (!env.ADMIN_KLIUCH || !rivni(avt, env.ADMIN_KLIUCH)) return new Response('ні', { status: 401 });
   const v = shliakh.match(/^vyvantazhennia\/([a-z]+)$/);
   if (v && request.method === 'GET') return F.vyvantazhennia(env, v[1]);
+  // щоденна перевірка форм прибирає свої тестові рядки (лише канал «perevirka»)
+  if (shliakh === 'perevirka' && request.method === 'POST') return Response.json({ prybrano: await F.prybratyPerevirku(env) });
   if (shliakh === 'vydalyty' && request.method === 'POST') {
     const poshta = L.chystaPoshta((await forma(request)).poshta);
     const k = poshta && await L.odyn(env, 'SELECT * FROM korystuvachi WHERE poshta = ?', poshta);

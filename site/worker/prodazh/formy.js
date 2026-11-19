@@ -106,3 +106,14 @@ export async function vyvantazhennia(env, tablytsia) {
   return new Response(csv, { headers: { 'content-type': 'text/csv; charset=utf-8', 'cache-control': 'no-store',
     'content-disposition': `attachment; filename="${tablytsia}.csv"` } });
 }
+
+/** Щоденна перевірка форм (ZAVDANNYA-133, п. 4; .github/workflows/perevirka-formy.yml): прибрати її тестові рядки — лише з
+ *  каналом «perevirka», нічого іншого. Повертає, скільки рядків прибрано в кожній таблиці. */
+export const KANAL_PEREVIRKY = 'perevirka';
+export async function prybratyPerevirku(env) {
+  const v = {};
+  for (const t of ['zayavka', 'podiya', 'skoro']) {
+    v[t] = (await L.zrobyty(env, `DELETE FROM ${t} WHERE kanal = ?`, KANAL_PEREVIRKY)).meta?.changes ?? 0;
+  }
+  return v;
+}

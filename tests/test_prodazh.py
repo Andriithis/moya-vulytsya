@@ -29,6 +29,8 @@ import tsiny as T  # noqa: E402
 import vydavach  # noqa: E402
 import karta_r2  # noqa: E402
 import shi_api  # noqa: E402
+sys.path.insert(0, str(KORIN / 'site' / 'zahlushka'))
+import perevirka_formy  # noqa: E402
 
 WORKER = KORIN / 'site' / 'worker'
 
@@ -285,6 +287,61 @@ class ShiApi(unittest.TestCase):
     def test_bez_kliucha_u_fajli(self):
         t = (KORIN / 'site' / 'prodazh' / 'shi_api.py').read_text(encoding='utf-8')
         self.assertNotRegex(t, r'sk-ant-[A-Za-z0-9]')
+
+
+@unittest.skipUnless(node_z_sqlite(), 'немає Node 22+ з node:sqlite — перевірку форм на D1 пропущено')
+class PerevirkaFormyD1(unittest.TestCase):
+    """Щоденна перевірка форм на D1 (ZAVDANNYA-133, п. 4): той самий скрипт, що в GitHub Actions, проти місцевого сервера
+    (справжній код Workers, режим «скоро», SQLite замість D1)."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.port = vilnyi_port()
+        cls.adresa = f'http://127.0.0.1:{cls.port}'
+        env = dict(os.environ, PRODAZH='skoro', ADMIN_KLIUCH='kliuch-partnera')
+        cls.srv = subprocess.Popen([node_z_sqlite(), str(WORKER / 'testy' / 'mistsevyi.mjs'), str(cls.port)],
+                                   stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env)
+        for _ in range(100):
+            try:
+                urllib.request.urlopen(cls.adresa + '/__lysty', timeout=1)
+                break
+            except OSError:
+                time.sleep(0.1)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.srv.terminate()
+        cls.srv.wait(5)
+        cls.srv.stdout.close()
+
+    def csv(self, t):
+        return perevirka_formy.zapyt_sait('GET', f'{self.adresa}/api/admin/vyvantazhennia/{t}', kliuch='kliuch-partnera')[1]
+
+    def test_perevirka_prokhodyt_i_prybyraie_lyshe_svoie(self):
+        # справжня заявка людини — має лишитися після перевірки
+        kod, _ = perevirka_formy.zapyt_sait('POST', f'{self.adresa}/api/forma/zayavka',
+                                            {'shcho': 'analiz', 'misto': 'Київ', 'kontakt': 'liudyna@poshta.ua', 'zghoda': True, 'kanal': 'tg'},
+                                            origin=self.adresa)
+        self.assertEqual(kod, 201)
+        kroky = []
+        perevirka_formy.perevirka_d1(self.adresa + '/', 'kliuch-partnera', vyvid=kroky.append)
+        self.assertEqual(len(kroky), 8, kroky)
+        self.assertIn('liudyna@poshta.ua', self.csv('zayavka'))
+        self.assertEqual(perevirka_formy.ryadky_perevirky(self.csv('zayavka')), 0)
+        self.assertEqual(perevirka_formy.ryadky_perevirky(self.csv('podiya')), 0)
+
+    def test_khybnyi_kliuch_chervonyi(self):
+        with self.assertRaises(perevirka_formy.Zbii):
+            perevirka_formy.perevirka_d1(self.adresa, 'ne-toi', vyvid=lambda *_: None)
+        perevirka_formy.zapyt_sait('POST', f'{self.adresa}/api/admin/perevirka', kliuch='kliuch-partnera')
+
+    def test_bez_kliucha_prybyraty_ne_mozhna(self):
+        kod, _ = perevirka_formy.zapyt_sait('POST', f'{self.adresa}/api/admin/perevirka')
+        self.assertEqual(kod, 401)
+
+    def test_saity_nemaie_chervonyi(self):
+        with self.assertRaises(perevirka_formy.Zbii):
+            perevirka_formy.perevirka_d1('http://127.0.0.1:9', 'k', vyvid=lambda *_: None)
 
 
 if __name__ == '__main__':
