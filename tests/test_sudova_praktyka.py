@@ -223,6 +223,11 @@ if __name__ == '__main__':
             self.assertIn('не юридична допомога', f.read_text(encoding='utf-8'), f)
 
 
+    def test_chastky_ekranovani(self):
+        """«<1 %» у HTML має бути «&lt;1» — інакше браузер сприймає його як тег і частка зникає (вада, знайдена на справжніх даних)."""
+        for f in self.storinky:
+            self.assertNotRegex(f.read_text(encoding='utf-8'), r'<\d', f)
+
 class VkhodyVProdukt(unittest.TestCase):
     """ZAVDANNYA-135, п. 4: входи на сторінки статей — сторінки вулиць, картка соти на карті, ролик «Що буває за…»."""
 
@@ -252,3 +257,4 @@ class VkhodyVProdukt(unittest.TestCase):
         r = (KORIN / 'video' / 'vau' / 'stsenarii.py').read_text(encoding='utf-8')
         self.assertIn("kudy='/sudova-praktyka/kupap/130/'", r)
         self.assertNotIn('/sudova-praktyka/st-', r)
+

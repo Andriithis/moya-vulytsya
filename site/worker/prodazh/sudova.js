@@ -98,7 +98,7 @@ ${dii}</form>
 <div class="kartka"><p><b>Що буде в довідці:</b> скільки таких справ було за 3 роки у вибраному суді й частині; чим закінчувались
 (поруч — усі суди міста); які покарання й разом з чим; скільки часу від події до рішення (де дата точна); як змінювалось за
 роками; до 12 останніх схожих рішень з посиланням на оригінал у реєстрі. Без імен суддів.</p>
-<p class="prymitka">${e(ZASTEREZHENNIA)} Імені, обставин і номера своєї справи не вводьте — вони не потрібні.</p></div></section>`);
+<p class="prymitka">${e(ZASTEREZHENNIA)} Імені, обставин і номера своєї справи не вводьте — вони не потрібні.</p></div></section>`, { css: ['/sait/sp.css'] });
 }
 
 // ---------------------------------------------------------------- кабінет юриста: дані з R2
@@ -184,7 +184,7 @@ export function tablytsi(st, f) {
     const p = pidsumok(st, rr);
     const malo = p.n < MIN_N;
     return [nazva, p.n, malo ? null : p.pokarano / p.n, ...golovni.map((k) => (malo ? null : (p.kat[k] || 0) / p.n))]
-      .concat(st.strok ? [malo ? null : p.polovyna] : []);
+      .concat(st.strok ? [malo ? null : (p.polovyna ?? '—')] : []);       // '—' — строк рахуємо лише за 2024–2026
   };
   const sudy = [...new Set(ryadky.map((r) => r[0]))].sort((a, b) => a.localeCompare(b, 'uk'));
   const roky = [...new Set(ryadky.map((r) => r[1]))].sort();
@@ -200,6 +200,7 @@ function tablytsiaHtml(t, pershyi, ryady) {
   const kom = (v, i) => {
     if (i === 0) return `<td class="ch">${chyslo(v)}</td>`;
     if (v === null) return '<td class="sp-malo">замало</td>';
+    if (v === '—') return '<td class="ch">—</td>';
     if (t.shapka[i] === 'Половина справ — до') return `<td class="ch">${dniv(v)}</td>`;
     return `<td class="ch">${vids(v)}</td>`;
   };
@@ -208,7 +209,7 @@ function tablytsiaHtml(t, pershyi, ryady) {
 }
 
 export function csv(st, f, t) {
-  const kom = (v) => { const s = v === null ? '' : typeof v === 'number' && !Number.isInteger(v) ? v.toFixed(4) : String(v); return /[",;\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  const kom = (v) => { const s = v === null || v === '—' ? '' : typeof v === 'number' && !Number.isInteger(v) ? v.toFixed(4) : String(v); return /[",;\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
   const ryadky = [['розріз', 'назва', ...t.shapka.map((h, i) => (i === 0 || h === 'Половина справ — до' ? h : `${h} (частка)`))]];
   ryadky.push(['разом', ...t.razom]);
   for (const r of t.sudy) ryadky.push(['суд', ...r]);
@@ -273,5 +274,6 @@ export async function praktyka(request, env, url, ja) {
 <h3>По судах</h3>${tablytsiaHtml(t, 'Суд', [t.razom, ...t.sudy])}
 <h3>По роках</h3>${tablytsiaHtml(t, 'Рік', t.roky)}
 <p class="prymitka">Частки — від справ з рішенням по суті в першій інстанції; менше ${MIN_N} справ — «замало». Апеляцію не враховано.${st.kodeks === 'КК' ? ' Справи КК, закриті ухвалою, ще не входять — частки серед вироків.' : ''}
-Старші роки неповні (тексти рішень ще докачуються). Вивантажень на добу — до ${VYVANTAZHEN_NA_DEN}. ${e(ZASTEREZHENNIA)}</p></section>`);
+Старші роки неповні (тексти рішень ще докачуються). Строк від події до рішення — лише за 2024–2026 і лише де дата події точна.
+Вивантажень на добу — до ${VYVANTAZHEN_NA_DEN}. ${e(ZASTEREZHENNIA)}</p></section>`, { css: ['/sait/sp.css'] });
 }

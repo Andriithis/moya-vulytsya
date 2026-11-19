@@ -189,6 +189,8 @@ curl -X POST https://<сайт>/api/admin/vydalyty -H "Authorization: Bearer $AD
    `python site/zibraty_sait.py <випуск> _site --budynky budynky.json --khostynh workers --adresa-saitu https://<сайт> --prodazh-d1 <database_id> --platizhnyi-servis test`
 4. Створити таблиці: у теці `_site-worker` — `npx wrangler d1 execute moya-vulytsya-prodazh --remote --file=<moya-vulytsya>/site/worker/prodazh/skhema.sql`
    (`skhema.sql` — з репозиторію `moya-vulytsya`, тека `site/worker/prodazh/`).
+   База, створена до ZAVDANNYA-135 («Судова практика»), — ще раз `--file=…/skhema-135.sql` (нові поля `parametry` і таблиця
+   `sp_vyvantazhennia`); таблиці практики для юриста — `python site/prodazh/praktyka_r2.py sudova-praktyka.json --zavantazhyty`.
 5. Секрети (розд. 5): `npx wrangler secret put TEST_KLIUCH`, `VYDACHA_KLIUCH`, `ADMIN_KLIUCH`, `POSHTA_KLIUCH`, …;
    змінні `POSHTA_VID`, `POSHTA_URL`, `POSHTA_PARTNERA` — у панелі Workers.
 6. `npx wrangler deploy` у `_site-worker`. Запустити видавача на машині з даними:

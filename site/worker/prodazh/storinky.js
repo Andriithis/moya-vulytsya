@@ -22,7 +22,7 @@ export function data(t) {
 export const CSP = "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; " +
   "form-action 'self' https://www.liqpay.ua; frame-ancestors 'none'; base-uri 'none'";
 
-export function storinka(title, tilo, { status = 200, zaholovky = {}, kabinet = true } = {}) {
+export function storinka(title, tilo, { status = 200, zaholovky = {}, kabinet = true, css = [] } = {}) {
   const html = `<!doctype html>
 <html lang="uk" data-koren="/">
 <head>
@@ -34,6 +34,7 @@ export function storinka(title, tilo, { status = 200, zaholovky = {}, kabinet = 
 <script src="/sait/tema.js"></script>
 <link rel="stylesheet" href="/sait/sait.css">
 <link rel="stylesheet" href="/prodazh/prodazh.css">
+${css.map((c) => `<link rel="stylesheet" href="${e(c)}">`).join('')}
 </head>
 <body>
 <header class="shapka"><div class="shapka__vnutri"><a class="lohotyp" href="/"><span class="lohotyp__nazva">Моя вулиця</span></a>
@@ -208,10 +209,11 @@ ${vybir || '<p class="prymitka">Щоб обміняти на довідку, с�
 }
 
 export const CSS = `/* Сервер продажу (ZAVDANNYA-99): форми в стилі сайту (docs/STYL.md) */
-.forma{display:grid;gap:10px;max-width:460px}
+.forma{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;max-width:460px}
 .forma label{font-weight:600;font-size:14px;line-height:20px}
 .forma input[type=email],.forma input[name=budynok]{font:inherit;padding:10px 12px;border:1.5px solid var(--mezha);border-radius:var(--radius-m);background:var(--surface);color:var(--ink);box-shadow:0 3px 0 var(--bort)}
 .forma .pravyla{font-weight:400;font-size:13px}
+.forma select{font:inherit;width:100%;min-width:0;padding:10px 12px;border:1.5px solid var(--mezha);border-radius:var(--radius-m);background:var(--surface);color:var(--ink);box-shadow:0 3px 0 var(--bort)}
 .pomylka{color:var(--vyd);font-weight:700}
 .tsina{font-size:34px;line-height:40px;font-weight:800;font-variant-numeric:tabular-nums}
 .v-riadok{display:inline-block;margin-left:8px}

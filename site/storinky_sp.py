@@ -141,7 +141,7 @@ def smuhy(ryady: list) -> str:
     for nazva, v, x in ryady:
         out.append(f'<div class="sp-ryad"><span class="sp-ryad__nazva">{e(nazva)}</span>'
                    f'<span class="sp-smuha"><i data-shyr="{max(0.5, round(x * 100, 1))}"></i></span>'
-                   f'<b>{vids(x)}</b><small>{chyslo(v)}</small></div>')
+                   f'<b>{e(vids(x))}</b><small>{chyslo(v)}</small></div>')
     return '<div class="sp-smuhy">' + ''.join(out) + '</div>'
 
 
@@ -185,7 +185,7 @@ def zamok_sudiv(st: Stattia) -> str:
 {knopky_kupity(st)}
 <p class="prymitka">Довідка — разово: ваш суд і частина статті, частки результатів і покарань за 3 роки поруч з усім Києвом, строк,
 як змінювалось за роками, до 12 останніх схожих рішень з посиланням на оригінал. Підписка юристу — усі статті й суди Києва,
-частини, роки, фільтри, вивантаження таблиць, нові рішення за обраними статтями щотижня листом.</p></section>'''
+частини, роки, фільтри, вивантаження таблиць, 3 довідки на місяць для клієнтів.</p></section>'''
 
 
 def faq_statti(st: Stattia, p: dict, period: str, korotko: str) -> list:
@@ -238,7 +238,7 @@ def storinka_statti(st: Stattia, vsi: dict, dani: dict, adresa_saitu: str) -> st
         chysla.append((strok_slovamy(p['dni']), 'за стільки від події вирішено половину справ'))
     chysla.append((str(len(st.sudy)), 'районних судів Києва'))
     ch.append('<section class="chysla" aria-label="Коротко">' + ''.join(
-        f'<div class="kartka chyslo-blok"><b class="chyslo">{a}</b><span>{b}</span></div>' for a, b in chysla) + '</section>')
+        f'<div class="kartka chyslo-blok"><b class="chyslo">{e(a)}</b><span>{b}</span></div>' for a, b in chysla) + '</section>')
     ch.append(f'<p class="sp-zast" role="note"><b>Важливо.</b> {e(ZASTEREZHENNIA)}</p>')
     if malo:
         ch.append(f'<section class="rozdil"><p class="prymitka">Справ замало (менше {MIN_N}), щоб рахувати частки.</p></section>')
@@ -331,7 +331,7 @@ def storinka_rozdilu(statti: list, dani: dict, adresa_saitu: str) -> str:
 {T.knopka_oplaty('/oplata/?tovar=spdovidka&amp;dzherelo=sudova-praktyka', 'Замовити', True)}</div>
 <div class="kartka tovar"><h3>{e(T.TOVARY["spyurist"])}</h3><p class="tovar__tsina">{T.tsina("spyurist")}</p>
 <p class="tovar__pidpys">Для юристів і адвокатів</p><ul><li>усі статті й суди Києва</li><li>частини статті, кожен рік, фільтри</li>
-<li>вивантаження таблиць (CSV)</li><li>нові рішення за обраними статтями — щотижня листом</li><li>3 довідки на місяць для клієнтів</li></ul>
+<li>вивантаження таблиць (CSV)</li><li>3 довідки на місяць для клієнтів</li></ul>
 {T.knopka_oplaty('/oplata/?tovar=spyurist&amp;dzherelo=sudova-praktyka', 'Замовити')}</div></div>
 <p class="prymitka">Числа — справи за {period} у наших даних (тексти ще докачуються).</p></section>''')
     return Z.storinka(shlyakh='/sudova-praktyka/', title='Судова практика Києва за статтями: чим закінчуються справи | Моя вулиця',
