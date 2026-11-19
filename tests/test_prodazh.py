@@ -28,6 +28,7 @@ sys.path.insert(0, str(KORIN / 'site' / 'prodazh'))
 import tsiny as T  # noqa: E402
 import vydavach  # noqa: E402
 import karta_r2  # noqa: E402
+import shi_api  # noqa: E402
 
 WORKER = KORIN / 'site' / 'worker'
 
@@ -217,6 +218,73 @@ class KartaR2(unittest.TestCase):
             f.unlink()
         with self.assertRaises(SystemExit):
             karta_r2.pidhotuvaty(self.k)
+
+
+class ShiApi(unittest.TestCase):
+    """Переказ через API Claude (ZAVDANNYA-133, п. 3): формат як у `claude -p`, кеш інструкції, стеля, збої — без ключа."""
+
+    ZAPYT = 'ІНСТРУКЦІЯ ' * 50 + '\nВид події: КРАД\nСтаття: 185\n\nФабула:\nвигадана фабула\n'
+
+    class Klient:
+        def __init__(self, vidpovid=None, zbii=None):
+            self.vyklyky, self.vidpovid, self.zbii = [], vidpovid, zbii
+            self.messages = self
+
+        def create(self, **k):
+            self.vyklyky.append(k)
+            if self.zbii:
+                raise self.zbii
+            return self.vidpovid
+
+    @staticmethod
+    def vidpovid(tekst='{"perekaz": "вигадано"}', stop='end_turn'):
+        from types import SimpleNamespace as N
+        return N(content=[N(type='thinking', thinking=''), N(type='text', text=tekst)], stop_reason=stop,
+                 usage={'input_tokens': 300, 'cache_read_input_tokens': 4000, 'cache_creation_input_tokens': 0, 'output_tokens': 400})
+
+    def setUp(self):
+        self.t = tempfile.mkdtemp(prefix='shi-')
+        self.addCleanup(shutil.rmtree, self.t, True)
+        self.env = {'ZVIT_KESH': self.t, 'SHI_STELIA_USD': '1', 'ANTHROPIC_API_KEY': 'ne-spravzhnii'}
+
+    def test_format_i_kesh_instruktsii(self):
+        k = self.Klient(self.vidpovid())
+        v = shi_api.vyklykaty(self.ZAPYT, k, self.env)
+        self.assertFalse(v['is_error'])
+        self.assertEqual(v['result'], '{"perekaz": "вигадано"}')
+        self.assertEqual(list(v['modelUsage']), ['claude-haiku-5-5'])
+        # 300 × 0,10 + 4000 × 0,01 + 400 × 0,50 = 270 $ / млн
+        self.assertAlmostEqual(v['total_cost_usd'], 0.00027, places=8)
+        bl = k.vyklyky[0]['messages'][0]['content']
+        self.assertEqual(bl[0]['cache_control'], {'type': 'ephemeral'})
+        self.assertTrue(bl[1]['text'].startswith('\nВид події:'))
+        self.assertEqual(bl[0]['text'] + bl[1]['text'], self.ZAPYT, 'запит не змінено, лише поділено')
+        self.assertEqual(k.vyklyky[0]['output_config'], {'effort': 'low'})
+
+    def test_stelia_mistsia(self):
+        k = self.Klient(self.vidpovid())
+        shi_api.Rakhunok(Path(self.t), 1).dodaty(1.0)
+        v = shi_api.vyklykaty(self.ZAPYT, k, self.env)
+        self.assertTrue(v['is_error'])
+        self.assertTrue(v['bez_povtoru'])
+        self.assertEqual(k.vyklyky, [], 'за стелею в API не ходимо')
+
+    def test_zbii_i_vidmova(self):
+        v = shi_api.vyklykaty(self.ZAPYT, self.Klient(zbii=OSError('мережа')), self.env)
+        self.assertTrue(v['is_error'])
+        self.assertFalse(v['bez_povtoru'], 'мережа — генератор спробує ще')
+        v = shi_api.vyklykaty(self.ZAPYT, self.Klient(self.vidpovid('', 'refusal')), self.env)
+        self.assertTrue(v['is_error'] and v['bez_povtoru'])
+
+    def test_bez_kliucha_odrazu_pravyla(self):
+        env = dict(self.env)
+        del env['ANTHROPIC_API_KEY']
+        v = shi_api.vyklykaty(self.ZAPYT, None, env)
+        self.assertTrue(v['is_error'] and v['bez_povtoru'])
+
+    def test_bez_kliucha_u_fajli(self):
+        t = (KORIN / 'site' / 'prodazh' / 'shi_api.py').read_text(encoding='utf-8')
+        self.assertNotRegex(t, r'sk-ant-[A-Za-z0-9]')
 
 
 if __name__ == '__main__':
