@@ -166,7 +166,7 @@ body { font-family: Plex, system-ui, sans-serif; color: var(--ink); -webkit-font
 .t.slovo .w.a { color: #3C3CA1; }
 .t.slovo.fiolet { background: #4447A6; color: #fff; } .t.slovo.fiolet .w.a { color: #66E6BA; }
 .t.slovo.temne { background: #0B0D1E; color: #fff; } .t.slovo.temne .w.a { color: #66E6BA; }
-.t.slovo.menshe { font-size: 130px; letter-spacing: -3px; }
+.t.slovo.menshe { font-size: 112px; letter-spacing: -2px; }
 .t.split { left: 0; right: 0; display: flex; height: 820px; }
 .t.split .pol { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 40px 40px; background: rgba(102,230,186,.95); color: #11142A; }
 .t.split .pol + .pol { background: rgba(68,71,166,.96); color: #fff; }
@@ -194,3 +194,4 @@ body { font-family: Plex, system-ui, sans-serif; color: var(--ink); -webkit-font
 .t.taimer .n { position: absolute; right: 0; top: 50px; font: 900 64px/1 Plex; color: #FFE45C; }
 .t.slovo small { flex-basis: 100%; display: block; font: 800 66px/1.15 Plex; letter-spacing: 0; margin-top: 28px; }
 .t.mala.zaklyk { color: var(--accent); font-weight: 700; }
+.t.slovo .vn { width: 100%; }

@@ -328,6 +328,7 @@
       });
       if (it.styl === 'pidpys') html += '</span>';
       if (it.pid) html += '<small>' + it.pid + '</small>';   // slovo: другий рядок дрібніше
+      if (it.styl === 'slovo') html = '<div class="vn">' + html + '</div>';   // у flex-контейнері пробіли між словами зникали
       el.innerHTML = html;
     }
     document.getElementById('tekst').appendChild(el);
@@ -403,7 +404,7 @@
       el.style.opacity = Math.min(s.a * 2, 1 - vykhidK);
     }
     if (it.styl === 'variant') {
-      var kv = E.back(clamp((t - it.t0) / 0.3, 0, 1));
+      var kv = odrazu(it) ? 1 : E.back(clamp((t - it.t0) / 0.3, 0, 1));
       el.style.transform = 'translateX(' + lerp(-700, 0, kv) + 'px)';
       el.classList.toggle('pravylno', it.vidpovid !== undefined && t >= it.vidpovid && it.pravylno);
       el.classList.toggle('ni', it.vidpovid !== undefined && t >= it.vidpovid && !it.pravylno);
