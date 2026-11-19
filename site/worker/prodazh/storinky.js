@@ -232,6 +232,7 @@ export const CSS = `/* Сервер продажу (ZAVDANNYA-99): форми в
 .vkhid-google{max-width:460px;margin:0 0 16px}
 .knopka-google{display:inline-flex;align-items:center;justify-content:center;gap:10px;width:100%;box-sizing:border-box;background:#fff;color:#1f1f1f;border-color:#747775}
 .knopka-google__logo{flex:none}
+.vkhid-google .prymitka{margin:8px 0 0}
 .abo{display:flex;align-items:center;gap:10px;color:var(--ink-2,inherit);font-size:13px;margin:16px 0 0}
 .abo::before,.abo::after{content:"";flex:1;border-top:1px solid var(--mezha)}
 `;
