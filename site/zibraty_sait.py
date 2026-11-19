@@ -793,6 +793,7 @@ def ekran_karty(dn: D.Dani) -> str:
     """Карта на весь екран у вигляді макета М7 (MV-58): угорі ліворуч — рядок пошуку зі значками 3D/2D, день/ніч і «ⓘ»,
     під ним — фільтр «Усі події ▾»; картка соти — «в повітрі» праворуч (телефон — шторка); джерела — правий нижній кут
     (телефон — у «ⓘ»). Легенди й «+/−» немає. Поведінка зуму — як у карті Києва (S-К.4, S-К.6, S-К.13, S-К.18, S-К.21)."""
+    import tsiny as T
     hrupy = ''.join(
         f'<li><label><input type="checkbox" data-hrupa="{k}" checked>{svg_html(IK_HRUP[k])}<span>{e(n)}</span></label></li>'
         for k, n in D.HRUPY)
@@ -816,6 +817,7 @@ def ekran_karty(dn: D.Dani) -> str:
 <button id="finfo" class="znachok klav" type="button" aria-label="Як читати карту" title="Як читати карту" aria-expanded="false" aria-controls="info">{info_ik}</button>
 </div>
 <ul id="pidkazky" class="plashka" role="listbox" aria-label="Знайдені місця" hidden></ul>
+<a class="haslo-karty plashka klav" href="/miy-budynok/?dzherelo=holovna"><b>Що болить вашому будинку?</b><span>Довідка — {T.tsina("dovidka")}</span></a>
 <div id="filtr" class="filtr">
 <button type="button" class="f-knopka klav" aria-expanded="false" aria-controls="f-spysok">{filtr_ik}<span id="f-pidpys">Усі події</span><span aria-hidden="true">▾</span></button>
 <div id="f-spysok" class="f-spysok plashka" hidden>

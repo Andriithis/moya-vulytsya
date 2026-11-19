@@ -312,6 +312,7 @@ export const CSS = `/* Сервер продажу (ZAVDANNYA-99): форми в
 .pomylka{color:var(--vyd);font-weight:700}
 .zalyshok{margin:0 0 20px}
 .abo-oplata{font-size:18px;line-height:24px;margin:8px 0 12px}
+#stezhu form.forma{margin-top:16px}
 .tsina{font-size:34px;line-height:40px;font-weight:800;font-variant-numeric:tabular-nums}
 .v-riadok{display:inline-block;margin-left:8px}
 .vkhid-google{max-width:460px;margin:0 0 16px}

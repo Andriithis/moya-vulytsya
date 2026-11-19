@@ -230,6 +230,26 @@ def abzats_budynku(b: dict, period: str, r_m: int) -> str:
     return ' '.join(rechennia)
 
 
+def urivok_dovidky(b: dict, r_m: int) -> str:
+    """ZAVDANNYA-150, п. 13: біля кнопок купівлі — що саме буде в довідці ЦЬОГО будинку, з його ж відкритих чисел
+    (без нових фактів: опис, місяці й статуси — лише в довідці)."""
+    punkty = []
+    if b['skarh']:
+        h0, n0 = next(iter(b['skarhy'].items()))
+        s0 = (b['susidy'] or {}).get(h0)
+        por = (f' — тут {chyslo(n0)}, у сусідніх у радіусі {r_m}{NBSP}м зазвичай {chyslo_m(s0)}' if s0 is not None else '')
+        punkty.append(f'{skarhy_slovo(b["skarh"])} до 1551 — по місяцях і статусах: що вирішили, що ні; найчастіше «{e(h0)}»{por}')
+    else:
+        punkty.append('скарги 1551 будинку й двору за 12 місяців — їх тут немає, і це теж відповідь')
+    punkty.append(f'події з рішень судів біля будинку й на вулиці — коротко, з посиланням на кожне рішення'
+                  + (f' (з адресою самого будинку — {chyslo(b["podii_vidkr"])} за {D.VIDKRYTI_ROKY[0]}–{D.VIDKRYTI_ROKY[-1]})'
+                     if b['podii_vidkr'] else ''))
+    punkty.append('три висновки зверху — прочитати за 2–3 хвилини; можна зберегти файлом PDF')
+    return ('<div class="kartka urivok"><p><b>Що буде в довідці про цей будинок</b></p><ul class="spysok-tekst">'
+            + ''.join(f'<li>{x}</li>' for x in punkty)
+            + '</ul><p class="prymitka"><a href="/zahlushka/zrazok.html">Подивитися зразок</a></p></div>')
+
+
 def chyslo_m(x: float) -> str:
     return chyslo(int(x)) if x == int(x) else f'{x:.1f}'.replace('.', ',')
 
@@ -308,6 +328,7 @@ def storinka_budynku(b: dict, bud: Budynky, adresa_saitu: str, susidni: list, pe
                   f'цього будинку немає; за {Z.PERIOD_ZAMKNENYI} — є, у підписці.</p></section>')
 
     ch.append(f'''<section class="rozdil">{haslo_budynku()}<h2>Довідка про будинок</h2>
+{urivok_dovidky(b, bud.r_susidy)}
 <p class="rozdil__pidpys">У довідці: теми звернень 1551 по місяцях і статуси простими словами, порівняння з сусідніми будинками,
 події біля будинку й на вулиці коротко — прочитати за 2–3 хвилини. Повний звіт «перед купівлею» — ще й {podii_zvitu(period_podii)},
 рік за роком, що повторюється на вулиці й поруч, порівняння зі схожими будинками й карта будинку та вулиці.</p>
