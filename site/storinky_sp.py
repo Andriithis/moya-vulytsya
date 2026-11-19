@@ -341,6 +341,14 @@ def storinka_rozdilu(statti: list, dani: dict, adresa_saitu: str) -> str:
                       skrypty=('/sait/sp.js',))
 
 
+def dovidnyk(statti: list) -> str:
+    """Що можна вибрати в замовленні довідки (ZAVDANNYA-135): статті, суди, частини — без жодного числа. Сервер продажу
+    (`site/worker/prodazh/sudova.js`) перевіряє вибір людини лише за цим файлом."""
+    return json.dumps({'statti': {f'{SLUG[s.kodeks]}-{s.nomer}': {
+        'stattia': f'ст.{s.nomer} {s.kodeks}', 'nazva': s.nazva, 'sudy': s.sudy, 'chastyny': s.chastyny} for s in statti}},
+        ensure_ascii=False, separators=(',', ':'))
+
+
 def prochytaty(shliakh: Path) -> dict:
     dani = json.loads(Path(shliakh).read_text(encoding='utf-8'))
     for s in dani['statti']:
@@ -358,6 +366,7 @@ def zibraty(shliakh: Path, vykhid: Path, adresa_saitu: str) -> list:
     vsi = {s.nomer: s for s in statti}
     adresy = ['/sudova-praktyka/']
     Z.zapysaty(vykhid / 'sudova-praktyka' / 'index.html', storinka_rozdilu(statti, dani, adresa_saitu))
+    Z.zapysaty(vykhid / 'sudova-praktyka' / 'dovidnyk.json', dovidnyk(statti))
     for st in statti:
         Z.zapysaty(vykhid / st.slug.strip('/') / 'index.html', storinka_statti(st, vsi, dani, adresa_saitu))
         if st.pidsumok()['n'] >= MIN_INDEKS:

@@ -201,3 +201,23 @@ class SaitZRozdilomTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+    def test_dovidnyk_dlia_servera_bez_chysel(self):
+        """ZAVDANNYA-135: довідник замовлення — статті, суди, частини; жодного числа справ."""
+        d = json.loads((self.sait / 'sudova-praktyka' / 'dovidnyk.json').read_text(encoding='utf-8'))
+        for k, s in d['statti'].items():
+            self.assertRegex(k, r'^(kupap|kk)-\d+(-\d+)?$')
+            self.assertEqual(set(s), {'stattia', 'nazva', 'sudy', 'chastyny'})
+            self.assertTrue(all(isinstance(x, str) for x in s['sudy'] + s['chastyny']))
+        if not self.spravzhnie:
+            self.assertEqual(d['statti']['kupap-130']['sudy'], ['Голосіївський', 'Дарницький'])
+
+    def test_poshuk_i_zasterezhennia(self):
+        """ZAVDANNYA-135: покажчик з пошуком («п'яний за кермом» — у словах ст. 130) і застереження на кожній сторінці."""
+        rozdil = self.st('')
+        self.assertIn('id="sp-poshuk"', rozdil)
+        m = re.search(r'<li class="sp-stattia" data-nomer="130" data-slova="([^"]+)"', rozdil)
+        self.assertIsNotNone(m)
+        self.assertIn('за кермом', m.group(1))
+        for f in self.storinky:
+            self.assertIn('не юридична допомога', f.read_text(encoding='utf-8'), f)

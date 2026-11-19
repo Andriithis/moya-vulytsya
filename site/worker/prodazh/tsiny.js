@@ -31,15 +31,20 @@ export default {
   "zvit": 1,
   "pidpyska": 1,
   "rieltor": 5,
-  "osbb": 1
+  "osbb": 1,
+  "spdovidka": 1,
+  "spyurist": 3
  },
  "period_misiatsiv": {
   "pidpyska": 1,
   "rieltor": 1,
-  "osbb": 12
+  "osbb": 12,
+  "spyurist": 1
  },
  "rezhym": {
-  "zvit": "povnyi"
+  "zvit": "povnyi",
+  "spdovidka": "sp",
+  "spyurist": "sp"
  },
  "na_prodazh": [
   "dovidka",
@@ -47,6 +52,20 @@ export default {
   "zvit",
   "pidpyska",
   "rieltor",
+  "osbb",
+  "spdovidka",
+  "spyurist"
+ ],
+ "prodaietsia": [
+  "dovidka",
+  "try",
+  "zvit",
+  "pidpyska",
+  "rieltor",
   "osbb"
+ ],
+ "sudova": [
+  "spdovidka",
+  "spyurist"
  ]
 };

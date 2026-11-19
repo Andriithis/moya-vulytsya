@@ -9,7 +9,7 @@ const NBSP = ' ';
 export function tsina(kl) {
   const t = TS.tsiny[kl];
   const s = String(t).replace(/\B(?=(\d{3})+(?!\d))/g, NBSP);
-  const strok = { pidpyska: ' на місяць', rieltor: ' на місяць', osbb: ' на рік' }[kl] || '';
+  const strok = { pidpyska: ' на місяць', rieltor: ' на місяць', osbb: ' на рік', spyurist: ' на місяць' }[kl] || '';
   return `${s}${NBSP}грн${strok}`;
 }
 
@@ -71,7 +71,11 @@ export const GALOCHKA_ODRAZU = `<label class="pravyla"><input type="checkbox" na
 
 export function formaZamovlennia({ tovar, budynok, adresa, pomylka = '' }) {
   const nazva = TS.nazvy[tovar];
-  const potribenBudynok = !['pidpyska', 'rieltor'].includes(tovar);
+  const potribenBudynok = !['pidpyska', 'rieltor', ...TS.sudova].includes(tovar);
+  const proYurysta = tovar === 'spyurist'
+    ? `<div class="kartka"><p><b>Що дає підписка:</b> усі статті й суди міста — таблиці по судах і роках, фільтри (суд, частина
+статті, роки), вивантаження CSV (до 50 на добу), 3 довідки «стаття × суд» на місяць для клієнтів. Імен суддів немає.</p>
+<p class="prymitka">Це статистика минулих рішень, а не юридична допомога. Скасувати можна в кабінеті будь-коли — доступ лишиться до кінця оплаченого місяця.</p></div>` : '';
   const pro = budynok
     ? `<p>Будинок: <b>${e(adresa)}</b> (<a href="${e(budynok)}">сторінка будинку</a>).</p>`
     : (potribenBudynok ? '<p>Спершу оберіть будинок: знайдіть його на сайті й натисніть кнопку замовлення на його сторінці.</p>' : '');
@@ -86,7 +90,7 @@ ${GALOCHKA_ODRAZU}
 <button class="knopka knopka--holovna" type="submit">Перейти до оплати — ${tsina(tovar)}</button>
 </form>` : '<div class="diyi"><a class="knopka knopka--holovna" href="/miy-budynok/">Знайти будинок</a></div>';
   return storinka(`${nazva} — оплата`, `<section class="zaholovok"><h1>${e(nazva)}</h1>${pro}<p class="tsina">${tsina(tovar)}</p></section>
-<section class="rozdil">${knopka}
+<section class="rozdil">${proYurysta}${knopka}
 <p class="prymitka">Ціну бере сервер з таблиці цін, а не з адреси сторінки. Номер картки ми не бачимо й не зберігаємо — оплату приймає платіжний сервіс партнера.</p></section>`);
 }
 
@@ -159,10 +163,11 @@ ${povidomlennia_ ? `<p class="prymitka" role="status">${e(povidomlennia_)}</p>` 
 }
 
 const STATUS_DOVIDKY = { v_cherzi: 'готується', hotuietsia: 'готується', hotova: 'готова', vydaleno: 'файл видалено за строком зберігання', pomylka: 'не вдалося — напишіть партнеру, повернемо гроші або зробимо ще раз' };
-const NAZVA_PIDPYSKY = { pidpyska: 'Підписка', rieltor: 'Підписка для рієлтора', osbb: 'Будинок для ОСББ' };
+const NAZVA_PIDPYSKY = { pidpyska: 'Підписка', rieltor: 'Підписка для рієлтора', osbb: 'Будинок для ОСББ', spyurist: 'Підписка юриста «Практика»' };
+const VYD_DOVIDKY = { povnyi: 'повний звіт', dovidka: 'довідка', sp: 'судова практика' };
 
 export function kabinet({ poshta, dovidky, stezhu, pidpysky, dostupno, povidomlennia: pov = '', bali = null }) {
-  const ryadky = dovidky.length ? dovidky.map((d) => `<li><b>${e(d.adresa)}</b> — ${d.rezhym === 'povnyi' ? 'повний звіт' : 'довідка'}, ${data(d.stvoreno)}: ${
+  const ryadky = dovidky.length ? dovidky.map((d) => `<li><b>${e(d.adresa)}</b> — ${VYD_DOVIDKY[d.rezhym] || 'довідка'}, ${data(d.stvoreno)}: ${
     d.status === 'hotova' ? `<a href="/dovidka/${e(d.id)}/">відкрити</a>` : e(STATUS_DOVIDKY[d.status])}</li>`).join('')
     : '<li>Поки немає довідок.</li>';
   const stezh = stezhu.length ? stezhu.map((s) => `<li><a href="${e(s.budynok)}">${e(s.adresa)}</a>
@@ -170,7 +175,7 @@ export function kabinet({ poshta, dovidky, stezhu, pidpysky, dostupno, povidomle
 <form class="v-riadok" method="post" action="/kabinet/dovidka"><input type="hidden" name="budynok" value="${e(s.budynok)}"><button class="knopka" type="submit">Довідка</button></form></li>`).join('')
     : '<li>Додайте адресу — тут будуть будинки, за якими стежите.</li>';
   const pidp = pidpysky.length ? pidpysky.map((p) => `<li><b>${e(NAZVA_PIDPYSKY[p.tovar])}</b>${p.adresa ? ` (${e(p.adresa)})` : ''} — ${
-    p.status === 'aktyvna' ? `діє до ${data(p.diie_do)}, довідок цього періоду лишилось: ${p.zalyshok}
+    p.status === 'aktyvna' ? `діє до ${data(p.diie_do)}, довідок цього періоду лишилось: ${p.zalyshok}${p.tovar === 'spyurist' ? ' — <a href="/pidpysnyk/praktyka/">відкрити практику</a>' : ''}
 <form class="v-riadok" method="post" action="/kabinet/skasuvaty"><input type="hidden" name="pidpyska" value="${e(p.id)}"><button class="knopka" type="submit">Скасувати підписку</button></form>`
       : p.zaBali ? `за бали, діє до ${data(p.diie_do)}, без продовження` : p.status === 'skasovana' ? `скасована, діє до ${data(p.diie_do)}` : 'очікує оплати'}</li>`).join('')
     : `<li>Немає. <a href="/oplata/?tovar=pidpyska">Підписка — ${tsina('pidpyska')}</a></li>`;

@@ -14,6 +14,7 @@
 // Відповіді — private, noindex: їх не кешує Cloudflare і не бачать пошуковики.
 import * as L from './logika.js';
 import * as S from './storinky.js';
+import TS from './tsiny.js';
 
 export const KOREN = '/pidpysnyk/';
 const POTOCHNA = 'karta/potochna.json';
@@ -44,7 +45,8 @@ export async function potochna(env) {
 /** Дійсна підписка (місяць, рієлтор, ОСББ — оплачений період ще триває, і скасована теж до кінця періоду). */
 export async function maieDostup(env, ja) {
   if (!ja) return false;
-  return (await L.stanPidpysok(env, ja.id)).some((p) => p.diie);
+  // підписка юриста («Судова практика», ZAVDANNYA-135) карти подій не дає — лише таблиці практики
+  return (await L.stanPidpysok(env, ja.id)).some((p) => p.diie && !TS.sudova.includes(p.tovar));
 }
 
 function bezpechnyiShliakh(s) {

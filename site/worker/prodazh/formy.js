@@ -12,7 +12,7 @@ export const PODII = ['pryishly', 'adresa', 'peredzamovyty', 'kontakt',
 const SHCHO = ['analiz', 'pidpyska', 'povidomyty', 'kompaniya'];
 const SHCHO_NE_TAK = ['mistse', 'opys', 'vydalyty', 'inshe'];
 // Що можна «замовити наперед» у режимі «скоро»: усе, що продаватиметься, і «Судова практика» (повідомити про запуск).
-export const TOVARY_SKORO = [...TS.na_prodazh, 'spdovidka', 'spyurist', 'sudova'];
+export const TOVARY_SKORO = [...new Set([...TS.na_prodazh, 'spdovidka', 'spyurist', 'sudova'])];
 export const NAZVA_SUDOVA = 'Судова практика — повідомити про запуск';
 const ZAPYSIV_NA_POSHTU = 20;            // більше рядків «скоро» з однієї пошти не пишемо (захист від засмічення)
 export const TABLYTSI = { skoro: 'id, poshta, tovar, budynok, adresa, kanal, stvoreno, napysano',
