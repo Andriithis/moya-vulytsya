@@ -452,7 +452,7 @@ def s09(B):
     R.efekt(2.7, 'svish')
     R.efekt(4.2, 'pop', h=1.3)
     R.S['novynky'] = [4.2]
-    R.slovo(5.7, 8.6, f'{vyd_pov[1]}', pid=f'разів — {vyd_pov[0]}\nв одній точці біля ТЦ', klas='fiolet')
+    R.slovo(5.7, 8.6, f'{vyd_pov[1]}', pid=f"{D.vidminok(vyd_pov[1], ('раз', 'рази', 'разів'))} — {vyd_pov[0]}\nв одній точці біля ТЦ", klas='fiolet')
     R.udar(5.7, 0.25, 12)
     R.kiltse(7.2, c, '#31B88D', 320)
     R.efekt(7.2, 'pop', h=1.2)
