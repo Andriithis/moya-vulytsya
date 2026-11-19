@@ -700,17 +700,21 @@
           (v ? '' : ' class="nul"') + '></u><span>’' + String(r).slice(2) + '</span></div>';
       }).join('') + '</div><p class="pidpys-sir">' + (stari.length ? stari[0] + '–' + stari[stari.length - 1] + ' — у підписці · ' : '') + ost + ' — неповний рік</p>';
     }
+    // ZAVDANNYA-135: група подій → стаття «Судової практики» (насильство — ні: там різні статті й чутливі справи)
+    var SP_HRUPY = { dtp: '124', vod: '130', kra: '185', nar: '309', por: '173' }, SP_TUT = null;
     function namalyuvatyKartku() {
       var G = ZARAZ.G, b = ZARAZ.b, p = b.p, n = b.nf, el = $('#kartka'), filtr = !vsiAktyvni();
       var vul = masyv(p.u), rn = p.r ? p.r + ' район' : '';
       var nazva = ZARAZ.nazva || (G.id === 'S' && vul.length ? vul[0][1] : '') || rn || 'Київ';
       var pidnazva = [nazva !== rn ? rn : '', 'сота ' + G.pl].filter(Boolean).join(' · ');
       var tilo;
+      SP_TUT = null;
       if (n < 5) {
         tilo = '<div class="malo"><b>Мало даних</b><span>Менше 5 подій за ' + nazvaPeriodu() + (filtr ? ' (обрані види)' : '') + '</span></div>';
       } else {
         var top = HRUPY.filter(function (h) { return h[0] !== 'nas' && AKTYVNI[h[0]] && chysloG(p, h[0]) > 0; })
-          .map(function (h) { return [chysloG(p, h[0]), h[1]]; }).sort(function (x, y) { return y[0] - x[0]; }).slice(0, 3);
+          .map(function (h) { return [chysloG(p, h[0]), h[1], h[0]]; }).sort(function (x, y) { return y[0] - x[0]; }).slice(0, 3);
+        SP_TUT = top.length && SP_HRUPY[top[0][2]] ? SP_HRUPY[top[0][2]] : null;
         var nas = AKTYVNI.nas && chysloG(p, 'nas') > 0 ? '<div class="nas"><span>' + esc(NAZVA_HRUPY.nas) + '</span><b>' + chyslo(chysloG(p, 'nas')) + '</b></div>' : '';
         var pik = p.h ? '<div class="pik"><b>Пік: ' + esc(p.h.replace(/ (\d)/, ', $1')) + ' год</b><span>за ' + nazvaPeriodu() + ', де відомий час</span></div>'
           : '<div class="pik"><span>Мало даних про час</span></div>';
@@ -735,7 +739,9 @@
       // MV-60: тихий шлях до платного — на сторінки заглушки, що вже є
       tilo += '<nav class="k-dali" aria-label="Більше про це місце">' +
         '<a class="klav" href="' + KOREN + 'zahlushka/?dzherelo=sota-pidpyska#tsiny">Що саме тут було → підписка</a>' +
-        '<a class="klav" href="' + KOREN + 'zahlushka/?dzherelo=sota-analiz#tsiny">Аналіз адреси</a></nav>';
+        '<a class="klav" href="' + KOREN + 'zahlushka/?dzherelo=sota-analiz#tsiny">Аналіз адреси</a>' +
+        // ZAVDANNYA-135: найчастіший вид тут → як суди Києва вирішують такі справи (покажчик «Судової практики» з пошуком)
+        (SP_TUT ? '<a class="klav" href="' + KOREN + 'sudova-praktyka/?q=' + SP_TUT + '&amp;dzherelo=sota#poshuk">Як суди вирішують такі справи</a>' : '') + '</nav>';
       var mezha = 'Лише те, що дійшло до суду' + (G.id === 'S' ? ' · статеві злочини й справи щодо дітей — лише у великих сотах' : '') +
         (VERSIIA ? ' · дані станом на ' + esc(VERSIIA) : '');
       el.innerHTML = '<div class="k-ruchka"></div><div class="k-shap"><div><h2>' + esc(nazva) + '</h2><p>' + esc(pidnazva) + '</p></div>' +

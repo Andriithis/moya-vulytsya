@@ -29,6 +29,7 @@ import * as S from './storinky.js';
 import * as B from './bali.js';
 import * as F from './formy.js';
 import * as K from './karta.js';
+import * as SP from './sudova.js';
 
 export const MARSHRUTY = ['/oplata/*', '/api/*', '/kabinet/*', '/dovidka/*', '/prodazh/*', '/pidpysnyk/*'];
 const SESIIA_S = 30 * 86400, VKHID_S = 30 * 60, LYSTIV_NA_HODYNU = 5;
@@ -65,7 +66,11 @@ async function forma(request) {
 
 async function formaZamovlennia(request, env, url) {
   const tovar = url.searchParams.get('tovar');
-  if (!TS.na_prodazh.includes(tovar)) return pereity(url, tovar === 'biznes' ? '/biznes/' : '/miy-budynok/');
+  if (!TS.prodaietsia.includes(tovar)) return pereity(url, tovar === 'biznes' ? '/biznes/' : '/miy-budynok/');
+  if (tovar === 'spdovidka') {
+    return SP.formaDovidky({ d: await SP.dovidnyk(env, url), slug: url.searchParams.get('stattia') || '',
+      sud: url.searchParams.get('sud') || '', chastyna: url.searchParams.get('chastyna') || '' });
+  }
   const budynok = url.searchParams.get('budynok');
   const adresa = budynok ? await L.perevirytyBudynok(env, budynok, url) : null;
   return S.formaZamovlennia({ tovar, budynok: adresa ? budynok : null, adresa });
@@ -75,8 +80,19 @@ async function stvorytyZamovlennia(request, env, url) {
   if (!zNashohoSaitu(request, env)) return S.povidomlennia('Не вдалося', 'Оформіть замовлення на нашому сайті.', 403);
   const f = await forma(request);
   const tovar = String(f.tovar || '');
-  if (!TS.na_prodazh.includes(tovar)) return S.povidomlennia('Не вдалося', 'Такого товару немає.', 400);
+  if (!TS.prodaietsia.includes(tovar)) return S.povidomlennia('Не вдалося', 'Такого товару немає.', 400);
   const poshta = L.chystaPoshta(f.poshta);
+  if (tovar === 'spdovidka') {
+    // «Судова практика»: стаття, суд і частина — лише з довідника сайту; опис вибору пише сервер, а не форма
+    const v = await SP.perevirytyParametry(env, url, f);
+    if (!v) return S.povidomlennia('Не вдалося', 'Такої статті, суду чи частини немає. Оберіть зі списку.', 400);
+    const znovu = async (pomylka) => SP.formaDovidky({ d: await SP.dovidnyk(env, url), slug: v.slug, sud: v.parametry.sud, chastyna: v.parametry.chastyna, pomylka });
+    if (!poshta) return znovu('Перевірте пошту.');
+    if (f.zghoda !== 'tak') return znovu('Потрібна згода з офертою.');
+    if (f.ne_dopomoga !== 'tak') return znovu('Позначте, що розумієте: це статистика, а не юридична допомога.');
+    if (f.odrazu !== 'tak') return znovu('Позначте: «Прошу надіслати одразу…» — без цього оплатити не можна.');
+    return doOplaty(env, url, { tovar, budynok: null, adresa: v.opys, poshta, parametry: v.parametry });
+  }
   let budynok = f.budynok ? String(f.budynok) : null, adresa = null;
   if (budynok) {
     adresa = await L.perevirytyBudynok(env, budynok, url);
@@ -90,11 +106,11 @@ async function stvorytyZamovlennia(request, env, url) {
   return doOplaty(env, url, { tovar, budynok, adresa, poshta });
 }
 
-async function doOplaty(env, url, { tovar, budynok, adresa, poshta, korystuvach_id, pidpyska_id }) {
+async function doOplaty(env, url, { tovar, budynok, adresa, poshta, korystuvach_id, pidpyska_id, parametry = null }) {
   const p = perekhidnyk(env);
   if (!p) return S.povidomlennia('Оплата недоступна', 'Оплата тимчасово не працює. Спробуйте пізніше.', 503);
   const k = korystuvach_id ?? (await L.korystuvach(env, poshta)).id;
-  const { zam, pidpyska, pomylka } = await L.stvorytyZamovlennia(env, { tovar, budynok, adresa, korystuvach_id: k, servis: p.nazva, pidpyska_id });
+  const { zam, pidpyska, pomylka } = await L.stvorytyZamovlennia(env, { tovar, budynok, adresa, korystuvach_id: k, servis: p.nazva, pidpyska_id, parametry });
   if (pomylka) return S.povidomlennia('Не вдалося', pomylka, 400);
   try {
     const v = await p.stvoryty({ zam, pidpyska, opys: `${TS.nazvy[tovar]}${adresa ? `: ${adresa}` : ''} — Моя вулиця`, adresa: adresaSaitu(env, url), env });
@@ -270,6 +286,23 @@ async function diiaKabinetu(request, env, url, ja, dia) {
   return S.nemaie();
 }
 
+// ---------------------------------------------------------------- «Судова практика»: довідка з підписки юриста
+
+async function spDovidkaZPidpysky(request, env, url) {
+  const ja = await sesiia(request, env);
+  if (!ja) return pereity(url, '/kabinet/');
+  if (!zNashohoSaitu(request, env)) return S.povidomlennia('Не вдалося', 'Дію можна зробити лише з нашого сайту.', 403);
+  const v = await SP.perevirytyParametry(env, url, await forma(request));
+  if (!v) return S.povidomlennia('Не вдалося', 'Такої статті, суду чи частини немає. Оберіть зі списку.', 400);
+  const r = await L.vzyatySpDovidku(env, ja.id, v);
+  if (r.nemaie) return pereity(url, SP.KOREN);
+  if (r.vycherpano) {
+    return S.povidomlennia('Довідки цього місяця використано', `Можна купити окрему довідку — ${S.tsina('spdovidka')}.`, 200,
+      `<div class="diyi"><a class="knopka knopka--holovna" href="/oplata/?tovar=spdovidka&amp;stattia=${S.e(v.slug)}">Купити довідку</a><a class="knopka" href="${SP.KOREN}">Назад до практики</a></div>`);
+  }
+  return kabinet(env, ja, `Довідку «${v.opys}» готуємо — посилання прийде на пошту.`);
+}
+
 // ---------------------------------------------------------------- для видавача
 
 async function vnutr(request, env, url, shliakh) {
@@ -378,7 +411,7 @@ export async function prodazh(request, env) {
   }
   // Товари, яких ще немає в продажу («Судова практика»), — «Скоро — залиште пошту» і з увімкненою оплатою.
   const tovar = url.searchParams.get('tovar');
-  if (s === '/oplata/' && m === 'GET' && F.TOVARY_SKORO.includes(tovar) && !TS.na_prodazh.includes(tovar)) return skoroForma(env, url);
+  if (s === '/oplata/' && m === 'GET' && F.TOVARY_SKORO.includes(tovar) && !TS.prodaietsia.includes(tovar)) return skoroForma(env, url);
   if (s === '/api/skoro' && m === 'POST') return skoroZapys(request, env, url);
   if (s === '/oplata/' && m === 'GET') return formaZamovlennia(request, env, url);
   if (s === '/oplata/dyakuiemo/' && m === 'GET') return S.dyakuiemo();
@@ -401,6 +434,11 @@ export async function prodazh(request, env) {
       if (!zNashohoSaitu(request, env)) return S.povidomlennia('Не вдалося', 'Дію можна зробити лише з нашого сайту.', 403);
       return diiaKabinetu(request, env, url, ja, s.slice('/kabinet/'.length));
     }
+  }
+  if (s === `${SP.KOREN}dovidka` && m === 'POST') return spDovidkaZPidpysky(request, env, url);
+  if (s.startsWith(SP.KOREN.slice(0, -1))) {
+    const r = await SP.praktyka(request, env, url, await sesiia(request, env));
+    if (r) return r;
   }
   if (s === '/pidpysnyk' || s.startsWith('/pidpysnyk/')) {
     const k = await K.karta(request, env, url, await sesiia(request, env));

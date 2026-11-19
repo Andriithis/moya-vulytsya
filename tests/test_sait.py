@@ -1114,8 +1114,12 @@ class KartaUBrauzeri(unittest.TestCase):
             self.assertFalse(s.evaluate('document.getElementById("kartka").hidden'))
             # MV-60: тихий шлях до платного — дві кнопки на сторінки заглушки
             dali = s.evaluate("() => [...document.querySelectorAll('#kartka .k-dali a')].map(a => [a.textContent, a.getAttribute('href')])")
-            self.assertEqual(dali, [['Що саме тут було → підписка', '/zahlushka/?dzherelo=sota-pidpyska#tsiny'],
-                                    ['Аналіз адреси', '/zahlushka/?dzherelo=sota-analiz#tsiny']])
+            self.assertEqual(dali[:2], [['Що саме тут було → підписка', '/zahlushka/?dzherelo=sota-pidpyska#tsiny'],
+                                        ['Аналіз адреси', '/zahlushka/?dzherelo=sota-analiz#tsiny']])
+            # ZAVDANNYA-135: третя — «Як суди вирішують такі справи» (покажчик «Судової практики»), якщо найчастіша група має статтю
+            for napys, href in dali[2:]:
+                self.assertEqual(napys, 'Як суди вирішують такі справи')
+                self.assertRegex(href, r'^/sudova-praktyka/\?q=(124|130|185|309|173)&dzherelo=sota#poshuk$')
             self.assertEqual(s.evaluate(ZNIMOK), do, f'{shyryna}: щось зсунулося при відкритті картки')
             s.click('.k-x')
             s.wait_for_timeout(300)

@@ -15,6 +15,8 @@
 #   змінна  VYDAVACH           uvimknuto
 #   змінна  MV_ADRESA_SAITU    https://<сайт> (той самий, що ADRESA_SAITU у Workers)
 #   змінна  VYPUSK             тег Release dani-edrsr з випуском, напр. vypusk-2026-11-08 (файл events-*.db у ньому)
+#   змінна  SP_VYPUSK          тег Release dani-edrsr з даними «Судової практики» (файл sp-dovidka-*.json, ZAVDANNYA-135);
+#                              без неї довідки «Судової практики» не збираються (повертаються в чергу, після 3 спроб — лист партнеру)
 #   змінна  VYDAVACH_SHI       tak — перекази ШІ (потрібен ANTHROPIC_API_KEY); інакше — описи правилами
 #   змінна  SHI_STELIA_USD     м'яка стеля витрат ШІ на місяць, $ (типово 10; жорстка — у консолі Anthropic)
 #   секрет  MV_DANI_TOKEN      ключ лише на читання dani-edrsr (Contents: Read-only) — вписує Андрій, як для автопостингу
@@ -50,6 +52,7 @@ jobs:
       ZVIT_SKARGY: ${{ github.workspace }}/_dani/1551
       ZVIT_OSM: ${{ github.workspace }}/_dani/kyiv.osm.pbf
       ZVIT_KESH: ${{ github.workspace }}/_kesh
+      SP_DANI: ${{ github.workspace }}/_dani/sp-dovidka.json
     steps:
       - name: Генератор — dani-edrsr (приватний, ключем лише на читання)
         uses: actions/checkout@v4
@@ -98,6 +101,22 @@ jobs:
           mkdir -p _dani
           gh release download "${{ vars.VYPUSK }}" -R Andriithis/dani-edrsr --pattern 'events-*.db' --output _dani/vypusk.db --clobber
           ls -la _dani
+
+      - name: Дані «Судової практики» з кешу (ZAVDANNYA-135)
+        id: sp
+        if: ${{ vars.SP_VYPUSK != '' }}
+        uses: actions/cache@v4
+        with:
+          path: _dani/sp-dovidka.json
+          key: sp-${{ vars.SP_VYPUSK }}
+
+      - name: Дані «Судової практики» з Release dani-edrsr (лише коли кешу немає)
+        if: ${{ vars.SP_VYPUSK != '' && steps.sp.outputs.cache-hit != 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.MV_DANI_TOKEN }}
+        run: |
+          mkdir -p _dani
+          gh release download "${{ vars.SP_VYPUSK }}" -R Andriithis/dani-edrsr --pattern 'sp-dovidka-*.json' --output _dani/sp-dovidka.json --clobber
 
       - name: OSM Києва з кешу (оновлюється щотижня)
         id: osm
