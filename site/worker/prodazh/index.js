@@ -16,6 +16,7 @@
 //   GET  /oplata/dyakuiemo/                «дякуємо»
 //   GET  /dovidka/<id>/?k=<ключ>           довідка: ключ із листа або вхід у кабінет власника
 //   /kabinet/…                             вхід за посиланням на пошту, мої довідки, «Стежу», підписка, видалення даних
+//   GET  /kabinet/google/…                 вхід через Google — лише з GOOGLE_KLIIENT_ID і GOOGLE_SEKRET (google.js, ZAVDANNYA-142)
 //   /api/vnutr/…                           для видавача (site/prodazh/vydavach.py), заголовок Authorization: Bearer VYDACHA_KLIUCH
 //   POST /kabinet/obmin                    обмін балів ігор на довідку / місяць підписки — лише з OBMIN_BALIV = 'tak' (ZAVDANNYA-123)
 //   /pidpysnyk/…                          карта підписника зі сховища R2 — лише з дійсною підпискою (karta.js, ZAVDANNYA-133)
@@ -30,6 +31,7 @@ import * as B from './bali.js';
 import * as F from './formy.js';
 import * as K from './karta.js';
 import * as SP from './sudova.js';
+import * as G from './google.js';
 
 export const MARSHRUTY = ['/oplata/*', '/api/*', '/kabinet/*', '/dovidka/*', '/prodazh/*', '/pidpysnyk/*'];
 const SESIIA_S = 30 * 86400, VKHID_S = 30 * 60, LYSTIV_NA_HODYNU = 5;
@@ -73,7 +75,13 @@ async function formaZamovlennia(request, env, url) {
   }
   const budynok = url.searchParams.get('budynok');
   const adresa = budynok ? await L.perevirytyBudynok(env, budynok, url) : null;
-  return S.formaZamovlennia({ tovar, budynok: adresa ? budynok : null, adresa });
+  return S.formaZamovlennia({ tovar, budynok: adresa ? budynok : null, adresa, ...(await vkhidGoogle(request, env)) });
+}
+
+/** Для форми замовлення (ZAVDANNYA-142): пошта з сесії (після входу через Google) і чи показувати кнопку Google. */
+async function vkhidGoogle(request, env) {
+  const ja = await sesiia(request, env);
+  return { poshtaSesii: ja?.poshta || '', google: G.uvimkneno(env) && !ja };
 }
 
 async function stvorytyZamovlennia(request, env, url) {
@@ -188,10 +196,10 @@ async function vidkrytyDovidku(request, env, url, id) {
 // ---------------------------------------------------------------- кабінет
 
 async function nadislatyVkhid(request, env, url) {
-  if (!zNashohoSaitu(request, env)) return S.vkhid('Відкрийте кабінет на нашому сайті.');
+  if (!zNashohoSaitu(request, env)) return S.vkhid('Відкрийте кабінет на нашому сайті.', G.uvimkneno(env));
   const poshta = L.chystaPoshta((await forma(request)).poshta);
-  const vidpovid = S.vkhid('Якщо ця пошта є в нас, посилання для входу вже в листі. Перевірте й «Спам».');
-  if (!poshta) return S.vkhid('Перевірте пошту.');
+  const vidpovid = S.vkhid('Якщо ця пошта є в нас, посилання для входу вже в листі. Перевірте й «Спам».', G.uvimkneno(env));
+  if (!poshta) return S.vkhid('Перевірте пошту.', G.uvimkneno(env));
   const k = await L.odyn(env, 'SELECT * FROM korystuvachi WHERE poshta = ?', poshta);
   if (!k) return vidpovid;   // не кажемо, чи є така пошта
   const t = L.teper(env);
@@ -210,12 +218,36 @@ async function uviity(request, env, url) {
   const t = url.searchParams.get('t') || '';
   const zaraz = L.teper(env);
   const v = await L.odyn(env, 'SELECT * FROM vkhody WHERE hash = ?', sha256(t));
-  if (!v || v.vykorystano || v.do_ < zaraz) return S.vkhid('Посилання застаріло або вже використане. Надішлемо нове.');
+  if (!v || v.vykorystano || v.do_ < zaraz) return S.vkhid('Посилання застаріло або вже використане. Надішлемо нове.', G.uvimkneno(env));
   const r = await L.zrobyty(env, 'UPDATE vkhody SET vykorystano = ? WHERE hash = ? AND vykorystano IS NULL', zaraz, v.hash);
-  if (!r.meta?.changes) return S.vkhid('Посилання вже використане.');
+  if (!r.meta?.changes) return S.vkhid('Посилання вже використане.', G.uvimkneno(env));
   const s = vypadkovyi(32);
   await L.zrobyty(env, 'INSERT INTO sesii (hash, korystuvach_id, do_) VALUES (?, ?, ?)', sha256(s), v.korystuvach_id, zaraz + SESIIA_S);
   return pereity(url, '/kabinet/', { 'set-cookie': `mv_sesiia=${s}; Path=/; Max-Age=${SESIIA_S}; HttpOnly; Secure; SameSite=Lax` });
+}
+
+const novaSesiia = async (env, korystuvach_id) => {
+  const s = vypadkovyi(32);
+  await L.zrobyty(env, 'INSERT INTO sesii (hash, korystuvach_id, do_) VALUES (?, ?, ?)', sha256(s), korystuvach_id, L.teper(env) + SESIIA_S);
+  return `mv_sesiia=${s}; Path=/; Max-Age=${SESIIA_S}; HttpOnly; Secure; SameSite=Lax`;
+};
+
+/** Вхід через Google (google.js): початок і повернення. Без ключів — «сторінки немає». */
+async function google(request, env, url) {
+  if (!G.uvimkneno(env)) return S.nemaie();
+  const adresa = adresaSaitu(env, url);
+  if (url.pathname === '/kabinet/google/') return G.pochaty(env, url, adresa);
+  if (url.pathname !== '/kabinet/google/povernennia/') return S.nemaie();
+  const v = await G.povernennia(env, url, adresa, kuky(request)[G.KUKA]);
+  if (v.pomylka) {
+    const r = S.vkhid(v.pomylka, true, 400);
+    r.headers.append('set-cookie', G.STERTY_KUKU);
+    return r;
+  }
+  const h = new Headers({ location: new URL(v.kudy, url).toString(), 'cache-control': 'no-store' });
+  h.append('set-cookie', await novaSesiia(env, v.korystuvach_id));
+  h.append('set-cookie', G.STERTY_KUKU);
+  return new Response(null, { status: 303, headers: h });
 }
 
 async function kabinet(env, ja, povidomlennia = '') {
@@ -427,9 +459,10 @@ export async function prodazh(request, env) {
   if (r && m === 'GET') return vidkrytyDovidku(request, env, url, r[1]);
   if (s === '/kabinet/vkhid' && m === 'POST') return nadislatyVkhid(request, env, url);
   if (s === '/kabinet/vkhid/' && m === 'GET') return uviity(request, env, url);
+  if (s.startsWith('/kabinet/google/') && m === 'GET') return google(request, env, url);
   if (s.startsWith('/kabinet/')) {
     const ja = await sesiia(request, env);
-    if (s === '/kabinet/' && m === 'GET') return ja ? kabinet(env, ja) : S.vkhid();
+    if (s === '/kabinet/' && m === 'GET') return ja ? kabinet(env, ja) : S.vkhid('', G.uvimkneno(env));
     if (m === 'POST') {
       if (!ja) return pereity(url, '/kabinet/');
       if (!zNashohoSaitu(request, env)) return S.povidomlennia('Не вдалося', 'Дію можна зробити лише з нашого сайту.', 403);

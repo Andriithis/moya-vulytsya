@@ -1,0 +1,77 @@
+/* Візуальна лабораторія роликів (ZAVDANNYA-139): теми й вигляди «не карта». Вантажиться після stsena.css.
+   data-t — основа (темна / світла, як було), data-tema — конкретна тема. Акценти бренду (індиго й м'ята) лишаються
+   в логотипі; червоного немає (колір = кількість даних, не «небезпека»). */
+[data-tema="nich"] { --ground: #05060D; --surface: #0E1024; --tint: #15183A; --accent: #2FF5C0; --accent2: #7E74FF; }
+[data-tema="nich"] .t.hook, [data-tema="nich"] .t.velykyi { text-shadow: 0 0 18px rgba(126, 116, 255, .9), 0 0 50px rgba(47, 245, 192, .35); }
+[data-tema="papir"] { --ground: #F4EFE3; --surface: #FBF8F0; --tint: #ECE6D6; --ink: #1E1C33; --ink2: #3C3A52; --muted: #6F6A63; --accent: #24205E; --accent2: #45418A; }
+[data-tema="papir"] .t.hook, [data-tema="papir"] .t.velykyi { color: #1E1C33; text-shadow: 0 0 24px #F4EFE3, 0 0 48px #F4EFE3; font-family: Georgia, 'Times New Roman', serif; }
+[data-tema="papir"] #zat-v { background: linear-gradient(to bottom, rgba(244,239,227,.95) 0%, rgba(244,239,227,.8) 45%, rgba(244,239,227,0) 100%); }
+[data-tema="papir"] #zat-n { background: linear-gradient(to top, rgba(244,239,227,.95) 0%, rgba(244,239,227,.8) 50%, rgba(244,239,227,0) 100%); }
+[data-tema="papir"] #dzherelo span { background: rgba(251, 248, 240, .9); }
+[data-tema="vechir"] { --ground: #1B1326; --surface: #271B35; --tint: #33244A; --ink: #FFF3E8; --ink2: #F3DECB; --muted: #C9AFC0; --accent: #F5B759; --accent2: #97588A; }
+[data-tema="vechir"] #zat-v { background: linear-gradient(to bottom, rgba(27,19,38,.9) 0%, rgba(27,19,38,.72) 45%, rgba(27,19,38,0) 100%); }
+[data-tema="vechir"] #zat-n { background: linear-gradient(to top, rgba(27,19,38,.9) 0%, rgba(27,19,38,.72) 50%, rgba(27,19,38,0) 100%); }
+[data-tema="sontse"] { --ground: #FFFFFF; --surface: #FFFFFF; --tint: #EEF0FF; --ink: #000000; --ink2: #15172A; --muted: #30323F; --accent: #12148A; --accent2: #2A30BE; }
+[data-tema="sontse"] .t.hook, [data-tema="sontse"] .t.velykyi { color: #000; text-shadow: 0 0 0 #fff, 0 0 22px #fff, 0 0 44px #fff; font-weight: 900; }
+[data-tema="sontse"] #dzherelo span { background: #fff; color: #000; box-shadow: 0 0 0 3px #000; }
+[data-tema="monokhrom"] { --ground: #0E0E11; --surface: #18181D; --tint: #222228; --ink: #F2F2F5; --ink2: #D2D2D8; --muted: #9A9AA3; --accent: #66E6BA; --accent2: #80808B; }
+[data-tema="monokhrom"] #zat-v { background: linear-gradient(to bottom, rgba(14,14,17,.9) 0%, rgba(14,14,17,.72) 45%, rgba(14,14,17,0) 100%); }
+[data-tema="monokhrom"] #zat-n { background: linear-gradient(to top, rgba(14,14,17,.9) 0%, rgba(14,14,17,.72) 50%, rgba(14,14,17,0) 100%); }
+
+#nakladka139, #povnyi139 { position: absolute; inset: 0; pointer-events: none; }
+
+/* ---------- «не карта»: панель на весь кадр ---------- */
+.p139 { position: absolute; inset: 0; background: var(--ground); color: var(--ink); padding: 360px 70px 0; display: none; }
+.p139 .zag { font: 800 74px/1.05 Plex; letter-spacing: -1px; }
+.p139 .pid { font: 600 40px/1.25 Plex; color: var(--ink2); margin-top: 14px; }
+
+.infografika .n { font: 900 230px/1 Plex; letter-spacing: -6px; color: var(--accent); margin-top: 30px; }
+.infografika .sitka { display: grid; grid-template-columns: repeat(10, 1fr); gap: 18px; width: 860px; margin-top: 50px; }
+.infografika .sitka i { display: block; width: 68px; height: 68px; border-radius: 50%; background: var(--k); box-shadow: 0 0 18px var(--k); }
+[data-t="svitla"] .infografika .sitka i { box-shadow: none; }
+.infografika .lehenda { margin-top: 40px; font: 600 38px/1.5 Plex; }
+.infografika .lehenda i { display: inline-block; width: 30px; height: 30px; border-radius: 50%; margin-right: 14px; vertical-align: -3px; }
+.infografika .lehenda b { font-weight: 800; }
+
+.hodynnyk svg { display: block; width: 940px; height: 940px; margin: 40px auto 0; overflow: visible; }
+.hodynnyk .osn { fill: var(--surface); stroke: var(--tint); stroke-width: 4; }
+.hodynnyk .pr { transition: none; }
+.hodynnyk text { font: 700 34px Plex; fill: var(--muted); text-anchor: middle; }
+.hodynnyk .strilka { stroke: var(--accent); stroke-width: 6; stroke-linecap: round; opacity: .9; }
+.hodynnyk .tsentr { position: absolute; left: 0; right: 0; top: 938px; text-align: center; }
+.hodynnyk .tsentr b { display: block; font: 900 74px/1 Plex; }
+.hodynnyk .tsentr span { display: block; font: 800 52px/1.15 Plex; color: var(--accent); }
+.hodynnyk .pid { position: absolute; left: 70px; right: 70px; top: 1440px; }
+
+.kalendar .mis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 34px 40px; margin-top: 50px; }
+.kalendar .kal-m b { display: block; font: 700 32px Plex; color: var(--muted); margin-bottom: 8px; }
+.kalendar .dni { display: grid; grid-template-columns: repeat(7, 34px); gap: 6px; }
+.kalendar .dni span { width: 34px; height: 34px; border-radius: 7px; background: var(--tint); }
+.kalendar .dni span.pus { background: transparent; }
+.kalendar .pid { font: 600 42px/1.25 Plex; margin-top: 46px; }
+.kalendar .pid b { font: 900 70px Plex; color: var(--accent); }
+
+.kartka-zvit { padding: 0; overflow: hidden; background: var(--ground); }
+/* аркуш гортається під верхній край: згори — плавне згасання, щоб не різати текст навпіл */
+.kartka-zvit::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 330px;
+  background: linear-gradient(to bottom, var(--ground) 55%, transparent); }
+.kartka-zvit .arkush { position: absolute; left: 60px; right: 60px; top: 360px; background: var(--surface); border-radius: 36px;
+  padding: 50px 54px 60px; box-shadow: 0 30px 80px rgba(0,0,0,.35); }
+.kartka-zvit .shapka { display: flex; align-items: center; gap: 14px; font: 700 34px Plex; color: var(--muted); }
+.kartka-zvit .shapka svg { width: 50px; height: 50px; }
+.kartka-zvit .z1 { fill: var(--accent2); } .kartka-zvit .z2 { fill: var(--accent); }
+.kartka-zvit h2 { font: 800 70px/1.05 Plex; margin: 30px 0 10px; letter-spacing: -1px; }
+.kartka-zvit h3 { font: 700 40px Plex; margin: 56px 0 18px; color: var(--ink2); }
+.kartka-zvit .chysla { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 40px; }
+.kartka-zvit .chysla div { background: var(--tint); border-radius: 22px; padding: 22px; }
+.kartka-zvit .chysla b { display: block; font: 900 64px/1 Plex; color: var(--accent); }
+.kartka-zvit .chysla span { display: block; font: 600 28px/1.2 Plex; color: var(--muted); margin-top: 8px; }
+.kartka-zvit .roky div, .kartka-zvit .hrupy div { position: relative; height: 64px; margin: 12px 0; font: 700 34px/64px Plex; }
+.kartka-zvit .roky i, .kartka-zvit .hrupy i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 14px; background: var(--accent2); opacity: .9; }
+.kartka-zvit .roky b, .kartka-zvit .roky span, .kartka-zvit .hrupy span { position: relative; padding-left: 20px; color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,.4); }
+.kartka-zvit .roky span { float: right; padding-right: 20px; color: var(--ink); text-shadow: none; }
+.kartka-zvit .misiatsi { display: flex; gap: 12px; height: 260px; align-items: flex-end; }
+.kartka-zvit .misiatsi div { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
+.kartka-zvit .misiatsi i { display: block; width: 100%; background: var(--accent); border-radius: 10px 10px 4px 4px; }
+.kartka-zvit .misiatsi span { font: 700 28px Plex; color: var(--muted); margin-top: 8px; }
+.kartka-zvit .dz { font: 600 28px/1.3 Plex; color: var(--muted); margin-top: 50px; }
