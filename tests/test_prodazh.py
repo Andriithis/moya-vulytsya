@@ -27,6 +27,7 @@ sys.path.insert(0, str(KORIN / 'site' / 'prodazh'))
 
 import tsiny as T  # noqa: E402
 import vydavach  # noqa: E402
+import karta_r2  # noqa: E402
 
 WORKER = KORIN / 'site' / 'worker'
 
@@ -156,6 +157,46 @@ class Vydavach(unittest.TestCase):
         self.assertEqual(st, 404, 'без ключа з листа — ні')
         self.assertNotIn('Опис події', html)
         self.assertEqual(vydavach.odyn_obkhid(self.adresa, 'kliuch-vydavacha', self.generator, shi=False), 0, 'черга порожня')
+
+
+class KartaR2(unittest.TestCase):
+    """Карта підписника → R2 (ZAVDANNYA-133): покажчик точок, маніфест, клітинка та сама, що в скрипті Workers."""
+
+    def setUp(self):
+        self.t = Path(tempfile.mkdtemp(prefix='karta-r2-'))
+        self.addCleanup(shutil.rmtree, self.t, True)
+        k = self.t / 'karta'
+        (k / 'dani').mkdir(parents=True)
+        (k / 'spravy').mkdir()
+        (k / 'index.html').write_text('<!doctype html>', encoding='utf-8')
+        (k / 'dani' / 'meta.0123456789.json').write_text(json.dumps({'versiia': '2026-11-08', 'cats': ['Крадіжка']}), encoding='utf-8')
+        pts = {'v': ['вулиця Вигадана'], 'p': [[50.45, 30.52, [0, '1'], 1, 'K…', 1], [50.46, 30.53, 'Майдан Вигаданий', 5, 'K…', 1]]}
+        (k / 'dani' / 'pts.0123456789.json').write_text(json.dumps(pts, ensure_ascii=False), encoding='utf-8')
+        for la, lo in ((50.45, 30.52), (50.46, 30.53)):
+            (k / 'spravy' / f'{karta_r2.klitynka(la, lo)}.json').write_text('{}', encoding='utf-8')
+        self.k = k
+
+    def test_kliitynka_yak_u_workers(self):
+        js = (WORKER / 'prodazh' / 'karta.js').read_text(encoding='utf-8')
+        self.assertIn('export const KLITYNKA = [0.018 / 4, 0.028 / 4];', js)
+        self.assertEqual(karta_r2.SPRAVY_KL, (0.018 / 4, 0.028 / 4))
+
+    def test_pokazhchyk_i_manifest(self):
+        r2 = self.t / 'r2'
+        self.assertEqual(karta_r2.main([str(self.k), '--do-teky', str(r2)]), 0)
+        m = json.loads((r2 / 'karta' / 'potochna.json').read_text(encoding='utf-8'))
+        self.assertEqual(m['versiia'], '2026-11-08')
+        self.assertEqual(m['kategorii'], ['Крадіжка'])
+        kl = karta_r2.klitynka(50.45, 30.52)
+        ind = json.loads((r2 / 'karta' / '2026-11-08' / 'indeks' / f'{kl}.json').read_text(encoding='utf-8'))
+        self.assertEqual(ind, [[50.45, 30.52, 0, 'вулиця Вигадана, 1']])
+        self.assertTrue((r2 / 'karta' / '2026-11-08' / 'index.html').exists())
+
+    def test_bez_fajla_sprav_zupyniaietsia(self):
+        for f in (self.k / 'spravy').glob('*.json'):
+            f.unlink()
+        with self.assertRaises(SystemExit):
+            karta_r2.pidhotuvaty(self.k)
 
 
 if __name__ == '__main__':

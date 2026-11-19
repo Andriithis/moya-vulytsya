@@ -17,6 +17,7 @@
 //   /kabinet/…                             вхід за посиланням на пошту, мої довідки, «Стежу», підписка, видалення даних
 //   /api/vnutr/…                           для видавача (site/prodazh/vydavach.py), заголовок Authorization: Bearer VYDACHA_KLIUCH
 //   POST /kabinet/obmin                    обмін балів ігор на довідку / місяць підписки — лише з OBMIN_BALIV = 'tak' (ZAVDANNYA-123)
+//   /pidpysnyk/…                          карта підписника зі сховища R2 — лише з дійсною підпискою (karta.js, ZAVDANNYA-133)
 //   POST /api/admin/vydalyty               видалення даних на запит людини (партнер), Authorization: Bearer ADMIN_KLIUCH
 import TS from './tsiny.js';
 import { vypadkovyi, sha256, rivni } from './bezpeka.js';
@@ -26,8 +27,9 @@ import * as L from './logika.js';
 import * as S from './storinky.js';
 import * as B from './bali.js';
 import * as F from './formy.js';
+import * as K from './karta.js';
 
-export const MARSHRUTY = ['/oplata/*', '/api/*', '/kabinet/*', '/dovidka/*', '/prodazh/*'];
+export const MARSHRUTY = ['/oplata/*', '/api/*', '/kabinet/*', '/dovidka/*', '/prodazh/*', '/pidpysnyk/*'];
 const SESIIA_S = 30 * 86400, VKHID_S = 30 * 60, LYSTIV_NA_HODYNU = 5;
 
 const adresaSaitu = (env, url) => (env.ADRESA_SAITU || new URL(url).origin).replace(/\/$/, '');
@@ -396,6 +398,10 @@ export async function prodazh(request, env) {
       if (!zNashohoSaitu(request, env)) return S.povidomlennia('Не вдалося', 'Дію можна зробити лише з нашого сайту.', 403);
       return diiaKabinetu(request, env, url, ja, s.slice('/kabinet/'.length));
     }
+  }
+  if (s === '/pidpysnyk' || s.startsWith('/pidpysnyk/')) {
+    const k = await K.karta(request, env, url, await sesiia(request, env));
+    if (k) return k;
   }
   if (s.startsWith('/api/')) return new Response('ні', { status: 404 });
   return null;

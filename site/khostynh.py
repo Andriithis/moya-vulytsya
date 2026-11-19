@@ -82,8 +82,9 @@ def teka_workera(vykhid: Path) -> Path:
 
 
 # Адреси, для яких Cloudflare спершу запускає скрипт (решту віддає сам). Продаж — site/worker/prodazh/index.js, MARSHRUTY.
-MARSHRUTY_PRODAZHU = ['/oplata/*', '/api/*', '/kabinet/*', '/dovidka/*', '/prodazh/*']
+MARSHRUTY_PRODAZHU = ['/oplata/*', '/api/*', '/kabinet/*', '/dovidka/*', '/prodazh/*', '/pidpysnyk/*']
 R2_DOVIDOK = 'moya-vulytsya-dovidky'
+R2_KARTY = 'moya-vulytsya-karta'     # карта підписника (ZAVDANNYA-133): лише з prodazh['karta'], сховище створює партнер
 SERVISY_OPLATY = ('liqpay', 'mono', 'test')
 # Не секретні змінні, які скрипт викладки може записати у wrangler.jsonc (ключі — лише `wrangler secret put`).
 DODATKOVI_ZMINNI = {'POSHTA_PARTNERA', 'POSHTA_VID', 'POSHTA_URL', 'LIQPAY_SANDBOX', 'LIQPAY_HESH', 'DOVIDKY_DNIV'}
@@ -142,6 +143,9 @@ def pidhotuvaty_worker(vykhid: Path, pachok: int, nazva: str = 'moya-vulytsya', 
             konfig['vars']['TESTOVA_OPLATA'] = 'tak'
         konfig['d1_databases'] = [{'binding': 'BAZA', 'database_name': f'{nazva}-prodazh', 'database_id': prodazh['d1']}]
         konfig['r2_buckets'] = [{'binding': 'DOVIDKY', 'bucket_name': R2_DOVIDOK}]
+        if prodazh.get('karta'):
+            # Карта підписника — приватне сховище R2, віддає лише скрипт після перевірки підписки (prodazh/karta.js)
+            konfig['r2_buckets'].append({'binding': 'KARTA', 'bucket_name': R2_KARTY})
         konfig['triggers'] = {'crons': ['17 2 * * *']}     # щодня: прибирання й лист ОСББ за 3 дні (logika.js)
     (t / 'wrangler.jsonc').write_text('// Зібрано site/zibraty_sait.py --khostynh workers (ZAVDANNYA-88, -99). Не редагувати руками.\n'
                                       + json.dumps(konfig, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')

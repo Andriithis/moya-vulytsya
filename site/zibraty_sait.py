@@ -1184,13 +1184,15 @@ def main(argv=None) -> int:
     p.add_argument('--cf-analityka', default='', help='публічний токен Cloudflare Web Analytics (лічба відвідувань без кукі)')
     p.add_argument('--domen', default='', help='свій домен для Workers (напр. moyavulytsya.com.ua) — прив\'язка під час викладки')
     p.add_argument('--poshta-servis', choices=('zahlushka', 'http-json'), default='zahlushka', help='сервіс листів')
+    p.add_argument('--karta-r2', action='store_true', help='карта підписника зі сховища R2 moya-vulytsya-karta (лише з --oplata tak; '
+                   'docs/PLATNA-CHASTYNA.md, розд. 2)')
     a = p.parse_args(argv)
     prodazh = None
     if a.prodazh_d1 or a.platizhnyi_servis:
         if a.khostynh != 'workers':
             p.error('база D1 і продаж працюють лише з --khostynh workers')
         prodazh = {'d1': a.prodazh_d1, 'servis': a.platizhnyi_servis if a.oplata == 'tak' else None,
-                   'adresa': a.adresa_saitu, 'poshta': a.poshta_servis}
+                   'adresa': a.adresa_saitu, 'poshta': a.poshta_servis, 'karta': a.karta_r2}
     zapovnennya = json.loads(a.zapovnennya.read_text(encoding='utf-8')) if a.zapovnennya else None
     zvit = zibraty_sait(a.baza, a.vykhid, a.pereimenuvannya, a.mezhi_rayoniv, a.adresa_saitu, a.koloda,
                         a.zvit_zvedennia, a.budynky, a.mezha_failiv, a.khostynh, a.perekazy, a.kandydaty_istorii,

@@ -29,8 +29,20 @@ export function r2() {
   return {
     m,
     async put(k, v) { m.set(k, String(v)); },
-    async get(k) { return m.has(k) ? { body: m.get(k) } : null; },
+    async get(k) { if (!m.has(k)) return null; const b = m.get(k); return { body: b, async text() { return b; } }; },
     async delete(k) { m.delete(k); },
   };
 }
 
+
+/** R2 з теки на диску (ключі — шляхи файлів): перевірка карти підписника на справжній зібраній карті (karta_proba.mjs). */
+export function r2ZTeky(teka) {
+  return {
+    async get(k) {
+      const f = `${teka}/${k}`;
+      if (!fs.existsSync(f)) return null;
+      const b = fs.readFileSync(f);
+      return { body: b, async text() { return b.toString('utf8'); } };
+    },
+  };
+}
