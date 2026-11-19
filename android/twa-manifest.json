@@ -1,6 +1,6 @@
 {
   "packageId": "ua.moyavulytsya.app",
-  "host": "moya-vulytsya.pages.dev",
+  "host": "moyavulytsya.com.ua",
   "name": "Моя вулиця",
   "launcherName": "Моя вулиця",
   "display": "standalone",
@@ -13,36 +13,55 @@
   "navigationDividerColorDark": "#2A2E47",
   "backgroundColor": "#F4F5FB",
   "enableNotifications": true,
-  "startUrl": "/index.html?dzherelo=dodatok",
-  "iconUrl": "https://moya-vulytsya.pages.dev/ikony/ikona-512.png",
-  "maskableIconUrl": "https://moya-vulytsya.pages.dev/ikony/ikona-maskable-512.png",
-  "monochromeIconUrl": "",
+  "startUrl": "/?dzherelo=dodatok",
+  "iconUrl": "https://moyavulytsya.com.ua/zahlushka/ikony/ikona-512.png",
+  "maskableIconUrl": "https://moyavulytsya.com.ua/zahlushka/ikony/ikona-maskable-512.png",
+  "monochromeIconUrl": "https://moyavulytsya.com.ua/zahlushka/ikony/ikona-monochrome-512.png",
   "splashScreenFadeOutDuration": 300,
-  "signingKey": { "path": "./klyuch-zavantazhennia.keystore", "alias": "moya-vulytsya" },
-  "appVersionName": "0.1.0",
+  "signingKey": {
+    "path": "./klyuch-zavantazhennia.keystore",
+    "alias": "moya-vulytsya"
+  },
+  "appVersionName": "1.0.0",
   "appVersionCode": 1,
   "shortcuts": [
     {
+      "name": "Мій будинок",
+      "shortName": "Мій будинок",
+      "url": "/miy-budynok/?dzherelo=dodatok",
+      "chosenIconUrl": "https://moyavulytsya.com.ua/zahlushka/ikony/ikona-192.png"
+    },
+    {
+      "name": "Карта міста",
+      "shortName": "Карта",
+      "url": "/karta/?dzherelo=dodatok",
+      "chosenIconUrl": "https://moyavulytsya.com.ua/zahlushka/ikony/ikona-192.png"
+    },
+    {
       "name": "Вгадай, де це було",
       "shortName": "Грати",
-      "url": "/hra/?dzherelo=dodatok",
-      "chosenIconUrl": "https://moya-vulytsya.pages.dev/ikony/ikona-192.png"
+      "url": "/karta/?hra=vgadai&dzherelo=dodatok",
+      "chosenIconUrl": "https://moyavulytsya.com.ua/zahlushka/ikony/ikona-192.png"
     }
   ],
   "generatorApp": "bubblewrap-cli",
-  "webManifestUrl": "https://moya-vulytsya.pages.dev/manifest.webmanifest",
+  "webManifestUrl": "https://moyavulytsya.com.ua/manifest.webmanifest",
   "fallbackType": "customtabs",
   "features": {
-    "playBilling": { "enabled": false }
+    "playBilling": {
+      "enabled": false
+    }
   },
-  "alphaDependencies": { "enabled": false },
+  "alphaDependencies": {
+    "enabled": false
+  },
   "enableSiteSettingsShortcut": true,
   "isChromeOSOnly": false,
   "isMetaQuest": false,
-  "fullScopeUrl": "https://moya-vulytsya.pages.dev/",
+  "fullScopeUrl": "https://moyavulytsya.com.ua/",
   "minSdkVersion": 24,
   "fingerprints": [],
   "additionalTrustedOrigins": [],
   "retainedBundles": [],
-  "appVersion": "0.1.0"
+  "appVersion": "1.0.0"
 }

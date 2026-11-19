@@ -231,8 +231,27 @@ def soty(podii: list[Podiia], riven: int = 8, verkh: float = 0.12, min_chastka: 
         if c >= porih:
             vys = 0.15 + 0.85 * (math.log1p(c - porih) / math.log1p(max(1, maks - porih)))
         feats.append({'type': 'Feature', 'geometry': {'type': 'Polygon', 'coordinates': [kontur]},
-                      'properties': {'n': c, 'k': klas, 'v': round(vys, 3), 'cx': round(lon, 6), 'cy': round(lat, 6),
+                      # h — висота для стилю «стовпчики» (кожна сота, за числом; ZAVDANNYA-138)
+                      'properties': {'n': c, 'k': klas, 'v': round(vys, 3), 'h': round(math.log1p(c) / math.log1p(maks), 3), 'cx': round(lon, 6), 'cy': round(lat, 6),
                                      'id': k}})
+    return {'type': 'FeatureCollection', 'features': feats}
+
+
+def adresy(podii: list[Podiia], chasy: list[float] | None = None, min_n: int = 1) -> dict:
+    """Адреси для роликів (В3): місце (координата точки) → скільки подій. Як карта підписника, але в кадрі — лише число,
+    ніколи не адреса чи номер будинку (MV-25, MV-60). t — коли місце з'являється (найраніша поява його подій)."""
+    mista: dict = {}
+    for i, p in enumerate(podii):
+        k = (round(p.lat, 5), round(p.lon, 5))
+        t = chasy[i] if chasy else 0.0
+        if k in mista:
+            mista[k][0] += 1
+            mista[k][1] = min(mista[k][1], t)
+        else:
+            mista[k] = [1, t]
+    feats = [{'type': 'Feature', 'geometry': {'type': 'Point', 'coordinates': [lon, lat]},
+              'properties': {'n': n, 't': round(t, 3)}}
+             for (lat, lon), (n, t) in sorted(mista.items(), key=lambda x: x[1][0]) if n >= min_n]
     return {'type': 'FeatureCollection', 'features': feats}
 
 
