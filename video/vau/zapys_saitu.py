@@ -148,7 +148,61 @@ def z2():
     }
 
 
-ZAPYSY = {'z1': z1, 'z2': z2}
+def z3():
+    """ZAVDANNYA-138: «POV: застава завтра» (К-25, В6) — спершу потреба, потім продукт одним словом: «Перевір».
+    Пошук вулиці на головній → сторінка вулиці (справжні числа сайту) → «Чим відрізняється від Києва» → «Дні й години».
+    Сторінки будинків у хмарі не збираються (потрібне зведення будинків з dani-edrsr) — тож ролик веде на сторінку вулиці."""
+    sait = Obrobnyk.sait if str(Obrobnyk.sait) != '.' else TUT.parents[1] / 'video' / 'vyhid' / 'sait'
+    storinka = (Path(sait) / 'vulytsia' / 'teremkivska' / 'index.html').read_text(encoding='utf-8')
+    vsi = re.search(r'за 2024–2026 у даних судів — (\d+) поді', storinka).group(1)
+    # числа — зі сторінки сайту, не з голови
+    chystyi = re.sub(r'<[^>]+>', ' ', storinka)
+    tut, kyiv = re.search(r'Залишення місця ДТП\s+ця вулиця\s+([\d,]+%)\s+Київ\s+([\d,]+%)', chystyi).groups()
+    return {
+        'id': '138-z3-pov-zastava-zavtra', 'tryvalist': 17,
+        'meta': dict(nazva='POV: застава завтра', hrupa='Потреба → продукт', typ='POV: застава завтра',
+                     meta='спершу потреба (застава), потім продукт одним словом — «Перевір» → сторінка вулиці',
+                     hachok='«POV: ідеальна квартира. Застава — завтра.» над справжнім сайтом', liniia='Мій будинок',
+                     kudy='/vulytsia/teremkivska/'),
+        'start': '/',
+        'tekst': [
+            {'t0': 0, 't1': 2.6, 'styl': 'velykyi', 'tekst': 'POV: застава —\n*завтра.*', 'y': 330},
+            {'t0': 2.7, 't1': 4.6, 'styl': 'velykyi', 'tekst': 'Перш ніж платити —\n*одна перевірка*', 'y': 330},
+            {'t0': 4.7, 't1': 6.6, 'styl': 'velykyi', 'tekst': 'Вулиця —\n*за два дотики*', 'y': 330},
+            {'t0': 6.7, 't1': 8.7, 'styl': 'velykyi', 'tekst': f'*{vsi} подій*\nу рішеннях судів', 'y': 330},
+            {'t0': 8.8, 't1': 11.4, 'styl': 'velykyi', 'tekst': f'Втечі з місця ДТП:\n*{tut} проти {kyiv}*', 'y': 330},
+            {'t0': 11.5, 't1': 13.6, 'styl': 'velykyi', 'tekst': 'Дні й години —\n*коли саме*', 'y': 330},
+            {'t0': 13.7, 't1': 15.8, 'styl': 'velykyi', 'tekst': '*Перевір.*\nДо застави.', 'y': 330},
+            {'t0': 15.9, 't1': 16.9, 'styl': 'baner', 'zag': 'Перевір свою вулицю', 'knopka': 'Безкоштовно · ' + PROFIL, 'y': 1180},
+        ],
+        'dii': [
+            {'t': 1.9, 'dia': 'tap', 'sel': '#poshuk-karty'},
+            {'t': 2.9, 'dia': 'pyshy', 'sel': '#poshuk-karty', 'tekst': 'Теремківська', 'tryv': 1.4},
+            {'t': 4.8, 'dia': 'tap', 'sel': '#pidkazky li[data-j="0"]', 'pointerdown': True},
+            {'t': 6.7, 'dia': 'goto', 'url': '/vulytsia/teremkivska/'},
+            {'t': 7.4, 'dia': 'skrol', 'sel': '.stat, main h1', 'do_px': 250, 'tryv': 0.9},
+            {'t': 8.8, 'dia': 'skrol', 'do_px': 640, 'tryv': 1.0},
+            {'t': 10.2, 'dia': 'skrol', 'do_px': 820, 'tryv': 0.8},
+            {'t': 11.5, 'dia': 'skrol', 'do_px': 1150, 'tryv': 1.2},
+            {'t': 13.0, 'dia': 'skrol', 'do_px': 1260, 'tryv': 0.8},
+            {'t': 14.4, 'dia': 'skrol', 'do_px': 250, 'tryv': 1.2},
+        ],
+        'zvuk': {'muzyka': {'styl': 'lofi', 'bpm': 92}, 'efekty': [{'t': 0.0, 'typ': 'udar', 'v': 0.5}, {'t': 1.9, 'typ': 'klik', 'h': 1.0},
+                 {'t': 4.8, 'typ': 'klik', 'h': 1.2}, {'t': 4.9, 'typ': 'vzhukh', 'v': 0.6}, {'t': 6.7, 'typ': 'svish'},
+                 {'t': 13.7, 'typ': 'udar', 'v': 0.5}, {'t': 15.9, 'typ': 'dzvin', 'h': 0.8, 'v': 0.5}]
+                 + [{'t': round(2.9 + i * 0.12, 2), 'typ': 'druk', 'v': 0.45} for i in range(12)],
+                 # Piper — тимчасово (MV-156: голос — Андрій сам, перетворений); тексти для запису — docs/HOLOS-TEKSTY.md
+                 'holos': [{'t': 0.2, 'tekst': 'Квартира мрії. Застава — завтра.', 'holos': 'tetiana'},
+                           {'t': 2.8, 'tekst': 'Перш ніж платити — одна перевірка.', 'holos': 'tetiana'},
+                           {'t': 8.9, 'tekst': f'Втечі з місця ДТП: {tut.rstrip("%")} відсотків. По Києву — {kyiv.split(",")[0].rstrip("%")}.', 'holos': 'tetiana'},
+                           {'t': 13.8, 'tekst': 'Перевір. До застави.', 'holos': 'tetiana'}]},
+        'pidpys': ['Запис екрана справжнього сайту «Моя вулиця». Числа вулиці — безкоштовно; це порівняння часток у даних, а не оцінка вулиці.',
+                   'Лише те, що дійшло до суду. Перевір свою вулицю — посилання в профілі.'],
+        'karta': [(0, 6.6)],
+    }
+
+
+ZAPYSY = {'z1': z1, 'z2': z2, 'z3': z3}
 
 
 def perevir(Z: dict) -> list[str]:
@@ -296,6 +350,7 @@ def main():
     a.add_argument('--lyshe')
     a.add_argument('--kadry')
     a.add_argument('--vykhid', type=Path, default=VYHID)
+    a.add_argument('--cpu', action='store_true', help='без відеокарти (SwiftShader) — хмара')
     arg = a.parse_args()
     Obrobnyk.sait = arg.sait.resolve()
     srv = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Obrobnyk)
@@ -303,7 +358,8 @@ def main():
     from playwright.sync_api import sync_playwright
     kadry = [float(x) for x in arg.kadry.split(',')] if arg.kadry else None
     with sync_playwright() as pw:
-        b = pw.chromium.launch(headless=True, args=['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist', '--hide-scrollbars'])
+        b = pw.chromium.launch(headless=True, args=(['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--hide-scrollbars']
+                                                     if arg.cpu else ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist', '--hide-scrollbars']))
         for k in (arg.lyshe.split(',') if arg.lyshe else sorted(ZAPYSY)):
             zapysaty(b, srv.server_address[1], ZAPYSY[k](), kadry, arg.vykhid)
         b.close()
