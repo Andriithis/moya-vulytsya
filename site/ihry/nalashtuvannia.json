@@ -6,6 +6,7 @@
  "vgadai_podii_v_sprobi": 5,
  "kupleni_dlia": ["vgadai", "kvalifikuy"],
  "stelia_baliv_na_den": 300,
+ "litopys_ochky": {"sprava": 500, "rayon": 500, "vulytsi": 300},
  "pakety": [
   {"id": "sproby-5", "sprob": 5, "tsina": 49},
   {"id": "sproby-12", "sprob": 12, "tsina": 99, "holovnyi": true},

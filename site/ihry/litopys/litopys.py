@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Довга гра «Літопис міста» (ZAVDANNYA-140, прототип): дані гри з випуску events-<дата>.db і колоди.
+"""Довга гра «Літопис міста» (ZAVDANNYA-140, ZAVDANNYA-141): дані гри з випуску events-<дата>.db і колоди.
 
   python site/ihry/litopys/litopys.py --baza events-<дата>.db --koloda koloda-<дата>.json \
       [--pereimenuvannia ../dani-edrsr/config/pereimenuvannia-kyiv.csv] [--vykhid site/ihry/litopys/litopys.json]
@@ -8,9 +8,11 @@
 1. Вулиці — так само, як сайт і «Вулиця дня» (`site/sait/dani.py`, `site/hra/vulytsia_dnia.py`): назва, район, лише
    безкоштовні числа за останні 3 роки (MV-3, MV-32), головна група, середина вулиці. Чутливих і домашнього насильства
    у числах гри немає (MV-12, MV-69).
-2. Події, що відкриваються разом з вулицею, — лише з колоди гри (MV-12: адреса до будинку — як у колоді). З них ще раз
-   прибрано події з потерпілими (тілесні, грабіж, стрільба, погроза, ДТП з потерпілими, жорстокість до тварин тощо):
-   довга гра відкриває їх «за прогресом», а подія — не розвага над потерпілим (ZAVDANNYA-140, розд. 3).
+2. Події, що відкриваються разом з вулицею, — лише з колоди гри (MV-12: адреса до будинку — як у колоді). Події з
+   потерпілими (крадіжки, грабежі, тілесні ушкодження, вбивства тощо) — є (MV-165); поза грою лише статеві, щодо дітей
+   і домашнє насильство (MV-12, MV-69). Подача поважна (MV-165): для видів з потерпілими (`Z_POTERPILYMY`) у файл іде
+   лише вид, рік, адреса й посилання на рішення — без опису, щоб у грі не було деталей про потерпілого; такі картки
+   не дають бонусу до читання («без балів за шкоду») і не йдуть у «Справу дня».
 3. Картки видів подій — рідкість за справжньою частотою у випуску (усі нечутливі події з точкою), а не за випадком.
    Що дасть вулиця, видно наперед: гравець бачить види на картці вулиці ще до відкриття (без лотереї, MV-155 П8).
 4. Межі районів — `data/borders.json` (OpenStreetMap).
@@ -34,7 +36,8 @@ sys.path.insert(0, str(KORIN / 'site' / 'hra'))
 import dani as D  # noqa: E402
 import vulytsia_dnia as VD  # noqa: E402
 
-# Види з потерпілими — не йдуть ні в картки, ні в події гри (тон поважний; гра не «збирає» чужу біду).
+# Види з потерпілими (MV-165): у грі є, але поважно — без опису події, без бонусу, без «Справи дня».
+# Крадіжки — подія з потерпілим-власником, але без шкоди людині; їх опис лишається, як у колоді ігор (MV-12).
 Z_POTERPILYMY = {'tilesni', 'hrabizh_rozbii', 'vbyvstvo', 'strilba', 'pohroza', 'dtp_poterpili',
                  'zhorstokist_do_tvaryn', 'nedopomoha', 'samoupravstvo'}
 MV4 = {'statevi_zlochyny', 'shchodo_ditei', 'domashnie_nasylstvo'}
@@ -56,15 +59,23 @@ def ridkist(chastka: float) -> str:
 def chastoty_vydiv(baza: Path) -> dict:
     """Код виду колоди → (назва, кількість) серед усіх нечутливих подій з точкою (dani-edrsr/src/koloda.vyd_podii).
     Без конвеєра — частоти лише з колоди (позначка `dzherelo`)."""
+    # Модуль конвеєра теж зветься koloda (як site/hra/koloda.py) — вантажимо його за шляхом під окремим іменем.
+    shlyakh = KORIN.parent / 'dani-edrsr' / 'src' / 'koloda.py'
     try:
-        sys.path.insert(0, str(KORIN.parent / 'dani-edrsr' / 'src'))
-        import koloda as K  # noqa: E402
+        import importlib.util
+        sys.path.insert(0, str(shlyakh.parent))
+        spec = importlib.util.spec_from_file_location('koloda_konveiera', shlyakh)
+        K = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(K)
     except Exception:  # pragma: no cover — немає сусіднього репозиторію
         return {}
     n = Counter()
-    con = sqlite3.connect(baza)
-    for kod, ch, lid in con.execute('SELECT d.kod_kategorii, e.chutlyva, e.location_id FROM event e '
-                                    'JOIN document d USING(doc_id)'):
+    try:
+        con = sqlite3.connect(baza)
+        ryadky = con.execute('SELECT d.kod_kategorii, e.chutlyva, e.location_id FROM event e JOIN document d USING(doc_id)').fetchall()
+    except sqlite3.Error:   # інша схема (штучне місто тестів) — частоти з колоди
+        return {}
+    for kod, ch, lid in ryadky:
         if ch or lid is None:
             continue
         v = K.vyd_podii(kod)
@@ -74,8 +85,9 @@ def chastoty_vydiv(baza: Path) -> dict:
 
 
 def zibraty(baza: Path, koloda_shlyakh: Path, pereim: Path | None, mezhi: Path) -> dict:
+    import koloda as KH   # site/hra/koloda.py: та сама очистка колоди, що й у збирачі сайту
     dn = D.zibraty_dani(baza, pereim, mezhi)
-    koloda = json.loads(koloda_shlyakh.read_text(encoding='utf-8'))
+    koloda = KH.pidhotuvaty(json.loads(koloda_shlyakh.read_text(encoding='utf-8')))
     return zibraty_z_dani(dn, koloda, chastoty_vydiv(baza), json.loads(mezhi.read_text(encoding='utf-8')))
 
 
@@ -87,10 +99,12 @@ def zibraty_z_dani(dn, koloda: dict, chastoty: dict, mezhi_rayoniv: dict) -> dic
     vsogo = sum(m for _, m in chastoty.values()) or 1
     vydy = {}
     for k, (nazva, m) in chastoty.items():
-        if k in Z_POTERPILYMY or k in MV4:
+        if k in MV4:
             continue
         ch = 100.0 * m / vsogo
         vydy[k] = {'nazva': nazva, 'n': m, 'chastka': round(ch, 3), 'ridkist': ridkist(ch)}
+        if k in Z_POTERPILYMY:
+            vydy[k]['povazhna'] = True
 
     vulytsi, podii = [], {}
     for v in dn.vulytsi.values():
@@ -99,7 +113,7 @@ def zibraty_z_dani(dn, koloda: dict, chastoty: dict, mezhi_rayoniv: dict) -> dic
             continue
         svoi = []
         for e in sorted(kol.get(v.slug, []), key=lambda e: e['id']):
-            if e['kategoriia'] in Z_POTERPILYMY or e['kategoriia'] in MV4 or e['kategoriia'] not in vydy:
+            if e['kategoriia'] in MV4 or e['kategoriia'] not in vydy:
                 continue
             if ZABORONENI.search(e.get('opys_korotkyi', '')) or e['id'] in podii:
                 continue
@@ -112,7 +126,8 @@ def zibraty_z_dani(dn, koloda: dict, chastoty: dict, mezhi_rayoniv: dict) -> dic
         svoi.sort(key=lambda e: (rang[e['id']], e['id']))
         svoi = svoi[:PODII_NA_VULYTSIU]
         for e in svoi:
-            podii[e['id']] = [e['kategoriia'], e['rik'], VD.chystyi_opys(e['opys_korotkyi']), e['adresa'],
+            opys = '' if e['kategoriia'] in Z_POTERPILYMY else VD.chystyi_opys(e['opys_korotkyi'])
+            podii[e['id']] = [e['kategoriia'], e['rik'], opys, e['adresa'],
                               e['lat'], e['lon'], e['rishennya_url'], e['rishennya_nomer']]
         vulytsi.append([v.slug, p['nazva'], p['rayon'], p['n'], p['hrupa'], p['lat'], p['lon'], [e['id'] for e in svoi]])
     vulytsi.sort(key=lambda v: (v[2], -v[3], v[0]))
@@ -131,7 +146,7 @@ def zibraty_z_dani(dn, koloda: dict, chastoty: dict, mezhi_rayoniv: dict) -> dic
             poly = [poly]
         mezhi[nazva] = [[[round(lon, 4), round(lat, 4)] for lat, lon in pl[::3]] for pl in poly]
     return {
-        'versiia': 1, 'vypusk': dn.versiia, 'koloda': koloda.get('zibrano'), 'demo': bool(koloda.get('demo')),
+        'versiia': 2, 'vypusk': dn.versiia, 'koloda': koloda.get('zibrano'), 'demo': bool(koloda.get('demo')),
         'zibrano': datetime.date.today().isoformat(),
         'roky': f'{D.VIDKRYTI_ROKY[0]}–{D.VIDKRYTI_ROKY[-1]}',
         'hrupy': dict(D.HRUPY),

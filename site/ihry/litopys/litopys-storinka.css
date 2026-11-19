@@ -1,0 +1,159 @@
+/* «Літопис міста» — окрема перевірочна сторінка (ZAVDANNYA-140, -141): змінні й розміщення. Сама гра — litopys.css (те саме й у карті сайту).
+   Попередній опис: Вигляд — docs/STYL.md: «Індиго й м'ята», кнопки-клавіші (межа 1,5 px і бортик
+   знизу), кути 12/16 px, без червоного й помаранчевого; колір — кількість даних, а не небезпека. Змінні — ті самі, що в
+   site/hra/hra.css (копія блоку :root, звіряє tests/test_litopys.py). */
+:root {
+  --ground: #F4F5FB;
+  --surface: #FFFFFF;
+  --surface-tint: #EDEFFE;
+  --ink: #1C1E2D;
+  --ink-2: #3E4155;
+  --muted: #5F6275;
+  --line: #DFE1E9;
+  --line-strong: #B5B7C4;
+  --mezha: #76798C;
+  --bort: #585B69;
+  --vyd: #3C3CA1;
+  --pk-1: #5DD0A9;
+  --pk-2: #31B88D;
+  --accent: #4447A6;
+  --accent-strong: #33357C;
+  --accent-soft: #DFE3FC;
+  --on-accent: #FFFFFF;
+  --attention: #3C3CA1;
+  --attention-soft: #E8E8F4;
+  --error: #3C3CA1;
+  --data-1: #9CA1E3;
+  --data-2: #7E84CE;
+  --data-3: #6066C1;
+  --data-4: #464AA9;
+  --data-5: #303482;
+  --data-city: #9B9EAC;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --space-9: 56px;
+  --space-10: 72px;
+  --radius-s: 6px;
+  --radius-m: 12px;
+  --radius-l: 16px;
+  --radius-pill: 999px;
+  --sans: Plex, "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* Підкладка карти — похідні тихі кольори (вода, парки, вулиці) для світлої теми. */
+  --karta-voda: #CADDF6;
+  --karta-zelen: #E4F2DE;
+  --karta-zabudova: #E3E4EB;
+  --karta-vulytsia: #FFFFFF;
+  --karta-vulytsia-ramka: #DFE1E9;
+  --karta-za-mezhamy: #E0E2E9;
+  --pole: 20px;
+  --shapka: 56px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-t="svitla"]) {
+    --ground: #11142A;
+    --surface: #1B1F39;
+    --surface-tint: #232849;
+    --ink: #F0F1FA;
+    --ink-2: #D1D3E2;
+    --muted: #A6A9C1;
+    --line: #2A2E47;
+    --line-strong: #4B506F;
+    --mezha: #7D83AB;
+    --bort: #080913;
+    --vyd: #B37BFF;
+    --pk-1: #33BB92;
+    --pk-2: #4DCB9E;
+    --accent: #66E6BA;
+    --accent-strong: #8CECCB;
+    --accent-soft: #30335C;
+    --on-accent: #11142A;
+    --attention: #B37BFF;
+    --attention-soft: #36305D;
+    --error: #B37BFF;
+    --data-1: #444885;
+    --data-2: #5357A3;
+    --data-3: #6466BB;
+    --data-4: #7678CF;
+    --data-5: #8A8BDD;
+    --data-city: #666B88;
+    --karta-voda: #122343;
+    --karta-zelen: #002528;
+    --karta-zabudova: #1C2035;
+    --karta-vulytsia: #3E4360;
+    --karta-vulytsia-ramka: #1B1F39;
+    --karta-za-mezhamy: #0C0E1D;
+    color-scheme: dark;
+  }
+}
+html[data-t="temna"] {
+  --ground: #11142A;
+  --surface: #1B1F39;
+  --surface-tint: #232849;
+  --ink: #F0F1FA;
+  --ink-2: #D1D3E2;
+  --muted: #A6A9C1;
+  --line: #2A2E47;
+  --line-strong: #4B506F;
+  --mezha: #7D83AB;
+  --bort: #080913;
+  --vyd: #B37BFF;
+  --pk-1: #33BB92;
+  --pk-2: #4DCB9E;
+  --accent: #66E6BA;
+  --accent-strong: #8CECCB;
+  --accent-soft: #30335C;
+  --on-accent: #11142A;
+  --attention: #B37BFF;
+  --attention-soft: #36305D;
+  --error: #B37BFF;
+  --data-1: #444885;
+  --data-2: #5357A3;
+  --data-3: #6466BB;
+  --data-4: #7678CF;
+  --data-5: #8A8BDD;
+  --data-city: #666B88;
+  --karta-voda: #122343;
+  --karta-zelen: #002528;
+  --karta-zabudova: #1C2035;
+  --karta-vulytsia: #3E4360;
+  --karta-vulytsia-ramka: #1B1F39;
+  --karta-za-mezhamy: #0C0E1D;
+  color-scheme: dark;
+}
+
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--ground); color: var(--ink);
+  font: 16px/1.45 Plex, "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+button { font: inherit; color: inherit; }
+a { color: var(--accent); }
+.ekran { position: fixed; inset: 0; }
+#karta { position: absolute; inset: 0; }
+.shapka { position: absolute; z-index: 5; top: 12px; left: 12px; display: flex; gap: 8px; align-items: center; }
+.plashka { background: var(--surface); border: 1.5px solid var(--mezha); border-radius: var(--radius-m); box-shadow: 0 3px 0 var(--bort);
+  padding: 6px 12px; display: flex; gap: 10px; align-items: center; min-height: 40px; }
+.znak { font-weight: 700; font-size: 15px; }
+.mitka-prototyp { font-size: 12px; color: var(--muted); border: 1px dashed var(--line-strong); border-radius: 999px; padding: 1px 8px; }
+.tema { width: 44px; height: 44px; justify-content: center; padding: 0; cursor: pointer; }
+.tema:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--bort); }
+.tema svg { width: 20px; height: 20px; }
+html[data-t="temna"] .tema .sontse, html:not([data-t="temna"]) .tema .misiats { display: inline; }
+html[data-t="temna"] .tema .misiats, html:not([data-t="temna"]) .tema .sontse { display: none; }
+.panel { position: absolute; z-index: 6; top: 12px; right: 12px; bottom: 12px; width: 400px; display: flex; flex-direction: column;
+  background: var(--surface); border: 1.5px solid var(--mezha); border-radius: var(--radius-l); box-shadow: 0 3px 0 var(--bort); overflow: hidden; }
+.panel .lit { flex: 1; min-height: 0; }
+.panel .lit-vmist { flex: 1; overflow-y: auto; overscroll-behavior: contain; }
+.maplibregl-ctrl-attrib { font-size: 11px; }
+@media (max-width: 600px) {
+  .shapka { top: 8px; left: 8px; }
+  .mitka-prototyp { display: none; }
+  .panel { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: 58%; border-radius: var(--radius-l) var(--radius-l) 0 0;
+    border-bottom: 0; box-shadow: none; }
+}
