@@ -292,8 +292,6 @@ class Holos129(unittest.TestCase):
             self.HS.servis()
 
     def test_kesh_i_kliuch_ne_v_fayli(self):
-        if importlib.util.find_spec('numpy') is None:
-            self.skipTest('немає numpy')
         self.os.environ['MV_HOLOS'] = 'azure'
         self.os.environ['MV_HOLOS_KLUCH'] = 'SEKRET-123'
         vyklyky = []
@@ -301,7 +299,11 @@ class Holos129(unittest.TestCase):
         def zapyt(t, imia, sh):
             vyklyky.append(t)
             return self.HS._pcm_v_wav(b'\x00\x10' * 4410, 44100)
-        x, sr = self.HS.holos('64 події біля ТЦ', 'tetiana', zapyt=zapyt)
+        import io
+        import wave
+        dani = self.HS.holos('64 події біля ТЦ', 'tetiana', zapyt=zapyt)
+        with wave.open(io.BytesIO(dani)) as w:
+            sr = w.getframerate()
         self.HS.holos('64 події біля ТЦ', 'tetiana', zapyt=zapyt)
         self.assertEqual(len(vyklyky), 1)                       # вдруге — з кешу, не оплачується
         self.assertIn('шістдесят чотири', vyklyky[0])

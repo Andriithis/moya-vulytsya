@@ -370,7 +370,11 @@ def holos(tekst: str, imia='mykyta', shvydkist=1.0) -> np.ndarray:
     if holos_servis.servis() == 'piper':
         x, sr = _piper(tekst, imia, shvydkist)
     else:
-        x, sr = holos_servis.holos(tekst, imia, shvydkist)
+        with wave.open(__import__('io').BytesIO(holos_servis.holos(tekst, imia, shvydkist))) as w:
+            sr = w.getframerate()
+            x = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(float) / 32768
+            if w.getnchannels() == 2:
+                x = x.reshape(-1, 2).mean(1)
     from math import gcd
     from scipy.signal import resample_poly
     if sr != SR:
