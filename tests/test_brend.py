@@ -23,6 +23,7 @@ ROZMIRY_PNG = {
     'avatar/telegram-kanal-1024.png': (1024, 1024),
     'youtube/youtube-2560x1440.png': (2560, 1440),
     'facebook/facebook-1640x624.png': (1640, 624),
+    'x/x-1500x500.png': (1500, 500),
     'post-tsyfry/kadetskyi-hai.png': (1080, 1350),
     'post-istoriya/ryba-verbytskoho.png': (1080, 1350),
     'storis-vhadai/samokat-1-pytannya.png': (1080, 1920),
@@ -124,6 +125,20 @@ class HotoviKartynky(unittest.TestCase):
             with Image.open(f) as img:
                 self.assertEqual(img.size, rozmir, shlyakh)
 
+    def test_akaunty(self):
+        """ZAVDANNYA-131: картинки для реєстрації акаунтів — у brend/akaunty/ і в розмірі з назви файлу."""
+        import re
+        from PIL import Image
+        import zrobyty_akaunty as A
+        ochikuvani = {f'{m}-avatar-{n}.png' for m, n in A.AVATARY.items()} | set(A.OBKLADYNKY)
+        self.assertEqual({f.name for f in A.AKAUNTY.glob('*.png')}, ochikuvani,
+                         'запустіть python brend/zrobyty_akaunty.py')
+        for imia in ochikuvani:
+            with Image.open(A.AKAUNTY / imia) as img:
+                m = re.search(r'-(\d+)(?:x(\d+))?\.png$', imia)
+                w = int(m.group(1))
+                self.assertEqual(img.size, (w, int(m.group(2) or w)), imia)
+
 
 def brauzer_ye() -> bool:
     try:
@@ -153,3 +168,23 @@ class Malyuvannya(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class AkauntyPaket(unittest.TestCase):
+    """ZAVDANNYA-131: тексти профілів у docs/AKAUNTY-PAKET.md — без заборонених слів і емодзі, з гаслами MV-52 і MV-106."""
+
+    def test_teksty(self):
+        import re
+        md = (KORIN / 'docs' / 'AKAUNTY-PAKET.md').read_text(encoding='utf-8')
+        teksty = re.findall(r'^> (.+)$', md, flags=re.M)
+        self.assertGreaterEqual(len(teksty), 4)
+        for t in teksty:
+            n = t.lower()
+            for z in zrobyty.ZABORONENI + ['найгірш', 'уникайте', 'будьте уважні']:
+                self.assertNotIn(z, n, t)
+            self.assertIsNone(zrobyty.EMODZI.search(t), t)
+        self.assertLessEqual(len(teksty[0]), 80)
+        self.assertLessEqual(len(teksty[1]), 150)
+        self.assertLessEqual(len(teksty[2]), 1000)
+        self.assertIn('Моя вулиця — що відбувається під боком', teksty[1])
+        self.assertIn('Що болить вашому будинку', teksty[1])

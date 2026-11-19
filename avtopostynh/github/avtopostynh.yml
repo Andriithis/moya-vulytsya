@@ -1,0 +1,167 @@
+# Автопостинг «Моєї вулиці» без сервера — розклад GitHub Actions (ZAVDANNYA-131, MV-153).
+#
+# Куди класти: у ПРИВАТНИЙ репозиторій партнера (напр. організація GitHub `moyavulytsya`, репозиторій `avtopostynh`)
+# як `.github/workflows/avtopostynh.yml`. Не в публічний `moya-vulytsya`: там будь-хто бачить журнали запусків, а
+# гілку стану — і поготів (docs/AVTOPOSTYNH.md, розд. 9).
+#
+# Типово ПРОБНИЙ режим: нічого не надсилає. Справжня публікація — лише коли змінна репозиторію MV_PROBNYI = 0.
+# Ключі — тільки «секрети» репозиторію (Settings → Secrets and variables → Actions), у файлах — ніколи.
+
+name: Автопостинг
+
+on:
+  schedule:
+    # Щогодини о :23 з 06 до 17 за UTC = з 08–09 до 19–20 за Києвом (взимку UTC+2, влітку UTC+3):
+    # дописи Telegram о 09:00, ролики о 12:00, 13:00 і 18:00 (avtopostynh/rozklad.py), повтори через 1–4 год.
+    # Не :00 — у цю хвилину GitHub найбільше затримує запуски за розкладом.
+    - cron: '23 6-17 * * *'
+  workflow_dispatch:
+    inputs:
+      komanda:
+        description: 'Що зробити'
+        type: choice
+        options: [hodyna, prybraty, vidnovyty, zhurnal]
+        default: hodyna
+      id:
+        description: 'prybraty: ID з таблиці PEREHLIAD.md'
+        required: false
+      prychyna:
+        description: 'prybraty: чому (напр. «видно номер будинку»)'
+        required: false
+      mistse:
+        description: 'prybraty: і більше не писати про це місце'
+        type: boolean
+        default: false
+      usi_merezhi:
+        description: 'prybraty: той самий ролик з усіх мереж'
+        type: boolean
+        default: false
+      merezha:
+        description: 'vidnovyty: яку мережу відновити'
+        type: choice
+        options: ['-', telegram, youtube, facebook, instagram]
+        default: '-'
+
+# Два запуски одночасно не працюють зі станом — другий чекає.
+concurrency:
+  group: avtopostynh
+  cancel-in-progress: false
+
+permissions:
+  contents: write     # лише щоб записати стан у гілку avtopostynh-stan цього ж репозиторію
+
+jobs:
+  zapusk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      MV_PROBNYI: ${{ vars.MV_PROBNYI || '1' }}
+      MV_MEREZHI: ${{ vars.MV_MEREZHI || 'telegram' }}
+      MV_ADRESA_SAITU: ${{ vars.MV_ADRESA_SAITU }}
+      MV_MEDIA_URL: ${{ vars.MV_MEDIA_URL }}
+      MV_KANALY_JSON: ${{ vars.MV_KANALY_JSON }}
+      MV_DANI_REPO: ${{ vars.MV_DANI_REPO || 'Andriithis/dani-edrsr' }}
+      KOMANDA: ${{ inputs.komanda || 'hodyna' }}
+      ID_: ${{ inputs.id }}
+      PRYCHYNA: ${{ inputs.prychyna }}
+      MISTSE: ${{ inputs.mistse }}
+      USI_MEREZHI: ${{ inputs.usi_merezhi }}
+      MEREZHA: ${{ inputs.merezha }}
+    steps:
+      - name: Код «Моєї вулиці» (публічний репозиторій, гілка main)
+        uses: actions/checkout@v4
+        with:
+          repository: Andriithis/moya-vulytsya
+          ref: main
+          path: kod
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Стан з гілки avtopostynh-stan (першого разу — порожній)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git ls-remote --exit-code "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" avtopostynh-stan >/dev/null 2>&1; then
+            git clone --quiet --depth 1 --branch avtopostynh-stan \
+              "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" stan-git
+            mkdir -p stan && cp -a stan-git/. stan/ && rm -rf stan/.git stan-git
+          else
+            mkdir -p stan
+          fi
+
+      - name: Який вхід свіжий (останній Release «avtopostynh-…» приватного dani-edrsr)
+        id: reliz
+        env:
+          GH_TOKEN: ${{ secrets.MV_DANI_TOKEN }}
+        run: |
+          teg=""
+          if [ -n "$GH_TOKEN" ]; then
+            teg=$(gh release list -R "$MV_DANI_REPO" --limit 50 --json tagName \
+                  -q '[.[] | select(.tagName | startswith("avtopostynh-"))][0].tagName // ""' || true)
+          fi
+          echo "teg=${teg:-nemaie}" >> "$GITHUB_OUTPUT"
+          echo "Вхід: ${teg:-немає (ключа MV_DANI_TOKEN або випуску) — пробна заглушка}"
+
+      - name: Вхід з кешу (качаємо лише новий випуск)
+        id: kesh
+        uses: actions/cache@v4
+        with:
+          path: vkhid
+          key: avtopostynh-vkhid-${{ steps.reliz.outputs.teg }}
+
+      - name: Завантажити вхід з Release або зробити заглушку
+        if: steps.kesh.outputs.cache-hit != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.MV_DANI_TOKEN }}
+          TEG: ${{ steps.reliz.outputs.teg }}
+        run: |
+          mkdir -p vkhid
+          if [ "$TEG" != "nemaie" ]; then
+            gh release download "$TEG" -R "$MV_DANI_REPO" -p 'avtopostynh-vkhid*.zip' -D zavantazhennia
+            unzip -q zavantazhennia/avtopostynh-vkhid*.zip -d vkhid && rm -rf zavantazhennia
+          elif [ "$MV_PROBNYI" != "0" ]; then
+            python kod/avtopostynh/zahlushka.py vkhid/media
+          else
+            echo "::error::Немає входу з Release, а режим не пробний — зупиняюсь, щоб не публікувати заглушку"; exit 1
+          fi
+
+      - name: Запуск
+        env:
+          MV_TELEGRAM_TOKEN: ${{ secrets.MV_TELEGRAM_TOKEN }}
+          MV_YOUTUBE_CLIENT_ID: ${{ secrets.MV_YOUTUBE_CLIENT_ID }}
+          MV_YOUTUBE_CLIENT_SECRET: ${{ secrets.MV_YOUTUBE_CLIENT_SECRET }}
+          MV_YOUTUBE_REFRESH_TOKEN: ${{ secrets.MV_YOUTUBE_REFRESH_TOKEN }}
+          MV_META_PAGE_ID: ${{ secrets.MV_META_PAGE_ID }}
+          MV_META_PAGE_TOKEN: ${{ secrets.MV_META_PAGE_TOKEN }}
+          MV_INSTAGRAM_ID: ${{ secrets.MV_INSTAGRAM_ID }}
+        run: |
+          [ -n "$MV_ADRESA_SAITU" ] || unset MV_ADRESA_SAITU
+          case "$KOMANDA" in
+            prybraty)
+              dod=()
+              [ "$MISTSE" = "true" ] && dod+=(--mistse)
+              [ "$USI_MEREZHI" = "true" ] && dod+=(--usi-merezhi)
+              python kod/avtopostynh/khmara.py --stan stan --vkhid vkhid prybraty "$ID_" --prychyna "$PRYCHYNA" "${dod[@]}" ;;
+            vidnovyty)
+              python kod/avtopostynh/khmara.py --stan stan --vkhid vkhid vidnovyty --merezha "$MEREZHA" ;;
+            *)
+              python kod/avtopostynh/khmara.py --stan stan --vkhid vkhid "$KOMANDA" ;;
+          esac
+
+      - name: Записати стан у гілку avtopostynh-stan (одним комітом, без історії)
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ -f stan/cherha.db ] || { echo "стану немає — нічого записувати"; exit 0; }
+          mkdir zberehty
+          for f in cherha.db PEREHLIAD.md pachky; do [ -e "stan/$f" ] && cp -a "stan/$f" zberehty/; done
+          cd zberehty
+          git init -q -b avtopostynh-stan
+          git -c user.name="avtopostynh" -c user.email="avtopostynh@users.noreply.github.com" add -A
+          git -c user.name="avtopostynh" -c user.email="avtopostynh@users.noreply.github.com" \
+              commit -q -m "Стан автопостингу $(date -u +%FT%TZ)"
+          git push -q --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:avtopostynh-stan

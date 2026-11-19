@@ -13,6 +13,8 @@
 | Запасний аватар (на тлі accent) | `hotovi/avatar/avatar-akcent-1024.png` | 1024×1024 |
 | Обкладинка YouTube | `hotovi/youtube/youtube-2560x1440.png` | 2560×1440 |
 | Обкладинка сторінки Facebook | `hotovi/facebook/facebook-1640x624.png` | 1640×624 |
+| Шапка X (ZAVDANNYA-131) | `hotovi/x/x-1500x500.png` | 1500×500 |
+| **Усе вище в розмірах кожної мережі** (ZAVDANNYA-131) | `akaunty/` — `python brend/zrobyty_akaunty.py`; що куди — [`docs/AKAUNTY-PAKET.md`](../docs/AKAUNTY-PAKET.md) | — |
 | Тексти профілів | [`teksty-profiliv.md`](teksty-profiliv.md) | до 80 і до 150 знаків |
 
 Файли з `-z-zonoyu` у назві **не завантажувати**: це перевірочні копії з пунктиром безпечної
@@ -77,10 +79,11 @@ python brend/zrobyty.py brend/dani/мій-файл.json
 Заголовок — у середній смузі: його видно і в сітці профілю Instagram (обрізка 1:1 і 4:5),
 і поза кнопками TikTok (нижні 20 %, праві 15 %).
 
-### `avatar`, `youtube`, `facebook`
+### `avatar`, `youtube`, `facebook`, `x`
 Дані — `dani/avatar.json`, `dani/youtube.json`, `dani/facebook.json`. Текст обкладинок:
 «Моя вулиця — що відбувається під боком. Скарги мешканців і події з рішень судів.» (MV-52, MV-106) На YouTube текст лише
-в безпечній зоні 1546×423; на Facebook — у середині, яку лишає телефон (≈1110 px).
+в безпечній зоні 1546×423; на Facebook — у середині, яку лишає телефон (≈1110 px); на X (`dani/x.json`, 1500×500) — у середній смузі правіше
+аватара, який X кладе на нижній лівий кут.
 
 ## Що де лежить
 
