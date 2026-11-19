@@ -423,6 +423,12 @@ class Podiia:
     url: str | None
 
 
+def kliuch_statti(stattia: str | None) -> str | None:
+    """«ст.130 ч.1 КУпАП · …» → «kupap-130»; «ст.185 ч.4 КК» → «kk-185» (адреса сторінки «Судової практики»)."""
+    m = re.match(r'\s*ст\.?\s*(\d+(?:-\d+)?)[^·]*?\b(КУпАП|КК)\b', stattia or '')
+    return f'{"kupap" if m.group(2) == "КУпАП" else "kk"}-{m.group(1)}' if m else None
+
+
 def vyd_lyudskoyu(stattia: str | None, vyd: str) -> str:
     """«ст.130 КУпАП · керування у стані сп'яніння» → «Керування у стані сп'яніння»; без підпису — назва групи (MV-116)."""
     t = (stattia or '').split('·', 1)[-1].strip() if stattia else ''
@@ -806,6 +812,8 @@ def profil_vulytsi(dani: Dani, v: Vulytsia) -> dict:
                             'chastka_misto': dani.misto_vydy[vyd] / vsogo_m})
     vyriznennia.sort(key=lambda x: (-x['lq'], -x['n'], x['vyd']))
     vyriznennia = [x for x in vyriznennia if x['lq'] >= 1.2][:3]
+    # «Судова практика» (ZAVDANNYA-135): скільки подій вулиці за кожною статтею — для посилань на сторінки статей
+    statti = Counter(k for k in (kliuch_statti(p.stattia) for p in vidkryti) if k)
 
     # Ритм: дні тижня × години (по 3 години).
     rytm = [[0] * 8 for _ in range(7)]
@@ -840,7 +848,7 @@ def profil_vulytsi(dani: Dani, v: Vulytsia) -> dict:
 
     return {
         'vsogo': len(podii), 'roky': {r: roky.get(r, 0) for r in VIDKRYTI_ROKY}, 'stari': stari,
-        'vyriznennia': vyriznennia, 'rytm': rytm, 'z_chasom': z_chasom,
+        'vyriznennia': vyriznennia, 'statti': statti, 'rytm': rytm, 'z_chasom': z_chasom,
         'naichastishe': sorted(vydy.items(), key=lambda x: (-x[1], x[0]))[:3],
         'soty': sorted(soty.items()), 'mists': mists, 'istoriia': istoriia,
         'kandydaty_istorii': [p.event_id for p in kandydaty],

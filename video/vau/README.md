@@ -101,3 +101,25 @@ python video/vau/zapys_saitu.py video/vyhid/sait --lyshe z3 --vykhid video/vyhid
 - **Календар року** (`styl: 'kalendar'`), гра без жодних назв на карті (`S.bez_pidpysiv`), без 3D-будинків (`S.bez_3d`).
 - **В2:** `perevirka.osi(S, meta)` — тема, шар, рівень наближення; `pereviryty_pachku` — два ролики поспіль різні
   щонайменше за двома осями. Порядок пачки — `PACHKA` у `stsenarii138.py`.
+
+## ZAVDANNYA-139: візуальна лабораторія — теми й вигляди (`tema`, `styl`)
+
+Окремий модуль `vyhliady139.js` + `vyhliady139.css` (сцена вантажить його перед `stsena.js`; у `stsena.js` — лише три гачки:
+теми додаються до `KOL`, `dodaty(api)` після шарів карти, `kadr(t)` щокадру). Сценарій без `styl` і з темою `temna`/`svitla`
+малюється як раніше.
+
+- **Теми** (`tema`): `nich` (нічне місто), `papir` (папір і чорнило), `vechir` (тепла вечірня), `sontse` (контраст для сонця),
+  `monokhrom` (сіре + м'ятний акцент). Кожна має `osnova` — темна чи світла підкладка й стилі тексту.
+- **Вигляди** (`styl: [{typ, …}]`): соти — `sklo_kraia`, `neon`, `dykhannia`, `stovpy` (`skliani`, `rist`, `lyshe_vershyny`);
+  адреси — `svitni`, `teplo`, `shpyli`, `sonyashnyk`, `khvyli`, `bulbashky` (місце = координата + число, без адреси);
+  не карта — `infografika`, `hodynnyk`, `kalendar`, `kartka_zvit`. Наявні `styl_sot` (`sait`, `plytka`) — як були.
+
+```bash
+python video/vau/laboratoriia139.py <events.db>                         # 24 вигляди → video/vyhid/kesh/stsenarii/139-*.json
+python video/vau/rushii.py video/vyhid/kesh/stsenarii/139-*-temna.json --bez-zvuku --vykhid video/vyhid/139   # кліпи 5 с
+python video/vau/rushii.py <сценарій> --kadry 3.6 --vykhid video/vyhid/139                               # кадр
+python video/vau/zapys139.py video/vyhid/sait [--tema svitla]           # справжня карта сайту на весь кадр, 3D, рух камери
+python video/vau/galereia139.py                                         # → video/vyhid/galereia-139/index.html
+```
+
+Що з цього радимо для тесту — `ZVIT-139.md`.

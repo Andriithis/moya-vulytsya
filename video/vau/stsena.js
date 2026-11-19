@@ -35,6 +35,12 @@
     var baza = t.baza || 'temna';
     return { t: baza, imia: imia, kol: Object.assign({}, KOL[baza], t.kol || {}), styl: t.styl || STYLI[baza] };
   }
+  // ZAVDANNYA-139: додаткові теми й вигляди — окремий модуль vyhliady139.js (поля tema і styl сценарію)
+  var VY = window.VAU_VYHLIADY || null;
+  if (VY) Object.keys(VY.temy).forEach(function (k) {
+    KOL[k] = VY.temy[k];
+    if (!VAU.temy[k]) VAU.temy[k] = { baza: VY.temy[k].osnova || 'temna', kol: VY.temy[k] };
+  });
 
   // ---------------------------------------------------------------- час і пом'якшення
   function clamp(x, a, b) { return Math.max(a, Math.min(b, x)); }
@@ -126,7 +132,7 @@
         var k = l.type === 'background' ? 'background-color' : l.type === 'fill' ? 'fill-color' : null;
         if (k) { l.paint = Object.assign({}, l.paint || {}); l.paint[k] = c; }
       }
-      if (temna && Kc.doroha && l.type === 'line' && l['source-layer'] === 'transportation') {
+      if (Kc.doroha && l.type === 'line' && l['source-layer'] === 'transportation') {
         var holovna = /motorway|trunk|primary/.test(id);
         l.paint = Object.assign({}, l.paint || {}, { 'line-color': holovna ? zmishaty(Kc.doroha, Kc.pidpys, 0.14) : Kc.doroha, 'line-opacity': 1 });
       }
@@ -809,6 +815,7 @@
     document.getElementById('zat-f').style.opacity = zf * 0.82;
     var z = document.getElementById('znak'); z.style.opacity = S.znak === false ? 0 : trek(S.znak_prozorist, t, 0.92);
     var dz = document.getElementById('dzherelo'); dz.style.opacity = trek(S.dzherelo_prozorist, t, 1);
+    if (VY && S.styl) VY.kadr(t);
     return Promise.all([zachekaty(), druha]).then(function () {
       (S.mitky || []).forEach(function (m) { onovytyMitku(m, t); });
       nakladka(t);
@@ -868,6 +875,8 @@
       (S.adresy || []).forEach(function (sh, i) { dodatyAdresy(i, sh, nadLiniiamy); });
       // MV-161: точки подій — над дорогами (nad_dorohamy); інакше — як було (під дорогами)
       (S.tochky || []).forEach(function (sh, i) { map.addLayer(sharTochok('tochky-' + i, sh), S.tochky_nad_pidpysamy ? undefined : S.nad_dorohamy ? nadLiniiamy : pershyiSymvol); });
+      if (VY && S.styl) VY.dodaty({ map: map, S: S, tema: K.imia, Kc: K.kol, temna: K.t === 'temna', trek: trek, E: E, clamp: clamp,
+        lerp: lerp, nad: nadLiniiamy, pid: pershyiSymvol, W: W, H: H });
       return Promise.all([document.fonts.ready, DRUHA ? DRUHA.gotovo : null]);
     }).then(function () { return window.kadr(0); }).then(function () {
       return { tryvalist: S.tryvalist };

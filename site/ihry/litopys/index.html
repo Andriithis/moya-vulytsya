@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data: blob:; worker-src 'self' blob:; child-src 'self'; connect-src 'self' https://tiles.openfreemap.org; form-action 'none'; base-uri 'none'">
+<meta name="robots" content="noindex">
+<title>Літопис міста — Моя вулиця (прототип)</title>
+<meta name="theme-color" content="#F4F5FB" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#11142A" media="(prefers-color-scheme: dark)">
+<link rel="stylesheet" href="../../hra/biblioteka/maplibre-gl.css">
+<link rel="stylesheet" href="litopys.css">
+</head>
+<body>
+<!-- Довга гра «Літопис міста» (ZAVDANNYA-140). Прототип: дані — пробний випуск 08.11 і колода гри (litopys.json, поза git),
+     прогрес — лише на пристрої (localStorage). Нічого не надсилає й нічого не продає. -->
+<div class="ekran">
+  <div id="karta" aria-label="Карта Києва: райони й вулиці літопису"></div>
+
+  <div class="shapka">
+    <div class="plashka"><span class="znak">Літопис міста</span><span class="mitka-prototyp">прототип</span></div>
+    <div class="prostir"></div>
+    <div class="plashka" title="Сторінки літопису"><b id="storinky">0</b><small><span id="za-sek">0</span>/с</small></div>
+    <div class="plashka dovidka" title="Серія днів"><small>серія</small><b id="seriia">0</b></div>
+  </div>
+
+  <section class="panel" id="panel" aria-label="Літопис">
+    <div class="vkladky" role="tablist">
+      <button role="tab" data-v="chytaty" aria-selected="true">Читати</button>
+      <button role="tab" data-v="vulytsi" aria-selected="false">Вулиці</button>
+      <button role="tab" data-v="karty" aria-selected="false">Картки</button>
+      <button role="tab" data-v="den" aria-selected="false">День</button>
+    </div>
+    <div class="vmist" id="vmist"></div>
+  </section>
+
+  <div class="tost" id="tost" role="status" aria-live="polite"></div>
+  <div class="vikno" id="vikno" hidden></div>
+</div>
+
+<script src="../../hra/biblioteka/maplibre-gl-csp.js"></script>
+<script src="../../hra/hra-karta.js"></script>
+<script src="litopys-yadro.js"></script>
+<script src="litopys.js"></script>
+</body>
+</html>

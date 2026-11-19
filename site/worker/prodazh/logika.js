@@ -7,6 +7,8 @@ import { nadislaty } from './poshta.js';
 import { budynok as zPachky } from '../budynky.js';
 import { nahaduvanniaOsbb } from './lysty.js';
 
+const dataT = (t) => { const d = new Date(t * 1000); return `${String(d.getUTCDate()).padStart(2, '0')}.${String(d.getUTCMonth() + 1).padStart(2, '0')}.${d.getUTCFullYear()}`; };
+
 export const teper = (env) => (env.__CHAS ? env.__CHAS() : Math.floor(Date.now() / 1000));
 
 const q = (env, sql, ...p) => env.BAZA.prepare(sql).bind(...p);
@@ -15,7 +17,8 @@ export const vsi = async (env, sql, ...p) => (await q(env, sql, ...p).all()).res
 export const zrobyty = (env, sql, ...p) => q(env, sql, ...p).run();
 
 export const PIDPYSKY = Object.keys(TS.period_misiatsiv);           // pidpyska, rieltor, osbb
-const BEZ_BUDYNKU = ['pidpyska', 'rieltor'];                         // будинок необов'язковий
+const BEZ_BUDYNKU = ['pidpyska', 'rieltor', ...TS.sudova];          // будинок необов'язковий («Судова практика» — без будинку)
+const SUDOVA = TS.sudova;                                            // spdovidka, spyurist (ZAVDANNYA-135)
 const POSHTA = /^[^\s@<>"',;]{1,64}@[^\s@<>"',;]+\.[^\s@<>"',;]{2,}$/;
 const BUDYNOK = /^\/budynok\/[a-z0-9-]{1,80}\/[a-z0-9-]{1,40}\/$/;
 
@@ -55,13 +58,14 @@ export async function korystuvach(env, poshta) {
  * Нове замовлення. Ціна — лише з таблиці цін (tsiny.js із site/tsiny.py); усе інше з форми ігнорується.
  * Повертає { zam, pidpyska } або { pomylka }.
  */
-export async function stvorytyZamovlennia(env, { tovar, budynok, adresa, korystuvach_id, servis, pidpyska_id = null }) {
+export async function stvorytyZamovlennia(env, { tovar, budynok, adresa, korystuvach_id, servis, pidpyska_id = null, parametry = null }) {
   const suma = TS.tsiny[tovar];
   if (!Number.isInteger(suma) || suma <= 0) return { pomylka: 'Такого товару немає.' };
   const id = 'z' + vypadkovyi(15);
   const t = teper(env);
-  await zrobyty(env, `INSERT INTO zamovlennia (id, korystuvach_id, tovar, budynok, adresa, suma, servis, pidpyska_id, stvoreno)
-                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, id, korystuvach_id, tovar, budynok || null, adresa || null, suma, servis, pidpyska_id, t);
+  await zrobyty(env, `INSERT INTO zamovlennia (id, korystuvach_id, tovar, budynok, adresa, suma, servis, pidpyska_id, parametry, stvoreno)
+                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, id, korystuvach_id, tovar, budynok || null, adresa || null, suma, servis, pidpyska_id,
+  parametry ? JSON.stringify(parametry) : null, t);
   let pidpyska = null;
   if (PIDPYSKY.includes(tovar)) {
     pidpyska = { id: 'p' + vypadkovyi(15), period_misiatsiv: TS.period_misiatsiv[tovar] };
@@ -71,17 +75,29 @@ export async function stvorytyZamovlennia(env, { tovar, budynok, adresa, korystu
   return { zam: await odyn(env, 'SELECT * FROM zamovlennia WHERE id = ?', id), pidpyska };
 }
 
+/** Адреса сторінки будинку з того, що вставила людина: шлях «/budynok/…/…/» або повне посилання на сторінку (з будь-якого
+ *  домену беремо лише шлях — будинок однаково перевіряє perevirytyBudynok). Без кінцевої «/» — додаємо. */
+export function shliakhBudynku(t) {
+  let s = String(t ?? '').trim();
+  const m = s.match(/^https?:\/\/[^/]+(\/[^?#]*)/i);
+  if (m) s = m[1];
+  s = s.split(/[?#]/)[0];
+  if (/^\/budynok\/[^/]+\/[^/]+$/.test(s)) s += '/';
+  return s.slice(0, 200);
+}
+
 export function potribenBudynok(tovar) {
   return !BEZ_BUDYNKU.includes(tovar);
 }
 
 // ---------------------------------------------------------------- довідки й лічильник
 
-export async function postavytyDovidku(env, { korystuvach_id, zamovlennia_id, pidpyska_id = null, budynok, adresa, rezhym }) {
+export async function postavytyDovidku(env, { korystuvach_id, zamovlennia_id, pidpyska_id = null, budynok, adresa, rezhym, parametry = null, poshtovkh = true }) {
   const id = 'd' + vypadkovyi(15);
-  await zrobyty(env, `INSERT INTO dovidky (id, korystuvach_id, zamovlennia_id, pidpyska_id, budynok, adresa, rezhym, stvoreno)
-                      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, id, korystuvach_id, zamovlennia_id, pidpyska_id, budynok, adresa, rezhym, teper(env));
-  await shturhnuty(env, 'dovidka');      // видавач у GitHub Actions (ZAVDANNYA-133): довідку ставлять лише після оплати
+  await zrobyty(env, `INSERT INTO dovidky (id, korystuvach_id, zamovlennia_id, pidpyska_id, budynok, adresa, rezhym, parametry, stvoreno)
+                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, id, korystuvach_id, zamovlennia_id, pidpyska_id, budynok || '', adresa, rezhym,
+  parametry ? (typeof parametry === 'string' ? parametry : JSON.stringify(parametry)) : null, teper(env));
+  if (poshtovkh) await shturhnuty(env, 'dovidka');      // видавач у GitHub Actions (ZAVDANNYA-133): довідку ставлять лише після оплати
   return id;
 }
 
@@ -94,15 +110,22 @@ export async function stanPidpysok(env, korystuvach_id) {
     // Лічильник — за поточний місяць підписки (і в річній ОСББ теж: 1 довідка на місяць).
     let vid = p.pochatok, k = 1;
     while (dodatyMisiatsi(p.pochatok, k) <= t) vid = dodatyMisiatsi(p.pochatok, k++);
-    const vziato = (await odyn(env, 'SELECT COUNT(*) AS n FROM dovidky WHERE pidpyska_id = ? AND stvoreno >= ?', p.id, vid)).n;
+    // Довідка, яку не вдалося зібрати (pomylka), ліміту не з'їдає (ZAVDANNYA-143): її можна взяти знову.
+    const vziato = (await odyn(env, `SELECT COUNT(*) AS n FROM dovidky WHERE pidpyska_id = ? AND stvoreno >= ? AND status != 'pomylka'`, p.id, vid)).n;
     p.zalyshok = p.diie ? Math.max(0, TS.dovidok[p.tovar] - vziato) : 0;
+    // ZAVDANNYA-143: межі поточного місяця підписки — для кабінету («нові 5 — з …», «наступна довідка ОСББ — …»)
+    p.misiats_vid = vid;
+    p.misiats_do = dodatyMisiatsi(p.pochatok, k);
+    p.vziato = vziato;
+    p.dovidok = TS.dovidok[p.tovar];
   }
   return ps;
 }
 
-/** Що можна взяти без оплати: довідки підписки цього періоду і залишок пакетів «3 довідки». */
+/** Що можна взяти без оплати: довідки про будинок з підписки цього періоду і залишок пакетів «3 довідки».
+ *  Підписка юриста («Судова практика») довідок про будинки не дає — її довідки беруться з /pidpysnyk/praktyka/. */
 export async function dostupno(env, korystuvach_id) {
-  const ps = (await stanPidpysok(env, korystuvach_id)).filter((p) => p.diie);
+  const ps = (await stanPidpysok(env, korystuvach_id)).filter((p) => p.diie && !SUDOVA.includes(p.tovar));
   const pakety = await vsi(env, `SELECT id, zalyshok FROM zamovlennia WHERE korystuvach_id = ? AND status = 'oplacheno' AND zalyshok > 0 ORDER BY oplacheno`, korystuvach_id);
   const zPidpysky = ps.reduce((s, p) => s + p.zalyshok, 0);
   const zPaketiv = pakety.reduce((s, z) => s + z.zalyshok, 0);
@@ -120,7 +143,8 @@ export async function vzyatyDovidku(env, korystuvach_id, budynok, adresa) {
   const { ps, pakety } = await dostupno(env, korystuvach_id);
   for (const p of ps) {
     if (p.zalyshok > 0 && (p.tovar !== 'osbb' || p.budynok === budynok)) {
-      return { dovidka: await postavytyDovidku(env, { korystuvach_id, zamovlennia_id: p.zamovlennia_id, pidpyska_id: p.id, budynok, adresa, rezhym: 'dovidka' }) };
+      const rezhym = p.tovar === 'osbb' ? 'osbb' : 'dovidka';
+      return { dovidka: await postavytyDovidku(env, { korystuvach_id, zamovlennia_id: p.zamovlennia_id, pidpyska_id: p.id, budynok, adresa, rezhym }) };
     }
   }
   for (const z of pakety) {
@@ -183,9 +207,13 @@ export async function obrobytyPodiiu(env, servis, p) {
   return { ok: true, prychyna: 'ignor' };
 }
 
-/** Оплачено → довідка в чергу генератора (і/або підписка активна). */
+/** Оплачено → довідка в чергу генератора (і/або підписка активна). «Судова практика»: довідка без будинку — з параметрами. */
 async function vydaty(env, zam, pidpyska, t) {
-  const rezhym = TS.rezhym[zam.tovar] || 'dovidka';
+  const rezhym = TS.rezhym[zam.tovar] || (zam.tovar === 'osbb' ? 'osbb' : 'dovidka');
+  if (zam.tovar === 'spdovidka' && zam.parametry) {
+    await postavytyDovidku(env, { korystuvach_id: zam.korystuvach_id, zamovlennia_id: zam.id, budynok: '', adresa: zam.adresa, rezhym, parametry: zam.parametry });
+    return;
+  }
   if (pidpyska) {
     await zrobyty(env, `UPDATE pidpysky SET status = 'aktyvna', pochatok = ?, diie_do = ? WHERE id = ?`,
       t, dodatyMisiatsi(t, TS.period_misiatsiv[pidpyska.tovar]), pidpyska.id);
@@ -206,11 +234,12 @@ const SPROB = 3;
 
 export async function vziatyZCherhy(env, n) {
   const t = teper(env);
-  const ryadky = await vsi(env, `SELECT d.id, d.budynok, d.adresa, d.rezhym FROM dovidky d JOIN zamovlennia z ON z.id = d.zamovlennia_id
+  const ryadky = await vsi(env, `SELECT d.id, d.budynok, d.adresa, d.rezhym, d.parametry FROM dovidky d JOIN zamovlennia z ON z.id = d.zamovlennia_id
     WHERE z.status = 'oplacheno' AND d.sprob < ? AND (d.status = 'v_cherzi' OR (d.status = 'hotuietsia' AND d.vziato < ?))
     ORDER BY d.stvoreno LIMIT ?`, SPROB, t - ORENDA_S, n);
   const vziato = [];
   for (const r of ryadky) {
+    if (r.parametry) r.parametry = JSON.parse(r.parametry); else delete r.parametry;
     const z = await zrobyty(env, `UPDATE dovidky SET status = 'hotuietsia', vziato = ?, sprob = sprob + 1 WHERE id = ? AND status IN ('v_cherzi', 'hotuietsia')`, t, r.id);
     if (z.meta?.changes) vziato.push(r);
   }
@@ -224,12 +253,32 @@ export async function dovidkaHotova(env, id, html, adresaSaitu) {
   const fail = `dovidky/${d.id}-${vypadkovyi(10)}.html`;
   await env.DOVIDKY.put(fail, html, { httpMetadata: { contentType: 'text/html; charset=utf-8' } });
   await zrobyty(env, `UPDATE dovidky SET status = 'hotova', fail = ?, kliuch_hash = ?, hotovo = ? WHERE id = ?`, fail, sha256(kliuch), teper(env), id);
-  if (d.poshta) {
+  if (d.poshta && d.rezhym === 'sp') {
+    await nadislaty(env, {
+      komu: d.poshta, tema: `Судова практика: ${d.adresa}`,
+      tekst: `Готово: довідка «Як закінчуються такі справи» — ${d.adresa}.\n\n` +
+        `Відкрити: ${adresaSaitu}/dovidka/${d.id}/?k=${kliuch}\n\n` +
+        `Посилання особисте — не пересилайте його. Усі довідки — також у кабінеті: ${adresaSaitu}/kabinet/\n` +
+        'Це статистика минулих рішень, а не юридична допомога і не відповідь, чим закінчиться конкретна справа.',
+    });
+  } else if (d.poshta && d.rezhym === 'osbb') {
+    // ZAVDANNYA-143: щомісячна довідка ОСББ (генератор --osbb) — приходить сама щомісяця
+    await nadislaty(env, {
+      komu: d.poshta, tema: `Щомісячна довідка для ОСББ: ${d.adresa}`,
+      tekst: `Готово: щомісячна довідка про будинок ${d.adresa} — звернення мешканців до 1551 за останній місяць і за рік, ` +
+        `порівняння з сусідніми будинками, події з рішень судів.\n\n` +
+        `Відкрити: ${adresaSaitu}/dovidka/${d.id}/?k=${kliuch}\n\n` +
+        `Наступна прийде сама через місяць. Усі довідки — у кабінеті: ${adresaSaitu}/kabinet/\n` +
+        'Посилання особисте — не пересилайте його. Це не оцінка безпеки: лише скарги мешканців і події з рішень судів, як їх записано.',
+    });
+  } else if (d.poshta) {
+    const r = d.pidpyska_id ? (await stanPidpysok(env, d.korystuvach_id)).find((p) => p.id === d.pidpyska_id && p.tovar === 'rieltor') : null;
+    const zalyshok = r ? `З підписки рієлтора цього місяця лишилось довідок: ${r.zalyshok} з ${r.dovidok} (нові — з ${dataT(r.misiats_do)}).\n` : '';
     await nadislaty(env, {
       komu: d.poshta, tema: `${d.rezhym === 'povnyi' ? 'Повний звіт' : 'Довідка'}: ${d.adresa}`,
       tekst: `Готово: ${d.rezhym === 'povnyi' ? 'повний звіт' : 'довідка'} про будинок ${d.adresa}.\n\n` +
         `Відкрити: ${adresaSaitu}/dovidka/${d.id}/?k=${kliuch}\n\n` +
-        `Посилання особисте — не пересилайте його. Усі довідки — також у кабінеті: ${adresaSaitu}/kabinet/\n` +
+        `Посилання особисте — не пересилайте його. Усі довідки — також у кабінеті: ${adresaSaitu}/kabinet/\n` + zalyshok +
         'Це не оцінка безпеки: лише скарги мешканців і події з рішень судів, як їх записано.',
     });
   }
@@ -306,5 +355,41 @@ export async function nahadatyOsbb(env, adresaSaitu) {
       console.log(`нагадування ОСББ: ${err.message}`);
     }
   }
+  return n;
+}
+
+// ---------------------------------------------------------------- «Судова практика»: довідка з підписки юриста (ZAVDANNYA-135)
+
+/** Довідка «стаття × суд» з ліміту підписки юриста (3 на місяць). -> { dovidka } або { vycherpano: true } або { nemaie: true }. */
+export async function vzyatySpDovidku(env, korystuvach_id, { parametry, opys }) {
+  const p = (await stanPidpysok(env, korystuvach_id)).find((x) => x.diie && x.tovar === 'spyurist');
+  if (!p) return { nemaie: true };
+  if (p.zalyshok <= 0) return { vycherpano: true };
+  return { dovidka: await postavytyDovidku(env, { korystuvach_id, zamovlennia_id: p.zamovlennia_id, pidpyska_id: p.id, budynok: '', adresa: opys, rezhym: 'sp', parametry }) };
+}
+
+// ---------------------------------------------------------------- щомісячна довідка ОСББ (ZAVDANNYA-143; MV-140, S-Зв.5 dani-edrsr)
+
+/**
+ * Щодня (той самий Cron Trigger, що й нагадування): кожній чинній підписці ОСББ, у якої в поточному місяці підписки ще немає
+ * довідки, — поставити щомісячну довідку свого будинку (режим osbb, генератор --osbb). Перший місяць — довідка з оплати;
+ * далі — сама, щомісяця, без жодної дії правління. Скасована, але ще оплачена — теж отримує (рік оплачено).
+ * Один поштовх видавачу на всіх. Повертає, скільки довідок поставлено.
+ */
+export async function shchomisiachnaOsbb(env) {
+  const ids = await vsi(env, `SELECT DISTINCT korystuvach_id AS k FROM pidpysky WHERE tovar = 'osbb' AND status IN ('aktyvna', 'skasovana')
+    AND diie_do > ? AND korystuvach_id IS NOT NULL AND budynok IS NOT NULL`, teper(env));
+  let n = 0;
+  for (const { k } of ids) {
+    for (const p of await stanPidpysok(env, k)) {
+      if (p.tovar !== 'osbb' || !p.diie || p.zalyshok <= 0 || !p.budynok) continue;
+      // Цього місяця вже була спроба, що не вдалася, — не ставимо щодня знову: партнер отримав лист і вирішує сам.
+      if ((await odyn(env, 'SELECT COUNT(*) AS n FROM dovidky WHERE pidpyska_id = ? AND stvoreno >= ?', p.id, p.misiats_vid)).n) continue;
+      await postavytyDovidku(env, { korystuvach_id: k, zamovlennia_id: p.zamovlennia_id, pidpyska_id: p.id, budynok: p.budynok,
+        adresa: p.adresa, rezhym: 'osbb', poshtovkh: false });
+      n++;
+    }
+  }
+  if (n) await shturhnuty(env, 'osbb');
   return n;
 }

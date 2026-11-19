@@ -707,7 +707,7 @@ def r_16(B: Baza):
     pik = max(dni, key=dni.get)
     R = Rolyk('16-st130-sudova-praktyka', 22, tema='temna', nazva='Ст. 130: скільки й коли (Судова практика)',
               hrupa='«Що буває за…»', hachok=f'«{D.chyslo(len(pod))} {fp(len(pod))} про п\'яне керування»',
-              meta='Судова практика → довідка 199 / юристу 490', liniia='Судова практика', kudy='/sudova-praktyka/st-130/')
+              meta='Судова практика → довідка 199 / юристу 490', liniia='Судова практика', kudy='/sudova-praktyka/kupap/130/')
     R.muzyka('napruha', bpm=96)
     rng = random.Random(16)
     chasy = [2.6 + 6.0 * ((i + 1) / len(pod)) ** 0.55 + rng.uniform(0, 0.1) for i in range(len(pod))]

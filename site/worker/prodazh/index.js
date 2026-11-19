@@ -16,6 +16,7 @@
 //   GET  /oplata/dyakuiemo/                «дякуємо»
 //   GET  /dovidka/<id>/?k=<ключ>           довідка: ключ із листа або вхід у кабінет власника
 //   /kabinet/…                             вхід за посиланням на пошту, мої довідки, «Стежу», підписка, видалення даних
+//   GET  /kabinet/google/…                 вхід через Google — лише з GOOGLE_KLIIENT_ID і GOOGLE_SEKRET (google.js, ZAVDANNYA-142)
 //   /api/vnutr/…                           для видавача (site/prodazh/vydavach.py), заголовок Authorization: Bearer VYDACHA_KLIUCH
 //   POST /kabinet/obmin                    обмін балів ігор на довідку / місяць підписки — лише з OBMIN_BALIV = 'tak' (ZAVDANNYA-123)
 //   /pidpysnyk/…                          карта підписника зі сховища R2 — лише з дійсною підпискою (karta.js, ZAVDANNYA-133)
@@ -29,6 +30,8 @@ import * as S from './storinky.js';
 import * as B from './bali.js';
 import * as F from './formy.js';
 import * as K from './karta.js';
+import * as SP from './sudova.js';
+import * as G from './google.js';
 
 export const MARSHRUTY = ['/oplata/*', '/api/*', '/kabinet/*', '/dovidka/*', '/prodazh/*', '/pidpysnyk/*'];
 const SESIIA_S = 30 * 86400, VKHID_S = 30 * 60, LYSTIV_NA_HODYNU = 5;
@@ -65,22 +68,43 @@ async function forma(request) {
 
 async function formaZamovlennia(request, env, url) {
   const tovar = url.searchParams.get('tovar');
-  if (!TS.na_prodazh.includes(tovar)) return pereity(url, tovar === 'biznes' ? '/biznes/' : '/miy-budynok/');
+  if (!TS.prodaietsia.includes(tovar)) return pereity(url, tovar === 'biznes' ? '/biznes/' : '/miy-budynok/');
+  if (tovar === 'spdovidka') {
+    return SP.formaDovidky({ d: await SP.dovidnyk(env, url), slug: url.searchParams.get('stattia') || '',
+      sud: url.searchParams.get('sud') || '', chastyna: url.searchParams.get('chastyna') || '' });
+  }
   const budynok = url.searchParams.get('budynok');
   const adresa = budynok ? await L.perevirytyBudynok(env, budynok, url) : null;
-  return S.formaZamovlennia({ tovar, budynok: adresa ? budynok : null, adresa });
+  return S.formaZamovlennia({ tovar, budynok: adresa ? budynok : null, adresa, ...(await vkhidGoogle(request, env)) });
+}
+
+/** Для форми замовлення (ZAVDANNYA-142): пошта з сесії (після входу через Google) і чи показувати кнопку Google. */
+async function vkhidGoogle(request, env) {
+  const ja = await sesiia(request, env);
+  return { poshtaSesii: ja?.poshta || '', google: G.uvimkneno(env) && !ja };
 }
 
 async function stvorytyZamovlennia(request, env, url) {
   if (!zNashohoSaitu(request, env)) return S.povidomlennia('Не вдалося', 'Оформіть замовлення на нашому сайті.', 403);
   const f = await forma(request);
   const tovar = String(f.tovar || '');
-  if (!TS.na_prodazh.includes(tovar)) return S.povidomlennia('Не вдалося', 'Такого товару немає.', 400);
+  if (!TS.prodaietsia.includes(tovar)) return S.povidomlennia('Не вдалося', 'Такого товару немає.', 400);
   const poshta = L.chystaPoshta(f.poshta);
-  let budynok = f.budynok ? String(f.budynok) : null, adresa = null;
+  if (tovar === 'spdovidka') {
+    // «Судова практика»: стаття, суд і частина — лише з довідника сайту; опис вибору пише сервер, а не форма
+    const v = await SP.perevirytyParametry(env, url, f);
+    if (!v) return S.povidomlennia('Не вдалося', 'Такої статті, суду чи частини немає. Оберіть зі списку.', 400);
+    const znovu = async (pomylka) => SP.formaDovidky({ d: await SP.dovidnyk(env, url), slug: v.slug, sud: v.parametry.sud, chastyna: v.parametry.chastyna, pomylka });
+    if (!poshta) return znovu('Перевірте пошту.');
+    if (f.zghoda !== 'tak') return znovu('Потрібна згода з офертою.');
+    if (f.ne_dopomoga !== 'tak') return znovu('Позначте, що розумієте: це статистика, а не юридична допомога.');
+    if (f.odrazu !== 'tak') return znovu('Позначте: «Прошу надіслати одразу…» — без цього оплатити не можна.');
+    return doOplaty(env, url, { tovar, budynok: null, adresa: v.opys, poshta, parametry: v.parametry });
+  }
+  let budynok = f.budynok ? L.shliakhBudynku(f.budynok) : null, adresa = null;
   if (budynok) {
     adresa = await L.perevirytyBudynok(env, budynok, url);
-    if (!adresa) return S.povidomlennia('Не вдалося', 'Такого будинку на сайті немає.', 400);
+    if (!adresa) return S.formaZamovlennia({ tovar, budynok: null, adresa: null, pomylka: 'Такого будинку на сайті немає. Вставте посилання на сторінку будинку з нашого сайту.' });
   } else if (L.potribenBudynok(tovar)) {
     return S.formaZamovlennia({ tovar, budynok: null, adresa: null });
   }
@@ -90,11 +114,11 @@ async function stvorytyZamovlennia(request, env, url) {
   return doOplaty(env, url, { tovar, budynok, adresa, poshta });
 }
 
-async function doOplaty(env, url, { tovar, budynok, adresa, poshta, korystuvach_id, pidpyska_id }) {
+async function doOplaty(env, url, { tovar, budynok, adresa, poshta, korystuvach_id, pidpyska_id, parametry = null }) {
   const p = perekhidnyk(env);
   if (!p) return S.povidomlennia('Оплата недоступна', 'Оплата тимчасово не працює. Спробуйте пізніше.', 503);
   const k = korystuvach_id ?? (await L.korystuvach(env, poshta)).id;
-  const { zam, pidpyska, pomylka } = await L.stvorytyZamovlennia(env, { tovar, budynok, adresa, korystuvach_id: k, servis: p.nazva, pidpyska_id });
+  const { zam, pidpyska, pomylka } = await L.stvorytyZamovlennia(env, { tovar, budynok, adresa, korystuvach_id: k, servis: p.nazva, pidpyska_id, parametry });
   if (pomylka) return S.povidomlennia('Не вдалося', pomylka, 400);
   try {
     const v = await p.stvoryty({ zam, pidpyska, opys: `${TS.nazvy[tovar]}${adresa ? `: ${adresa}` : ''} — Моя вулиця`, adresa: adresaSaitu(env, url), env });
@@ -172,10 +196,10 @@ async function vidkrytyDovidku(request, env, url, id) {
 // ---------------------------------------------------------------- кабінет
 
 async function nadislatyVkhid(request, env, url) {
-  if (!zNashohoSaitu(request, env)) return S.vkhid('Відкрийте кабінет на нашому сайті.');
+  if (!zNashohoSaitu(request, env)) return S.vkhid('Відкрийте кабінет на нашому сайті.', G.uvimkneno(env));
   const poshta = L.chystaPoshta((await forma(request)).poshta);
-  const vidpovid = S.vkhid('Якщо ця пошта є в нас, посилання для входу вже в листі. Перевірте й «Спам».');
-  if (!poshta) return S.vkhid('Перевірте пошту.');
+  const vidpovid = S.vkhid('Якщо ця пошта є в нас, посилання для входу вже в листі. Перевірте й «Спам».', G.uvimkneno(env));
+  if (!poshta) return S.vkhid('Перевірте пошту.', G.uvimkneno(env));
   const k = await L.odyn(env, 'SELECT * FROM korystuvachi WHERE poshta = ?', poshta);
   if (!k) return vidpovid;   // не кажемо, чи є така пошта
   const t = L.teper(env);
@@ -194,16 +218,40 @@ async function uviity(request, env, url) {
   const t = url.searchParams.get('t') || '';
   const zaraz = L.teper(env);
   const v = await L.odyn(env, 'SELECT * FROM vkhody WHERE hash = ?', sha256(t));
-  if (!v || v.vykorystano || v.do_ < zaraz) return S.vkhid('Посилання застаріло або вже використане. Надішлемо нове.');
+  if (!v || v.vykorystano || v.do_ < zaraz) return S.vkhid('Посилання застаріло або вже використане. Надішлемо нове.', G.uvimkneno(env));
   const r = await L.zrobyty(env, 'UPDATE vkhody SET vykorystano = ? WHERE hash = ? AND vykorystano IS NULL', zaraz, v.hash);
-  if (!r.meta?.changes) return S.vkhid('Посилання вже використане.');
+  if (!r.meta?.changes) return S.vkhid('Посилання вже використане.', G.uvimkneno(env));
   const s = vypadkovyi(32);
   await L.zrobyty(env, 'INSERT INTO sesii (hash, korystuvach_id, do_) VALUES (?, ?, ?)', sha256(s), v.korystuvach_id, zaraz + SESIIA_S);
   return pereity(url, '/kabinet/', { 'set-cookie': `mv_sesiia=${s}; Path=/; Max-Age=${SESIIA_S}; HttpOnly; Secure; SameSite=Lax` });
 }
 
+const novaSesiia = async (env, korystuvach_id) => {
+  const s = vypadkovyi(32);
+  await L.zrobyty(env, 'INSERT INTO sesii (hash, korystuvach_id, do_) VALUES (?, ?, ?)', sha256(s), korystuvach_id, L.teper(env) + SESIIA_S);
+  return `mv_sesiia=${s}; Path=/; Max-Age=${SESIIA_S}; HttpOnly; Secure; SameSite=Lax`;
+};
+
+/** Вхід через Google (google.js): початок і повернення. Без ключів — «сторінки немає». */
+async function google(request, env, url) {
+  if (!G.uvimkneno(env)) return S.nemaie();
+  const adresa = adresaSaitu(env, url);
+  if (url.pathname === '/kabinet/google/') return G.pochaty(env, url, adresa);
+  if (url.pathname !== '/kabinet/google/povernennia/') return S.nemaie();
+  const v = await G.povernennia(env, url, adresa, kuky(request)[G.KUKA]);
+  if (v.pomylka) {
+    const r = S.vkhid(v.pomylka, true, 400);
+    r.headers.append('set-cookie', G.STERTY_KUKU);
+    return r;
+  }
+  const h = new Headers({ location: new URL(v.kudy, url).toString(), 'cache-control': 'no-store' });
+  h.append('set-cookie', await novaSesiia(env, v.korystuvach_id));
+  h.append('set-cookie', G.STERTY_KUKU);
+  return new Response(null, { status: 303, headers: h });
+}
+
 async function kabinet(env, ja, povidomlennia = '') {
-  const dovidky = await L.vsi(env, 'SELECT id, adresa, rezhym, status, stvoreno FROM dovidky WHERE korystuvach_id = ? ORDER BY stvoreno DESC', ja.id);
+  const dovidky = await L.vsi(env, 'SELECT id, budynok, adresa, rezhym, status, pidpyska_id, stvoreno FROM dovidky WHERE korystuvach_id = ? ORDER BY stvoreno DESC', ja.id);
   const stezhu = await L.vsi(env, 'SELECT budynok, adresa FROM stezhu WHERE korystuvach_id = ? ORDER BY stvoreno', ja.id);
   const d = await L.dostupno(env, ja.id);
   const pidpysky = (await L.stanPidpysok(env, ja.id)).filter((p) => p.diie);
@@ -214,6 +262,7 @@ async function kabinet(env, ja, povidomlennia = '') {
 
 async function diiaKabinetu(request, env, url, ja, dia) {
   const f = await forma(request);
+  if (f.budynok) f.budynok = L.shliakhBudynku(f.budynok);      // ZAVDANNYA-143: можна вставити й повне посилання на сторінку
   if (dia === 'stezhu' || dia === 'dovidka') {
     const adresa = await L.perevirytyBudynok(env, f.budynok, url);
     if (!adresa) return kabinet(env, ja, 'Такого будинку на сайті немає. Скопіюйте адресу його сторінки: /budynok/…/…/');
@@ -268,6 +317,23 @@ async function diiaKabinetu(request, env, url, ja, dia) {
     { zaholovky: { 'set-cookie': 'mv_sesiia=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax' } });
   }
   return S.nemaie();
+}
+
+// ---------------------------------------------------------------- «Судова практика»: довідка з підписки юриста
+
+async function spDovidkaZPidpysky(request, env, url) {
+  const ja = await sesiia(request, env);
+  if (!ja) return pereity(url, '/kabinet/');
+  if (!zNashohoSaitu(request, env)) return S.povidomlennia('Не вдалося', 'Дію можна зробити лише з нашого сайту.', 403);
+  const v = await SP.perevirytyParametry(env, url, await forma(request));
+  if (!v) return S.povidomlennia('Не вдалося', 'Такої статті, суду чи частини немає. Оберіть зі списку.', 400);
+  const r = await L.vzyatySpDovidku(env, ja.id, v);
+  if (r.nemaie) return pereity(url, SP.KOREN);
+  if (r.vycherpano) {
+    return S.povidomlennia('Довідки цього місяця використано', `Можна купити окрему довідку — ${S.tsina('spdovidka')}.`, 200,
+      `<div class="diyi"><a class="knopka knopka--holovna" href="/oplata/?tovar=spdovidka&amp;stattia=${S.e(v.slug)}">Купити довідку</a><a class="knopka" href="${SP.KOREN}">Назад до практики</a></div>`);
+  }
+  return kabinet(env, ja, `Довідку «${v.opys}» готуємо — посилання прийде на пошту.`);
 }
 
 // ---------------------------------------------------------------- для видавача
@@ -378,7 +444,7 @@ export async function prodazh(request, env) {
   }
   // Товари, яких ще немає в продажу («Судова практика»), — «Скоро — залиште пошту» і з увімкненою оплатою.
   const tovar = url.searchParams.get('tovar');
-  if (s === '/oplata/' && m === 'GET' && F.TOVARY_SKORO.includes(tovar) && !TS.na_prodazh.includes(tovar)) return skoroForma(env, url);
+  if (s === '/oplata/' && m === 'GET' && F.TOVARY_SKORO.includes(tovar) && !TS.prodaietsia.includes(tovar)) return skoroForma(env, url);
   if (s === '/api/skoro' && m === 'POST') return skoroZapys(request, env, url);
   if (s === '/oplata/' && m === 'GET') return formaZamovlennia(request, env, url);
   if (s === '/oplata/dyakuiemo/' && m === 'GET') return S.dyakuiemo();
@@ -393,14 +459,20 @@ export async function prodazh(request, env) {
   if (r && m === 'GET') return vidkrytyDovidku(request, env, url, r[1]);
   if (s === '/kabinet/vkhid' && m === 'POST') return nadislatyVkhid(request, env, url);
   if (s === '/kabinet/vkhid/' && m === 'GET') return uviity(request, env, url);
+  if (s.startsWith('/kabinet/google/') && m === 'GET') return google(request, env, url);
   if (s.startsWith('/kabinet/')) {
     const ja = await sesiia(request, env);
-    if (s === '/kabinet/' && m === 'GET') return ja ? kabinet(env, ja) : S.vkhid();
+    if (s === '/kabinet/' && m === 'GET') return ja ? kabinet(env, ja) : S.vkhid('', G.uvimkneno(env));
     if (m === 'POST') {
       if (!ja) return pereity(url, '/kabinet/');
       if (!zNashohoSaitu(request, env)) return S.povidomlennia('Не вдалося', 'Дію можна зробити лише з нашого сайту.', 403);
       return diiaKabinetu(request, env, url, ja, s.slice('/kabinet/'.length));
     }
+  }
+  if (s === `${SP.KOREN}dovidka` && m === 'POST') return spDovidkaZPidpysky(request, env, url);
+  if (s.startsWith(SP.KOREN.slice(0, -1))) {
+    const r = await SP.praktyka(request, env, url, await sesiia(request, env));
+    if (r) return r;
   }
   if (s === '/pidpysnyk' || s.startsWith('/pidpysnyk/')) {
     const k = await K.karta(request, env, url, await sesiia(request, env));

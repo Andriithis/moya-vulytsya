@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Видавач довідок (ZAVDANNYA-99): бере оплачені довідки з черги сервера продажу, запускає генератор
-`dani-edrsr/src/zvit/zibraty.py` (--dovidka або --povnyi) і віддає готовий файл серверу; сервер кладе його в сховище
+`dani-edrsr/src/zvit/zibraty.py` (--dovidka, --osbb або --povnyi) і віддає готовий файл серверу; сервер кладе його в сховище
 й надсилає покупцю посилання на пошту.
 
 Працює там, де лежать дані генератора (випуск events-<дата>.db, скарги 1551, знімок OSM): сервер партнера або ПК.
@@ -12,7 +12,7 @@
                                                        (шаблон site/prodazh/github/vydavach.yml, ZAVDANNYA-133)
 
 Ключ видавача — лише змінна середовища VYDACHA_KLIUCH (той самий, що секрет Workers). Видавач не бачить пошти покупців,
-сум і платежів — лише номер довідки, адресу будинку й режим.
+сум і платежів — лише номер довідки, адресу будинку й режим («Судова практика» — статтю, суд і частину, ZAVDANNYA-135).
 """
 from __future__ import annotations
 
@@ -39,11 +39,19 @@ def zapyt(server: str, kliuch: str, metod: str, shliakh: str, tilo: bytes | None
 
 
 def zibraty(generator: Path, d: dict, teka: Path, shi: bool) -> Path | None:
-    """Один запуск генератора. Повертає файл або None (генератор упав чи не знайшов будинок)."""
+    """Один запуск генератора. Повертає файл або None (генератор упав чи не знайшов будинок).
+    Режим sp («Судова практика», ZAVDANNYA-135) — інший генератор (dani-edrsr/src/sp_dovidka.py, поруч зі zvit/) з
+    параметрами {stattia, sud, chastyna}; дані — змінна SP_DANI (dovidka.json з Release dani-edrsr). ШІ там немає."""
     vyhid = teka / f'{d["id"]}.html'
-    komanda = [sys.executable, str(generator), d['adresa'], '--dovidka' if d['rezhym'] == 'dovidka' else '--povnyi',
-               '--vyhid', str(vyhid), '--chysto']
-    if shi:
+    if d['rezhym'] == 'sp':
+        sp = generator.parent.parent / 'sp_dovidka.py'
+        komanda = [sys.executable, str(sp), '--parametry', json.dumps(d.get('parametry') or {}, ensure_ascii=False),
+                   '--vyhid', str(vyhid), '--nomer', d['id']]
+    else:
+        # osbb — щомісячна довідка ОСББ (ZAVDANNYA-143; dani-edrsr S-Зв.5): довідка + зверху останній місяць скарг 1551
+        prapor = {'dovidka': ['--dovidka'], 'osbb': ['--osbb'], 'povnyi': ['--povnyi']}.get(d['rezhym'], ['--povnyi'])
+        komanda = [sys.executable, str(generator), d['adresa'], *prapor, '--vyhid', str(vyhid), '--chysto']
+    if shi and d['rezhym'] != 'sp':
         komanda.append('--shi')
     p = subprocess.run(komanda, capture_output=True, text=True, timeout=30 * 60)
     if p.returncode != 0 or not vyhid.exists():
