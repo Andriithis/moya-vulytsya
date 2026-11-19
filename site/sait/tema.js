@@ -48,3 +48,53 @@
     });
   });
 })();
+
+// Застосунок Android (MV-126, ZAVDANNYA-144): у застосунку нічого не продаємо — купують на сайті, а в застосунку
+// лише дивляться куплене. Застосунок відкриває сайт з ?dzherelo=dodatok (старт і ярлики, android/twa-manifest.json),
+// а Chrome при запуску оболонки дає document.referrer = android-app://ua.moyavulytsya.app. Позначку пам'ятаємо
+// лише в цій вкладці (sessionStorage): у звичайному Chrome на тому ж телефоні ціни лишаються.
+// Що ховаємо: блоки цін (.tsiny), кнопки й посилання на оплату (/oplata/), рядки «… — 199 грн»; сторінка /oplata/
+// у застосунку — лише «у застосунку нічого не продаємо», без посилань на оплату (правила оплати Google Play, розд. 4).
+// Поки сторінку не очищено, вона невидима (sait.css, html[data-dodatok="hotuiu"]) — без спалаху цін.
+(function () {
+  'use strict';
+  var d = document.documentElement;
+  var u = false;
+  try {
+    u = /[?&]dzherelo=dodatok(&|$)/.test(location.search) || document.referrer.indexOf('android-app://ua.moyavulytsya.app') === 0;
+    if (u) sessionStorage.setItem('mv-dodatok', '1');
+    else u = sessionStorage.getItem('mv-dodatok') === '1';
+  } catch (e) { /* без сховища — лише ця сторінка */ }
+  if (!u) return;
+  d.setAttribute('data-dodatok', 'hotuiu');
+  // «; довідка — 199 грн», « — 399 грн на місяць», «1 490 грн»: ціну разом зі своїм уривком речення.
+  var TSINA = /(?:\s*[;,]\s*[^;,]*?|\s*[—–-]\s*)?\d[\d\s]*\s?грн(?:\s(?:на|за)\s[а-яіїєґ']+)?/gi;
+  function ochystyty() {
+    if (/^\/oplata\//.test(location.pathname)) {
+      var m = document.querySelector('main') || document.body;
+      m.innerHTML = '<section class="rozdil"><h1>У застосунку нічого не продаємо</h1>' +
+        '<p>Тут — карта, сторінки будинків і вулиць, ігри й ваш кабінет. Довідки й підписку, куплені раніше, видно в кабінеті.</p>' +
+        '<p><a class="knopka knopka--holovna" href="/">На головну</a> <a class="knopka" href="/kabinet/">Кабінет</a></p></section>';
+    }
+    document.querySelectorAll('.tsiny, .tovar__tsina, .knopka__skoro, a[href*="/oplata/"]').forEach(function (el) { el.remove(); });
+    // Вітрини: увесь розділ «Що можна замовити» з картками товарів і примітки про оплату.
+    document.querySelectorAll('.tovary').forEach(function (el) { (el.closest('section') || el).hidden = true; });
+    document.querySelectorAll('.prymitka').forEach(function (el) { if (/оплат/i.test(el.textContent)) el.hidden = true; });
+    var w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null);
+    var vuzly = [];
+    while (w.nextNode()) if (w.currentNode.nodeValue.indexOf('грн') >= 0) vuzly.push(w.currentNode);
+    vuzly.forEach(function (v) {
+      v.nodeValue = v.nodeValue.replace(TSINA, '');
+      var b = v.parentElement;
+      if (b && b !== document.body && !b.textContent.trim()) b.hidden = true;
+    });
+    // Розділ, у якому після цього лишився сам заголовок («Повідомити про запуск»), — теж геть.
+    document.querySelectorAll('main section').forEach(function (s) {
+      var t = s.textContent, h = s.querySelector('h1, h2');
+      if (h && !t.replace(h.textContent, '').trim()) s.hidden = true;
+    });
+  }
+  document.addEventListener('DOMContentLoaded', function () {
+    try { ochystyty(); } finally { d.setAttribute('data-dodatok', 'tak'); }
+  });
+})();

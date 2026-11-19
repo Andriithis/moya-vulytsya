@@ -447,3 +447,8 @@ body.z-kartoyu .shapka__vnutri { max-width: none; padding: 6px 16px; min-height:
 /* Сторінки публічних місць (ZAVDANNYA-124) */
 .por__mitka { margin: 10px 0 0; font-weight: 600; color: var(--ink); }
 .haslo { margin: 0 0 12px; font-weight: 600; color: var(--accent); }
+
+/* Застосунок Android (MV-126, ZAVDANNYA-144): без цін і кнопок оплати; сторінка невидима, доки sait/tema.js її не очистить */
+html[data-dodatok] .tsiny, html[data-dodatok] .tovar__tsina, html[data-dodatok] .knopka__skoro,
+html[data-dodatok] a[href*="/oplata/"] { display: none !important; }
+html[data-dodatok="hotuiu"] body { visibility: hidden; }
