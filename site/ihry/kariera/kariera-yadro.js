@@ -165,7 +165,7 @@
     z[0] += 1; if (o.stattia && o.chastyna !== false) z[1] += 1;
     // «де плутаєш»: правильна кваліфікація → обрана (і кодекс, і стаття, і частина — окремими парами)
     var pravNazva = povna(sprava.stattia, sprava.chastyna);
-    if (!o.stattia) dodatyPomylku(s, sprava.stattia, v.kodeks === sprava.stattia.split(' ')[0] ? v.stattia : v.kodeks + ' (кодекс)');
+    if (!o.stattia) dodatyPomylku(s, povna(sprava.stattia, ''), !o.kodeks ? 'інший кодекс (' + v.kodeks + ')' : povna(v.stattia, ''));
     else if (o.chastyna === false) dodatyPomylku(s, pravNazva, povna(v.stattia, v.chastyna));
     // повтори: помилка → через 1 день; правильний повтор → 3, потім 7 днів, далі справа знята
     var p = s.povtory[sprava.doc];

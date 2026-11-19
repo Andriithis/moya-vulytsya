@@ -115,8 +115,11 @@ def poiasnennia(tekst: str, kl: str, chastyna: str) -> str:
     kandydaty = []
     for rech in re.split(r'(?<=[.!?])\s+(?=[А-ЯІЇЄҐ])', re.sub(r'\s+', ' ', do)):
         for ch, n, _ in KVAL.findall(rech):
-            if re.sub(r'\s*[-–]\s*', '-', n) == nomer and (ch or '') == chastyna:
-                bal = (2 if re.search(r'тобто|а\s+саме|як\s+', rech) else 0) + (1 if re.search(r'кваліфік|доведен', rech) else 0)
+            if re.sub(r'\s*[-–]\s*', '-', n) == nomer and (ch or '') == chastyna \
+                    and not re.search(r'покаран|санкці|стягнен|призначи|звільни|строк', rech):
+                if not re.search(r'кваліфік|доведен|склад\w*\s+(?:адміністративн|кримінальн|правопоруш)|винн|винуват', rech):
+                    continue   # речення про наказ, протокол чи процедуру — не пояснення кваліфікації
+                bal = (2 if re.search(r'тобто|а\s+саме', rech) else 0) + (1 if re.search(r'кваліфік', rech) else 0)
                 kandydaty.append((bal, -abs(len(rech) - 250), rech.strip()))
                 break
     if not kandydaty:
@@ -127,6 +130,7 @@ def poiasnennia(tekst: str, kl: str, chastyna: str) -> str:
 
 def znejosobyty(t: str, prykhovaty_statti: bool = True) -> str:
     t = re.sub(r'\s+', ' ', t).strip()
+    t = re.sub(r'(?<=[а-яіїєґА-ЯІЇЄҐ])[?`\'](?=[а-яіїєґ])', '\u2019', t)   # «здоров?я», «сп`яніння» → апостроф
 
     def osoba(m):
         # за номером, а не за порядком появи: та сама людина — та сама буква і у фабулі, і в поясненні суду
@@ -137,6 +141,8 @@ def znejosobyty(t: str, prykhovaty_statti: bool = True) -> str:
     t = re.sub(r'НОМЕР_\d+|АДРЕСА_\d+', '…', t)
     t = VULYTSIA.sub(r'\1', t)
     t = re.sub(r'(будин\w+|буд\.)\s*№?\s*\d+[^\s,.;]*', r'\1', t)
+    t = re.sub(r'(будин\w+)\s+буд\.?(?=\s)', r'\1', t)
+    t = re.sub(r'(?<![\w.])буд\.+(?!\s*\d)', 'будинку', t)      # «біля буд. по вул.» → «біля будинку по вул.»
     if prykhovaty_statti:
         t = STATTIA_U_TEKSTI.sub('[стаття]', t)
         t = ZAIVE_RECHENNIA.sub('', t)

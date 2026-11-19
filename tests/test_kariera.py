@@ -96,7 +96,7 @@ class Yadro(unittest.TestCase):
                  "Y.vidpovisty(s,x,ok,'2026-11-23');k.push(s.povtory['105'].koly);"
                  "Y.vidpovisty(s,x,ok,'2026-11-30');k.push(s.povtory['105']||null);return [k,s.pomylky]")
         self.assertEqual(r[0], ['2026-11-20', False, True, '105', '2026-11-23', '2026-11-30', None])
-        self.assertEqual(r[1], {'КУпАП 51 → КК (кодекс)': 1}, 'помилка кодексу — окремою парою')
+        self.assertEqual(r[1], {'ст. 51 КУпАП → інший кодекс (КК)': 1}, 'помилка кодексу — окремою парою')
 
     def test_seriia_z_vykhidnym(self):
         r = node("const s=Y.novyi('pravo');const k=[];"
@@ -172,15 +172,19 @@ class Henerator(unittest.TestCase):
         p = K.poiasnennia(TEKST_130, 'КУпАП 130', '2')
         self.assertIn('тобто повторне', p)
         self.assertIn('Особа А', p)
+        self.assertIn('сп’яніння', p, 'апостроф замість зворотного лапки')
         self.assertNotIn('ОСОБА_', p)
+        lyshe_pokarannia = 'Суд призначає покарання за ч. 2 ст. 130 КУпАП у межах санкції. ' + TEKST_130.split('Таким чином')[1]
+        self.assertNotIn('покаран', K.poiasnennia('Вступ. ' + lyshe_pokarannia, 'КУпАП 130', '2'), 'пояснення — не про покарання')
 
     def test_znejosobyty(self):
         t = K.znejosobyty('Обвинувачений ОСОБА_3, ІНФОРМАЦІЯ_1, 05.05.2025 за адресою: м. Київ, вул. Хрещатик, 15-А, кв. 7, '
-                          'біля будинку 28/15 керував авто д.н.з. НОМЕР_1, повторно протягом року після засудження за ч. 2 '
+                          'біля будинку буд. 28/15 керував авто д.н.з. НОМЕР_1, повторно протягом року після засудження за ч. 2 '
                           'ст. 309 КК України, що утворює склад адміністративного правопорушення, передбаченого ч. 1 ст. 130 КУпАП.')
         self.assertIn('Особа В', t)
         self.assertNotRegex(t, r'ОСОБА_|ІНФОРМАЦІЯ|НОМЕР_|309|130|15-А|28/15|кв\. 7|КУпАП|КК')
         self.assertIn('вул. Хрещатик', t)
+        self.assertNotIn('буд.', t)
         self.assertIn('повторно протягом року', t, 'ознака частини лишається — це і є навичка')
         self.assertIn('[стаття]', t)
 

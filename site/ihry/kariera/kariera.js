@@ -142,7 +142,7 @@
       var bezChastyny = !x.chastyna && st.chastyny && st.chastyny.length;
       p.innerHTML = '<div class="vidpovid">' + (r.otsinka.vse ? 'Так, як суд: ' : 'Суд кваліфікував: ') + esc(Y.povna(x.stattia, x.chastyna)) +
         '<small>' + esc(st.nazva) + (bezChastyny ? ' · частину в рішенні не названо' : '') + '</small></div>' +
-        (x.chomu ? '<div class="tsytata"><b>Як написав суд</b>' + esc(x.chomu) + '</div>' : '') + chastkyHtml(st, x.chastyna) +
+        (x.chomu ? '<div class="tsytata"><b>Як написав суд</b>' + esc(x.chomu) + '</div>' : '<p class="tykho">Чому саме так — суд пояснює в самому рішенні (посилання нижче).</p>') + chastkyHtml(st, x.chastyna) +
         '<p class="tykho"><a href="' + esc(x.url) + '" target="_blank" rel="noopener">Рішення повністю — у реєстрі суду</a> · +' + r.bal + ' досвіду</p>';
       var dali = el('button', 'klavisha klavisha--holovna klavisha--shyroka', opts.daliTekst || 'Далі'); dali.type = 'button';
       dali.addEventListener('click', function () { opts.dali(r); });
