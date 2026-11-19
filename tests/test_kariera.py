@@ -167,6 +167,8 @@ class Henerator(unittest.TestCase):
         kk = 'Обставини. У Х В А Л И В: ОСОБА_3 визнати винуватим у вчиненні кримінального правопорушення, передбаченого ч.4 ст.185 КК України та призначити покарання; ст. 75 КК України.'
         self.assertEqual(K.znaity_kvalifikatsiiu(kk), ('КК 185', '4'), 'стаття покарання (75 КК) не плутає')
         self.assertEqual(K.znaity_kvalifikatsiiu('ПОСТАНОВИВ: ОСОБА_1 визнати винним за ст. 124 КУпАП.'), ('КУпАП 124', ''))
+        slovom = 'ПОСТАНОВИВ: ОСОБА_1 визнати винним за частиною п`ятою статті 126 КУпАП та накласти штраф.'
+        self.assertEqual(K.znaity_kvalifikatsiiu(slovom), ('КУпАП 126', '5'), 'частина словами')
 
     def test_poiasnennia_slovamy_sudu(self):
         p = K.poiasnennia(TEKST_130, 'КУпАП 130', '2')

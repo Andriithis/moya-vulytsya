@@ -71,8 +71,21 @@ def kliuch(kodeks: str, nomer: str) -> str:
     return f"{kodeks} {re.sub(r'\s*[-–]\s*', '-', nomer)}"
 
 
+SLOVA_CHASTYN = {'перш': '1', 'друг': '2', 'трет': '3', 'четверт': '4', 'п': '5', 'шост': '6', 'сьом': '7'}
+CHASTYNA_SLOVOM = re.compile(r'частин\w*\s+(перш|друг|трет|четверт|п.ят|шост|сьом)\w*\s+(?=ст)', re.I)
+
+
+def chastyny_tsyframy(t: str) -> str:
+    """«частиною першою статті 130» → «ч. 1 статті 130»: суди пишуть частину й словами."""
+    def tsyfra(m):
+        slovo = m.group(1).lower()
+        return 'ч. ' + SLOVA_CHASTYN['п' if slovo.startswith('п') else slovo] + ' '
+    return CHASTYNA_SLOVOM.sub(tsyfra, t)
+
+
 def znaity_kvalifikatsiiu(tekst: str):
     """(ключ статті, частина або '') з речення про вину в резолютивній частині; None — якщо не одна кваліфікація."""
+    tekst = chastyny_tsyframy(tekst)
     m = list(REZOL.finditer(tekst))
     if not m:
         return None
@@ -95,6 +108,7 @@ def znaity_kvalifikatsiiu(tekst: str):
 
 def inshi_statti(tekst: str, kl: str, vidomi) -> bool:
     """Чи судить рішення ще за іншою статтею (об'єднані справи: фабула про одне, кваліфікація про інше)."""
+    tekst = chastyny_tsyframy(tekst)
     m = list(REZOL.finditer(tekst))
     do = re.sub(r'\s+', ' ', tekst[:m[-1].start()] if m else tekst)
     for rech in re.split(r'(?<=[.!?])\s+(?=[А-ЯІЇЄҐ])', do):
@@ -109,6 +123,7 @@ def inshi_statti(tekst: str, kl: str, vidomi) -> bool:
 
 def poiasnennia(tekst: str, kl: str, chastyna: str) -> str:
     """Речення суду (до резолютивної частини), де названо ту саму кваліфікацію; найкраще — з «тобто»."""
+    tekst = chastyny_tsyframy(tekst)
     m = list(REZOL.finditer(tekst))
     do = tekst[:m[-1].start()] if m else tekst
     nomer = kl.split(' ', 1)[1]
