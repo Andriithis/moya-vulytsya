@@ -18,6 +18,8 @@
   /oplata/                  оплата-заглушка «залиште пошту»; /vydalyty/, /pro-dani/ — видалення й про дані
   /zahlushka/               заглушка з формою і грою (site/zahlushka/zibraty.py, без змін)
   sitemap.xml (або індекс sitemap-N.xml, якщо адрес більше 45 000), robots.txt, 404.html
+  manifest.webmanifest      сайт як застосунок; /.well-known/assetlinks.json — підтвердження застосунку Android,
+                            лише коли є відбиток ключа (android/twa-manifest.json, --android-vidbytok; ZAVDANNYA-144)
 
 Повторний запуск на тому самому випуску дає ті самі файли: ні часу збирання, ні випадковостей.
 Нічого не публікує.
@@ -91,6 +93,63 @@ def robots_txt(adresa_saitu: str) -> str:
     zaboroneno = ['/zahlushka/zvernennya.html', '/oplata/', '/kabinet/', '/dovidka/', '/api/', '/prodazh/']
     return ('User-agent: *\nAllow: /\n' + ''.join(f'Disallow: {z}\n' for z in zaboroneno)
             + f'\nSitemap: {adresa_saitu}/sitemap.xml\n')
+
+# ---------------------------------------------------------------- застосунок Android (ZAVDANNYA-144, MV-126)
+# Налаштування оболонки — android/twa-manifest.json (одне джерело): назва пакета, кольори, ярлики, відбитки ключа.
+TWA_MANIFEST = KORIN / 'android' / 'twa-manifest.json'
+VIDBYTOK = re.compile(r'^([0-9A-F]{2}:){31}[0-9A-F]{2}$')
+
+
+def android_nalashtuvannia() -> dict:
+    return json.loads(TWA_MANIFEST.read_text(encoding='utf-8'))
+
+
+def assetlinks(paket: str, vidbytky: list[str]) -> str:
+    """/.well-known/assetlinks.json: застосунок `paket`, підписаний ключем із відбитком SHA-256, — «свій» для сайту.
+    Без нього застосунок показує адресний рядок Chrome. Відбитки не секрет (файл публічний): ключ підпису Google
+    Play (Play Console → Цілісність застосунку) і, для тестів поза Play, ключ завантаження партнера."""
+    pogani = [v for v in vidbytky if not VIDBYTOK.match(v)]
+    if pogani:
+        raise SystemExit(f'Відбиток ключа Android — 32 пари шістнадцяткових цифр через двокрапку (AB:CD:…): {pogani}')
+    return json.dumps([{'relation': ['delegate_permission/common.handle_all_urls'],
+                        'target': {'namespace': 'android_app', 'package_name': paket,
+                                   'sha256_cert_fingerprints': vidbytky}}], ensure_ascii=False, indent=2) + '\n'
+
+
+def web_manifest(n: dict) -> str:
+    """/manifest.webmanifest — опис сайту як застосунку (назва, іконки, кольори, ярлики) з тих самих налаштувань, що й
+    оболонка. Позначки dzherelo=dodatok тут немає: встановлений із браузера сайт — це сайт, не застосунок Google Play."""
+    def bez_dodatku(url: str) -> str:
+        return re.sub(r'[?&]dzherelo=dodatok$', '', url.replace('?dzherelo=dodatok&', '?').replace('&dzherelo=dodatok', ''))
+    ikona = '/zahlushka/ikony/'
+    return json.dumps({
+        'id': '/', 'name': n['name'], 'short_name': n['launcherName'], 'lang': 'uk', 'dir': 'ltr',
+        'description': 'Що відбувається під боком: скарги мешканців і події з рішень судів — по кожному будинку.',
+        'start_url': '/', 'scope': '/', 'display': 'standalone',
+        'background_color': n['backgroundColor'], 'theme_color': n['themeColor'],
+        'icons': [{'src': ikona + 'ikona-192.png', 'sizes': '192x192', 'type': 'image/png', 'purpose': 'any'},
+                  {'src': ikona + 'ikona-512.png', 'sizes': '512x512', 'type': 'image/png', 'purpose': 'any'},
+                  {'src': ikona + 'ikona-maskable-512.png', 'sizes': '512x512', 'type': 'image/png', 'purpose': 'maskable'},
+                  {'src': ikona + 'ikona-monochrome-512.png', 'sizes': '512x512', 'type': 'image/png', 'purpose': 'monochrome'}],
+        'shortcuts': [{'name': s['name'], 'short_name': s['shortName'], 'url': bez_dodatku(s['url']),
+                       'icons': [{'src': ikona + 'ikona-192.png', 'sizes': '192x192', 'type': 'image/png'}]}
+                      for s in n.get('shortcuts', [])],
+        'related_applications': [{'platform': 'play', 'id': n['packageId'],
+                                  'url': f'https://play.google.com/store/apps/details?id={n["packageId"]}'}],
+        'prefer_related_applications': False,
+    }, ensure_ascii=False, indent=2) + '\n'
+
+
+def android_faily(vykhid: Path, vidbytky: list[str] | None = None) -> int:
+    """Маніфест сайту завжди; assetlinks.json — лише коли є хоч один відбиток (з налаштувань оболонки або параметра)."""
+    n = android_nalashtuvannia()
+    zapysaty(vykhid / 'manifest.webmanifest', web_manifest(n))
+    vsi = [f['value'] for f in n.get('fingerprints', [])] + list(vidbytky or [])
+    vsi = list(dict.fromkeys(v.strip().upper() for v in vsi if v.strip()))
+    if vsi:
+        zapysaty(vykhid / '.well-known' / 'assetlinks.json', assetlinks(n['packageId'], vsi))
+    return len(vsi)
+
 
 SONTSE = ('<svg class="ik-sontse" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" '
           'stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4'
@@ -262,6 +321,7 @@ def storinka(*, shlyakh: str, title: str, opys: str, tilo: str, adresa_saitu: st
 <meta property="og:url" content="{e(adresa_saitu + shlyakh)}">
 {og_kartynka(adresa_saitu, *kartynka) if kartynka else ''}<meta name="theme-color" content="{kolory_tem()['svitla']['ground']}">
 <link rel="icon" type="image/png" sizes="192x192" href="/zahlushka/ikony/ikona-192.png">
+<link rel="manifest" href="/manifest.webmanifest">
 <link rel="preload" href="/sait/shryfty/ibm-plex-sans-cyrillic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/sait/shryfty/ibm-plex-sans-cyrillic-700-normal.woff2" as="font" type="font/woff2" crossorigin>
 <script src="/sait/tema.js"></script>
@@ -923,8 +983,11 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
                  mezha_failiv: int | None = None, khostynh: str = 'pages', perekazy: Path | None = None,
                  kandydaty_istorii: Path | None = None, media: Path | None = None, sudova_praktyka: Path | None = None,
                  prodazh: dict | None = None, oplata: str = 'skoro', zapovnennya: dict | None = None,
-                 dlya_publikatsiyi: bool = False, cf_analityka: str = '', domen: str = '') -> dict:
-    """khostynh: 'pages' — кожна сторінка файлом (межа 20 000); 'workers' — будинки в пачках (site/khostynh.py).
+                 dlya_publikatsiyi: bool = False, cf_analityka: str = '', domen: str = '',
+                 android_vidbytky: list[str] | None = None) -> dict:
+    """android_vidbytky — додаткові відбитки ключа застосунку для /.well-known/assetlinks.json (ZAVDANNYA-144; основні —
+    у android/twa-manifest.json, поле fingerprints).
+    khostynh: 'pages' — кожна сторінка файлом (межа 20 000); 'workers' — будинки в пачках (site/khostynh.py).
     oplata (ZAVDANNYA-132): 'skoro' — на кнопках оплати «Скоро — залиште пошту»; 'tak' — звичайні кнопки (продаж увімкнено).
     prodazh — {'d1', 'servis', 'adresa', 'poshta'} для Workers: з базою D1 форми сайту пишуться в неї (не в Supabase).
     zapovnennya — дані партнера для оферти й політики ([ВЛАСНИК] тощо); dlya_publikatsiyi — зупинитися, якщо щось не заповнено.
@@ -953,6 +1016,7 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
         shutil.rmtree(vykhid)
     vykhid.mkdir(parents=True)
     kopiyuvaty_spilne(vykhid)
+    vidbytkiv_android = android_faily(vykhid, android_vidbytky)
 
     vulytsi = [v for v in dn.vulytsi.values() if v.podii]
     vulytsi.sort(key=lambda v: v.slug)
@@ -1157,6 +1221,7 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
         'media_mists': media_mists,
         'mistsia': len(mistsia),
         'oplata': oplata, 'formy': skhovyshche, 'nezapovneno': len(nezapovneni), 'analityka': bool(ANALITYKA),
+        'android_vidbytkiv': vidbytkiv_android,
     }
     if khostynh == 'workers':
         zvit['teka_workera'] = str(KH.pidhotuvaty_worker(vykhid, pachky.n if pachky is not None else 1, prodazh=prodazh,
@@ -1206,6 +1271,9 @@ def main(argv=None) -> int:
     p.add_argument('--zapovnennya', type=Path, help='JSON з даними партнера для оферти й політики ({"ВЛАСНИК": "…", …})')
     p.add_argument('--dlya-publikatsiyi', action='store_true', help='зупинитися, якщо в оферті чи політиці лишилось [НЕЗАПОВНЕНЕ]')
     p.add_argument('--cf-analityka', default='', help='публічний токен Cloudflare Web Analytics (лічба відвідувань без кукі)')
+    p.add_argument('--android-vidbytok', action='append', default=[],
+                   help='відбиток SHA-256 ключа застосунку Android (AB:CD:…) для /.well-known/assetlinks.json; можна кілька разів '
+                        '(ZAVDANNYA-144; постійні — у android/twa-manifest.json, fingerprints)')
     p.add_argument('--domen', default='', help='свій домен для Workers (напр. moyavulytsya.com.ua) — прив\'язка під час викладки')
     p.add_argument('--poshta-servis', choices=('zahlushka', 'http-json'), default='zahlushka', help='сервіс листів')
     p.add_argument('--karta-r2', action='store_true', help='карта підписника зі сховища R2 moya-vulytsya-karta (лише з --oplata tak; '
@@ -1222,7 +1290,7 @@ def main(argv=None) -> int:
                         a.zvit_zvedennia, a.budynky, a.mezha_failiv, a.khostynh, a.perekazy, a.kandydaty_istorii,
                         media=a.media, sudova_praktyka=a.sudova_praktyka, prodazh=prodazh, oplata=a.oplata,
                         zapovnennya=zapovnennya, dlya_publikatsiyi=a.dlya_publikatsiyi, cf_analityka=a.cf_analityka,
-                        domen=a.domen)
+                        domen=a.domen, android_vidbytky=a.android_vidbytok)
     for k, v in zvit.items():
         print(f'{k}: {v}')
     return 0
