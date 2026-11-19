@@ -31,7 +31,8 @@
 @keyframes lit-khytannia { 20% { transform: translateX(-5px); } 45% { transform: translateX(4px); } 70% { transform: translateX(-2px); } }
 
 /* ---------- верх: лічильники, звук ---------- */
-.lit-verkh { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 8px; padding: 10px 12px 8px; background: var(--surface); }
+.lit-shapka { position: sticky; top: 0; z-index: 2; background: var(--surface); }
+.lit-verkh { display: flex; align-items: center; gap: 8px; padding: 10px 12px 8px; background: var(--surface); }
 .lit-lich { display: flex; align-items: baseline; flex-wrap: wrap; column-gap: 6px; min-width: 0; flex: 1; }
 .lit-lich b { font: 800 26px/30px var(--sans); color: var(--ink); font-variant-numeric: tabular-nums; }
 .lit-lich span { font-size: 13px; color: var(--muted); }
@@ -42,7 +43,7 @@
 .lit .lit-zvuk { min-height: 36px; padding: 4px 10px; font-size: 12px; }
 .lit .lit-zvuk[aria-pressed="false"] { color: var(--muted); border-style: dashed; }
 
-.lit-vkladky { position: sticky; top: 64px; z-index: 2; display: flex; background: var(--surface); border-bottom: 1.5px solid var(--line); }
+.lit-vkladky { display: flex; background: var(--surface); border-bottom: 1.5px solid var(--line); }
 .lit-vkladky button { flex: 1; padding: 10px 2px; border: 0; background: none; font: 600 14px/20px var(--sans); color: var(--muted);
   cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -1.5px; transition: color .15s, border-color .15s; white-space: nowrap; }
 .lit-vkladky button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
@@ -51,7 +52,7 @@
   animation: lit-tochka 1.4s ease-in-out infinite; }
 @keyframes lit-tochka { 50% { transform: scale(1.5); } }
 .lit-vmist { padding: 14px 12px 16px; }
-.lit--start .lit-verkh, .lit--start .lit-vkladky { display: none; }
+.lit--start .lit-shapka { display: none; }
 
 /* ---------- велика клавіша «Прочитати сторінку» ---------- */
 .lit .lit-chytaty { width: 100%; min-height: 104px; flex-direction: column; gap: 2px; font-size: 19px; overflow: hidden; }
@@ -183,12 +184,10 @@
 @media (max-width: 600px) {
   .lit-lich b { font-size: 22px; line-height: 26px; }
   .lit .lit-chytaty { min-height: 84px; }
-  .lit-vkladky { top: 58px; }
   .lit-verkh { padding: 8px 12px 6px; }
 }
 
 /* ---------- у карті сайту: гра живе в панелі «Ігри» (site/ihry/ihry.css) ---------- */
 .panel-ihor .lit { margin: 0 -16px; }
-.panel-ihor .lit-verkh { top: 57px; }
-.panel-ihor .lit-vkladky { top: 121px; }
-@media (max-width: 700px) { .panel-ihor .lit-verkh { top: 56px; } .panel-ihor .lit-vkladky { top: 114px; } }
+.panel-ihor .lit-shapka { top: 57px; }
+@media (max-width: 700px) { .panel-ihor .lit-shapka { top: 55px; } }

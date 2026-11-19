@@ -59,15 +59,23 @@ def ridkist(chastka: float) -> str:
 def chastoty_vydiv(baza: Path) -> dict:
     """Код виду колоди → (назва, кількість) серед усіх нечутливих подій з точкою (dani-edrsr/src/koloda.vyd_podii).
     Без конвеєра — частоти лише з колоди (позначка `dzherelo`)."""
+    # Модуль конвеєра теж зветься koloda (як site/hra/koloda.py) — вантажимо його за шляхом під окремим іменем.
+    shlyakh = KORIN.parent / 'dani-edrsr' / 'src' / 'koloda.py'
     try:
-        sys.path.insert(0, str(KORIN.parent / 'dani-edrsr' / 'src'))
-        import koloda as K  # noqa: E402
+        import importlib.util
+        sys.path.insert(0, str(shlyakh.parent))
+        spec = importlib.util.spec_from_file_location('koloda_konveiera', shlyakh)
+        K = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(K)
     except Exception:  # pragma: no cover — немає сусіднього репозиторію
         return {}
     n = Counter()
-    con = sqlite3.connect(baza)
-    for kod, ch, lid in con.execute('SELECT d.kod_kategorii, e.chutlyva, e.location_id FROM event e '
-                                    'JOIN document d USING(doc_id)'):
+    try:
+        con = sqlite3.connect(baza)
+        ryadky = con.execute('SELECT d.kod_kategorii, e.chutlyva, e.location_id FROM event e JOIN document d USING(doc_id)').fetchall()
+    except sqlite3.Error:   # інша схема (штучне місто тестів) — частоти з колоди
+        return {}
+    for kod, ch, lid in ryadky:
         if ch or lid is None:
             continue
         v = K.vyd_podii(kod)
@@ -77,8 +85,9 @@ def chastoty_vydiv(baza: Path) -> dict:
 
 
 def zibraty(baza: Path, koloda_shlyakh: Path, pereim: Path | None, mezhi: Path) -> dict:
+    import koloda as KH   # site/hra/koloda.py: та сама очистка колоди, що й у збирачі сайту
     dn = D.zibraty_dani(baza, pereim, mezhi)
-    koloda = json.loads(koloda_shlyakh.read_text(encoding='utf-8'))
+    koloda = KH.pidhotuvaty(json.loads(koloda_shlyakh.read_text(encoding='utf-8')))
     return zibraty_z_dani(dn, koloda, chastoty_vydiv(baza), json.loads(mezhi.read_text(encoding='utf-8')))
 
 

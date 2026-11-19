@@ -139,6 +139,32 @@ class Temp(unittest.TestCase):
         self.assertGreaterEqual(min(dni[n]['novykh'] for n in range(2, 61)), 3, 'щодня щонайменше 3 нові вулиці')
 
 
+class UKarti(unittest.TestCase):
+    """ZAVDANNYA-141, крок 4: «Літопис» — у панелі «Ігри» карти (MV-129), прогрес на пристрої, бали — спільна скарбничка."""
+
+    def test_zbyrach_kopiiuie_hru(self):
+        z = (KORIN / 'site' / 'zibraty_sait.py').read_text(encoding='utf-8')
+        for f in ("'/sait/litopys-yadro.js'", "'/sait/litopys.js'", "'litopys' / 'litopys.css'", "IHRY_DANI['litopys']"):
+            self.assertIn(f, z)
+        self.assertLess(z.index("'/sait/litopys.js'"), z.index("'/sait/ihry.js')"), 'гра — до панелі ігор')
+
+    def test_panel_ihor(self):
+        js = (KORIN / 'site' / 'ihry' / 'ihry.js').read_text(encoding='utf-8')
+        self.assertIn("data-litopys", js)
+        self.assertIn("kart('litopys'", js)
+        self.assertIn("prykhovaty: ['k-']", js, 'соти карти на час гри сховані')
+        self.assertIn('narakhuvaty(ochky)', js, 'бали — через спільну скарбничку')
+        self.assertIn('zupynytyLitopys()', js)
+
+    def test_baly_lyshe_za_zadachi_dnia_obmin_vymknenyi(self):
+        k = json.loads((KORIN / 'site' / 'ihry' / 'nalashtuvannia.json').read_text(encoding='utf-8'))
+        self.assertEqual(sorted(k['litopys_ochky']), ['rayon', 'sprava', 'vulytsi'])
+        self.assertFalse(k['obmin_uvimkneno'])
+        js = (LIT / 'litopys.js').read_text(encoding='utf-8')
+        self.assertEqual(len(re.findall(r'baly\(', js)), 3, 'бали лише у визначенні й двох місцях: задача-відповідь і 3 вулиці')
+        self.assertIn("'mv-ihry-litopys'", js, 'прогрес — у сховищі ігор (стирається «Скинути»)')
+
+
 class Mezhi(unittest.TestCase):
     def test_bez_vypadkovosti_i_bez_hroshei(self):
         for f in ('litopys-yadro.js', 'litopys.js', 'litopys-storinka.js', 'symuliatsiia.js'):

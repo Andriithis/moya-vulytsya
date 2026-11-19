@@ -1,5 +1,5 @@
 // Ігри в карті (ZAVDANNYA-117; MV-129, MV-130, MV-26): «Детектив тижня», «Вгадай, де це було», «Вулиця дня»,
-// «Кваліфікуй», бали. Граються на самій карті: панель — «в повітрі» праворуч (телефон — шторка на половину екрана),
+// «Кваліфікуй», «Літопис міста» (довга гра, ZAVDANNYA-141; сама гра — site/ihry/litopys/litopys.js), бали. Граються на самій карті: панель — «в повітрі» праворуч (телефон — шторка на половину екрана),
 // карта під нею живе. Кнопка «Ігри» — у рядку пошуку (людина сама запускає будь-яку гру будь-коли); кожна гра ще й
 // пропонує себе сама — одне тихе запрошення за відвідування (≈ 40 с або 3-й дотик), «×», не поверх відкритого.
 // Усе — на пристрої (localStorage), поки немає кабінету (ZAVDANNYA-99). Нічого не надсилає.
@@ -16,7 +16,7 @@
   var DZH = {
     spravy: panel.getAttribute('data-spravy'), koloda: panel.getAttribute('data-koloda'),
     vulytsia: panel.getAttribute('data-vulytsia'), kvalifikuy: panel.getAttribute('data-kvalifikuy'),
-    nalashtuvannia: panel.getAttribute('data-nalashtuvannia')
+    nalashtuvannia: panel.getAttribute('data-nalashtuvannia'), litopys: panel.getAttribute('data-litopys')
   };
   var MITKY = { rishennia: 'з рішення суду', vyhadka: 'вигадка', karta: 'з карти', pidkazka: 'підказка гри', dovidnyk: 'з довідника' };
   var NAZVY_DNIV = ['', 'понеділок', 'вівторок', 'середа', 'четвер', "п'ятниця", 'субота', 'неділя'];
@@ -86,14 +86,14 @@
     hovatyZaproshennia(false);
     pokazaty(gra || 'menyu');
   }
-  function zakryty() { panel.hidden = true; knopka.setAttribute('aria-expanded', 'false'); ekran.classList.remove('ihry-vidkryto'); rezhym(null); prybratyMitky(); }
+  function zakryty() { panel.hidden = true; knopka.setAttribute('aria-expanded', 'false'); ekran.classList.remove('ihry-vidkryto'); rezhym(null); prybratyMitky(); zupynytyLitopys(); }
   knopka.addEventListener('click', function () { if (panel.hidden) vidkryty(); else zakryty(); });
   panel.addEventListener('click', function (e) {
     if (panel.classList.contains('zghornuta') && e.target.closest('.i-shap') && !e.target.closest('[data-i]')) { panel.classList.remove('zghornuta'); return; }
     var t = e.target.closest('[data-i]'); if (!t) return;
     var dia = t.getAttribute('data-i');
     if (dia === 'x') zakryty();
-    else if (dia === 'nazad') { rezhym(null); prybratyMitky(); pokazaty('menyu'); }
+    else if (dia === 'nazad') { rezhym(null); prybratyMitky(); zupynytyLitopys(); pokazaty('menyu'); }
     else if (DII[dia]) DII[dia](t);
   });
   function ramka(nazva, tilo, bezNazad) {
@@ -104,8 +104,9 @@
     panel.scrollTop = 0;
   }
   function pokazaty(gra) {
+    if (gra !== 'litopys') zupynytyLitopys();
     ZARAZ = gra;
-    var f = { menyu: menyu, detektyv: detektyv, vgadai: vgadai, vulytsia: vulytsia, kvalifikuy: kvalifikuy, bali: baliEkran, nalashtuvannia: nalashtuvannia }[gra] || menyu;
+    var f = { menyu: menyu, detektyv: detektyv, vgadai: vgadai, vulytsia: vulytsia, kvalifikuy: kvalifikuy, litopys: litopys, bali: baliEkran, nalashtuvannia: nalashtuvannia }[gra] || menyu;
     Promise.resolve(K || zavantazhyty('nalashtuvannia').then(function (k) { K = k; })).then(f);
   }
 
@@ -125,10 +126,32 @@
         kart('detektyv', 'Детектив тижня', 'щодня слід на карті, у неділю — розкриття', det, !st) +
         kart('vgadai', 'Вгадай, де це було', 'опис події — ваша точка на карті', DZH.koloda ? (den.podiia ? 'подія дня зіграна' : 'подія дня чекає') : 'скоро', !DZH.koloda) +
         (DZH.vulytsia ? kart('vulytsia', 'Вулиця дня', 'одна вулиця на добу — вгадайте за 7 спроб', den.vulytsia ? 'сьогодні зіграно' : 'сьогодні не зіграно') : '') +
+        (DZH.litopys && window.MvLitopys ? kart('litopys', 'Літопис міста', 'читайте справи, відкривайте вулиці й райони — гра без кінця', stanLitopysu()) : '') +
         kart('kvalifikuy', 'Кваліфікуй', 'фабула → стаття → як вирішують суди; для студентів і курсантів', r[1] ? Y.sproby(s, 'kvalifikuy', K, c.data).bezkoshtovnykh + ' безкоштовні справи сьогодні' : 'скоро', !r[1]) +
         '</div><p class="i-prym">Справи дня однакові для всіх; очки — лише за точність. <button type="button" class="i-lnk" data-i="hra" data-gra="nalashtuvannia">Налаштування</button></p>', true);
     });
   }
+
+  // ---------- «Літопис міста» (ZAVDANNYA-141) ----------
+  // Довга гра живе в цій самій панелі й на цій самій карті: свої шари поверх сот, дотики по карті — її (вулиці, райони).
+  // Прогрес — на пристрої (mv-ihry-litopys), бали — у спільну скарбничку лише за задачі дня; обмін вимкнений (MV-138).
+  var LITOPYS = null;
+  function stanLitopysu() {
+    var s = chytaty('mv-ihry-litopys', null);
+    if (!s || !s.vulytsi) return 'почати зі свого району';
+    return s.vulytsi.length + ' ' + (s.vulytsi.length % 10 === 1 && s.vulytsi.length % 100 !== 11 ? 'вулиця' : 'вулиць') + ' у літописі · серія ' + ((s.seriia && s.seriia.dniv) || 0);
+  }
+  function litopys() {
+    if (!window.MvLitopys || !DZH.litopys) { menyu(); return; }
+    zupynytyLitopys();
+    ramka('Літопис міста', '<div class="i-litopys"></div>');
+    LITOPYS = window.MvLitopys.zapustyty({ korin: $('.i-litopys'), karta: karta(), dani: DZH.litopys, panel: panel, tost: function (t, ms) { toastDovgyi(t, ms); },
+      bali: function (ochky) { return narakhuvaty(ochky); }, ochky: K && K.litopys_ochky, prykhovaty: ['k-'], pryZmini: function () { panel.scrollTop = 0; } });
+    // Поки йде «Літопис», дотики по карті — його (вулиця чи район), картка соти не виринає поверх гри.
+    REZHYM = function (ll) { if (!LITOPYS) return false; LITOPYS.klik(ll); return true; };
+  }
+  function zupynytyLitopys() { if (LITOPYS) { LITOPYS.zupynyty(); LITOPYS = null; if (ZARAZ === 'litopys') REZHYM = null; } }
+  function toastDovgyi(t, ms) { var p = document.getElementById('pidkazka'); if (!p) return; p.textContent = t; p.classList.add('vyd'); clearTimeout(toast.t); toast.t = setTimeout(function () { p.classList.remove('vyd'); }, ms || 3200); }
 
   // ---------- «Детектив тижня» ----------
   var SPRAVA = null;

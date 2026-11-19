@@ -6,7 +6,8 @@
 //   MvLitopys.zapustyty({ korin, karta, dani, panel, tost, bali, vlasnyiKlik }) → { klik(lngLat), zupynyty() }
 //     korin — куди малювати гру; karta — карта MapLibre (може бути null); dani — адреса litopys.json;
 //     panel — елемент, що закриває карту (щоб переліт не ховав вулицю під панель); tost(t, мс) — повідомлення;
-//     bali(очки) → нараховані бали спільної скарбнички ігор (або без балів); vlasnyiKlik — гра сама слухає дотики карти.
+//     bali(очки) → нараховані бали спільної скарбнички ігор (або без балів); vlasnyiKlik — гра сама слухає дотики карти;
+//     prykhovaty — початки id шарів карти, які на час гри ховаються (у сайті — соти «k-»); ochky — очки за задачі дня.
 // Прогрес — на пристрої (localStorage «mv-ihry-litopys»: «Скинути» в налаштуваннях ігор стирає й його).
 // Для перевірки й знімків: ?zsuv=<годин> — годинник гри вперед; ?novyi=1 — почати з нуля (стерти прогрес на пристрої).
 (function (korin) {
@@ -65,13 +66,13 @@
     var svizhe = {};           // що щойно сталося — анімується один раз (вулиця, картки, район, помічник, задача)
     var taimery = [], MARKERY = [];
 
-    o.korin.innerHTML = '<div class="lit"><div class="lit-verkh">' +
+    o.korin.innerHTML = '<div class="lit"><div class="lit-shapka"><div class="lit-verkh">' +
       '<div class="lit-lich"><b data-lich="storinky">0</b><span>сторінок</span><small><span data-lich="za_sek">0</span> за секунду</small></div>' +
       '<div class="lit-lich lit-lich--mal" title="Серія днів"><b data-lich="seriia">0</b><span>серія</span></div>' +
       '<button type="button" class="lit-zvuk klavisha" data-lit="zvuk"></button></div>' +
       '<div class="lit-vkladky" role="tablist">' +
       '<button type="button" role="tab" data-v="chytaty" aria-selected="true">Читати</button><button type="button" role="tab" data-v="vulytsi" aria-selected="false">Вулиці</button>' +
-      '<button type="button" role="tab" data-v="karty" aria-selected="false">Картки</button><button type="button" role="tab" data-v="den" aria-selected="false">День</button></div>' +
+      '<button type="button" role="tab" data-v="karty" aria-selected="false">Картки</button><button type="button" role="tab" data-v="den" aria-selected="false">День</button></div></div>' +
       '<div class="lit-vmist"></div><div class="lit-tost" role="status" aria-live="polite"></div></div>';
     var EL = o.korin.querySelector('.lit');
     var VM = EL.querySelector('.lit-vmist');
@@ -190,9 +191,10 @@
     function porozhnio() { return { type: 'FeatureCollection', features: [] }; }
     var SHARY = ['lit-rayony-zakryti', 'lit-rayony-vidkryti', 'lit-rayony-mezha', 'lit-vulytsi-zakryti', 'lit-vulytsi-oreol', 'lit-vulytsi-vidkryti'];
     var znimokKarty = '';
+    var chekaie = false;
     function shary() {
       if (!karta || !zhyve) return;
-      if (!karta.isStyleLoaded()) { karta.once('idle', shary); return; }
+      if (!karta.isStyleLoaded()) { if (!chekaie) { chekaie = true; karta.once('idle', function () { chekaie = false; shary(); }); } return; }
       if (karta.getSource('lit-vulytsi')) return;
       var k = kolory();
       karta.addSource('lit-rayony', { type: 'geojson', data: porozhnio() });
@@ -210,7 +212,16 @@
       karta.addLayer({ id: 'lit-vulytsi-vidkryti', type: 'circle', source: 'lit-vulytsi', filter: ['==', ['get', 'v'], 1], paint: {
         'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, ['+', 3, ['*', 3, ['get', 'shchil']]], 14, ['+', 6, ['*', 6, ['get', 'shchil']]]], 'circle-color': k.accent, 'circle-stroke-color': k.surface, 'circle-stroke-width': 1.5 } });
       znimokKarty = '';
+      tyshaKarty(true);
       onovytyKartu();
+    }
+    // Поки йде гра, власні шари карти (у сайті — соти й стовпчики, «k-…») сховані: на карті лише літопис. Після гри — назад.
+    function tyshaKarty(tak) {
+      if (!karta || !o.prykhovaty || !karta.style) return;
+      (karta.getStyle().layers || []).forEach(function (l) {
+        if (!o.prykhovaty.some(function (p) { return l.id.indexOf(p) === 0; })) return;
+        karta.setLayoutProperty(l.id, 'visibility', tak ? 'none' : 'visible');
+      });
     }
     function prybratyShary() {
       if (!karta || !karta.style) return;
@@ -219,7 +230,8 @@
     }
     // Тема змінилась або карта перемалювала стиль (день/ніч сайту) — шари з новими кольорами.
     function pryTemi() { setTimeout(function () { if (!zhyve) return; prybratyShary(); shary(); pryts(); }, 80); }
-    function pryStyli() { if (zhyve && karta && karta.isStyleLoaded() && !karta.getSource('lit-vulytsi')) shary(); }
+    // Карта сайту міняє стиль трохи згодом після події теми (setStyle) — шари гри зникають; повертаємо, щойно стиль готовий.
+    function pryStyli() { if (zhyve && karta && karta.style && !karta.getSource('lit-vulytsi')) { shary(); pryts(); } }
     document.addEventListener('mv-tema', pryTemi);
     if (karta) karta.on('styledata', pryStyli);
     var smTema = korin.matchMedia ? korin.matchMedia('(prefers-color-scheme: dark)') : null;
@@ -611,6 +623,7 @@
       if (PRYTS) PRYTS.remove();
       MARKERY.forEach(function (m) { m.remove(); });
       prybratyShary();
+      tyshaKarty(false);
     }
     return { klik: klik, zupynyty: zupynyty, stan: function () { return S; } };
   }
