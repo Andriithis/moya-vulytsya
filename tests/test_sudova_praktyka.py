@@ -221,3 +221,34 @@ if __name__ == '__main__':
         self.assertIn('за кермом', m.group(1))
         for f in self.storinky:
             self.assertIn('не юридична допомога', f.read_text(encoding='utf-8'), f)
+
+
+class VkhodyVProdukt(unittest.TestCase):
+    """ZAVDANNYA-135, п. 4: входи на сторінки статей — сторінки вулиць, картка соти на карті, ролик «Що буває за…»."""
+
+    def test_kliuch_statti(self):
+        sys.path.insert(0, str(KORIN / 'site' / 'sait'))
+        import dani as D
+        self.assertEqual(D.kliuch_statti("ст.130 ч.1 КУпАП · керування у стані сп'яніння"), 'kupap-130')
+        self.assertEqual(D.kliuch_statti('ст.173-2 КУпАП'), 'kupap-173-2')
+        self.assertEqual(D.kliuch_statti('ст.185 ч.4 КК · крадіжка'), 'kk-185')
+        self.assertIsNone(D.kliuch_statti(''))
+
+    def test_blok_vulytsi(self):
+        from collections import Counter
+        sp = {'kupap-130': {'kodeks': 'КУпАП', 'nomer': '130', 'nazva': 'Керування в стані сп’яніння'},
+              'kk-185': {'kodeks': 'КК', 'nomer': '185', 'nazva': 'Крадіжка'}}
+        b = Z.blok_sudova_praktyka(Counter({'kupap-130': 7, 'kk-185': 2, 'kupap-51': 9}), sp)
+        self.assertIn('href="/sudova-praktyka/kupap/130/"', b)
+        self.assertNotIn('kk/185', b, 'менше 3 подій — без посилання')
+        self.assertNotIn('51', b, 'статті поза вітриною — ні')
+        self.assertEqual(Z.blok_sudova_praktyka(Counter({'kupap-130': 7}), None), '', 'без розділу — без посилань')
+        self.assertNotRegex(b, r'уникайте|будьте уважні|найімовірніше')
+
+    def test_karta_i_rolyk(self):
+        k = (KORIN / 'site' / 'sait' / 'karta.js').read_text(encoding='utf-8')
+        self.assertIn("sudova-praktyka/?q=", k)
+        self.assertNotIn("nas: '", k.split('SP_HRUPY')[1].split(';')[0], 'насильство — без посилання')
+        r = (KORIN / 'video' / 'vau' / 'stsenarii.py').read_text(encoding='utf-8')
+        self.assertIn("kudy='/sudova-praktyka/kupap/130/'", r)
+        self.assertNotIn('/sudova-praktyka/st-', r)

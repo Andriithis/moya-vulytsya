@@ -358,8 +358,24 @@ def blok_media(d: dict, slug: str, baza: str | None = None) -> str:
 {e('.'.join(reversed(d['versiia'].split('-'))))}; оновлюються з кожним випуском.</p></section>'''
 
 
+def blok_sudova_praktyka(statti_vulytsi: dict, sp_statti: dict | None) -> str:
+    """«Як суди Києва вирішують такі справи» (ZAVDANNYA-135): до 3 статей «Судової практики», за якими на вулиці ≥ 3 подій
+    за відкриті роки, — посилання на безкоштовні сторінки статей. Лише число подій і назва статті; без порад і оцінок."""
+    if not sp_statti:
+        return ''
+    ryady = sorted(((n, k) for k, n in (statti_vulytsi or {}).items() if k in sp_statti and n >= 3), key=lambda x: (-x[0], x[1]))[:3]
+    if not ryady:
+        return ''
+    li = ''.join(f'<li><a href="/sudova-praktyka/{k.replace("-", "/", 1)}/">{e(sp_statti[k]["nazva"])} — ст.{NBSP}{e(sp_statti[k]["nomer"])} '
+                 f'{e(sp_statti[k]["kodeks"])}</a><small>{podii_slovo(n)} тут</small></li>' for n, k in ryady)
+    return (f'<section class="rozdil"><h2>Як суди Києва вирішують такі справи</h2>'
+            f'<p class="rozdil__pidpys">Найчастіші статті в подіях цієї вулиці за {PERIOD_VIDKRYTYI}. На сторінці статті — чим закінчуються '
+            f'такі справи в судах Києва: частки рішень і покарань, строки. Без імен і без порад.</p>'
+            f'<ul class="spysok-vulyts">{li}</ul></section>')
+
+
 def storinka_vulytsi(dn: D.Dani, v: D.Vulytsia, pr: dict, adresa_saitu: str, susidy: list, budynky: list | None = None,
-                     media: dict | None = None, mistsia: list | None = None) -> str:
+                     media: dict | None = None, mistsia: list | None = None, sp_statti: dict | None = None) -> str:
     rayon = v.rayony.most_common(1)[0][0] if v.rayony else None
     inshi_rayony = [r for r, _ in v.rayony.most_common()[1:] if v.rayony[r] >= 3]
     vsogo = pr['vsogo']
@@ -472,6 +488,9 @@ def storinka_vulytsi(dn: D.Dani, v: D.Vulytsia, pr: dict, adresa_saitu: str, sus
         import storinky_mistsia as SM
         chastyny.append(SM.blok_mists(mistsia, 'Публічні місця біля вулиці'))
 
+    sp = blok_sudova_praktyka(pr.get('statti'), sp_statti)
+    if sp:
+        chastyny.append(sp)
     # Дії
     if media:
         chastyny.append(blok_media(media, v.slug))
@@ -960,6 +979,11 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
             mistsia_rayonu[m.rayon].append(m)
     tsentry_vulyts = {}
     kand_istorii, istorii = {}, 0
+    # «Судова практика» (ZAVDANNYA-135): які сторінки статей будуть — щоб сторінки вулиць вели лише на наявні
+    sp_statti = None
+    if sudova_praktyka:
+        import storinky_sp as SP
+        sp_statti = {f'{SP.SLUG[s["kodeks"]]}-{s["nomer"]}': s for s in SP.prochytaty(sudova_praktyka)['statti']}
     media_mists = 0
     for v in vulytsi:
         pr = D.profil_vulytsi(dn, v)
@@ -983,7 +1007,7 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
         if md:      # MV-113: файли візуалу — поруч зі сторінкою місця
             shutil.copytree(media / v.slug, vykhid / 'vulytsia' / v.slug / 'media', dirs_exist_ok=True)
             media_mists += 1
-        zapysaty(vykhid / 'vulytsia' / v.slug / 'index.html', storinka_vulytsi(dn, v, pr, adresa_saitu, susidy, b_vul, md, mistsia_vulytsi.get(v.slug)))
+        zapysaty(vykhid / 'vulytsia' / v.slug / 'index.html', storinka_vulytsi(dn, v, pr, adresa_saitu, susidy, b_vul, md, mistsia_vulytsi.get(v.slug), sp_statti))
         zapysaty_bajty(vykhid / 'vulytsia' / v.slug / 'kartynka.png', kartynka_vulytsi(v, pr['vsogo'], b_vul, kolory))
         if len(v.nedavni) >= MIN_PODII_DLYA_POSHUKU:
             adresy.append(f'/vulytsia/{v.slug}/')
