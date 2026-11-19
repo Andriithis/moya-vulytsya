@@ -292,8 +292,6 @@ class Holos129(unittest.TestCase):
             self.HS.servis()
 
     def test_kesh_i_kliuch_ne_v_fayli(self):
-        if importlib.util.find_spec('numpy') is None:
-            self.skipTest('немає numpy')
         self.os.environ['MV_HOLOS'] = 'azure'
         self.os.environ['MV_HOLOS_KLUCH'] = 'SEKRET-123'
         vyklyky = []
