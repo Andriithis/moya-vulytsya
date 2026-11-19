@@ -328,8 +328,10 @@
   // sh: {dani: GeoJSON точок {n, t}, styl_adres, t0, t1, prozorist, rozmir}. Підпис — лише число подій, ніколи не номер
   // будинку (MV-25, MV-60). Стилі — рівноправні: 'kola' (коло з числом), 'svitni' (світні точки без числа),
   // 'kiltsia' (кільце з числом). Модулі можуть дописати свої: VAU.styliAdres[імʼя] = {dodaty(ctx), onovyty(ctx)}.
-  function radiusAdres(baza) {   // радіус ∝ √n і росте з наближенням
-    return ['*', ['interpolate', ['linear'], ['zoom'], 11, 0.45, 13, 0.75, 15, 1.1, 17, 1.5], ['+', baza, ['*', 6.5, ['sqrt', ['get', 'n']]]]];
+  function radiusAdres(baza, k) {   // радіус ∝ √n і росте з наближенням (zoom — лише зовнішнім interpolate, інакше шар не малюється)
+    var r = ['+', baza, ['*', 6.5, ['sqrt', ['get', 'n']]]];
+    k = k || 1;
+    return ['interpolate', ['linear'], ['zoom'], 11, ['*', 0.5 * k, r], 13, ['*', 0.85 * k, r], 15, ['*', 1.3 * k, r], 17, ['*', 1.7 * k, r]];
   }
   function shryftZhyrnyi() {
     var f = (K.shryft || ['Noto Sans Regular']).map(function (x) { return String(x).replace('Regular', 'Bold'); });
@@ -341,8 +343,8 @@
       c.map.addLayer({ id: c.id + '-k', type: 'circle', source: c.id, paint: { 'circle-color': Kc.pk[1], 'circle-opacity': 0,
         'circle-radius': radiusAdres(12), 'circle-stroke-color': Kc.oreol, 'circle-stroke-width': 3, 'circle-stroke-opacity': 0 } }, c.pered);
       c.map.addLayer({ id: c.id + '-n', type: 'symbol', source: c.id, filter: ['>=', ['get', 'n'], c.sh.min_chyslo || 2],
-        layout: { 'text-field': ['to-string', ['get', 'n']], 'text-font': shryftZhyrnyi(), 'text-size': ['interpolate', ['linear'], ['zoom'], 11, 18, 15, 30],
-          'text-allow-overlap': true, 'symbol-sort-key': ['-', 0, ['get', 'n']] },
+        layout: { 'text-field': ['to-string', ['get', 'n']], 'text-font': shryftZhyrnyi(), 'text-size': ['interpolate', ['linear'], ['zoom'], 11, 20, 13, 26, 15, 38, 17, 46],
+          'text-allow-overlap': false, 'text-padding': 6, 'symbol-sort-key': ['-', 0, ['get', 'n']] },
         paint: { 'text-color': K.t === 'temna' ? '#0B0D1C' : '#FFFFFF', 'text-opacity': 0 } });
     },
     onovyty: function (c) {
@@ -357,8 +359,8 @@
       c.map.addLayer({ id: c.id + '-k', type: 'circle', source: c.id, paint: { 'circle-color': Kc.tlo, 'circle-opacity': 0,
         'circle-radius': radiusAdres(12), 'circle-stroke-color': Kc.pk[0], 'circle-stroke-width': 5, 'circle-stroke-opacity': 0 } }, c.pered);
       c.map.addLayer({ id: c.id + '-n', type: 'symbol', source: c.id, filter: ['>=', ['get', 'n'], c.sh.min_chyslo || 2],
-        layout: { 'text-field': ['to-string', ['get', 'n']], 'text-font': shryftZhyrnyi(), 'text-size': ['interpolate', ['linear'], ['zoom'], 11, 18, 15, 30],
-          'text-allow-overlap': true }, paint: { 'text-color': Kc.pidpys, 'text-opacity': 0 } });
+        layout: { 'text-field': ['to-string', ['get', 'n']], 'text-font': shryftZhyrnyi(), 'text-size': ['interpolate', ['linear'], ['zoom'], 11, 20, 13, 26, 15, 38, 17, 46],
+          'text-allow-overlap': false, 'text-padding': 6, 'symbol-sort-key': ['-', 0, ['get', 'n']] }, paint: { 'text-color': Kc.pidpys, 'text-opacity': 0 } });
     },
     onovyty: function (c) {
       c.map.setPaintProperty(c.id + '-k', 'circle-opacity', c.a * 0.85);
@@ -372,7 +374,7 @@
       c.map.addLayer({ id: c.id + '-g', type: 'circle', source: c.id, paint: { 'circle-color': Kc.pk[1], 'circle-opacity': 0,
         'circle-radius': radiusAdres(18), 'circle-blur': 1 } }, c.pered);
       c.map.addLayer({ id: c.id + '-k', type: 'circle', source: c.id, paint: { 'circle-color': K.t === 'temna' ? '#E9FFF6' : Kc.pk[1], 'circle-opacity': 0,
-        'circle-radius': ['*', 0.35, radiusAdres(8)] } }, c.pered);
+        'circle-radius': radiusAdres(8, 0.35) } }, c.pered);
     },
     onovyty: function (c) {
       c.map.setPaintProperty(c.id + '-g', 'circle-opacity', c.a * 0.75);
@@ -779,10 +781,12 @@
     (S.adresy || []).forEach(function (sh, i) { onovytyAdresy(i, sh); });
     var druha = null;
     if (S.druha && DRUHA) {   // поділений екран (День і ніч): друга сцена в рамці, межа рухається за доріжкою kordon
-      var yk = trek(S.druha.kordon, t, 0.5) * H;
-      DRUHA.el.style.clipPath = 'inset(' + yk + 'px 0 0 0)';
-      DRUHA.liniia.style.top = (yk - 3) + 'px';
-      DRUHA.liniia.style.opacity = yk > 2 && yk < H - 2 ? 1 : 0;
+      // os 'y' — межа горизонтальна (друга сцена знизу), 'x' — вертикальна (друга сцена праворуч)
+      var vert = S.druha.os === 'x', rozm = vert ? W : H, yk = trek(S.druha.kordon, t, 0.5) * rozm;
+      DRUHA.el.style.clipPath = vert ? 'inset(0 0 0 ' + yk + 'px)' : 'inset(' + yk + 'px 0 0 0)';
+      DRUHA.liniia.className = vert ? 'x' : '';
+      DRUHA.liniia.style[vert ? 'left' : 'top'] = (yk - 3) + 'px';
+      DRUHA.liniia.style.opacity = yk > 2 && yk < rozm - 2 ? 1 : 0;
       druha = DRUHA.el.contentWindow.kadr(t);
     }
     (S.tekst || []).forEach(function (it) { onovytyTekst(it, t); });

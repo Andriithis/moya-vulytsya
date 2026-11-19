@@ -98,8 +98,8 @@ def s01(B):
     R.muzyka('puls', drop=0.0, bpm=126)
     rng = random.Random(41)
     chasy = [t + rng.uniform(0, 0.2) for t in khronolohiia(P, -1.2, 4.9)]
-    R.tochky(P, chasy, rozmir=((0, 7), (4.9, 5), (6.0, 3), (8.4, 3), (9, 7)), yaskr=((0, 1), (5.0, 1), (6.2, 0.3), (8.4, 0.3), (9, 1)),
-             glow=0.12, tryv=0.35)
+    R.tochky(P, chasy, rozmir=((0, 10), (4.9, 7), (6.0, 4), (8.4, 4), (9, 10)), yaskr=((0, 1), (5.0, 1), (6.2, 0.35), (8.4, 0.35), (9, 1)),
+             glow=0.2, tryv=0.35)
     R.soty(P, 8, styl_sot='stovpchyky', vysota=((5.0, 0), (7.0, 1, 'oo'), (8.3, 1), (8.95, 0)), prozorist=((0, 0), (5.0, 0), (5.5, 1), (8.4, 1), (8.95, 0)),
            maks_vysota=2600, **SOTY)
     R.kam(0, KYIV, 10.0, 20, 0).kam(5.0, KYIV, 10.3, 32, -12, e='io').kam(7.8, (30.52, 50.446), 11.1, 60, -58, e='io')
@@ -134,7 +134,7 @@ def s02(B):
     R.kam(0, KYIV, 10.2, 15, 0).kam(6.0, KYIV, 10.5, 25, 10, e='l').kam(8.0, (c[0], c[1] - 0.0035), 14.6, 50, -20, e='io', luk=0.9)
     R.kam(12, (c[0], c[1] - 0.003), 14.9, 56, -50, e='l')
     blyzki = [x for x in blyzko(B.P, c, 1300) if x.id != p.id]
-    R.adresy(blyzki, khvylia(blyzki, c, 8.3, 9.6, seed=2), styl_adres='kola', prozorist=((0, 0), (8.2, 0), (8.4, 1)), min_chyslo=3)
+    R.adresy(blyzki, khvylia(blyzki, c, 8.3, 9.6, seed=2), styl_adres='kola', prozorist=((0, 0), (8.2, 0), (8.4, 1)), min_n=2, min_chyslo=3)
     R.tochky([p], [7.6], rozmir=((0, 60),), glow=0.7)
     R.tekst(0, 6.0, 'hook', 'Вгадай,\n*де це було*', y='verkh')
     R.tekst(0, 3.0, 'kartka', 'Березень, за день до 8 Березня, 15:00. Квіти продавали з рук під мостом — без документів.',
@@ -303,7 +303,7 @@ def s10(B):
     R.kam(0, (c[0], c[1] - 0.012), 12.6, 40, -15).kam(4.6, (c[0], c[1] - 0.006), 13.6, 50, -30, e='io')
     R.kam(8.0, (c[0], c[1] - 0.0022), 15.0, 58, -60, e='io', luk=0.4).kam(12, (c[0], c[1] - 0.002), 15.2, 60, -90, e='l')
     R.tekst(0, 2.0, 'hook', 'Поні.\nКонтрактова площа.\n*Дійшло до суду.*', y='verkh')
-    R.tekst(0, 2.0, 'mala', 'Найдивніша справа тижня · №3', y=420 + 110 * 3, klas='zaklyk')
+    R.tekst(0, 2.0, 'mala', 'Найдивніша справа тижня · №3', y=1450, klas='zaklyk')
     R.udar(0.02, 0.2, 14)
     R.tekst(2.1, 6.4, 'kartka', 'Січень, 16:45. На Контрактовій катали на поні — протокол: порушені правила поводження з твариною.',
             zag='Найдивніша справа тижня · №3', dz=f'Контрактова площа · рішення суду № {p.nomer_rishennia}', y='verkh')
@@ -355,12 +355,13 @@ def s03(B):
     R.muzyka('lofi', bpm=100)
     R.kam(0, KYIV, 10.5, 0, 0).kam(11, KYIV, 10.6, 0, 0, e='l')
     R.ui(0, 12, 'zavisa')
-    R.tekst(0, 2.6, 'hook', 'Кожна клітинка —\n*один день 2025-го*', y=380)
-    R.tekst(0, 12, 'kalendar', misiatsi=misiatsi, kluchi=[[0.2, 0], [4.4, 364, 'io']], akc=[ind[d1]], akc_t=4.6, y=640)
+    R.tekst(0, 2.6, 'velykyi', 'Кожна клітинка —\n*один день 2025-го*', y=380)
+    R.tekst(0, 12, 'kalendar', misiatsi=misiatsi, kluchi=[[0.2, 0], [4.4, 364, 'io']], akc=[ind[d1]], akc_t=4.6, y=700)
     for i in range(12):
         R.efekt(0.2 + i * 0.35, 'klik', h=0.9 + i * 0.04, v=0.3)
     R.S['novynky'] = [1.6, 3.0, 4.4]
-    R.tekst(2.7, 4.5, 'velykyi', 'Що яскравіше —\n*більше подій у даних*', y=380, anim='vgoru')
+    R.tekst(2.7, 4.5, 'lich', kluchi=[[0.2, 0], [4.4, sum(dni.values()), 'io']], pidpys='{f} у даних за 2025 рік', formy=FORMY, y=380)
+    R.tekst(0.6, 11, 'mala', 'Яскравіше — більше подій у даних', y=1500, klas='zaklyk')
     R.udar(4.6, 0.25, 0)
     R.tekst(4.6, 6.5, 'velykyi', f'Найбільше —\n*{d1.day} {MISIATSI_R[d1.month - 1]}*: {n1}', y=380, anim='slam')
     R.tekst(6.6, 8.5, 'velykyi', f'Друге місце —\n*{d2.day} {MISIATSI_R[d2.month - 1]}*: {n2}', y=380, anim='slam')
@@ -374,7 +375,7 @@ def s03(B):
 
 
 def s07(B):
-    """День і ніч — поділений екран: згори світла карта й події вдень (8–18), знизу темна й події вночі (22–5)."""
+    """День і ніч — поділений екран: ліворуч світла карта й події вдень (8–18), праворуч темна й події вночі (22–5)."""
     den = [p for p in B.P if p.hodyna is not None and 8 <= p.hodyna <= 18]
     nich = [p for p in B.P if p.hodyna is not None and (p.hodyna >= 22 or p.hodyna <= 5)]
     vd = Counter(p.mitka for p in den).most_common(5)
@@ -383,78 +384,81 @@ def s07(B):
     p130_n = sum(1 for p in nich if p.mitka == "п'яний за кермом")
     R = R138('07-den-i-nich', 12, tema='svitla', shar='tochky', typ='День і ніч', nazva='День і ніч: що в даних удень і вночі',
              hrupa='Місто згори', hachok='поділений екран: «День» на світлій карті · «Ніч» на темній — точки біжать одночасно',
-             meta='«вау» порівняння → карта', liniia='Безкоштовна карта', kudy='/karta/', tema_os='svitla+temna')
+             meta='«вау» порівняння → карта', liniia='Безкоштовна карта', kudy='/karta/', tema_os='svitla+temna', riven='misto')
     R.muzyka('nich', bpm=96)
     R.S['zatemnennia'] = 0          # світле затемнення лягло б і на темну половину; текст має власну тінь
     rng = random.Random(7)
-    R.kam(0, KYIV, 9.9, 0, 0).kam(12, (30.53, 50.452), 10.5, 25, -25, e='l')
+    zsuv = 0.27                     # Київ — у центрі своєї половини (270 px на z 9,45: 512-піксельні плитки)
+    R.kam(0, (KYIV[0] + zsuv, KYIV[1]), 9.45, 0, 0).kam(12, (KYIV[0] + zsuv * 0.92, KYIV[1]), 9.57, 0, 0, e='l')
     tden = [0.2 + 4.0 * rng.random() ** 0.7 for _ in den]
-    R.tochky(den, tden, rozmir=((0, 5),), yaskr=((0, 1),), glow=0.15, tryv=0.4, kiltse=False)
+    R.tochky(den, tden, rozmir=((0, 4),), yaskr=((0, 1),), glow=0.2, tryv=0.4, kiltse=False)
     R2 = R138('07-den-i-nich-druha', 12, tema='temna', shar='tochky')
+    R2.kam(0, (KYIV[0] - zsuv, KYIV[1]), 9.45, 0, 0).kam(12, (KYIV[0] - zsuv * 0.92, KYIV[1]), 9.57, 0, 0, e='l')
     tnich = [0.2 + 4.0 * rng.random() ** 0.7 for _ in nich]
-    R2.tochky(nich, tnich, rozmir=((0, 5),), yaskr=((0, 1),), glow=0.5, tryv=0.4, kiltse=False)
-    R.druha(R2, [[0, 0.5], [7.4, 0.5], [8.0, 0.5]])
+    R2.tochky(nich, tnich, rozmir=((0, 4),), yaskr=((0, 1),), glow=0.5, tryv=0.4, kiltse=False)
+    R.druha(R2, [[0, 0.5]])
+    R.S['druha']['os'] = 'x'
     R.zvuk_tochok(tden + tnich, maks=12, h0=0.8, h1=1.6, v=0.4)
-    R.tekst(0, 4.4, 'hook', '*День*', y=360)
-    R.tekst(0, 4.4, 'velykyi', '*Ніч*', y=1320, klas='na-temnomu')
-    R.tekst(0.2, 4.4, 'lich', kluchi=[[0.2, 0], [4.2, len(den), 'io']], pidpys='{f} з 8:00 до 18:59', formy=FORMY, y=520)
-    R.tekst(0.2, 4.4, 'lich', kluchi=[[0.2, 0], [4.2, len(nich), 'io']], pidpys='{f} з 22:00 до 5:59', formy=FORMY, y=1480, klas='na-temnomu')
+    R.tekst(0, 4.4, 'hook', '*День*', y=360, klas='liva')
+    R.tekst(0, 4.4, 'hook', '*Ніч*', y=360, klas='prava na-temnomu')
+    R.tekst(0.2, 4.4, 'lich', kluchi=[[0.2, 0], [4.2, len(den), 'io']], pidpys='{f}\nз 8:00 до 18:59', formy=FORMY, y=1260, klas='liva')
+    R.tekst(0.2, 4.4, 'lich', kluchi=[[0.2, 0], [4.2, len(nich), 'io']], pidpys='{f}\nз 22:00 до 5:59', formy=FORMY, y=1260, klas='prava na-temnomu')
     R.udar(4.5, 0.25, 10)
-    R.tekst(4.5, 7.4, 'velykyi', f'Удень найчастіше —\n*{vd[0][0]}*', y=360, anim='slam')
+    R.tekst(4.5, 7.4, 'velykyi', f'Найчастіше —\n*{vd[0][0]}*', y=1260, anim='slam', klas='liva')
     nich_ne_dtp = [m for m, _ in vn if m != 'ДТП'][0]
-    R.tekst(4.7, 7.4, 'velykyi', f'Уночі — ще й\n*{nich_ne_dtp}*', y=1240, anim='slam', klas='na-temnomu')
-    R.efekt(4.7, 'pop', h=1.3)
-    R.efekt(6.2, 'pop', h=1.5)
-    R.mitka(6.2, 7.4, KYIV, 'центр', styl='velyka')
+    R.tekst(5.6, 7.4, 'velykyi', f'Ще й —\n*{nich_ne_dtp}*', y=1260, anim='slam', klas='prava na-temnomu')
+    R.efekt(5.6, 'pop', h=1.3)
     R.tekst(7.5, 10.2, 'split', riady=[{'zag': 'Удень', 'n': p130_d, 'tekst': "п'яних за кермом у даних"},
                                          {'zag': 'Уночі', 'n': p130_n, 'tekst': "п'яних за кермом у даних"}], y=560)
     R.efekt(7.5, 'vzhukh')
     R.efekt(9.0, 'pop', h=1.3)
     R.S['novynky'] = [9.0]
-    R.tekst(10.3, 12, 'velykyi', 'А як на твоїй вулиці —\n*удень і вночі?*', y=360, anim='slam')
+    R.slovo(10.3, 12, 'А на твоїй вулиці?', pid='удень і вночі — на карті', klas='temne menshe')
+    R.efekt(10.3, 'udar', v=0.6)
     R.baner(10.9, 'Карта подій Києва', 'Безкоштовно · посилання в профілі')
-    R.pidpys('Згори — події з відомою годиною від 8:00 до 18:59, знизу — від 22:00 до 5:59; рішення судів Києва в нашому випуску.',
+    R.pidpys('Ліворуч — події з відомою годиною від 8:00 до 18:59, праворуч — від 22:00 до 5:59; рішення судів Києва в нашому випуску.',
              'Година — з рішення суду. Причин не стверджуємо. Карта — посилання в профілі.')
     return R
 
 
 def s09(B):
-    """Адреса зблизька (публічне місце): ТЦ «Олімпійський» — події довкола входу, адреси з числом, види стовпчиками."""
+    """Адреса зблизька (публічне місце): ТЦ «Олімпійський» — події за 250 м, види стовпчиками, точка-повтор, адреси довкола."""
     pr = [p for p in B.V.problemy() if (p['masshtab'] or {}).get('name', '') == 'ТЦ Олімпійський'][0]
-    pod = B.V.podii_problemy(pr['id'])
+    pov = B.V.podii_problemy(pr['id'])
     c = (pr['lon'], pr['lat'])
+    pod = blyzko(B.P, c, 250)
     n = len(pod)
     vydy = Counter(p.mitka for p in pod).most_common(3)
-    blyzki = blyzko(B.P, c, 700)
+    vyd_pov = Counter(p.mitka for p in pov).most_common(1)[0]
     R = R138('09-adresa-zblyzka-olimpiiskyi', 12, tema='svitla', shar='adresy', typ='Адреса зблизька',
-             nazva='Адреса зблизька: ТЦ «Олімпійський»', hrupa='Мій район', hachok=f'«{n} разів біля одного ТЦ» — камера вже біля входу',
-             meta='місце, яке знають усі → сторінка місця', liniia='Мій район', kudy='/vulytsia/velyka-vasylkivska/', publichni=['Олімпійськ'])
+             nazva='Адреса зблизька: ТЦ «Олімпійський»', hrupa='Мій район', hachok='«ТЦ «Олімпійський». Зблизька.» — камера вже біля ТЦ, точки вискакують',
+             meta='місце, яке знають усі → сторінка вулиці', liniia='Мій район', kudy='/vulytsia/velyka-vasylkivska/', publichni=['Олімпійськ'])
     R.muzyka('napruha', bpm=108)
-    R.kam(0, (c[0], c[1] - 0.0018), 16.2, 60, 30).kam(5.5, (c[0], c[1] - 0.0014), 16.5, 62, 0, e='io')
-    R.kam(9.0, (c[0], c[1] - 0.004), 14.8, 55, -30, e='io').kam(12, (c[0], c[1] - 0.0042), 14.6, 55, -45, e='l')
+    R.kam(0, (c[0], c[1] - 0.0022), 16.0, 60, 30).kam(5.5, (c[0], c[1] - 0.0018), 16.3, 62, 0, e='io')
+    R.kam(8.6, (c[0], c[1] - 0.0045), 14.6, 55, -30, e='io').kam(12, (c[0], c[1] - 0.0047), 14.5, 55, -45, e='l')
     rng = random.Random(9)
-    chasy = sorted(-0.4 + 2.2 * ((i + 1) / n) ** 0.6 + rng.uniform(0, 0.05) for i in range(n))
-    R.tochky(pod, chasy, rozmir=((0, 22), (8.6, 22), (9.4, 12)), glow=0.25)
+    chasy = sorted(-0.4 + 2.6 * ((i + 1) / n) ** 0.6 + rng.uniform(0, 0.05) for i in range(n))
+    R.tochky(pod, chasy, rozmir=((0, 18), (8.4, 18), (9.2, 9)), glow=0.25)
     R.zvuk_tochok([t for t in chasy if t > 0], maks=12, h0=1.0, h1=1.8, v=0.45)
-    inshi = [x for x in blyzki if x not in pod]
+    inshi = [x for x in blyzko(B.P, c, 800) if x not in pod]
     R.adresy(inshi, khvylia(inshi, c, 8.8, 10.2, seed=4), styl_adres='kiltsia', prozorist=((0, 0), (8.7, 0), (8.9, 1)), min_chyslo=3)
     R.mitka(0, 12, c, 'ТЦ «Олімпійський»', styl='velyka')
-    R.tekst(0, 2.6, 'hook', f'*{n} разів*\nбіля одного ТЦ', y='verkh')
+    R.tekst(0, 2.6, 'hook', 'ТЦ «Олімпійський».\n*Зблизька.*', y='verkh')
     R.udar(0.02, 0.2, 10)
-    R.tekst(2.7, 5.6, 'stovpchyky', riady=[{'tekst': v, 'n': k, 'kolir': '#31B88D' if i == 0 else '#6066C1'} for i, (v, k) in enumerate(vydy)], y=1080)
-    R.tekst(2.7, 5.6, 'velykyi', f'Найчастіше —\n*{vydy[0][0]}*', y='verkh', anim='slam')
+    R.tekst(2.7, 5.6, 'lich', kluchi=[[2.7, 0], [3.9, n, 'o']], pidpys='{f} за 250 м від ТЦ', formy=FORMY, y='verkh')
+    R.tekst(2.9, 5.6, 'stovpchyky', riady=[{'tekst': v, 'n': k, 'kolir': '#31B88D' if i == 0 else '#6066C1'} for i, (v, k) in enumerate(vydy)], y=1080)
     R.efekt(2.7, 'svish')
     R.efekt(4.2, 'pop', h=1.3)
     R.S['novynky'] = [4.2]
-    R.tekst(5.7, 8.6, 'slovo', vydy[0][0].capitalize(), pid=f'{vydy[0][1]} з {n} подій біля ТЦ', klas='fiolet', anim='zhodnoi', krok=0, y=0)
+    R.slovo(5.7, 8.6, f'{vyd_pov[1]}', pid=f'разів — {vyd_pov[0]}\nв одній точці біля ТЦ', klas='fiolet')
     R.udar(5.7, 0.25, 12)
     R.kiltse(7.2, c, '#31B88D', 320)
     R.efekt(7.2, 'pop', h=1.2)
     R.tekst(8.7, 10.8, 'velykyi', 'А довкола —\n*ще місця з подіями*', y='verkh', anim='slam')
     R.efekt(8.8, 'vzhukh')
-    R.baner(10.9, 'Сторінка місця', 'ТЦ «Олімпійський» · посилання в профілі')
-    R.pidpys('Дані: рішення судів (ЄДРСР) біля ТЦ; кола — місця поруч, число — скільки подій у даних. Лише те, що дійшло до суду.',
-             'Усі події біля ТЦ — з посиланнями на рішення: посилання в профілі.')
+    R.baner(10.9, 'Сторінка вулиці', 'Велика Васильківська · посилання в профілі')
+    R.pidpys('Дані: рішення судів (ЄДРСР) за 250 м від ТЦ; кільця — місця поруч, число — скільки подій у даних. Лише те, що дійшло до суду.',
+             'Це кількість даних, не оцінка місця. Посилання в профілі.')
     return R
 
 
@@ -514,7 +518,7 @@ def s12(B):
     R.kam(8.6, (lon, lat - 0.003), 13.6, 40, -20, e='l').kam(10.6, (lon, lat - 0.0025), 15.0, 50, -35, e='io').kam(13, (lon, lat - 0.0024), 15.2, 52, -45, e='l')
     blyzki = blyzko(P, (lon, lat), 900)
     R.adresy(blyzki, khvylia(blyzki, (lon, lat), 9.4, 10.6, seed=5), styl_adres='kola', prozorist=((0, 0), (9.3, 0), (9.5, 1)), min_chyslo=3)
-    R.ui(0, 13, 'sota', kroky=[[0, 30.30, 50.62], [1.7, 30.42, 50.54], [3.4, lon - 0.012, lat + 0.006], [5.6, lon, lat], [7.3, lon - 0.0025, lat - 0.0015], [9.8, lon + 0.002, lat + 0.0012]],
+    R.ui(0, 13, 'sota', kroky=[[0, KYIV[0] - 0.06, KYIV[1] - 0.03], [1.7, KYIV[0] + 0.09, KYIV[1] + 0.03], [3.4, lon - 0.012, lat + 0.006], [5.6, lon, lat], [7.3, lon - 0.0025, lat - 0.0015], [9.8, lon + 0.002, lat + 0.0012]],
          rozmir=150, vysota=260)
     for t in (0.0, 1.7, 3.4, 5.6, 7.3, 9.8):
         R.efekt(t, 'pop', h=1.0, v=0.6)
@@ -555,14 +559,14 @@ def s13(B):
              hrupa='Мій район', hachok='«Поділ. 5 зупинок.» — камера вже над першою', meta='серія по районах → сторінка району',
              liniia='Мій район', kudy='/rayon/podilskyi/', riven='vulytsia')
     R.muzyka('puls', bpm=112, drop=0.0)
-    R.adresy(pod, [-1] * len(pod), styl_adres='kiltsia', min_chyslo=4)
+    R.adresy(pod, [-1] * len(pod), styl_adres='kiltsia', min_n=3, min_chyslo=6)
     t = 0.0
     krok = 2.5
     for i, ((lat, lon), v) in enumerate(vybir):
         t0 = 0.6 + i * krok
         R.kam(t0 - 0.6 if i else 0, (lon, lat - 0.0018), 15.0, 55, -20 + i * 18, e='io', luk=0.6 if i else 0)
         R.kam(t0 + krok - 1.0, (lon, lat - 0.0016), 15.2, 58, -10 + i * 18, e='l')
-        top = Counter(p.mitka for p in v).most_common(1)[0][0]
+        top = ' · '.join(m for m, _ in Counter(p.mitka for p in v).most_common(2))
         R.mitka(t0, t0 + krok - 0.9, (lon, lat), v[0].vul, styl='velyka', n=f' · {len(v)}')
         R.tekst(t0, t0 + krok - 0.8, 'velykyi', f'*{i + 1}.* {top}', y=1300, anim='pop')
         R.kiltse(t0 + 0.05, (lon, lat), '#66E6BA', 240)
@@ -590,8 +594,8 @@ def s14(B):
              nazva='Вулиця тижня: Теремківська, частина 1', hrupa='Вулиця тижня', hachok='«Вулиця тижня. Частина 1: скільки» — лінія вулиці вже малюється',
              meta='серія 3 частини → сторінка вулиці', liniia='Мій будинок', kudy='/vulytsia/teremkivska/', riven='vulytsia')
     R.muzyka('lofi', bpm=98)
-    R.kam(0, (c[0], c[1] - 0.006), 14.0, 45, 60).kam(6.0, (c[0], c[1] - 0.005), 14.4, 50, 35, e='io')
-    R.kam(13, (c[0], c[1] - 0.004), 14.7, 55, 10, e='l')
+    R.kam(0, (c[0], c[1] - 0.0035), 14.6, 45, 60).kam(6.0, (c[0], c[1] - 0.003), 15.0, 52, 35, e='io')
+    R.kam(13, (c[0], c[1] - 0.0026), 15.2, 56, 10, e='l')
     R.liniia(lin, 0.0, 2.6, kolir='#4447A6', shyr=12)
     rng = random.Random(14)
     chasy = sorted(1.4 + 3.0 * ((i + 1) / n) ** 0.7 + rng.uniform(0, 0.05) for i in range(n))
@@ -634,7 +638,7 @@ def perevir_pachku(kesh=VYHID) -> list[str]:
             o = OSI_ZAPYSU[k]
             rolyky.append(({'id': k, 'tema': o['tema'], 'kamera': []}, {'id': k, 'shar': o['shar'], 'riven': o['riven']}))
             continue
-        f = [x for x in kesh.glob(f'138-{k}-*.json')]
+        f = [x for x in kesh.glob(f'138-{k}-*.json') if 'druha' not in x.name]
         if not f:
             return [f'немає сценарію {k} — спершу зібрати']
         S = json.loads(f[0].read_text(encoding='utf-8'))
