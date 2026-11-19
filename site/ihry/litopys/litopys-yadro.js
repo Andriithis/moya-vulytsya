@@ -71,7 +71,8 @@
   function rivenKarty(n) { return n > 0 ? Math.min(5, 1 + Math.floor(Math.log2(n))) : 0; }
   function bonusKart(s, vydy) {
     var b = 0;
-    Object.keys(s.karty).forEach(function (k) { var v = vydy && vydy[k]; if (v) b += (N.bonus_karty[v.ridkist] || 0) * rivenKarty(s.karty[k]); });
+    // Картки видів з потерпілими бонусу не дають (MV-165: без балів «за шкоду»).
+    Object.keys(s.karty).forEach(function (k) { var v = vydy && vydy[k]; if (v && !v.povazhna) b += (N.bonus_karty[v.ridkist] || 0) * rivenKarty(s.karty[k]); });
     return b;
   }
   // Множник читання: вулиці × картки × серія × авторитет (усе — від дій гравця, не від випадку).
@@ -179,14 +180,16 @@
 
   // Справа дня: подія колоди (із уже не відкритих гравцем вулиць — щоб і вчила, і вела на карту), питання —
   // «який це вид?» (3 варіанти) і «у якому районі?» (3 варіанти). Варіанти — теж від дати.
+  // Події з потерпілими в «Справу дня» не йдуть (MV-165): вгадування над чужою бідою — не гра.
+  function dlyaSpravy(dani, id) { var p = dani.podii[id], v = dani.vydy[p[0]]; return !!p[2] && !(v && v.povazhna); }
   function spravaDnia(data, dani) {
-    var ids = Object.keys(dani.podii).sort();
+    var ids = Object.keys(dani.podii).filter(function (id) { return dlyaSpravy(dani, id); }).sort();
     var id = vybir(ids, 'sprava:' + data);
     if (!id) return null;
     var p = dani.podii[id];
     var vul = null;
     for (var i = 0; i < dani.vulytsi.length; i++) if (dani.vulytsi[i].podii.indexOf(id) >= 0) { vul = dani.vulytsi[i]; break; }
-    var vydy = Object.keys(dani.vydy).filter(function (k) { return k !== p[0]; }).sort();
+    var vydy = Object.keys(dani.vydy).filter(function (k) { return k !== p[0] && !dani.vydy[k].povazhna; }).sort();
     var rayony = Object.keys(dani.rayony).filter(function (r) { return !vul || r !== vul.rayon; }).sort();
     function try3(pravylna, inshi, kl) {
       var a = vybir(inshi, kl + '1'); var b = vybir(inshi.filter(function (x) { return x !== a; }), kl + '2');

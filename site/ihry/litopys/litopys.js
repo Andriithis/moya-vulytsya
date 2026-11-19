@@ -221,6 +221,9 @@
   }
 
   function nazvaVydu(k) { return D.vydy[k] ? D.vydy[k].nazva : k; }
+  // Події з потерпілими (MV-165): лише вид, рік, адреса й рішення; без опису, без бонусу, без рідкості-«трофея».
+  function povazhna(k) { return !!(D.vydy[k] && D.vydy[k].povazhna); }
+  var POVAZHNO = 'Подію підтверджено рішенням суду. Подробиць про потерпілих гра не показує.';
 
   function kartkaVulytsi(v) {
     var vidkr = S.vulytsi.indexOf(v.slug) >= 0;
@@ -229,7 +232,7 @@
     if (!vidkr) {
       h += '<p class="tykho">Відкрийте вулицю — побачите її числа й події, як їх описав суд.</p>';
       if (v.podii.length) {
-        h += '<div class="tykho bez-vidstupu">Картки, які дасть вулиця (видно наперед):</div><div class="pigulky">' + v.podii.map(function (id) { var k = D.podii[id][0]; return '<span class="pigulka' + (S.karty[k] ? '' : ' pigulka--nova') + '">' + esc(nazvaVydu(k)) + (S.karty[k] ? '' : ' · нова') + '</span>'; }).join('') + '</div>';
+        h += '<div class="tykho bez-vidstupu">Що запише вулиця (видно наперед):</div><div class="pigulky">' + v.podii.map(function (id) { var k = D.podii[id][0], nova = !S.karty[k] && !povazhna(k); return '<span class="pigulka' + (nova ? ' pigulka--nova' : '') + '">' + esc(nazvaVydu(k)) + (nova ? ' · нова' : '') + '</span>'; }).join('') + '</div>';
       } else h += '<p class="tykho">Подій для гри на цій вулиці немає — лише числа.</p>';
       if (S.rayony.indexOf(v.rayon) < 0) h += '<p class="tykho">' + esc(v.rayon) + ' район ще не відкрито: новий район — за кожні ' + Y.N.rayon_kozhni + ' вулиць.</p>';
       else h += '<button class="klavisha klavisha--holovna klavisha--shyroka" data-vidkryty="' + esc(v.slug) + '"' + (S.storinky < tv ? ' disabled' : '') + '>Відкрити за ' + ch(tv) + ' ' + slovo(tv, STOR) + '</button>';
@@ -239,7 +242,7 @@
       (v.hrupa ? '<div><b class="mensh">' + esc(D.hrupyNazvy[v.hrupa] || v.hrupa) + '</b><span>найчастіше</span></div>' : '') + '</div>';
     v.podii.forEach(function (id) {
       var p = D.podii[id];
-      h += '<div class="podiia"><div class="podiia__vyd">' + esc(nazvaVydu(p[0])) + ', ' + p[1] + '</div><div>' + esc(p[2]) + '</div>' +
+      h += '<div class="podiia' + (povazhna(p[0]) ? ' podiia--povazhna' : '') + '"><div class="podiia__vyd">' + esc(nazvaVydu(p[0])) + ', ' + p[1] + '</div><div>' + (p[2] ? esc(p[2]) : POVAZHNO) + '</div>' +
         '<div class="podiia__adresa">' + esc(p[3]) + ' · <a href="' + esc(p[6]) + '" target="_blank" rel="noopener nofollow">рішення суду</a></div></div>';
     });
     h += '<p class="tykho vidstup">Числа — з відкритих даних сайту; події — з колоди гри. Усі події вулиці за 10 років з описами — у підписці «Мій район».</p>';
@@ -267,7 +270,7 @@
       var zakr = vs.filter(function (v) { return S.vulytsi.indexOf(v.slug) < 0; });
       zakr.sort(function (a, b) { return (b.podii.length > 0) - (a.podii.length > 0) || b.n - a.n; });
       zakr.slice(0, 5).forEach(function (v) {
-        var novi = v.podii.filter(function (id) { return !S.karty[D.podii[id][0]]; }).length;
+        var novi = v.podii.filter(function (id) { var k = D.podii[id][0]; return !S.karty[k] && !povazhna(k); }).length;
         h += '<div class="riadok"><div class="riadok__tekst"><div class="riadok__nazva">' + esc(v.nazva) + '</div><div class="riadok__opys">' + ch(v.n) + ' ' + slovo(v.n, PODS) + (novi ? ' · нових карток: ' + novi : v.podii.length ? '' : ' · лише числа') + '</div></div>' +
           '<button class="klavisha" data-obraty="' + esc(v.slug) + '">Дивитись</button></div>';
       });
@@ -283,11 +286,18 @@
     var ie = Object.keys(S.karty).length;
     var h = '<h2>Картки видів подій: ' + ie + ' з ' + vsi.length + '</h2><p class="tykho">Рідкість — справжня частка виду серед ' + ch(vsi.reduce(function (a, k) { return a + D.vydy[k].n; }, 0)) +
       ' подій пробного випуску, а не випадок. Що дасть вулиця, видно до відкриття. Рівень картки росте з кожною подією цього виду (1, 2, 4, 8, 16). Рідкісне — не значить страшне: лише рідше доходить до суду.</p><div class="sitka">';
+    var pov = vsi.filter(povazhna); vsi = vsi.filter(function (k) { return !povazhna(k); });
     vsi.forEach(function (k) {
       var v = D.vydy[k], n = S.karty[k] || 0, r = Y.rivenKarty(n);
       h += '<div class="vyd ' + (n ? 'vyd--ie' : 'vyd--nema') + '" data-r="' + v.ridkist + '"><div class="vyd__nazva">' + esc(n ? v.nazva : '?') + '</div>' +
         '<div class="vyd__ridkist">' + esc(D.ridkist[v.ridkist]) + ' · ' + String(v.chastka < 0.1 ? v.chastka.toFixed(2) : v.chastka.toFixed(1)).replace('.', ',') + ' %</div>' +
         '<div class="vyd__riven">' + [1, 2, 3, 4, 5].map(function (i) { return '<i class="' + (i <= r ? 'tak' : '') + '"></i>'; }).join('') + '</div></div>';
+    });
+    h += '</div><h3>Події з потерпілими</h3><p class="tykho">Записані в літопис, як їх підтвердив суд: вид, рік, адреса й рішення. Без бонусів і без рівнів — це не трофеї.</p><div class="sitka">';
+    pov.forEach(function (k) {
+      var v = D.vydy[k], n = S.karty[k] || 0;
+      h += '<div class="vyd vyd--povazhna ' + (n ? 'vyd--ie' : 'vyd--nema') + '"><div class="vyd__nazva">' + esc(n ? v.nazva : '?') + '</div>' +
+        '<div class="vyd__ridkist">' + (n ? 'у літописі: ' + n : 'ще не записано') + '</div></div>';
     });
     return h + '</div>';
   }
@@ -351,7 +361,8 @@
       if (res.ok) {
         var dn = Y.perevirytyVulytsi(S, t);
         zberehty();
-        tost(v.nazva + ' — у літописі.' + (res.novi_karty.length ? ' Нові картки: ' + res.novi_karty.map(nazvaVydu).join(', ') + '.' : '') + (res.novyi_rayon ? ' Можна відкрити новий район.' : '') + (dn ? ' Задачу дня виконано: година натхнення.' : ''), 4500);
+        var nk = res.novi_karty.filter(function (k) { return !povazhna(k); });
+        tost(v.nazva + ' — у літописі.' + (nk.length ? ' Нові картки: ' + nk.map(nazvaVydu).join(', ') + '.' : '') + (res.novyi_rayon ? ' Можна відкрити новий район.' : '') + (dn ? ' Задачу дня виконано: година натхнення.' : ''), 4500);
         malyuvaty(true);
       }
       return;

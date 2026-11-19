@@ -223,3 +223,6 @@ a { color: var(--accent); }
 .varianty .klavisha.pravylno:disabled { color: var(--ink); }
 .plashka { white-space: nowrap; }
 @media (max-width: 600px) { .mitka-prototyp { display: none; } .znak { font-size: 14px; } .shapka { gap: 6px; } .plashka small { font-size: 12px; } }
+.podiia--povazhna div:nth-child(2) { color: var(--ink-2); font-style: italic; }
+.vyd--povazhna { min-height: 64px; }
+.vyd--povazhna.vyd--ie { box-shadow: none; border-color: var(--line-strong); background: var(--surface); }

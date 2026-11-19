@@ -104,6 +104,17 @@ class Yadro(unittest.TestCase):
                  "const b=Y.vidpovisty(s,t0,'sprava','shum','dtp');return [a,b,s.natkhnennia_do-t0]")
         self.assertEqual(r, [True, None, 3600000])
 
+    def test_povazhni_bez_bonusu_i_ne_v_spravi_dnia(self):
+        dani = "const P=JSON.parse(JSON.stringify(D));P.vydy.tilesni={nazva:'Тілесні',n:5,chastka:0.5,ridkist:'ridkisna',povazhna:true};" \
+               "P.podii['4-1']=['tilesni',2025,'',' вул. Г, 4',50.4,30.5,'https://x','4'];P.vulytsi[1].podii.push('4-1');"
+        r = node(self.T0 + dani + "const s=Y.novyi(t0,'Подільський');s.karty={tilesni:16};const b=Y.bonusKart(s,P.vydy);"
+                 "const ids=new Set();for(let i=0;i<400;i++){const d=new Date(t0+i*864e5).toISOString().slice(0,10);"
+                 "const sp=Y.spravaDnia(d,P);ids.add(sp.id);if(sp.varianty_vydu.includes('tilesni'))ids.add('VARIANT');}"
+                 "return [b,[...ids].sort()]")
+        self.assertEqual(r[0], 0, 'без балів «за шкоду»')
+        self.assertNotIn('4-1', r[1])
+        self.assertNotIn('VARIANT', r[1])
+
     def test_zlamanyi_stan_ne_valyt_hru(self):
         self.assertEqual(node("return [Y.pryniaty(null,1),Y.pryniaty({v:99},1),Y.pryniaty('x',1)]"), [None, None, None])
 
@@ -136,7 +147,7 @@ class Mezhi(unittest.TestCase):
 
 
 class Henerator(unittest.TestCase):
-    def test_bez_potirpilykh_i_mv4(self):
+    def test_poterpili_povazhno_mv4_ni(self):
         koloda = {'zibrano': '2026-11-08', 'podii': [
             {'id': '1-1', 'kategoriia': 'dtp', 'vyd': 'ДТП', 'rik': 2025, 'opys_korotkyi': 'зіткнення', 'adresa': 'вул. А, 1',
              'lat': 50.4, 'lon': 30.5, 'rishennya_url': 'https://x', 'rishennya_nomer': '1'},
@@ -156,9 +167,14 @@ class Henerator(unittest.TestCase):
         with mock.patch.object(L.VD, 'podii_kolody', return_value={'a': koloda['podii']}), \
                 mock.patch.object(L.VD, 'profil', return_value=prof):
             d = L.zibraty_z_dani(Dn(), koloda, chastoty, {'Подільський': [[50.4, 30.5], [50.5, 30.5], [50.5, 30.6]]})
-        self.assertEqual(list(d['vydy']), ['dtp'])
-        self.assertEqual(list(d['podii']), ['1-1'])
-        self.assertEqual(d['vulytsi'][0][7], ['1-1'])
+        # MV-165: події з потерпілими — є (без опису, позначка «поважна»); статеві, щодо дітей, домашнє насильство — ні.
+        self.assertEqual(sorted(d['vydy']), ['dtp', 'tilesni'])
+        self.assertTrue(d['vydy']['tilesni']['povazhna'])
+        self.assertNotIn('povazhna', d['vydy']['dtp'])
+        self.assertEqual(sorted(d['podii']), ['1-1', '2-1'])
+        self.assertEqual(d['podii']['2-1'][2], '', 'без опису — без деталей про потерпілого')
+        self.assertEqual(d['podii']['2-1'][6], 'https://x', 'посилання на рішення лишається')
+        self.assertEqual(d['podii']['1-1'][2], 'зіткнення')
         self.assertEqual(d['vydy']['dtp']['chastka'], 90.0, 'частка — від усіх подій, разом із прибраними видами')
 
 
