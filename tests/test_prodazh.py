@@ -356,6 +356,7 @@ class ShablonVydavacha(unittest.TestCase):
             self.assertIn('${{ secrets.%s }}' % sekret, t)
         self.assertIn('--do-porozhnoi', t)
         self.assertIn('site/prodazh/shi_api.py', t)
+        self.assertIn('vuzkyi-', t, 'генератор бере вузький файл міста, не повний випуск (MV-159, ZAVDANNYA-137)')
         self.assertNotRegex(t, r'sk-ant-|ghp_|github_pat_')
         self.assertNotIn('schedule:', t, 'розклад — у Workers (кожні 10 хв), щоб не палити хвилини GitHub порожніми запусками')
 

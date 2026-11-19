@@ -14,7 +14,9 @@
 # Вимкнено, доки не налаштовано: змінна VYDAVACH = uvimknuto (Settings → Secrets and variables → Actions).
 #   змінна  VYDAVACH           uvimknuto
 #   змінна  MV_ADRESA_SAITU    https://<сайт> (той самий, що ADRESA_SAITU у Workers)
-#   змінна  VYPUSK             тег Release dani-edrsr з випуском, напр. vypusk-2026-11-08 (файл events-*.db у ньому)
+#   змінна  VYPUSK             тег Release dani-edrsr з випуском, напр. vypusk-2026-11-20; генератор бере з нього «вузький»
+#                              файл міста vuzkyi-<місто>-*.db.xz (лише те, що читає генератор, MV-159, ZAVDANNYA-137)
+#   змінна  MISTO              місто замовлень (типово kyiv; поки довідки лише по Києву — OSM нижче теж Києва)
 #   змінна  VYDAVACH_SHI       tak — перекази ШІ (потрібен ANTHROPIC_API_KEY); інакше — описи правилами
 #   змінна  SHI_STELIA_USD     м'яка стеля витрат ШІ на місяць, $ (типово 10; жорстка — у консолі Anthropic)
 #   секрет  MV_DANI_TOKEN      ключ лише на читання dani-edrsr (Contents: Read-only) — вписує Андрій, як для автопостингу
@@ -88,7 +90,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: _dani/vypusk.db
-          key: vypusk-${{ vars.VYPUSK }}
+          key: vypusk-${{ vars.VYPUSK }}-${{ vars.MISTO || 'kyiv' }}
 
       - name: Випуск із Release dani-edrsr (лише коли кешу немає)
         if: steps.dani.outputs.cache-hit != 'true'
@@ -96,7 +98,8 @@ jobs:
           GH_TOKEN: ${{ secrets.MV_DANI_TOKEN }}
         run: |
           mkdir -p _dani
-          gh release download "${{ vars.VYPUSK }}" -R Andriithis/dani-edrsr --pattern 'events-*.db' --output _dani/vypusk.db --clobber
+          gh release download "${{ vars.VYPUSK }}" -R Andriithis/dani-edrsr --pattern "vuzkyi-${{ vars.MISTO || 'kyiv' }}-*.db.xz" --output _dani/vypusk.db.xz --clobber
+          xz -d -f _dani/vypusk.db.xz
           ls -la _dani
 
       - name: OSM Києва з кешу (оновлюється щотижня)
