@@ -109,8 +109,11 @@ def rozibraty_vulytsiu(tekst: str, z_tekstu: bool = True) -> tuple[str, str] | N
     tekst = chystyi(tekst).strip(' ,')
     if not tekst:
         return None
-    # «С.Бандери» → «С. Бандери»
+    # «С.Бандери» → «С. Бандери»; «Ів.Пулюя» → «Ів. Пулюя» (ZAVDANNYA-150, п. 15: скорочення з 2–4 літер теж)
     tekst = re.sub(r'(?<=\b[А-ЯІЇЄҐA-Zа-яіїєґ])\.(?=[А-ЯІЇЄҐа-яіїєґ])', '. ', tekst)
+    tekst = re.sub(r'\b([А-ЯІЇЄҐ][а-яіїєґ]{1,3})\.(?=[А-ЯІЇЄҐ])', r'\1. ', tekst)
+    # «площа … в м. Києві Деміївська» — місто з тексту рішення не частина назви (ZAVDANNYA-150, п. 15)
+    tekst = re.sub(r'\s*\b(?:(?:в|у)\s+)?(?:м\.\s*)?(?:Києві|Київ|Києва)\b,?', '', tekst).strip(' ,')
     tekst = re.sub(r'(?<=\bАк)\.(?=\S)', '. ', tekst)
     # «… поблизу житлового будинку», «… у дворі будинку», «… між будинками» — не частина назви.
     tekst = re.sub(r'(\s+[а-яіїєґ]+){1,3}\s+будин\w*.*$', '', tekst)
@@ -282,6 +285,9 @@ def prochytaty_pereimenuvannia(shlyakh: Path | None) -> list[dict]:
         return [r for r in csv.DictReader(f) if r.get('stara_nazva') and r.get('nova_nazva')]
 
 
+LINIINI = {'вулиця', 'бульвар', 'проспект', 'провулок', 'шосе', 'узвіз', 'набережна', 'алея', 'дорога', 'проїзд', 'спуск', 'лінія'}
+
+
 def zvesty_nazvy(varianty: Counter, kanon: dict, pereim: list[dict]) -> tuple[dict, list, list]:
     """Кожному варіанту (тип, назва з тексту) — канонічний (тип, назва, джерело).
 
@@ -342,6 +348,13 @@ def zvesty_nazvy(varianty: Counter, kanon: dict, pereim: list[dict]) -> tuple[di
             continue
         kandydaty.sort(key=lambda x: (x[0], x[1], x[2], x[3][2]))
         naikrashchi = [c for c in kandydaty if c[:3] == kandydaty[0][:3]]
+        # ZAVDANNYA-150, п. 15: у тексті «вулиця Лесі Українки», в OSM — бульвар і площа з тим самим ім'ям. «Вулиця» в рішенні
+        # — загальне слово для лінійного об'єкта, тож обираємо єдиний лінійний (бульвар, проспект…), а не площу.
+        if typ == 'вулиця' and len({c[3] for c in naikrashchi}) > 1:
+            liniini = {c[3] for c in naikrashchi if c[3][0] in LINIINI}
+            if len(liniini) == 1:
+                naikrashchi = [c for c in naikrashchi if c[3] in liniini]
+                kandydaty = naikrashchi + [c for c in kandydaty if c not in naikrashchi]
         if len({c[3] for c in naikrashchi}) > 1:
             neodnoznachni.append(((typ, nazva), sorted({c[3] for c in naikrashchi})))
             continue
