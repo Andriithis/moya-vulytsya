@@ -205,8 +205,11 @@ def kolory_hrup() -> list[str]:
     return [c for _, c in HRUPY.values()]
 
 
-def soty(podii: list[Podiia], riven: int = 8, verkh: float = 0.12) -> dict:
-    """Соти H3 як на сайті: клас кольору 1–5 за місцем серед сот (шкала частками, MV-55), висота — лише верхнім 12 %."""
+def soty(podii: list[Podiia], riven: int = 8, verkh: float = 0.12, min_chastka: float = 0.0, min_n: int = 1) -> dict:
+    """Соти H3 як на сайті: клас кольору 1–5 за місцем серед сот (шкала частками, MV-55), висота — лише верхнім 12 %.
+
+    min_chastka, min_n — «менше сот» (MV-151): нижня частка сот і соти з кількома подіями в ролик не йдуть, інакше
+    на темній карті дрібні соти зливаються з вулицями («мурашник»). Клас кольору рахується по всіх сотах, як на сайті."""
     import h3
     lich = Counter(h3.latlng_to_cell(p.lat, p.lon, riven) for p in podii)
     if not lich:
@@ -218,6 +221,8 @@ def soty(podii: list[Podiia], riven: int = 8, verkh: float = 0.12) -> dict:
     feats = []
     for k, c in lich.items():
         chastka = sum(1 for v in poriadok if v < c) / n  # місце серед сот
+        if chastka < min_chastka or c < min_n:
+            continue
         klas = min(5, 1 + int(chastka * 5))
         kontur = [[round(lon, 6), round(lat, 6)] for lat, lon in h3.cell_to_boundary(k)]
         kontur.append(kontur[0])
