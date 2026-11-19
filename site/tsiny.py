@@ -40,6 +40,16 @@ NE_V_OFERTI = set()  # MV-164: обидва товари «Судової пра
 STROK = {'pidpyska': ' на місяць', 'rieltor': ' на місяць', 'osbb': ' на рік', 'spyurist': ' на місяць'}
 ZA_DOMOVLENISTIU = 'ціна за домовленістю'
 
+# ZAVDANNYA-150, п. 4: що дає підписка 399 — ОДИН перелік для вітрини «Мій будинок», форми замовлення (сервер) і оферти.
+# Лише те, що працює: карта підписника — сховище R2 (MV-159, `--karta-r2` / MV_KARTA_R2), «Стежу» — щомісячний лист після
+# оновлення даних (site/prodazh/lyst_stezhu.py; черга сервера, як у видавача). Без них оплату не ввімкнути (site/vyklasty.py).
+# Чого тут немає (порівняння адрес, щотижневі листи, застосунок) — не обіцяти ні на сайті, ні в оферті, ні в роликах.
+PIDPYSKA_DAIE = (
+    '1 довідка про будинок на місяць — на будь-яку адресу; додаткові — по {dodatkova}',
+    'карта підписника: адреси подій зі стислим описом і посиланням на рішення, усі роки даних',
+    '«Стежу»: ваші адреси в кабінеті й лист раз на місяць після оновлення даних — що нового в радіусі 300 м',
+)
+
 
 def suma(n: int) -> str:
     """1490 → «1 490» (нерозривний пробіл між тисячами)."""
@@ -72,6 +82,11 @@ def knopka_oplaty(href: str, napys: str, holovna: bool = False) -> str:
         return (f'<a class="{klas} knopka--skoro" href="{href}"><span>{napys}</span>'
                 f'<small class="knopka__skoro">{NAPYS_SKORO}</small></a>')
     return f'<a class="{klas}" href="{href}">{napys}</a>'
+
+
+def pidpyska_daie() -> list[str]:
+    """Перелік «що дає підписка» з цінами з цієї таблиці."""
+    return [x.format(dodatkova=tsina('dodatkova')) for x in PIDPYSKA_DAIE]
 
 
 def dozvoleni_sumy() -> set[int]:
@@ -109,6 +124,7 @@ def dlia_servera() -> dict:
         'pro': 'Зібрано з site/tsiny.py (python site/tsiny.py). Не редагувати руками.',
         'tsiny': TSINY, 'nazvy': TOVARY, 'dovidok': DOVIDOK, 'period_misiatsiv': PERIOD_MISIATSIV,
         'rezhym': REZHYM, 'na_prodazh': list(NA_PRODAZH), 'prodaietsia': list(prodaietsia()), 'sudova': list(SUDOVA),
+        'pidpyska_daie': pidpyska_daie(),
     }
 
 

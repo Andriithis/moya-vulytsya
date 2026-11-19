@@ -22,7 +22,7 @@ export function data(t) {
 export const CSP = "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; " +
   "form-action 'self' https://www.liqpay.ua; frame-ancestors 'none'; base-uri 'none'";
 
-export function storinka(title, tilo, { status = 200, zaholovky = {}, kabinet = true, css = [] } = {}) {
+export function storinka(title, tilo, { status = 200, zaholovky = {}, kabinet = true, css = [], skrypty = [] } = {}) {
   const html = `<!doctype html>
 <html lang="uk" data-koren="/">
 <head>
@@ -35,6 +35,7 @@ export function storinka(title, tilo, { status = 200, zaholovky = {}, kabinet = 
 <link rel="stylesheet" href="/sait/sait.css">
 <link rel="stylesheet" href="/prodazh/prodazh.css">
 ${css.map((c) => `<link rel="stylesheet" href="${e(c)}">`).join('')}
+${skrypty.map((c) => `<script src="${e(c)}" defer></script>`).join('')}
 </head>
 <body>
 <header class="shapka"><div class="shapka__vnutri"><a class="lohotyp" href="/"><span class="lohotyp__nazva">Моя вулиця</span></a>
@@ -80,7 +81,16 @@ const LOGO_G = `<svg class="knopka-google__logo" viewBox="0 0 18 18" width="18" 
 <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.9 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>`;
 export const knopkaGoogle = (kudy) => `<a class="knopka knopka-google" href="/kabinet/google/?kudy=${e(encodeURIComponent(kudy))}">${LOGO_G}<span>Увійти через Google</span></a>`;
 
-export function formaZamovlennia({ tovar, budynok, adresa, pomylka = '', poshtaSesii = '', google = false }) {
+// ZAVDANNYA-150, п. 6: будинок — адресою словами з підказками (як пошук «Мій будинок»; скрипт /sait/budynok-pole.js
+// заповнює підказки з /vulytsi/budynky.json). Без скриптів — просто поле: адресу однаково розбирає сервер (znaityBudynok).
+export const SKRYPT_POLIA = '/sait/budynok-pole.js';
+export function poleBudynku({ id = 'budynok', napys = 'Будинок — вулиця й номер', vvedeno = '', holovne = true } = {}) {
+  return `<label for="${id}">${napys}</label>
+<input id="${id}" name="budynok" required maxlength="200" autocomplete="off" list="${id}-pidkazky" data-budynky placeholder="Наприклад: Оболонський 16"${vvedeno ? ` value="${e(vvedeno)}"` : ''}>
+<datalist id="${id}-pidkazky"></datalist>${holovne ? '\n<p class="prymitka">Почніть писати вулицю й номер і оберіть будинок із підказок. Посилання на сторінку будинку — теж можна.</p>' : ''}`;
+}
+
+export function formaZamovlennia({ tovar, budynok, adresa, pomylka = '', poshtaSesii = '', google = false, zalyshok = 0, vvedeno = '' }) {
   const nazva = TS.nazvy[tovar];
   const potribenBudynok = !['pidpyska', 'rieltor', ...TS.sudova].includes(tovar);
   const proYurysta = tovar === 'spyurist'
@@ -89,14 +99,18 @@ export function formaZamovlennia({ tovar, budynok, adresa, pomylka = '', poshtaS
 <p class="prymitka">Це статистика минулих рішень, а не юридична допомога. Скасувати можна в кабінеті будь-коли — доступ лишиться до кінця оплаченого місяця.</p></div>` : '';
   const pro = budynok
     ? `<p>Будинок: <b>${e(adresa)}</b> (<a href="${e(budynok)}">сторінка будинку</a>).</p>`
-    : (potribenBudynok ? '<p>Вкажіть будинок: знайдіть його сторінку на сайті (<a href="/vulytsi/">покажчик вулиць</a>) і вставте посилання на неї нижче.</p>' : '');
-  // ZAVDANNYA-143: без будинку — поле для посилання на сторінку будинку (раніше тут був глухий кут: на сторінках будинків
-  // немає кнопки ОСББ); будинок однаково перевіряє сервер (perevirytyBudynok), адресу з форми не беремо.
-  const poleBudynku = potribenBudynok && !budynok
-    ? `<label for="budynok">Посилання на сторінку будинку</label>
-<input id="budynok" name="budynok" required maxlength="200" placeholder="https://…/budynok/vulytsia/1/">` : '';
+    : (potribenBudynok ? '<p>Вкажіть будинок — вулицю й номер.</p>' : '');
+  // ZAVDANNYA-143, ZAVDANNYA-150 (п. 6): без будинку — поле адреси з підказками; будинок однаково шукає й перевіряє сервер
+  // (znaityBudynok → perevirytyBudynok), адресу беремо з його сторінки, а не з форми.
+  const pole = potribenBudynok && !budynok ? poleBudynku({ vvedeno }) : '';
+  // ZAVDANNYA-150, п. 3: залишок довідок (пакет «3 довідки», підписка) — головна дія; оплата — нижче, другою.
+  const zZalyshku = zalyshok > 0 && budynok
+    ? `<div class="kartka zalyshok"><p><b>У вас є довідки без оплати: ${zalyshok}.</b> Візьміть одну на цей будинок — платити вдруге не треба.</p>
+<form class="forma" method="post" action="/kabinet/dovidka"><input type="hidden" name="budynok" value="${e(budynok)}">
+<button class="knopka knopka--holovna" type="submit">Використати залишок (${zalyshok})</button></form></div>
+<h2 class="abo-oplata">Або купити окремо</h2>` : '';
   const knopka = `<form class="forma" method="post" action="/api/zamovlennia">
-<input type="hidden" name="tovar" value="${e(tovar)}">${budynok ? `<input type="hidden" name="budynok" value="${e(budynok)}">` : ''}${poleBudynku}
+<input type="hidden" name="tovar" value="${e(tovar)}">${budynok ? `<input type="hidden" name="budynok" value="${e(budynok)}">` : ''}${pole}
 ${google ? `<div class="vkhid-google">${knopkaGoogle(`/oplata/?tovar=${tovar}${budynok ? `&budynok=${budynok}` : ''}`)}
 <p class="prymitka">Пошта підставиться сама, і довідка буде у вашому кабінеті. Або впишіть пошту нижче.</p></div>` : ''}
 <label for="poshta">Пошта — на неї прийде посилання на довідку і вхід у кабінет</label>
@@ -104,15 +118,19 @@ ${google ? `<div class="vkhid-google">${knopkaGoogle(`/oplata/?tovar=${tovar}${b
 ${pomylka ? `<p class="pomylka" role="alert">${e(pomylka)}</p>` : ''}
 <label class="pravyla"><input type="checkbox" name="zghoda" value="tak" required> Погоджуюсь з <a href="/zahlushka/oferta.html">офертою</a> і <a href="/zahlushka/polityka.html">політикою конфіденційності</a></label>
 ${GALOCHKA_ODRAZU}
-<button class="knopka knopka--holovna" type="submit">Перейти до оплати — ${tsina(tovar)}</button>
+<button class="knopka${zZalyshku ? '' : ' knopka--holovna'}" type="submit">Перейти до оплати — ${tsina(tovar)}</button>
 </form>`;
   return storinka(`${nazva} — оплата`, `<section class="zaholovok"><h1>${e(nazva)}</h1>${pro}<p class="tsina">${tsina(tovar)}</p></section>
-<section class="rozdil">${proYurysta}${SHCHO_DAIE[tovar] || ''}${knopka}
-<p class="prymitka">Посилання на довідку прийде на пошту за кілька хвилин після оплати. Номер картки ми не бачимо й не зберігаємо — оплату приймає платіжний сервіс партнера.</p></section>`);
+<section class="rozdil">${zZalyshku}${proYurysta}${SHCHO_DAIE[tovar] || ''}${knopka}
+<p class="prymitka">${TS.period_misiatsiv[tovar] ? 'Доступ відкривається одразу після оплати.' : 'Посилання на довідку прийде на пошту за кілька хвилин після оплати.'} Номер картки ми не бачимо й не зберігаємо — оплату приймає платіжний сервіс партнера.</p></section>`,
+  { skrypty: pole ? [SKRYPT_POLIA] : [] });
 }
 
 // ZAVDANNYA-143: що саме отримує людина — ОСББ і рієлтор (ціни й кількість — з таблиці цін).
+// ZAVDANNYA-150, п. 4–5: підписка — те саме, що в оферті й на вітрині (site/tsiny.py, PIDPYSKA_DAIE): лише те, що працює.
 const SHCHO_DAIE = {
+  pidpyska: `<div class="kartka"><p><b>Що дає підписка:</b></p><ul class="spysok-tekst">${TS.pidpyska_daie.map((x) => `<li>${e(x)}</li>`).join('')}</ul>
+<p class="prymitka">Довідка — не оцінка будинку й не порада, де жити. Скасувати можна в кабінеті будь-коли — доступ лишиться до кінця оплаченого місяця.</p></div>`,
   osbb: `<div class="kartka"><p><b>Що отримує правління:</b> щомісячну довідку про свій будинок — сама приходить на пошту раз на
 місяць: звернення мешканців до 1551 за останній місяць поруч зі звичайним місяцем будинку й сусідніми будинками, теми й статуси
 за рік, події з рішень судів біля будинку. Усі довідки — у кабінеті.</p>
@@ -227,10 +245,9 @@ function rozdilRieltora(p, dovidky) {
   return `<section class="rozdil" id="obiekty"><h2>Мої об'єкти</h2><div class="kartka">
 <p class="lichylnyk"><b>${p.vziato} з ${p.dovidok}</b> довідок цього місяця використано · лишилось <b>${p.zalyshok}</b> · нові ${p.dovidok} — з ${data(p.misiats_do)}</p>
 <ul class="spysok-tekst">${ryadky}</ul>
-<form class="forma" method="post" action="/kabinet/dovidka"><label for="obiekt">Новий об'єкт — посилання на сторінку будинку</label>
-<input id="obiekt" name="budynok" required maxlength="200" placeholder="https://…/budynok/vulytsia/1/">
+<form class="forma" method="post" action="/kabinet/dovidka">${poleBudynku({ id: 'obiekt', napys: 'Новий об\'єкт — вулиця й номер', holovne: false })}
 <button class="knopka knopka--holovna" type="submit">Довідка на цей будинок</button></form>
-<p class="prymitka">Понад ${p.dovidok} на місяць — ${tsina('dodatkova')} за довідку (спершу спитаємо). Сторінку будинку знайдете в <a href="/vulytsi/">покажчику вулиць</a>.</p></div></section>`;
+<p class="prymitka">Понад ${p.dovidok} на місяць — ${tsina('dodatkova')} за довідку (спершу спитаємо). Почніть писати адресу й оберіть будинок із підказок.</p></div></section>`;
 }
 
 export function kabinet({ poshta, dovidky, stezhu, pidpysky, dostupno, povidomlennia: pov = '', bali = null }) {
@@ -253,14 +270,14 @@ ${osbb}${rieltor ? rozdilRieltora(rieltor, dovidky) : ''}
 <section class="rozdil"><h2>Мої довідки</h2><div class="kartka"><ul class="spysok-tekst">${ryadky}</ul></div>
 <p class="prymitka">Можна взяти ще: ${dostupno.opys}. Довідку на будинок — кнопкою «Довідка» біля адреси нижче.</p></section>
 <section class="rozdil"><h2>Стежу</h2><div class="kartka"><ul class="spysok-tekst">${stezh}</ul>
-<form class="forma" method="post" action="/kabinet/stezhu"><label for="budynok">Адреса сторінки будинку</label>
-<input id="budynok" name="budynok" required maxlength="200" placeholder="/budynok/vulytsia/1/">
+<form class="forma" method="post" action="/kabinet/stezhu">${poleBudynku({ napys: 'Додати будинок — вулиця й номер', holovne: false })}
 <button class="knopka" type="submit">Стежити</button></form></div></section>
 <section class="rozdil"><h2>Підписка</h2><div class="kartka"><ul class="spysok-tekst">${pidp}</ul></div></section>
 ${bali ? rozdilBaliv(bali, stezhu) : ''}
 <section class="rozdil"><h2>Мої дані</h2><p class="prymitka">Зберігаємо пошту, замовлення, довідки й адреси «Стежу» — <a href="/zahlushka/polityka.html">політика конфіденційності</a>. Видалення — одразу; записи про оплату партнер зберігає для обліку без пошти.</p>
 <div class="diyi"><form method="post" action="/kabinet/vyhid"><button class="knopka" type="submit">Вийти</button></form>
-<form method="post" action="/kabinet/vydalyty"><input type="hidden" name="pidtverdzhuiu" value="tak"><button class="knopka" type="submit">Видалити мої дані</button></form></div></section>`);
+<form method="post" action="/kabinet/vydalyty"><input type="hidden" name="pidtverdzhuiu" value="tak"><button class="knopka" type="submit">Видалити мої дані</button></form></div></section>`,
+  { skrypty: [SKRYPT_POLIA] });
 }
 
 /** Бали ігор (ZAVDANNYA-123) — лише коли обмін увімкнено (OBMIN_BALIV). Разовий номер форми — захист від повторного надсилання. */
@@ -280,10 +297,12 @@ export const CSS = `/* Сервер продажу (ZAVDANNYA-99): форми в
 .forma{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;max-width:460px}
 .forma label{font-weight:600;font-size:14px;line-height:20px}
 .lichylnyk{font-variant-numeric:tabular-nums}
-.forma input[type=email],.forma input[name=budynok]{font:inherit;padding:10px 12px;border:1.5px solid var(--mezha);border-radius:var(--radius-m);background:var(--surface);color:var(--ink);box-shadow:0 3px 0 var(--bort)}
+.forma input[type=email],.forma input[name=budynok]{width:100%;box-sizing:border-box;font:inherit;padding:10px 12px;border:1.5px solid var(--mezha);border-radius:var(--radius-m);background:var(--surface);color:var(--ink);box-shadow:0 3px 0 var(--bort)}
 .forma .pravyla{font-weight:400;font-size:13px}
 .forma select{font:inherit;width:100%;min-width:0;padding:10px 12px;border:1.5px solid var(--mezha);border-radius:var(--radius-m);background:var(--surface);color:var(--ink);box-shadow:0 3px 0 var(--bort)}
 .pomylka{color:var(--vyd);font-weight:700}
+.zalyshok{margin:0 0 20px}
+.abo-oplata{font-size:18px;line-height:24px;margin:8px 0 12px}
 .tsina{font-size:34px;line-height:40px;font-weight:800;font-variant-numeric:tabular-nums}
 .v-riadok{display:inline-block;margin-left:8px}
 .vkhid-google{max-width:460px;margin:0 0 16px}

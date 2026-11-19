@@ -471,9 +471,7 @@ def vitryna_miy_budynok(adresa_saitu: str, prykl: list, kartynka: tuple | None =
             'усе з довідки', podii_zvitu(period_podii), 'рік за роком і що повторюється на вулиці',
             'порівняння зі схожими будинками, карта будинку й вулиці'],
             dzherelo='miy-budynok'),
-        kartka_tovaru('pidpyska', 'Щомісяця', [
-            '1 довідка на місяць включено', f'додаткові довідки — по {tsina("dodatkova")}',
-            'карта з адресами й подіями, сповіщення про нове біля дому'], dzherelo='miy-budynok'),
+        kartka_tovaru('pidpyska', 'Щомісяця', [e(x) for x in T.pidpyska_daie()], dzherelo='miy-budynok'),
         kartka_tovaru('rieltor', 'Для рієлтора', ['5 довідок на місяць', 'для показів і клієнтів'], dzherelo='miy-budynok'),
     ])
     pryklady = ''.join(f'<li><a href="{b["url"]}">{e(b["adresa"])}</a></li>' for b in prykl)
