@@ -141,25 +141,37 @@ class Temp(unittest.TestCase):
 
 class Mezhi(unittest.TestCase):
     def test_bez_vypadkovosti_i_bez_hroshei(self):
-        for f in ('litopys-yadro.js', 'litopys.js'):
+        for f in ('litopys-yadro.js', 'litopys.js', 'litopys-storinka.js', 'symuliatsiia.js'):
             t = (LIT / f).read_text(encoding='utf-8')
             self.assertNotIn('Math.random', t, f'{f}: нагороди без випадку (MV-155 П8)')
             self.assertNotRegex(t, r'fetch\([^)]*(oplata|kupyty|api)', f'{f}: прототип нічого не продає й не надсилає')
 
     def test_bez_zaboronenykh_sliv(self):
         zab = re.compile(r'небезпечн|безпечн|рейтинг|будьте уважн|уникайте|станеться знову', re.I)
-        for f in ('index.html', 'litopys.js', 'litopys-yadro.js'):
+        for f in ('index.html', 'litopys.js', 'litopys-yadro.js', 'litopys-storinka.js'):
             self.assertIsNone(zab.search((LIT / f).read_text(encoding='utf-8')), f)
 
     def test_bez_vbudovanykh_styliv(self):
-        for f in ('index.html', 'litopys.js'):
+        for f in ('index.html', 'litopys.js', 'litopys-storinka.js'):
             self.assertNotIn('style="', (LIT / f).read_text(encoding='utf-8'), f'{f}: політика безпеки сторінки')
 
     def test_zminni_dyzainu_yak_u_hri(self):
         hra = (KORIN / 'site' / 'hra' / 'hra.css').read_text(encoding='utf-8')
-        lit = (LIT / 'litopys.css').read_text(encoding='utf-8')
+        lit = (LIT / 'litopys-storinka.css').read_text(encoding='utf-8')
         z = lambda t: dict(re.findall(r'(--[\w-]+):\s*(#[0-9A-Fa-f]{6})', t.split('* {')[0]))
         self.assertEqual(z(lit), z(hra))
+
+    def test_hra_bez_kolioriv_poza_systemoiu(self):
+        # ZAVDANNYA-141: стилі гри (вони йдуть і в карту сайту) — лише змінні системи дизайну, жодного кольору числом.
+        css = (LIT / 'litopys.css').read_text(encoding='utf-8')
+        self.assertIsNone(re.search(r'#[0-9A-Fa-f]{3,6}\b|rgb\(', css))
+        self.assertNotRegex(css, r'gradient|blur\(', 'без градієнтів і розмиття (STYL.md)')
+
+    def test_zvuk_vymykaietsia_i_bez_failiv(self):
+        js = (LIT / 'litopys.js').read_text(encoding='utf-8')
+        self.assertIn("data-lit=\"zvuk\"", js)
+        self.assertIn('mv-ihry-litopys-zvuk', js)
+        self.assertNotRegex(js, r'\.(mp3|ogg|wav)\b', 'звук — синтез у браузері, без файлів')
 
     def test_ridkist(self):
         self.assertEqual([L.ridkist(x) for x in (51, 5, 1.6, 0.4, 0.05)],
