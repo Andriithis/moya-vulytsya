@@ -55,6 +55,12 @@ def tsina(kl: str) -> str:
     return T.tsina(kl)
 
 
+def prymitka_oplaty(yak: str) -> str:
+    """ZAVDANNYA-150, п. 2: «Оплата ще не працює» — лише в режимі «скоро» (`--oplata skoro`, MV_OPLATA). Коли продаж увімкнено,
+    рядка немає (порожньо)."""
+    return f'Оплата ще не працює. {yak} ' if T.OPLATA['rezhym'] == 'skoro' else ''
+
+
 def misiats(ym: str) -> str:
     r, m = ym.split('-')
     return f'{MISIATSI[int(m) - 1]} {r}'
@@ -269,15 +275,15 @@ def storinka_budynku(b: dict, bud: Budynky, adresa_saitu: str, susidni: list, pe
                 + (f'<span class="por__smuha"><i class="sh-{shyryna(s, maks)} por--sus"></i></span><b class="por__sus">{chyslo_m(s)}</b>'
                    if s is not None else '<span class="por__smuha"></span><b class="por__sus">—</b>')
                 + '</div>')
-        pidpys_sus = (f'Сусідні — медіана: скільки звернень цієї теми зазвичай має один будинок у радіусі {bud.r_susidy}{NBSP}м '
-                      f'(порівнювали з {chyslo(b["susidiv"])} будинками).' if sus else
+        pidpys_sus = (f'Сусідні — скільки звернень цієї теми зазвичай має один будинок у радіусі {bud.r_susidy}{NBSP}м: '
+                      f'половина з {chyslo(b["susidiv"])} сусідніх будинків має менше, половина — більше.' if sus else
                       'Сусідніх будинків зі зверненнями замало для порівняння.')
         ch.append(f'''<section class="rozdil"><h2>Скарги 1551 за 12 місяців</h2>
 <p class="rozdil__pidpys">{e(z_velykoi(period))}. Це звернення людей до гарячої лінії міста, а не перевірені факти. Масові відключення
 світла чи тепла торкаються багатьох будинків одразу. {pidpys_sus}</p>
 <div class="kartka por"><div class="por__shapka" aria-hidden="true"><span>Тема</span><span>цей будинок</span><span></span><span>сусідні</span><span></span></div>
 {"".join(ryady)}
-<table class="prykhovano"><caption>Звернення 1551 за темами</caption><thead><tr><th>Тема</th><th>Цей будинок</th><th>Сусідні (медіана)</th></tr></thead><tbody>
+<table class="prykhovano"><caption>Звернення 1551 за темами</caption><thead><tr><th>Тема</th><th>Цей будинок</th><th>Сусідні (зазвичай)</th></tr></thead><tbody>
 {"".join(f'<tr><th scope="row">{e(h)}</th><td>{n}</td><td>{chyslo_m(sus[h]) if h in sus else "—"}</td></tr>' for h, n in b['skarhy'].items())}
 </tbody></table></div>
 <p class="prymitka">Текстів звернень, дат і статусів тут немає — вони в довідці про будинок.</p></section>''')
@@ -305,7 +311,7 @@ def storinka_budynku(b: dict, bud: Budynky, adresa_saitu: str, susidni: list, pe
 події біля будинку й на вулиці коротко — прочитати за 2–3 хвилини. Повний звіт «перед купівлею» — ще й {podii_zvitu(period_podii)},
 рік за роком, що повторюється на вулиці й поруч, порівняння зі схожими будинками й карта будинку та вулиці.</p>
 {knopky_dovidky(b['url'], 'budynok', b['adresa'])}
-<p class="prymitka">Оплата ще не працює — кнопка відкриє сторінку, де можна залишити пошту. <a href="/miy-budynok/">Що входить і підписка</a>.</p></section>''')
+<p class="prymitka">{prymitka_oplaty('Кнопка відкриє сторінку, де можна залишити пошту.')}<a href="/miy-budynok/">Що входить і підписка</a>.</p></section>''')
 
     if susidni:
         ch.append('<section class="rozdil"><h2>Інші будинки вулиці</h2><ul class="spysok-vulyts spysok-bud">' + ''.join(
@@ -480,10 +486,11 @@ def vitryna_miy_budynok(adresa_saitu: str, prykl: list, kartynka: tuple | None =
 {f'<p class="prymitka">Наприклад, вулиці:</p><ul class="spysok-vulyts">{pryklady}</ul>' if pryklady else ''}</section>
 <section class="rozdil"><h2>Що можна замовити</h2><div class="tovary">{tovary}</div>
 <p class="prymitka">Довідка — не оцінка будинку й не порада, де жити. Скарги 1551 — звернення людей, не перевірені факти; події — те,
-що дійшло до суду. Оплата ще не працює: кнопка відкриє сторінку, де можна залишити пошту.</p></section>'''
+що дійшло до суду. {prymitka_oplaty('Кнопка відкриє сторінку, де можна залишити пошту.')}</p></section>'''
     return Z.storinka(
         shlyakh='/miy-budynok/', title='Що болить вашому будинку — довідка про будинок у Києві за 199 грн | Моя вулиця',
-        opys='Довідка про будинок: скарги 1551, порівняння з сусідами, події з рішень судів. 199 грн разово, 3 довідки — 449, повний звіт — 599.',
+        opys=(f'Довідка про будинок: скарги 1551, порівняння з сусідами, події з рішень судів. {T.TSINY["dovidka"]} грн разово, '
+              f'3 довідки — {T.TSINY["try"]}, повний звіт — {T.TSINY["zvit"]}.'),
         tilo=kryhty_html([('/', 'Головна'), ('', 'Мій будинок')])
         + '<section class="zaholovok"><span class="mitka">Мій будинок · для мешканців, орендарів і покупців</span>'
           f'<h1>{HASLO_BUDYNKU}</h1><p class="zaholovok__opys">{OPYS_BUDYNKU}.</p>'
@@ -527,7 +534,7 @@ def vitryna_sudova(adresa_saitu: str, kartynka: tuple | None = None) -> str:
 
 def vitryna_biznes(adresa_saitu: str, kartynka: tuple | None = None, period_podii: str = '') -> str:
     tilo = f'''<section class="rozdil"><h2>Набори й доступ</h2><div class="tovary">
-{kartka_tovaru('biznes', 'Користування базою на місяць або рік за договором — не продаж (MV-92)', [
+{kartka_tovaru('biznes', 'Користування базою на місяць або рік за договором — не продаж', [
         f'події з рішень судів з адресами й точками на карті (Київ{", " + period_podii if period_podii else ""})', 'скарги 1551 по будинках',
         'вивантаження файлом або доступ для програм', 'оновлення щомісяця'], True, dzherelo='biznes')}
 <div class="kartka tovar"><h3>Для кого</h3><ul><li>забудовники й агенції нерухомості</li><li>страхові й банки</li>

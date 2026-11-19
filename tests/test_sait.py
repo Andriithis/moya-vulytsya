@@ -466,6 +466,32 @@ class Sait(unittest.TestCase):
                 znaideno.append((str(p.relative_to(self.sait)), m.group(0)))
         self.assertEqual(znaideno, [])
 
+    def test_zavd150_bez_sluzhbovykh_sliv(self):
+        """ZAVDANNYA-150, п. 12 (AGENTS.md, розд. 4): на відкритих сторінках немає «медіана», номерів рішень, назв файлів
+        документації й «Ціну бере сервер…»; ціни в описах — лише з таблиці (599 → 299)."""
+        sluzhbovi = re.compile(r'медіан|\bMV-\d|docs/|[A-Z-]+\.md\b|Ціну бере сервер|повний звіт — 599', re.I)
+        znaideno = []
+        for p in self.nashi_storinky():
+            t = re.sub(r'<script\b[^>]*>.*?</script>|<!--.*?-->', '', p.read_text(encoding='utf-8'), flags=re.S)
+            m = sluzhbovi.search(t)
+            if m:
+                znaideno.append((str(p.relative_to(self.sait)), m.group(0)))
+        self.assertEqual(znaideno, [])
+
+    def test_zavd150_oplata_ne_pratsiuie_lyshe_skoro(self):
+        """ZAVDANNYA-150, п. 2: «Оплата ще не працює» — лише в режимі «скоро»; з увімкненою оплатою рядка немає."""
+        import storinky_mv100 as M
+        import tsiny as T
+        t = (self.sait / 'miy-budynok' / 'index.html').read_text(encoding='utf-8')
+        self.assertIn('Оплата ще не працює', t)          # збірка тестів — режим «скоро»
+        stare = T.OPLATA['rezhym']
+        try:
+            T.OPLATA['rezhym'] = 'tak'
+            self.assertEqual(M.prymitka_oplaty('Кнопка …'), '')
+            self.assertNotIn('ще не працює', M.vitryna_miy_budynok('https://mv.test', []))
+        finally:
+            T.OPLATA['rezhym'] = stare
+
     def test_failiv_menshe_mezhi_cloudflare(self):
         if self.spravzhnii and self.budynky:
             self.skipTest('зі сторінками будинків справжній випуск більший за 20 000 файлів — платний план (ZVIT-85)')

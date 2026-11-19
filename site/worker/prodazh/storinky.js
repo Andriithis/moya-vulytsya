@@ -108,7 +108,7 @@ ${GALOCHKA_ODRAZU}
 </form>`;
   return storinka(`${nazva} — оплата`, `<section class="zaholovok"><h1>${e(nazva)}</h1>${pro}<p class="tsina">${tsina(tovar)}</p></section>
 <section class="rozdil">${proYurysta}${SHCHO_DAIE[tovar] || ''}${knopka}
-<p class="prymitka">Ціну бере сервер з таблиці цін, а не з адреси сторінки. Номер картки ми не бачимо й не зберігаємо — оплату приймає платіжний сервіс партнера.</p></section>`);
+<p class="prymitka">Посилання на довідку прийде на пошту за кілька хвилин після оплати. Номер картки ми не бачимо й не зберігаємо — оплату приймає платіжний сервіс партнера.</p></section>`);
 }
 
 // ZAVDANNYA-143: що саме отримує людина — ОСББ і рієлтор (ціни й кількість — з таблиці цін).
@@ -258,7 +258,7 @@ ${osbb}${rieltor ? rozdilRieltora(rieltor, dovidky) : ''}
 <button class="knopka" type="submit">Стежити</button></form></div></section>
 <section class="rozdil"><h2>Підписка</h2><div class="kartka"><ul class="spysok-tekst">${pidp}</ul></div></section>
 ${bali ? rozdilBaliv(bali, stezhu) : ''}
-<section class="rozdil"><h2>Мої дані</h2><p class="prymitka">Зберігаємо пошту, замовлення, довідки й адреси «Стежу» (docs/PRODAZH-SERVER.md). Видалення — одразу; записи про оплату партнер зберігає для обліку без пошти.</p>
+<section class="rozdil"><h2>Мої дані</h2><p class="prymitka">Зберігаємо пошту, замовлення, довідки й адреси «Стежу» — <a href="/zahlushka/polityka.html">політика конфіденційності</a>. Видалення — одразу; записи про оплату партнер зберігає для обліку без пошти.</p>
 <div class="diyi"><form method="post" action="/kabinet/vyhid"><button class="knopka" type="submit">Вийти</button></form>
 <form method="post" action="/kabinet/vydalyty"><input type="hidden" name="pidtverdzhuiu" value="tak"><button class="knopka" type="submit">Видалити мої дані</button></form></div></section>`);
 }
