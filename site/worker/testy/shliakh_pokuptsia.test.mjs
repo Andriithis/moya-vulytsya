@@ -146,3 +146,49 @@ test('п. 5, 12: форма підписки 399 каже, що входить (
   assert.doesNotMatch(text, /Ціну бере сервер|таблиці цін|медіан|MV-\d|docs\//);
   assert.match(text, /Доступ відкривається одразу після оплати/);
 });
+
+// ---------------------------------------------------------------- п. 4: щомісячний лист «Стежу»
+const AVT = { authorization: 'Bearer vydacha-kliuch' };
+async function vnutr(env, metod, shliakh, tilo) {
+  const r = await worker.fetch(new Request(SAIT + shliakh, { method: metod, headers: { ...AVT, 'content-type': 'application/json' },
+    body: tilo ? JSON.stringify(tilo) : undefined }), env);
+  return { r, text: await r.text() };
+}
+
+test('п. 4: черга листа «Стежу» — лише дійсна підписка з адресами, без пошти; один лист на місяць; вимкнути в кабінеті', async () => {
+  const env = seredovyshche();
+  await oplatyty(env, await zamovyty(env, 'pidpyska', null, 'p@poshta.ua'));
+  await oplatyty(env, await zamovyty(env, 'try', '/budynok/zhylianska/5/', 'try@poshta.ua'));     // не підписка — листа немає
+  const kp = await uviity(env, 'p@poshta.ua');
+  const kt = await uviity(env, 'try@poshta.ua');
+  assert.match((await zapyt(env, 'GET', '/kabinet/', { kuka: kp })).text, /Раз на місяць, після оновлення даних, надсилаємо лист/);
+  await zapyt(env, 'POST', '/kabinet/stezhu', { kuka: kp, forma: { budynok: 'Оболонський 16' } });
+  await zapyt(env, 'POST', '/kabinet/stezhu', { kuka: kt, forma: { budynok: 'Жилянська 5' } });
+  assert.equal((await vnutr(env, 'GET', '/api/vnutr/stezhu?period=2026-11')).r.status, 200);
+  const bezKliucha = await worker.fetch(new Request(`${SAIT}/api/vnutr/stezhu?period=2026-11`), env);
+  assert.equal(bezKliucha.status, 401);
+  let { text } = await vnutr(env, 'GET', '/api/vnutr/stezhu?period=2026-11');
+  const ch = JSON.parse(text).pidpysnyky;
+  assert.equal(ch.length, 1, 'лише підписник');
+  assert.deepEqual(ch[0].adresy, [{ budynok: '/budynok/obolonskyi/16/', adresa: 'проспект Оболонський, 16' }]);
+  assert.doesNotMatch(text, /@/, 'пошти в черзі немає');
+  const lyst = { period: '2026-11', tema: 'Нове біля дому · 1–30 листопада', tekst: 'Моя вулиця\n\nтекст листа' };
+  assert.equal((await vnutr(env, 'POST', `/api/vnutr/lyst-stezhu/${ch[0].id}`, lyst)).r.status, 204);
+  assert.equal(env.__LYSTY.at(-1).komu, 'p@poshta.ua');
+  assert.equal(env.__LYSTY.at(-1).tema, lyst.tema);
+  assert.equal((await vnutr(env, 'POST', `/api/vnutr/lyst-stezhu/${ch[0].id}`, lyst)).r.status, 409, 'вдруге за місяць — ні');
+  assert.equal(JSON.parse((await vnutr(env, 'GET', '/api/vnutr/stezhu?period=2026-11')).text).pidpysnyky.length, 0);
+  assert.equal(JSON.parse((await vnutr(env, 'GET', '/api/vnutr/stezhu?period=2026-12')).text).pidpysnyky.length, 1, 'наступний місяць — знову');
+  // вимкнув у кабінеті — у черзі немає й надіслати не можна
+  ({ text } = await zapyt(env, 'POST', '/kabinet/stezhu/lyst', { kuka: kp, forma: { lyst: 'ni' } }));
+  assert.match(text, /більше не надсилатимемо/);
+  assert.match(text, /Надсилати лист/);
+  assert.equal(JSON.parse((await vnutr(env, 'GET', '/api/vnutr/stezhu?period=2026-12')).text).pidpysnyky.length, 0);
+  assert.equal((await vnutr(env, 'POST', `/api/vnutr/lyst-stezhu/${ch[0].id}`, { ...lyst, period: '2026-12' })).r.status, 404);
+  await zapyt(env, 'POST', '/kabinet/stezhu/lyst', { kuka: kp, forma: { lyst: 'tak' } });
+  assert.equal(JSON.parse((await vnutr(env, 'GET', '/api/vnutr/stezhu?period=2026-12')).text).pidpysnyky.length, 1);
+  // підписка скінчилась — листа немає
+  env.krok(40 * 86400);
+  assert.equal(JSON.parse((await vnutr(env, 'GET', '/api/vnutr/stezhu?period=2027-01')).text).pidpysnyky.length, 0);
+  assert.equal((await vnutr(env, 'GET', '/api/vnutr/stezhu?period=листопад')).r.status, 400);
+});

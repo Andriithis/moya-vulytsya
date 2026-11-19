@@ -749,7 +749,7 @@ class Sait(unittest.TestCase):
             roky = D.roky_danykh(con)
             con.close()
             period = f'{roky[0]}–{roky[1]}' if roky[0] != roky[1] else str(roky[0])
-            self.assertIn(f'події за {period} з описами', mb)
+            self.assertIn(f'події за {period} зі стислим описом з рішення', mb)
             self.assertIn(f'Київ, {period}', (self.sait / 'biznes' / 'index.html').read_text(encoding='utf-8'))
         for shl in ('miy-budynok', 'biznes'):
             self.assertNotIn('10 років', (self.sait / shl / 'index.html').read_text(encoding='utf-8'), shl)

@@ -250,7 +250,16 @@ function rozdilRieltora(p, dovidky) {
 <p class="prymitka">Понад ${p.dovidok} на місяць — ${tsina('dodatkova')} за довідку (спершу спитаємо). Почніть писати адресу й оберіть будинок із підказок.</p></div></section>`;
 }
 
-export function kabinet({ poshta, dovidky, stezhu, pidpysky, dostupno, povidomlennia: pov = '', bali = null }) {
+/** ZAVDANNYA-150, п. 4: «Стежу» — що з адресами робимо (лист раз на місяць для підписки) і перемикач листа. */
+function lystStezhu(lyst) {
+  if (!lyst?.pidpyska) {
+    return '<p class="prymitka">З підпискою раз на місяць, після оновлення даних, надсилаємо лист: що нового в радіусі 300\u00a0м від цих адрес.</p>';
+  }
+  return `<p class="prymitka">${lyst.vymkneno ? 'Лист «Нове біля дому» вимкнено.' : 'Раз на місяць, після оновлення даних, надсилаємо лист: що нового в радіусі 300\u00a0м від цих адрес.'}</p>
+<form class="v-riadok" method="post" action="/kabinet/stezhu/lyst"><input type="hidden" name="lyst" value="${lyst.vymkneno ? 'tak' : 'ni'}"><button class="knopka" type="submit">${lyst.vymkneno ? 'Надсилати лист' : 'Не надсилати лист'}</button></form>`;
+}
+
+export function kabinet({ poshta, dovidky, stezhu, pidpysky, dostupno, povidomlennia: pov = '', bali = null, lyst = null }) {
   const ryadky = dovidky.length ? dovidky.map((d) => `<li><b>${e(d.adresa)}</b> — ${VYD_DOVIDKY[d.rezhym] || 'довідка'}, ${data(d.stvoreno)}: ${posylannia(d)}</li>`).join('')
     : '<li>Поки немає довідок.</li>';
   const stezh = stezhu.length ? stezhu.map((s) => `<li><a href="${e(s.budynok)}">${e(s.adresa)}</a>
@@ -269,7 +278,7 @@ ${pov ? `<p class="prymitka" role="status">${e(pov)}</p>` : ''}</section>
 ${osbb}${rieltor ? rozdilRieltora(rieltor, dovidky) : ''}
 <section class="rozdil"><h2>Мої довідки</h2><div class="kartka"><ul class="spysok-tekst">${ryadky}</ul></div>
 <p class="prymitka">Можна взяти ще: ${dostupno.opys}. Довідку на будинок — кнопкою «Довідка» біля адреси нижче.</p></section>
-<section class="rozdil"><h2>Стежу</h2><div class="kartka"><ul class="spysok-tekst">${stezh}</ul>
+<section class="rozdil" id="stezhu"><h2>Стежу</h2><div class="kartka"><ul class="spysok-tekst">${stezh}</ul>${lystStezhu(lyst)}
 <form class="forma" method="post" action="/kabinet/stezhu">${poleBudynku({ napys: 'Додати будинок — вулиця й номер', holovne: false })}
 <button class="knopka" type="submit">Стежити</button></form></div></section>
 <section class="rozdil"><h2>Підписка</h2><div class="kartka"><ul class="spysok-tekst">${pidp}</ul></div></section>

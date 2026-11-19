@@ -32,6 +32,7 @@ import * as F from './formy.js';
 import * as K from './karta.js';
 import * as SP from './sudova.js';
 import * as G from './google.js';
+import * as ST from './stezhu.js';
 
 export const MARSHRUTY = ['/oplata/*', '/api/*', '/kabinet/*', '/dovidka/*', '/prodazh/*', '/pidpysnyk/*'];
 const SESIIA_S = 30 * 86400, VKHID_S = 30 * 60, LYSTIV_NA_HODYNU = 5;
@@ -262,7 +263,8 @@ async function kabinet(env, ja, povidomlennia = '') {
   const pidpysky = (await L.stanPidpysok(env, ja.id)).filter((p) => p.diie);
   for (const p of pidpysky) p.zaBali = (await L.odyn(env, 'SELECT servis FROM zamovlennia WHERE id = ?', p.zamovlennia_id))?.servis === 'bali';
   const bali = B.uvimkneno(env) ? { balans: await B.balans(env, ja.id), kurs: B.KURS, zapyt: vypadkovyi(16) } : null;
-  return S.kabinet({ poshta: ja.poshta, dovidky, stezhu, pidpysky, dostupno: d, povidomlennia, bali });
+  const lyst = { pidpyska: pidpysky.some((p) => ['pidpyska', 'rieltor'].includes(p.tovar)), vymkneno: await ST.vymknenyi(env, ja.id) };
+  return S.kabinet({ poshta: ja.poshta, dovidky, stezhu, pidpysky, dostupno: d, povidomlennia, bali, lyst });
 }
 
 async function diiaKabinetu(request, env, url, ja, dia) {
@@ -296,6 +298,10 @@ async function diiaKabinetu(request, env, url, ja, dia) {
     if (!v.ok) return kabinet(env, ja, v.chomu);
     if (v.povtor) return kabinet(env, ja, 'Цей обмін уже зроблено.');
     return kabinet(env, ja, v.dovidka ? `Обміняно: довідку на ${adresa} готуємо — посилання прийде на пошту.` : 'Обміняно: місяць підписки діє з сьогодні.');
+  }
+  if (dia === 'stezhu/lyst') {
+    await ST.peremknuty(env, ja.id, f.lyst === 'tak');
+    return kabinet(env, ja, f.lyst === 'tak' ? 'Лист «Нове біля дому» знову надсилатимемо раз на місяць.' : 'Лист «Нове біля дому» більше не надсилатимемо.');
   }
   if (dia === 'stezhu/prybraty') {
     await L.zrobyty(env, 'DELETE FROM stezhu WHERE korystuvach_id = ? AND budynok = ?', ja.id, String(f.budynok || ''));
@@ -357,6 +363,17 @@ async function vnutr(request, env, url, shliakh) {
     const html = await request.text();
     if (!html.startsWith('<!') || html.length > 30 * 1024 * 1024) return new Response('ne html', { status: 400 });
     return new Response(null, { status: (await L.dovidkaHotova(env, m[1], html, adresaSaitu(env, url))) ? 204 : 409 });
+  }
+  // ZAVDANNYA-150, п. 4: щомісячний лист «Стежу» — черга й надсилання (скрипт site/prodazh/lyst_stezhu.py)
+  if (shliakh === 'stezhu' && request.method === 'GET') {
+    const v = await ST.cherha(env, url.searchParams.get('period') || '');
+    return v ? Response.json({ pidpysnyky: v }) : new Response('period', { status: 400 });
+  }
+  m = shliakh.match(/^lyst-stezhu\/(k\d+)$/);
+  if (m && request.method === 'POST') {
+    let tilo = {};
+    try { tilo = await request.json(); } catch { tilo = {}; }
+    return new Response(null, { status: (await ST.nadislatyLyst(env, m[1], tilo)).status });
   }
   m = shliakh.match(/^pomylka\/(d[a-z2-7]+)$/);
   if (m && request.method === 'POST') return new Response(null, { status: (await L.dovidkaPomylka(env, m[1])) ? 204 : 409 });

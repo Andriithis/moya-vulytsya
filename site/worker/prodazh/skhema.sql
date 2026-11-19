@@ -177,3 +177,11 @@ CREATE TABLE IF NOT EXISTS sp_vyvantazhennia (
   n              INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (korystuvach_id, den)
 );
+
+-- ZAVDANNYA-150, п. 4: щомісячний лист «Стежу» — кому й за який період уже надіслано (повтор розсилки не шле вдруге).
+CREATE TABLE IF NOT EXISTS lysty_stezhu (
+  korystuvach_id INTEGER NOT NULL,
+  period         TEXT NOT NULL,
+  nadislano      INTEGER NOT NULL,
+  PRIMARY KEY (korystuvach_id, period)
+);
