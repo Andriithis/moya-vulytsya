@@ -95,7 +95,7 @@ MV-147…MV-153. Це **чернетки на вибір** (MV-31): нічого
 
 ## 6. Як відтворити, де що лежить
 
-- Код — `video/vau/` (README там же: `stsenarii129.py`, `zapys_saitu.py`, `holos_servis.py`), тести — `tests/test_vau.py`. PR: див. нижче.
+- Код — `video/vau/` (README там же: `stsenarii129.py`, `zapys_saitu.py`, `holos_servis.py`), тести — `tests/test_vau.py`. PR: https://github.com/Andriithis/moya-vulytsya/pull/121
 - `video/vau/zb129.sh` → `python video/vau/rushii.py video/vyhid/kesh/stsenarii/129-*.json --vykhid video/vyhid/129` →
   `python site/zibraty_sait.py <events.db> video/vyhid/sait …` → `python video/vau/zapys_saitu.py video/vyhid/sait` →
   `python video/vau/sluhaty.py video/vyhid/129/*.mp4 --stsenarii video/vyhid/kesh/stsenarii/`.
