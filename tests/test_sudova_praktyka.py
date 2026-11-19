@@ -127,7 +127,7 @@ class SudovaPraktykaTests(unittest.TestCase):
                 self.assertEqual(re.findall(r'<td[^>]*>[^<]*\d', tabl), [], f)
             self.assertNotIn('sp-dani', t)
         t = self.st('kupap/130') if not self.spravzhnie else self.storinky[1].read_text(encoding='utf-8')
-        self.assertIn('/oplata/?tovar=spdovidka&amp;dzherelo=sp-', t)
+        self.assertRegex(t, r'/oplata/\?tovar=spdovidka&amp;stattia=(kupap|kk)-[0-9-]+&amp;dzherelo=sp-')
         self.assertIn('/oplata/?tovar=spyurist&amp;dzherelo=sp-', t)
         self.assertIn('199 грн', t)
         self.assertIn('490 грн на місяць', t)

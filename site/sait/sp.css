@@ -30,3 +30,10 @@
 .sp-pidzaholovok { margin: 8px 0 0; font-size: 17px; font-weight: 700; }
 .sp-filtry { display: flex; }
 .sp-filtry--zamk select { opacity: .6; cursor: not-allowed; }
+/* ZAVDANNYA-135: застереження й пошук у покажчику */
+.sp-zast { max-width: 760px; margin: 8px 0 20px; padding: 12px 16px; border: 1.5px solid var(--accent); border-radius: var(--radius-m);
+  background: var(--surface); color: var(--ink-2); font-size: 15px; }
+.sp-poshuk__pole { display: flex; flex-direction: column; gap: 6px; max-width: 560px; font-size: 14px; font-weight: 600; color: var(--muted); }
+.sp-poshuk__pole input { font: inherit; font-size: 17px; color: var(--ink); background: var(--surface); border: 1.5px solid var(--mezha);
+  border-radius: var(--radius-m); box-shadow: 0 3px 0 var(--bort); padding: 10px 14px; }
+.sp-stattia[hidden], .sp-kodeks[hidden] { display: none; }
