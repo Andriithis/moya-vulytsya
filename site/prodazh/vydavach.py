@@ -8,6 +8,8 @@
 
   VYDACHA_KLIUCH=… ZVIT_DB=… ZVIT_SKARGY=… ZVIT_OSM=… \\
   python site/prodazh/vydavach.py --server https://<сайт> --dani-edrsr ../dani-edrsr [--raz] [--pauza 20] [--shi]
+  python site/prodazh/vydavach.py --server https://<сайт> --do-porozhnoi --maks-khvylyn 40 …   # запуск GitHub Actions
+                                                       (шаблон site/prodazh/github/vydavach.yml, ZAVDANNYA-133)
 
 Ключ видавача — лише змінна середовища VYDACHA_KLIUCH (той самий, що секрет Workers). Видавач не бачить пошти покупців,
 сум і платежів — лише номер довідки, адресу будинку й режим.
@@ -76,6 +78,9 @@ def main(argv=None) -> int:
     ap.add_argument('--raz', action='store_true', help='один обхід черги і вихід (для перевірки або планувальника)')
     ap.add_argument('--pauza', type=int, default=20, help='секунд між перевірками порожньої черги')
     ap.add_argument('--shi', action='store_true', help='перекази ШІ в довідці (генератор --shi; змінна ZVIT_SHI_KOMANDA)')
+    ap.add_argument('--do-porozhnoi', action='store_true',
+                    help='брати, доки черга не спорожніє, і вийти (GitHub Actions: один запуск забирає всю чергу)')
+    ap.add_argument('--maks-khvylyn', type=float, default=40, help='з --do-porozhnoi: не брати нових після стількох хвилин')
     a = ap.parse_args(argv)
     kliuch = os.environ.get('VYDACHA_KLIUCH')
     if not kliuch:
@@ -83,14 +88,26 @@ def main(argv=None) -> int:
     generator = a.generator or a.dani_edrsr / 'src' / 'zvit' / 'zibraty.py'
     if not generator.exists():
         ap.error(f'немає генератора: {generator}')
+    pochatok, vsogo, zbii = time.time(), 0, 0
     while True:
         try:
             vziato = odyn_obkhid(a.server, kliuch, generator, a.shi)
+            zbii = 0
         except OSError as err:   # мережа, сервер недоступний — спробувати згодом
             print(f'сервер не відповів: {err}', flush=True)
-            vziato = 0
+            vziato, zbii = 0, zbii + 1
+        vsogo += vziato
         if a.raz:
             return 0
+        if a.do_porozhnoi:
+            # Черга порожня (або сервер тричі поспіль не відповів, або вийшов час) — вихід; недороблене підхопить
+            # наступний запуск: сервер штовхає GitHub після кожної оплати, а розклад Workers — кожні 10 хв.
+            if (not vziato and zbii == 0) or zbii >= 3 or time.time() - pochatok > a.maks_khvylyn * 60:
+                print(f'видано за запуск: {vsogo}', flush=True)
+                return 0 if zbii < 3 else 1
+            if not vziato:
+                time.sleep(min(a.pauza, 10))
+            continue
         if not vziato:
             time.sleep(a.pauza)
 

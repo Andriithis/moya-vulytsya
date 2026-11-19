@@ -1,4 +1,15 @@
-"""Перевірка форми заглушки двічі на добу (ZAVDANNYA-02, п. 10; MV-8).
+"""Перевірка форми заглушки двічі на добу (ZAVDANNYA-02, п. 10; MV-8; з ZAVDANNYA-133 — база Cloudflare D1, MV-157).
+
+ГОЛОВНИЙ ШЛЯХ — D1 (`perevirka_d1`): форми сайту пишуться в базу Cloudflare D1 через сам сайт (`/api/forma/…`, скрипт
+Workers). Перевірка:
+  1. Додає тестову заявку й подію тим самим шляхом, що й сторінка (POST /api/forma/<таблиця>, заголовок Origin сайту),
+     канал «perevirka».
+  2. Без ключа партнера вивантаження не віддається (401), а сама адреса форми нічого не читає.
+  3. З ключем партнера (MV_ADMIN_KLIUCH — той самий, що секрет ADMIN_KLIUCH у Workers) тестові рядки є у вивантаженні.
+  4. Прибирає їх (POST /api/admin/perevirka — лише канал «perevirka») і перевіряє, що нічого не лишилось.
+  Змінні: MV_ADRESA_SAITU (https://<сайт>), MV_ADMIN_KLIUCH (секрет).
+
+ЗАПАСНИЙ ШЛЯХ — Supabase (`perevirka`, як було до MV-157), якщо задано MV_SUPABASE_SEKRETNYI_KLYUCH і не задано MV_ADMIN_KLIUCH:
 
 Що робить, по черзі (будь-який збій — код виходу 1, тобто червоний запуск):
   1. Додає тестову заявку і тестову подію тим самим шляхом, що й сторінка:
@@ -114,10 +125,85 @@ def perevirka(url: str, publichnyi: str, sekretnyi: str, vyvid=print) -> None:
         vyvid(f'тестові рядки з {tablytsya} видалено')
 
 
+# ---------------------------------------------------------------- D1 (MV-157)
+
+def zapyt_sait(metod: str, adresa: str, tilo=None, kliuch: str | None = None, origin: str | None = None):
+    z = {'Accept': '*/*', 'User-Agent': 'moya-vulytsya-perevirka-formy'}
+    dani = None
+    if tilo is not None:
+        dani = json.dumps(tilo).encode('utf-8')
+        z['Content-Type'] = 'application/json'
+    if kliuch:
+        z['Authorization'] = 'Bearer ' + kliuch
+    if origin:
+        z['Origin'] = origin
+    r = urllib.request.Request(adresa, data=dani if dani is not None else (b'' if metod == 'POST' else None), method=metod, headers=z)
+    try:
+        with urllib.request.urlopen(r, timeout=CHAS_ODIKUVANNYA) as v:
+            return v.status, v.read().decode('utf-8-sig', 'replace')
+    except urllib.error.HTTPError as e:
+        return e.code, e.read().decode('utf-8', 'replace')[:300]
+    except (urllib.error.URLError, TimeoutError, OSError) as e:
+        raise Zbii(f'{metod} {adresa}: немає зв\'язку з сайтом ({e})') from e
+
+
+def ryadky_perevirky(csv_tekst: str) -> int:
+    return sum(1 for r in csv_tekst.splitlines()[1:] if f',{KANAL},' in f',{r},' or r.endswith(f',{KANAL}'))
+
+
+def perevirka_d1(sait: str, admin_kliuch: str, vyvid=print) -> None:
+    sait = sait.rstrip('/')
+    origin = sait
+    zayavka = {'shcho': 'povidomyty', 'misto': 'Перевірка', 'adresa': None, 'kontakt': 'perevirka-formy', 'zghoda': True,
+               'kanal': KANAL}
+    podiya = {'nazva': 'pryishly', 'kanal': KANAL}
+
+    # 1. Додати — як сторінка.
+    for tablytsya, ryadok in (('zayavka', zayavka), ('podiya', podiya)):
+        kod, vidp = zapyt_sait('POST', f'{sait}/api/forma/{tablytsya}', ryadok, origin=origin)
+        if kod not in (200, 201, 204):
+            raise Zbii(f'Сторінка не змогла б додати рядок у {tablytsya}: {kod} {vidp}')
+        vyvid(f'додано тестовий рядок у {tablytsya}')
+
+    # 2. Без ключа — нічого не прочитати.
+    for tablytsya in ('zayavka', 'podiya'):
+        kod, vidp = zapyt_sait('GET', f'{sait}/api/admin/vyvantazhennia/{tablytsya}')
+        if kod == 200:
+            raise Zbii(f'ВИТІК: вивантаження {tablytsya} віддається без ключа. Негайно перевірте сайт.')
+        kod, vidp = zapyt_sait('GET', f'{sait}/api/forma/{tablytsya}')
+        if kod == 200 and 'perevirka' in vidp:
+            raise Zbii(f'ВИТІК: адреса форми {tablytsya} віддає записи.')
+        vyvid(f'без ключа {tablytsya} не читається ({kod})')
+
+    # 3. З ключем партнера рядки є.
+    for tablytsya in ('zayavka', 'podiya'):
+        kod, vidp = zapyt_sait('GET', f'{sait}/api/admin/vyvantazhennia/{tablytsya}', kliuch=admin_kliuch)
+        if kod != 200 or not ryadky_perevirky(vidp):
+            raise Zbii(f'Тестового рядка в {tablytsya} немає: {kod} {vidp[:200]}')
+        vyvid(f'тестовий рядок у {tablytsya} знайдено')
+
+    # 4. Прибрати й переконатися.
+    kod, vidp = zapyt_sait('POST', f'{sait}/api/admin/perevirka', kliuch=admin_kliuch)
+    if kod != 200:
+        raise Zbii(f'Не вдалося прибрати тестові рядки: {kod} {vidp}')
+    for tablytsya in ('zayavka', 'podiya'):
+        kod, vidp = zapyt_sait('GET', f'{sait}/api/admin/vyvantazhennia/{tablytsya}', kliuch=admin_kliuch)
+        if kod != 200 or ryadky_perevirky(vidp):
+            raise Zbii(f'Після прибирання в {tablytsya} лишилися тестові рядки: {kod}')
+        vyvid(f'тестові рядки з {tablytsya} прибрано')
+
+
 def main() -> int:
     pochatok = time.monotonic()
     try:
         sait = os.environ.get('MV_ADRESA_SAITU', '').strip()
+        admin = os.environ.get('MV_ADMIN_KLIUCH', '').strip()
+        if admin:
+            if not sait:
+                raise Zbii('Задано MV_ADMIN_KLIUCH, але не задано MV_ADRESA_SAITU.')
+            perevirka_d1(sait, admin)
+            print(f'Форма працює (D1). Час перевірки: {time.monotonic() - pochatok:.1f} с')
+            return 0
         if sait:
             url, publichnyi = z_saitu(sait)
         else:
