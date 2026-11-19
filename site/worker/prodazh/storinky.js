@@ -70,7 +70,15 @@ export const nemaie = () => povidomlennia('Сторінки немає', 'Так
 export const NAPYS_ODRAZU = 'Прошу надіслати одразу; після надсилання відмовитися не можна';
 export const GALOCHKA_ODRAZU = `<label class="pravyla"><input type="checkbox" name="odrazu" value="tak" required> ${NAPYS_ODRAZU}</label>`;
 
-export function formaZamovlennia({ tovar, budynok, adresa, pomylka = '' }) {
+// Вхід через Google (ZAVDANNYA-142): кнопка-посилання, без скриптів. Логотип «G» — за правилами оформлення кнопок Google.
+const LOGO_G = `<svg class="knopka-google__logo" viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">
+<path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/>
+<path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z"/>
+<path fill="#FBBC05" d="M3.97 10.72A5.4 5.4 0 0 1 3.68 9c0-.6.1-1.18.29-1.72V4.95H.96A9 9 0 0 0 0 9c0 1.45.35 2.83.96 4.05l3.01-2.33z"/>
+<path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.9 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>`;
+export const knopkaGoogle = (kudy) => `<a class="knopka knopka-google" href="/kabinet/google/?kudy=${e(encodeURIComponent(kudy))}">${LOGO_G}<span>Увійти через Google</span></a>`;
+
+export function formaZamovlennia({ tovar, budynok, adresa, pomylka = '', poshtaSesii = '', google = false }) {
   const nazva = TS.nazvy[tovar];
   const potribenBudynok = !['pidpyska', 'rieltor', ...TS.sudova].includes(tovar);
   const proYurysta = tovar === 'spyurist'
@@ -83,8 +91,10 @@ export function formaZamovlennia({ tovar, budynok, adresa, pomylka = '' }) {
   const knopka = (!potribenBudynok || budynok)
     ? `<form class="forma" method="post" action="/api/zamovlennia">
 <input type="hidden" name="tovar" value="${e(tovar)}">${budynok ? `<input type="hidden" name="budynok" value="${e(budynok)}">` : ''}
+${google ? `<div class="vkhid-google">${knopkaGoogle(`/oplata/?tovar=${tovar}${budynok ? `&budynok=${budynok}` : ''}`)}
+<p class="prymitka">Пошта підставиться сама, і довідка буде у вашому кабінеті. Або впишіть пошту нижче.</p></div>` : ''}
 <label for="poshta">Пошта — на неї прийде посилання на довідку і вхід у кабінет</label>
-<input id="poshta" name="poshta" type="email" autocomplete="email" required maxlength="254" placeholder="name@poshta.ua">
+<input id="poshta" name="poshta" type="email" autocomplete="email" required maxlength="254" placeholder="name@poshta.ua"${poshtaSesii ? ` value="${e(poshtaSesii)}"` : ''}>
 ${pomylka ? `<p class="pomylka" role="alert">${e(pomylka)}</p>` : ''}
 <label class="pravyla"><input type="checkbox" name="zghoda" value="tak" required> Погоджуюсь з <a href="/zahlushka/oferta.html">офертою</a> і <a href="/zahlushka/polityka.html">політикою конфіденційності</a></label>
 ${GALOCHKA_ODRAZU}
@@ -153,14 +163,16 @@ export const skoroDyakuiemo = () => povidomlennia('Дякуємо!', 'Запис
 
 // ---------------------------------------------------------------- кабінет
 
-export function vkhid(povidomlennia_ = '') {
+export function vkhid(povidomlennia_ = '', google = false, status = 200) {
   return storinka('Вхід у кабінет', `<section class="zaholovok"><h1>Кабінет</h1>
-<p>Без пароля: надішлемо на пошту посилання для входу. Воно діє 30 хвилин і лише один раз.</p></section>
-<section class="rozdil"><form class="forma" method="post" action="/kabinet/vkhid">
+<p>Без пароля: ${google ? 'увійдіть через Google або ' : ''}надішлемо на пошту посилання для входу. Воно діє 30 хвилин і лише один раз.</p></section>
+<section class="rozdil">${google ? `<div class="vkhid-google">${knopkaGoogle('/kabinet/')}
+<p class="prymitka">Беремо від Google лише пошту. Якщо ви вже купували з цією поштою — відкриється той самий кабінет.</p>
+<p class="abo"><span>або</span></p></div>` : ''}<form class="forma" method="post" action="/kabinet/vkhid">
 <label for="poshta">Пошта, з якою купували</label>
 <input id="poshta" name="poshta" type="email" autocomplete="email" required maxlength="254" placeholder="name@poshta.ua">
 <button class="knopka knopka--holovna" type="submit">Надіслати посилання</button></form>
-${povidomlennia_ ? `<p class="prymitka" role="status">${e(povidomlennia_)}</p>` : ''}</section>`);
+${povidomlennia_ ? `<p class="prymitka" role="status">${e(povidomlennia_)}</p>` : ''}</section>`, { status });
 }
 
 const STATUS_DOVIDKY = { v_cherzi: 'готується', hotuietsia: 'готується', hotova: 'готова', vydaleno: 'файл видалено за строком зберігання', pomylka: 'не вдалося — напишіть партнеру, повернемо гроші або зробимо ще раз' };
@@ -217,4 +229,9 @@ export const CSS = `/* Сервер продажу (ZAVDANNYA-99): форми в
 .pomylka{color:var(--vyd);font-weight:700}
 .tsina{font-size:34px;line-height:40px;font-weight:800;font-variant-numeric:tabular-nums}
 .v-riadok{display:inline-block;margin-left:8px}
+.vkhid-google{max-width:460px;margin:0 0 16px}
+.knopka-google{display:inline-flex;align-items:center;justify-content:center;gap:10px;width:100%;box-sizing:border-box;background:#fff;color:#1f1f1f;border-color:#747775}
+.knopka-google__logo{flex:none}
+.abo{display:flex;align-items:center;gap:10px;color:var(--ink-2,inherit);font-size:13px;margin:16px 0 0}
+.abo::before,.abo::after{content:"";flex:1;border-top:1px solid var(--mezha)}
 `;
