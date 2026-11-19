@@ -16,10 +16,11 @@
   var S = null, map = null, T = 0, K = null;
   var STYLI = { svitla: 'https://tiles.openfreemap.org/styles/positron', temna: 'https://tiles.openfreemap.org/styles/dark' };
   var KOL = {
-    temna: { tlo: '#11142A', voda: '#122343', park: '#0B2A2E', budynky: '#1C2035', doroha: '#3E4360', pidpys: '#D3D6EC', oreol: '#11142A',
-      sc: ['#444885', '#5357A3', '#6466BB', '#7678CF', '#8A8BDD'], pk: ['#33BB92', '#4DCB9E'], b3d: '#262B4A', mezha: '#7D83AB' },
+    // дороги — темні й нейтральні, соти — яскраві з чіткою межею: інакше соти зливаються з вулицями («мурашник», MV-151)
+    temna: { tlo: '#11142A', voda: '#122343', park: '#0B2A2E', budynky: '#1C2035', doroha: '#262A40', pidpys: '#D3D6EC', oreol: '#11142A',
+      sc: ['#4B4FA8', '#5C61C4', '#7075DA', '#8A8FEA', '#A5A9F5'], sl: '#C3C6FF', pk: ['#33BB92', '#4DCB9E'], b3d: '#262B4A', mezha: '#7D83AB' },
     svitla: { tlo: '#EFF0F6', voda: '#CADDF6', park: '#E4F2DE', budynky: '#E3E4EB', doroha: null, pidpys: '#444658', oreol: '#FFFFFF',
-      sc: ['#9CA1E3', '#7E84CE', '#6066C1', '#464AA9', '#303482'], pk: ['#5DD0A9', '#31B88D'], b3d: '#D9DBE6', mezha: '#76798C' }
+      sc: ['#9CA1E3', '#7E84CE', '#6066C1', '#464AA9', '#303482'], sl: '#303482', pk: ['#5DD0A9', '#31B88D'], b3d: '#D9DBE6', mezha: '#76798C' }
   };
 
   // ---------------------------------------------------------------- час і пом'якшення
@@ -110,7 +111,7 @@
       }
       if (temna && Kc.doroha && l.type === 'line' && l['source-layer'] === 'transportation') {
         var holovna = /motorway|trunk|primary/.test(id);
-        l.paint = Object.assign({}, l.paint || {}, { 'line-color': holovna ? zmishaty(Kc.doroha, Kc.pidpys, 0.22) : Kc.doroha, 'line-opacity': 1 });
+        l.paint = Object.assign({}, l.paint || {}, { 'line-color': holovna ? zmishaty(Kc.doroha, Kc.pidpys, 0.14) : Kc.doroha, 'line-opacity': 1 });
       }
       if (temna && l.type === 'line' && l['source-layer'] === 'waterway') l.paint = Object.assign({}, l.paint || {}, { 'line-color': Kc.voda });
       if (l.type === 'symbol' && l.paint) l.paint = Object.assign({}, l.paint, { 'text-color': Kc.pidpys, 'text-halo-color': Kc.oreol, 'text-halo-width': 2, 'text-opacity': 1 });
@@ -155,12 +156,12 @@
     '}'].join('\n');
   var FS = [
     'precision mediump float;',
-    'uniform vec3 u_kol[6]; uniform float u_alfa; uniform float u_glow;',
+    'uniform vec3 u_kol[8]; uniform float u_alfa; uniform float u_glow;',
     'varying float v_g; varying float v_s; varying float v_ring; varying float v_a; varying float v_flash;',
     'void main(){',
     '  float d = length(gl_PointCoord - 0.5) * 2.0 * v_s;',          // d в одиницях радіуса ядра (ядро — 1.0)
     '  vec3 c = u_kol[0]; int g = int(v_g + 0.5);',
-    '  if (g == 1) c = u_kol[1]; else if (g == 2) c = u_kol[2]; else if (g == 3) c = u_kol[3]; else if (g == 4) c = u_kol[4]; else if (g == 5) c = u_kol[5];',
+    '  if (g == 1) c = u_kol[1]; else if (g == 2) c = u_kol[2]; else if (g == 3) c = u_kol[3]; else if (g == 4) c = u_kol[4]; else if (g == 5) c = u_kol[5]; else if (g == 6) c = u_kol[6]; else if (g == 7) c = u_kol[7];',
     '  float core = 1.0 - smoothstep(0.55, 0.85, d);',
     '  float glow = exp(-d * d * 0.55) * u_glow;',
     '  float ring = 0.0;',
@@ -207,7 +208,7 @@
         gl.uniform1f(loc.u_alfa, alfa);
         gl.uniform1f(loc.u_glow, sh.glow === undefined ? (K.t === 'temna' ? 0.55 : 0.25) : sh.glow);
         var kol = []; (S.kolory || []).forEach(function (h) { kol.push.apply(kol, hexRgb(h)); });
-        while (kol.length < 18) kol.push(1);
+        while (kol.length < 24) kol.push(1);
         gl.uniform3fv(loc.u_kol, new Float32Array(kol));
         gl.bindBuffer(gl.ARRAY_BUFFER, buf);
         var st = 28;
@@ -232,11 +233,13 @@
     var kolir = ['match', ['get', 'k'], 1, Kc.sc[0], 2, Kc.sc[1], 3, Kc.sc[2], 4, Kc.sc[3], Kc.sc[4]];
     var vershyna = ['case', ['>', ['get', 'v'], 0], ['interpolate', ['linear'], ['get', 'v'], 0, Kc.pk[0], 1, Kc.pk[1]], kolir];
     map.addLayer({ id: id + '-f', type: 'fill', source: id, paint: { 'fill-color': kolir, 'fill-opacity': 0 } }, pered);
-    map.addLayer({ id: id + '-l', type: 'line', source: id, paint: { 'line-color': Kc.sc[4], 'line-width': 1.2, 'line-opacity': 0 } }, pered);
+    map.addLayer({ id: id + '-l', type: 'line', source: id, paint: { 'line-color': Kc.sl,
+      'line-width': ['interpolate', ['linear'], ['zoom'], 9, 1.4, 12, 2.6, 15, 4], 'line-opacity': 0 } }, pered);
     var rozpadIds = (sh.rozpad || []).map(function (r) { return r.id; });
     sh._ids = rozpadIds;
     map.addLayer({ id: id + '-3d', type: 'fill-extrusion', source: id,
-      filter: ['any', ['>', ['get', 'v'], 0], ['in', ['get', 'id'], ['literal', rozpadIds]]], paint: {
+      // lyshe_rozpad: у 3D — лише соти, що розпадаються; решта пласкі з чіткою межею (інакше стовпи затуляють «вибух»)
+      filter: sh.lyshe_rozpad ? ['in', ['get', 'id'], ['literal', rozpadIds]] : ['any', ['>', ['get', 'v'], 0], ['in', ['get', 'id'], ['literal', rozpadIds]]], paint: {
       'fill-extrusion-color': sh.vershyny === false ? kolir : vershyna,
       'fill-extrusion-height': 0, 'fill-extrusion-base': 0, 'fill-extrusion-opacity': 0.9,
       'fill-extrusion-vertical-gradient': true } }, pered);
@@ -245,9 +248,11 @@
     var id = 'soty-' + i;
     var a = trek(sh.prozorist, T, 1) * (T < (sh.t0 || 0) || T > (sh.t1 || 1e9) ? 0 : 1);
     var v = trek(sh.vysota, T, 0);
-    map.setPaintProperty(id + '-f', 'fill-opacity', a * (sh.zalyvka === undefined ? 0.55 : sh.zalyvka));
-    map.setPaintProperty(id + '-l', 'line-opacity', a * 0.7);
     var zum = map.getZoom();
+    // зблизька заливка яскравіша (MV-151): на z 12+ сота читається плямою, а не сіткою поверх вулиць
+    var zal = (sh.zalyvka === undefined ? 0.55 : sh.zalyvka) * (sh.yaskravo_zblyzka === false ? 1 : lerp(1, 1.8, clamp((zum - 11) / 2, 0, 1)));
+    map.setPaintProperty(id + '-f', 'fill-opacity', a * Math.min(0.8, zal));
+    map.setPaintProperty(id + '-l', 'line-opacity', a * (sh.mezha_prozorist === undefined ? 0.85 : sh.mezha_prozorist));
     // висота відносно наближення: зблизька стовпчики нижчі, інакше закривають вулиці (як на сайті)
     var maks = (sh.maks_vysota || 2500) * clamp(Math.pow(2, (sh.z_ref || 10.5) - zum), 0.06, 1.4);
     var rozpad = ['coalesce', ['feature-state', 'r'], 1];
@@ -262,7 +267,8 @@
   }
 
   // ---------------------------------------------------------------- кінетичний текст
-  var Y = { verkh: 330, vyshche: 520, tsentr: 760, nyzhche: 1000, niz: 1180 };
+  // верх — під логотипом і рядком джерела (С5); низ — вище підпису TikTok (≈ 1500)
+  var Y = { verkh: 400, vyshche: 580, tsentr: 800, nyzhche: 1020, niz: 1200 };
   function rozbyty(tekst) {   // *слово* — акцент
     var out = [], a = false;
     String(tekst).split(/(\*[^*]+\*|\n)/).forEach(function (ch) {
@@ -276,6 +282,9 @@
     return out;
   }
   function chyslo(n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
+  // узгодження з числом у кожному кадрі, поки лічильник біжить (С10): 1 подія, 3 події, 73 події, 49 подій
+  function vidm(n, f) { n = Math.abs(Math.round(n)); var o = n % 10, d = n % 100;
+    return o === 1 && d !== 11 ? f[0] : (o >= 2 && o <= 4 && !(d >= 12 && d <= 14)) ? f[1] : f[2]; }
   var LOGO = '<svg class="logo" viewBox="0 0 48 48"><path class="z1" d="M24 2 43 13v22L24 46 5 35V13z"/><path class="z2" d="M24 15 32 19.5v9L24 33l-8-4.5v-9z"/></svg>';
 
   function zbuduvatyTekst(it) {
@@ -297,6 +306,20 @@
       el.innerHTML = it.riady.map(function (r) { return '<div class="r"><span class="s" style="background:' + r.kolir + '"></span><span class="n">0</span><span class="nz">' + r.tekst + '</span></div>'; }).join('');
     } else if (it.styl === 'vidlik') {
       el.innerHTML = '<span class="n"></span>';
+    } else if (it.styl === 'baner') {        // С1: кінцівка ≤ 1 с поверх руху, не окремий нерухомий кадр
+      el.innerHTML = LOGO + '<div><b>' + (it.zag || '') + '</b><span>' + (it.knopka || '') + '</span></div>';
+    } else if (it.styl === 'split') {        // С6: поділений екран — дві половини, по числу
+      el.innerHTML = it.riady.map(function (r) { return '<div class="pol"' + (r.kolir ? ' style="background:' + r.kolir + '"' : '') + '>' +
+        (r.zag ? '<span class="zag">' + r.zag + '</span>' : '') + '<span class="n">' + (r.n === undefined ? '' : '0') + '</span><span class="nz">' + r.tekst + '</span></div>'; }).join('');
+    } else if (it.styl === 'komentar') {     // наклейка-коментар (ролик-відповідь)
+      el.innerHTML = '<div class="khto"><span class="av"></span>' + (it.khto || '') + '</div><div class="tx">' + it.tekst + '</div>';
+    } else if (it.styl === 'kolony') {       // вертикальні стовпчики (місяці)
+      el.innerHTML = it.riady.map(function (r) { return '<div class="k' + (r.akc ? ' akc' : '') + '"><span class="n">' + (r.pokaz ? '0' : '') +
+        '</span><span class="s"></span><span class="nz">' + r.tekst + '</span></div>'; }).join('');
+    } else if (it.styl === 'shtamp') {       // печатка «МІФ» / «ФАКТ»
+      el.innerHTML = '<span>' + it.tekst + '</span>';
+    } else if (it.styl === 'taimer') {       // смуга часу «3 секунди»
+      el.innerHTML = '<span class="s"></span><span class="n"></span>';
     } else {
       var html = '';
       if (it.styl === 'pidpys') html += '<span class="ramka">';
@@ -304,15 +327,18 @@
         if (s.br) html += '<br>'; else if (s.sp) html += ' '; else html += '<span class="w' + (s.a ? ' a' : '') + '">' + s.w + '</span>';
       });
       if (it.styl === 'pidpys') html += '</span>';
+      if (it.pid) html += '<small>' + it.pid + '</small>';   // slovo: другий рядок дрібніше
+      if (it.styl === 'slovo') html = '<div class="vn">' + html + '</div>';   // у flex-контейнері пробіли між словами зникали
       el.innerHTML = html;
     }
     document.getElementById('tekst').appendChild(el);
     it.el = el; it.slova = Array.prototype.slice.call(el.querySelectorAll('.w'));
   }
 
+  function odrazu(it) { return it.odrazu || it.t0 <= 0.0001; }   // С2: що стоїть з кадру 0 — видно повністю вже в кадрі 0
   function zaslona(it, t) {   // спільна поява й зникнення елемента
     var vh = it.vkhid === undefined ? 0.25 : it.vkhid, vyh = it.vykhid === undefined ? 0.22 : it.vykhid;
-    var a = clamp((t - it.t0) / Math.max(1e-3, vh), 0, 1), z = clamp((it.t1 - t) / Math.max(1e-3, vyh), 0, 1);
+    var a = odrazu(it) ? 1 : clamp((t - it.t0) / Math.max(1e-3, vh), 0, 1), z = clamp((it.t1 - t) / Math.max(1e-3, vyh), 0, 1);
     return { a: a, z: z, v: t >= it.t0 && t <= it.t1 };
   }
 
@@ -327,7 +353,7 @@
     if (it.slova.length && it.styl !== 'pidpys') {
       var krok = it.krok === undefined ? (anim === 'slam' ? 0.09 : 0.06) : it.krok;
       it.slova.forEach(function (w, i) {
-        var k = clamp((t - it.t0 - i * krok) / (anim === 'slam' ? 0.2 : 0.3), 0, 1);
+        var k = odrazu(it) ? 1 : clamp((t - it.t0 - i * krok) / (anim === 'slam' ? 0.2 : 0.3), 0, 1);
         if (anim === 'slam') {
           var sc = lerp(1.9, 1, E.oo(k));
           w.style.transform = 'scale(' + sc + ')'; w.style.opacity = clamp(k * 2, 0, 1); w.style.filter = 'blur(' + ((1 - k) * 10) + 'px)';
@@ -352,6 +378,7 @@
       var k = clamp((t - it.t0 - (it.zatrymka || 0)) / (it.tryv || 1.6), 0, 1);
       var v = it.kluchi ? trek(it.kluchi, t, it.do) : lerp(it.vid || 0, it.do, E[it.e || 'oo'](k));
       el.querySelector('.n').textContent = (it.pered || '') + chyslo(v) + (it.pislia || '');
+      if (it.formy && it.pidpys) el.querySelector('small').textContent = it.pidpys.replace('{f}', vidm(v, it.formy));
       var sc = 1 + 0.08 * Math.exp(-Math.max(0, t - it.t0 - (it.tryv || 1.6)) * 10) * (k >= 1 ? 1 : 0);
       el.style.transform = 'scale(' + lerp(0.6, 1, E.back(s.a)) * sc + ') translateY(' + (-40 * vykhidK) + 'px)';
       el.style.transformOrigin = it.c ? 'center' : 'left center';
@@ -370,13 +397,14 @@
     }
     if (it.styl === 'kartka') {
       var tilo = el.querySelector('.tilo');
-      var tekst = it.tekst, sym = it.drukarka === false ? tekst.length : Math.floor(clamp(t - it.t0 - 0.25, 0, 99) * (it.shvydkist || 38));
+      // С4: переказ — цілим реченням (друкарка — лише якщо сценарій явно просить)
+      var tekst = it.tekst, sym = it.drukarka !== true ? tekst.length : Math.floor(clamp(t - it.t0 - 0.25, 0, 99) * (it.shvydkist || 38));
       tilo.textContent = tekst.slice(0, sym);
       el.style.transform = 'translateY(' + (lerp(80, 0, E.oo(s.a)) - 40 * vykhidK) + 'px) scale(' + lerp(0.94, 1, E.oo(s.a)) + ')';
       el.style.opacity = Math.min(s.a * 2, 1 - vykhidK);
     }
     if (it.styl === 'variant') {
-      var kv = E.back(clamp((t - it.t0) / 0.3, 0, 1));
+      var kv = odrazu(it) ? 1 : E.back(clamp((t - it.t0) / 0.3, 0, 1));
       el.style.transform = 'translateX(' + lerp(-700, 0, kv) + 'px)';
       el.classList.toggle('pravylno', it.vidpovid !== undefined && t >= it.vidpovid && it.pravylno);
       el.classList.toggle('ni', it.vidpovid !== undefined && t >= it.vidpovid && !it.pravylno);
@@ -393,6 +421,48 @@
     if (it.styl === 'fin') {
       el.style.transform = 'scale(' + lerp(0.85, 1, E.back(clamp(s.a, 0, 1))) + ')';
       el.style.opacity = s.a;
+    }
+    if (it.styl === 'baner') {
+      var kb = E.back(clamp((t - it.t0) / 0.22, 0, 1));
+      el.style.transform = 'translateY(' + lerp(260, 0, kb) + 'px) scale(' + lerp(0.9, 1, kb) + ')';
+      el.style.opacity = Math.min(clamp(s.a * 3, 0, 1), s.z);
+    }
+    if (it.styl === 'slovo') {   // удар: панель на весь кадр «вбивається», слова — разом
+      var ks = odrazu(it) ? 1 : E.oo(clamp((t - it.t0) / 0.16, 0, 1));
+      el.style.transform = 'scale(' + lerp(1.25, 1, ks) + ')';
+      el.style.opacity = Math.min(ks, s.z);
+    }
+    if (it.styl === 'split') {
+      var pol = el.querySelectorAll('.pol');
+      it.riady.forEach(function (r, i) {
+        var kp = odrazu(it) ? 1 : E.oo(clamp((t - it.t0 - 0.12 * i) / 0.35, 0, 1));
+        pol[i].style.transform = 'translateX(' + lerp(i ? 560 : -560, 0, kp) + 'px)';
+        if (r.n !== undefined) pol[i].querySelector('.n').textContent = (r.pered || '') +
+          chyslo(r.n * (odrazu(it) ? 1 : E.oo(clamp((t - it.t0 - 0.2 - 0.12 * i) / 0.8, 0, 1)))) + (r.pislia || '');
+      });
+    }
+    if (it.styl === 'komentar') {
+      var kk = odrazu(it) ? 1 : E.back(clamp((t - it.t0) / 0.3, 0, 1));
+      el.style.transform = 'scale(' + lerp(0.5, 1, kk) + ') rotate(' + lerp(-6, -2, kk) + 'deg)';
+      el.style.transformOrigin = 'left top';
+    }
+    if (it.styl === 'kolony') {
+      var ks2 = el.querySelectorAll('.k'), mk = Math.max.apply(null, it.riady.map(function (r) { return r.n; }));
+      it.riady.forEach(function (r, i) {
+        var kc = E.oo(clamp((t - it.t0 - (it.krok || 0.12) * i) / 0.6, 0, 1));
+        ks2[i].querySelector('.s').style.height = Math.max(6, (it.vysota || 520) * (r.n / mk) * kc) + 'px';
+        if (r.pokaz) ks2[i].querySelector('.n').textContent = chyslo(r.n * kc);
+      });
+    }
+    if (it.styl === 'shtamp') {
+      var kt = odrazu(it) ? 1 : clamp((t - it.t0) / 0.18, 0, 1);
+      el.querySelector('span').style.transform = 'rotate(-8deg) scale(' + lerp(2.4, 1, E.oo(kt)) + ')';
+      el.style.opacity = Math.min(kt * 1.5, s.z);
+    }
+    if (it.styl === 'taimer') {
+      var zl = clamp((it.t1 - t) / Math.max(0.1, it.t1 - it.t0), 0, 1);
+      el.querySelector('.s').style.width = (zl * 100) + '%';
+      el.querySelector('.n').textContent = Math.max(0, Math.ceil(it.t1 - t - 1e-6)) + ' с';
     }
   }
 
@@ -560,12 +630,13 @@
     (S.tekst || []).forEach(function (it) { onovytyTekst(it, t); });
     (S.ui || []).forEach(function (u) { onovytyUi(u, t); });
     var spalakh = 0; (S.spalakh || []).forEach(function (f) { var a = t - f.t; if (a >= 0 && a < 0.35) spalakh = Math.max(spalakh, (f.sila || 0.6) * Math.exp(-a * 12)); });
-    document.getElementById('spalakh').style.opacity = spalakh;
+    // спалах — лише підсвітка удару: повний білий шар засвічував весь кадр сірим (аркуші ZAVDANNYA-129)
+    document.getElementById('spalakh').style.opacity = spalakh * 0.35;
     var dx = 0, dy = 0; (S.trus || []).forEach(function (f) { var a = t - f.t; if (a >= 0 && a < 0.5) { var s = (f.sila || 14) * Math.exp(-a * 9); dx += s * Math.sin(a * 83); dy += s * Math.cos(a * 71); } });
     document.getElementById('karta').style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(' + (dx || dy ? 1.03 : 1) + ')';
     var zv = 0, zn = 0, zf = 0;
     (S.tekst || []).forEach(function (it) {
-      var s_ = zaslona(it, t); if (!s_.v || it.styl === 'vidlik') return;
+      var s_ = zaslona(it, t); if (!s_.v || it.styl === 'vidlik' || it.styl === 'slovo' || it.styl === 'split' || it.styl === 'shtamp') return;
       var k = Math.min(E.o(s_.a), s_.z);
       var y = typeof it.y === 'number' ? it.y : Y[it.y || 'tsentr'];
       if (it.styl === 'fin') zf = Math.max(zf, k); else if (y < 820) zv = Math.max(zv, k); else zn = Math.max(zn, k);
@@ -588,8 +659,9 @@
     return fetch(q.get('s')).then(function (v) { return v.json(); }).then(function (s) {
       S = s; K = { t: S.tema || 'temna' };
       document.documentElement.setAttribute('data-t', K.t);
-      document.getElementById('dzherelo').textContent = (S.dzherelo === undefined ? 'Дані: рішення судів (ЄДРСР) — лише те, що дійшло до суду' : S.dzherelo) +
-        (S.holos_poznaka ? ' · ' + S.holos_poznaka : '');   // MV-150
+      // С5: джерело й «Голос згенеровано» — великі, вгорі під логотипом (зона, вільна від інтерфейсу TikTok); MV-150
+      document.getElementById('dzherelo').innerHTML = '<span>' + (S.dzherelo === undefined ? 'Рішення судів (ЄДРСР) · лише те, що дійшло до суду' : S.dzherelo) +
+        '</span>' + (S.holos_poznaka ? '<span class="hp">' + S.holos_poznaka + '</span>' : '');
       ctx = document.getElementById('nakladka').getContext('2d');
       (S.tekst || []).forEach(zbuduvatyTekst);
       (S.ui || []).forEach(zbuduvatyUi);
