@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Видавач довідок (ZAVDANNYA-99): бере оплачені довідки з черги сервера продажу, запускає генератор
-`dani-edrsr/src/zvit/zibraty.py` (--dovidka або --povnyi) і віддає готовий файл серверу; сервер кладе його в сховище
+`dani-edrsr/src/zvit/zibraty.py` (--dovidka, --osbb або --povnyi) і віддає готовий файл серверу; сервер кладе його в сховище
 й надсилає покупцю посилання на пошту.
 
 Працює там, де лежать дані генератора (випуск events-<дата>.db, скарги 1551, знімок OSM): сервер партнера або ПК.
@@ -48,8 +48,9 @@ def zibraty(generator: Path, d: dict, teka: Path, shi: bool) -> Path | None:
         komanda = [sys.executable, str(sp), '--parametry', json.dumps(d.get('parametry') or {}, ensure_ascii=False),
                    '--vyhid', str(vyhid), '--nomer', d['id']]
     else:
-        komanda = [sys.executable, str(generator), d['adresa'], '--dovidka' if d['rezhym'] == 'dovidka' else '--povnyi',
-                   '--vyhid', str(vyhid), '--chysto']
+        # osbb — щомісячна довідка ОСББ (ZAVDANNYA-143; dani-edrsr S-Зв.5): довідка + зверху останній місяць скарг 1551
+        prapor = {'dovidka': ['--dovidka'], 'osbb': ['--osbb'], 'povnyi': ['--povnyi']}.get(d['rezhym'], ['--povnyi'])
+        komanda = [sys.executable, str(generator), d['adresa'], *prapor, '--vyhid', str(vyhid), '--chysto']
     if shi and d['rezhym'] != 'sp':
         komanda.append('--shi')
     p = subprocess.run(komanda, capture_output=True, text=True, timeout=30 * 60)
