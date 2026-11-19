@@ -22,6 +22,10 @@
     svitla: { tlo: '#EFF0F6', voda: '#CADDF6', park: '#E4F2DE', budynky: '#E3E4EB', doroha: null, pidpys: '#444658', oreol: '#FFFFFF',
       sc: ['#9CA1E3', '#7E84CE', '#6066C1', '#464AA9', '#303482'], sl: '#303482', pk: ['#5DD0A9', '#31B88D'], b3d: '#D9DBE6', mezha: '#76798C' }
   };
+  // ZAVDANNYA-139: додаткові теми й вигляди — окремий модуль vyhliady139.js (вмикаються полями tema і styl сценарію)
+  var VY = window.VAU_VYHLIADY || null;
+  if (VY) Object.keys(VY.temy).forEach(function (k) { KOL[k] = VY.temy[k]; });
+  function osnova(t) { return (KOL[t] && KOL[t].osnova) || t; }   // підкладка й CSS: темна чи світла
 
   // ---------------------------------------------------------------- час і пом'якшення
   function clamp(x, a, b) { return Math.max(a, Math.min(b, x)); }
@@ -85,7 +89,7 @@
     return '#' + r.map(function (x) { return x.toString(16).padStart(2, '0'); }).join('');
   }
   function patchStyle(s, tema) {
-    var Kc = KOL[tema], temna = tema === 'temna';
+    var Kc = KOL[tema], temna = osnova(tema) === 'temna';
     var layers = s.layers.filter(function (l) { return !(l.type === 'symbol' && (/shield|oneway|place_state|place_country/.test(l.id) || l['source-layer'] === 'poi' || l['source-layer'] === 'housenumber')); });
     // менше підписів: села й містечка навколо Києва — лише зблизька, щоб кадр не був «газетою»
     var MINZ = { place_village: 12.5, place_other: 12, place_town: 10.8, place_suburb: 10.2 };
@@ -109,7 +113,7 @@
         var k = l.type === 'background' ? 'background-color' : l.type === 'fill' ? 'fill-color' : null;
         if (k) { l.paint = Object.assign({}, l.paint || {}); l.paint[k] = c; }
       }
-      if (temna && Kc.doroha && l.type === 'line' && l['source-layer'] === 'transportation') {
+      if (Kc.doroha && l.type === 'line' && l['source-layer'] === 'transportation') {
         var holovna = /motorway|trunk|primary/.test(id);
         l.paint = Object.assign({}, l.paint || {}, { 'line-color': holovna ? zmishaty(Kc.doroha, Kc.pidpys, 0.14) : Kc.doroha, 'line-opacity': 1 });
       }
@@ -664,6 +668,7 @@
     document.getElementById('zat-f').style.opacity = zf * 0.82;
     var z = document.getElementById('znak'); z.style.opacity = S.znak === false ? 0 : trek(S.znak_prozorist, t, 0.92);
     var dz = document.getElementById('dzherelo'); dz.style.opacity = trek(S.dzherelo_prozorist, t, 1);
+    if (VY && S.styl) VY.kadr(t);
     return zachekaty().then(function () {
       (S.mitky || []).forEach(function (m) { onovytyMitku(m, t); });
       nakladka(t);
@@ -675,7 +680,8 @@
     var q = new URLSearchParams(location.search);
     return fetch(q.get('s')).then(function (v) { return v.json(); }).then(function (s) {
       S = s; K = { t: S.tema || 'temna' };
-      document.documentElement.setAttribute('data-t', K.t);
+      document.documentElement.setAttribute('data-t', osnova(K.t));
+      document.documentElement.setAttribute('data-tema', K.t);
       // С5: джерело й «Голос згенеровано» — великі, вгорі під логотипом (зона, вільна від інтерфейсу TikTok); MV-150
       document.getElementById('dzherelo').innerHTML = '<span>' + (S.dzherelo === undefined ? 'Рішення судів (ЄДРСР) · лише те, що дійшло до суду' : S.dzherelo) +
         '</span>' + (S.holos_poznaka ? '<span class="hp">' + S.holos_poznaka + '</span>' : '');
@@ -683,7 +689,7 @@
       (S.tekst || []).forEach(zbuduvatyTekst);
       (S.ui || []).forEach(zbuduvatyUi);
       (S.mitky || []).forEach(zbuduvatyMitku);
-      return fetch(STYLI[K.t]).then(function (v) { return v.json(); });
+      return fetch(STYLI[osnova(K.t)]).then(function (v) { return v.json(); });
     }).then(function (styl) {
       var k0 = kamera(0);
       maplibregl.setWorkerUrl('../../site/hra/biblioteka/maplibre-gl-csp-worker.js');
@@ -704,6 +710,8 @@
       var nadLiniiamy = (shary[ost + 1] || {}).id;
       (S.soty || []).forEach(function (sh, i) { dodatySoty(i, sh, sh.styl_sot ? nadLiniiamy : pershyiSymvol); });
       (S.tochky || []).forEach(function (sh, i) { map.addLayer(sharTochok('tochky-' + i, sh), S.tochky_nad_pidpysamy ? undefined : pershyiSymvol); });
+      if (VY && S.styl) VY.dodaty({ map: map, S: S, tema: K.t, Kc: KOL[K.t], temna: osnova(K.t) === 'temna', trek: trek, E: E, clamp: clamp,
+        lerp: lerp, nad: nadLiniiamy, pid: pershyiSymvol, W: W, H: H });
       return document.fonts.ready;
     }).then(function () { return window.kadr(0); }).then(function () {
       return { tryvalist: S.tryvalist };

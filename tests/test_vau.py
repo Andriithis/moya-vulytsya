@@ -323,3 +323,42 @@ class Holos129(unittest.TestCase):
         for f in Path(self.tmp.name).iterdir():
             self.assertNotIn('SEKRET', f.name)
             self.assertNotIn(b'SEKRET', f.read_bytes())
+
+
+class Vyhliady139(unittest.TestCase):
+    """ZAVDANNYA-139: теми й вигляди — окремий модуль, що вмикається полями tema і styl сценарію."""
+
+    def test_bez_chervonogo(self):
+        tekst = (VAU / 'vyhliady139.js').read_text(encoding='utf-8') + (VAU / 'vyhliady139.css').read_text(encoding='utf-8')
+        for h in re.findall(r'#([0-9A-Fa-f]{6})\b', tekst):
+            r, g, b = (int(h[i:i + 2], 16) / 255 for i in (0, 2, 4))
+            hh, s, v = colorsys.rgb_to_hsv(r, g, b)
+            self.assertFalse((hh * 360 < 15 or hh * 360 > 340) and s > 0.45 and v > 0.4, f'червоний #{h}')
+
+    def test_hachky_v_stseni(self):
+        js = (VAU / 'stsena.js').read_text(encoding='utf-8')
+        html = (VAU / 'stsena.html').read_text(encoding='utf-8')
+        self.assertIn('VY.kadr(t)', js)
+        self.assertIn('VY.dodaty(', js)
+        self.assertLess(html.index('vyhliady139.js'), html.index('stsena.js'))   # теми мають бути до KOL
+        self.assertIn('vyhliady139.css', html)
+
+    def test_usi_vyhliady_i_temy_na_mistsi(self):
+        js = (VAU / 'vyhliady139.js').read_text(encoding='utf-8')
+        for typ in ('sklo_kraia', 'neon', 'dykhannia', 'stovpy', 'svitni', 'teplo', 'shpyli', 'sonyashnyk', 'khvyli',
+                    'bulbashky', 'infografika', 'hodynnyk', 'kalendar', 'kartka_zvit'):
+            self.assertIn(f'V.{typ} = ', js, typ)
+        for tema in ('nich', 'papir', 'vechir', 'sontse', 'monokhrom'):
+            self.assertRegex(js, rf'\n    {tema}: {{ osnova: \'(temna|svitla)\'', tema)
+
+    def test_teksty_vyhliadu_pereviriaiutsia(self):
+        sys.path.insert(0, str(VAU))
+        try:
+            L = modul('vau_lab139', 'laboratoriia139.py')
+        except ImportError as e:          # без numpy/h3 у середовищі перевірки
+            self.skipTest(str(e))
+        S = {'styl': [{'typ': 'kartka_zvit', 'zag': 'вул. Проба, 12', 'pid': 'Тут небезпечно'}]}
+        z = L.perevirty_styl(S, {})
+        self.assertTrue(any('номер будинку' in x for x in z))
+        self.assertTrue(any('заборонене' in x for x in z))
+        self.assertEqual(L.perevirty_styl({'styl': [{'typ': 'kartka_zvit', 'zag': 'просп. Берестейський'}]}, {}), [])
