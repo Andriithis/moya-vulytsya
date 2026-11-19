@@ -79,21 +79,38 @@ export function formaZamovlennia({ tovar, budynok, adresa, pomylka = '' }) {
 <p class="prymitka">Це статистика минулих рішень, а не юридична допомога. Скасувати можна в кабінеті будь-коли — доступ лишиться до кінця оплаченого місяця.</p></div>` : '';
   const pro = budynok
     ? `<p>Будинок: <b>${e(adresa)}</b> (<a href="${e(budynok)}">сторінка будинку</a>).</p>`
-    : (potribenBudynok ? '<p>Спершу оберіть будинок: знайдіть його на сайті й натисніть кнопку замовлення на його сторінці.</p>' : '');
-  const knopka = (!potribenBudynok || budynok)
-    ? `<form class="forma" method="post" action="/api/zamovlennia">
-<input type="hidden" name="tovar" value="${e(tovar)}">${budynok ? `<input type="hidden" name="budynok" value="${e(budynok)}">` : ''}
+    : (potribenBudynok ? '<p>Вкажіть будинок: знайдіть його сторінку на сайті (<a href="/vulytsi/">покажчик вулиць</a>) і вставте посилання на неї нижче.</p>' : '');
+  // ZAVDANNYA-143: без будинку — поле для посилання на сторінку будинку (раніше тут був глухий кут: на сторінках будинків
+  // немає кнопки ОСББ); будинок однаково перевіряє сервер (perevirytyBudynok), адресу з форми не беремо.
+  const poleBudynku = potribenBudynok && !budynok
+    ? `<label for="budynok">Посилання на сторінку будинку</label>
+<input id="budynok" name="budynok" required maxlength="200" placeholder="https://…/budynok/vulytsia/1/">` : '';
+  const knopka = `<form class="forma" method="post" action="/api/zamovlennia">
+<input type="hidden" name="tovar" value="${e(tovar)}">${budynok ? `<input type="hidden" name="budynok" value="${e(budynok)}">` : ''}${poleBudynku}
 <label for="poshta">Пошта — на неї прийде посилання на довідку і вхід у кабінет</label>
 <input id="poshta" name="poshta" type="email" autocomplete="email" required maxlength="254" placeholder="name@poshta.ua">
 ${pomylka ? `<p class="pomylka" role="alert">${e(pomylka)}</p>` : ''}
 <label class="pravyla"><input type="checkbox" name="zghoda" value="tak" required> Погоджуюсь з <a href="/zahlushka/oferta.html">офертою</a> і <a href="/zahlushka/polityka.html">політикою конфіденційності</a></label>
 ${GALOCHKA_ODRAZU}
 <button class="knopka knopka--holovna" type="submit">Перейти до оплати — ${tsina(tovar)}</button>
-</form>` : '<div class="diyi"><a class="knopka knopka--holovna" href="/miy-budynok/">Знайти будинок</a></div>';
+</form>`;
   return storinka(`${nazva} — оплата`, `<section class="zaholovok"><h1>${e(nazva)}</h1>${pro}<p class="tsina">${tsina(tovar)}</p></section>
-<section class="rozdil">${proYurysta}${knopka}
+<section class="rozdil">${proYurysta}${SHCHO_DAIE[tovar] || ''}${knopka}
 <p class="prymitka">Ціну бере сервер з таблиці цін, а не з адреси сторінки. Номер картки ми не бачимо й не зберігаємо — оплату приймає платіжний сервіс партнера.</p></section>`);
 }
+
+// ZAVDANNYA-143: що саме отримує людина — ОСББ і рієлтор (ціни й кількість — з таблиці цін).
+const SHCHO_DAIE = {
+  osbb: `<div class="kartka"><p><b>Що отримує правління:</b> щомісячну довідку про свій будинок — сама приходить на пошту раз на
+місяць: звернення мешканців до 1551 за останній місяць поруч зі звичайним місяцем будинку й сусідніми будинками, теми й статуси
+за рік, події з рішень судів біля будинку. Усі довідки — у кабінеті.</p>
+<p class="prymitka">Оплата — раз на рік. За 3 дні до наступного списання надішлемо лист; скасувати можна в кабінеті будь-коли —
+оплачений рік діє до кінця. Довідки — лише про цей будинок.</p></div>`,
+  rieltor: `<div class="kartka"><p><b>Що дає підписка:</b> ${TS.dovidok.rieltor} довідок про будинки на місяць — на будь-які адреси
+(показ, клієнт, перевірка перед угодою); понад ${TS.dovidok.rieltor} — по ${TS.tsiny.dodatkova}${NBSP}грн. У кабінеті — «Мої об'єкти»: усі
+будинки й довідки до них, скільки лишилось цього місяця.</p>
+<p class="prymitka">Довідка — не оцінка будинку й не порада клієнту, де жити. Скасувати можна в кабінеті будь-коли — доступ лишиться до кінця оплаченого місяця.</p></div>`,
+};
 
 /** Перехід до сервісу формою (LiqPay приймає POST): кнопка без скриптів. */
 export function formaServisu({ url, polia }) {
@@ -165,23 +182,60 @@ ${povidomlennia_ ? `<p class="prymitka" role="status">${e(povidomlennia_)}</p>` 
 
 const STATUS_DOVIDKY = { v_cherzi: 'готується', hotuietsia: 'готується', hotova: 'готова', vydaleno: 'файл видалено за строком зберігання', pomylka: 'не вдалося — напишіть партнеру, повернемо гроші або зробимо ще раз' };
 const NAZVA_PIDPYSKY = { pidpyska: 'Підписка', rieltor: 'Підписка для рієлтора', osbb: 'Будинок для ОСББ', spyurist: 'Підписка юриста «Практика»' };
-const VYD_DOVIDKY = { povnyi: 'повний звіт', dovidka: 'довідка', sp: 'судова практика' };
+const VYD_DOVIDKY = { povnyi: 'повний звіт', dovidka: 'довідка', sp: 'судова практика', osbb: 'щомісячна довідка ОСББ' };
+
+const posylannia = (d) => (d.status === 'hotova' ? `<a href="/dovidka/${e(d.id)}/">відкрити</a>` : e(STATUS_DOVIDKY[d.status]));
+
+/** ZAVDANNYA-143: правлінню ОСББ — свій будинок, довідки приходять самі щомісяця; лист за 3 дні до річного списання. */
+function rozdilOsbb(p, dovidky) {
+  const svoi = dovidky.filter((d) => d.pidpyska_id === p.id);
+  const tsei = p.zalyshok > 0 ? 'довідка цього місяця ставиться в чергу сама протягом доби' : `наступна — ${data(p.misiats_do)}`;
+  const spysok = svoi.length ? svoi.map((d) => `<li>${data(d.stvoreno)} — ${posylannia(d)}</li>`).join('') : '<li>Перша довідка готується.</li>';
+  return `<section class="rozdil" id="osbb"><h2>Мій будинок (ОСББ)</h2><div class="kartka">
+<p><b>${p.budynok ? `<a href="${e(p.budynok)}">${e(p.adresa)}</a>` : e(p.adresa)}</b></p>
+<p>Щомісячна довідка приходить сама на пошту — нічого натискати не треба; ${tsei}.</p>
+<ul class="spysok-tekst">${spysok}</ul>
+<p class="prymitka">Рік оплачено до ${data(p.diie_do)}.${p.status === 'aktyvna' ? ' За 3 дні до наступного списання надішлемо лист.' : ' Підписку скасовано — нових списань не буде.'}</p></div></section>`;
+}
+
+/** ZAVDANNYA-143: рієлтору — «Мої об'єкти»: будинки, на які брав довідки, лічильник місяця, нова довідка за посиланням. */
+function rozdilRieltora(p, dovidky) {
+  const obiekty = new Map();
+  for (const d of dovidky) {
+    if (!d.budynok || d.rezhym === 'sp') continue;
+    if (!obiekty.has(d.budynok)) obiekty.set(d.budynok, { adresa: d.adresa, dovidky: [] });
+    obiekty.get(d.budynok).dovidky.push(d);       // новіші перші (dovidky — за датою, новіші згори)
+  }
+  const ryadky = obiekty.size ? [...obiekty].map(([b, o]) => `<li><a href="${e(b)}">${e(o.adresa)}</a> — ${o.dovidky.length}${NBSP}${
+    o.dovidky.length === 1 ? 'довідка' : o.dovidky.length < 5 ? 'довідки' : 'довідок'}, остання ${data(o.dovidky[0].stvoreno)}: ${posylannia(o.dovidky[0])}
+<form class="v-riadok" method="post" action="/kabinet/dovidka"><input type="hidden" name="budynok" value="${e(b)}"><button class="knopka" type="submit">Нова довідка</button></form></li>`).join('')
+    : '<li>Поки немає. Додайте перший об\'єкт нижче.</li>';
+  return `<section class="rozdil" id="obiekty"><h2>Мої об'єкти</h2><div class="kartka">
+<p class="lichylnyk"><b>${p.vziato} з ${p.dovidok}</b> довідок цього місяця використано · лишилось <b>${p.zalyshok}</b> · нові ${p.dovidok} — з ${data(p.misiats_do)}</p>
+<ul class="spysok-tekst">${ryadky}</ul>
+<form class="forma" method="post" action="/kabinet/dovidka"><label for="obiekt">Новий об'єкт — посилання на сторінку будинку</label>
+<input id="obiekt" name="budynok" required maxlength="200" placeholder="https://…/budynok/vulytsia/1/">
+<button class="knopka knopka--holovna" type="submit">Довідка на цей будинок</button></form>
+<p class="prymitka">Понад ${p.dovidok} на місяць — ${tsina('dodatkova')} за довідку (спершу спитаємо). Сторінку будинку знайдете в <a href="/vulytsi/">покажчику вулиць</a>.</p></div></section>`;
+}
 
 export function kabinet({ poshta, dovidky, stezhu, pidpysky, dostupno, povidomlennia: pov = '', bali = null }) {
-  const ryadky = dovidky.length ? dovidky.map((d) => `<li><b>${e(d.adresa)}</b> — ${VYD_DOVIDKY[d.rezhym] || 'довідка'}, ${data(d.stvoreno)}: ${
-    d.status === 'hotova' ? `<a href="/dovidka/${e(d.id)}/">відкрити</a>` : e(STATUS_DOVIDKY[d.status])}</li>`).join('')
+  const ryadky = dovidky.length ? dovidky.map((d) => `<li><b>${e(d.adresa)}</b> — ${VYD_DOVIDKY[d.rezhym] || 'довідка'}, ${data(d.stvoreno)}: ${posylannia(d)}</li>`).join('')
     : '<li>Поки немає довідок.</li>';
   const stezh = stezhu.length ? stezhu.map((s) => `<li><a href="${e(s.budynok)}">${e(s.adresa)}</a>
 <form class="v-riadok" method="post" action="/kabinet/stezhu/prybraty"><input type="hidden" name="budynok" value="${e(s.budynok)}"><button class="knopka" type="submit">Прибрати</button></form>
 <form class="v-riadok" method="post" action="/kabinet/dovidka"><input type="hidden" name="budynok" value="${e(s.budynok)}"><button class="knopka" type="submit">Довідка</button></form></li>`).join('')
     : '<li>Додайте адресу — тут будуть будинки, за якими стежите.</li>';
   const pidp = pidpysky.length ? pidpysky.map((p) => `<li><b>${e(NAZVA_PIDPYSKY[p.tovar])}</b>${p.adresa ? ` (${e(p.adresa)})` : ''} — ${
-    p.status === 'aktyvna' ? `діє до ${data(p.diie_do)}, довідок цього періоду лишилось: ${p.zalyshok}${p.tovar === 'spyurist' ? ' — <a href="/pidpysnyk/praktyka/">відкрити практику</a>' : ''}
+    p.status === 'aktyvna' ? `діє до ${data(p.diie_do)}, ${p.tovar === 'osbb' ? 'довідка приходить сама щомісяця' : `довідок цього місяця лишилось: ${p.zalyshok}`}${p.tovar === 'spyurist' ? ' — <a href="/pidpysnyk/praktyka/">відкрити практику</a>' : ''}
 <form class="v-riadok" method="post" action="/kabinet/skasuvaty"><input type="hidden" name="pidpyska" value="${e(p.id)}"><button class="knopka" type="submit">Скасувати підписку</button></form>`
       : p.zaBali ? `за бали, діє до ${data(p.diie_do)}, без продовження` : p.status === 'skasovana' ? `скасована, діє до ${data(p.diie_do)}` : 'очікує оплати'}</li>`).join('')
     : `<li>Немає. <a href="/oplata/?tovar=pidpyska">Підписка — ${tsina('pidpyska')}</a></li>`;
+  const osbb = pidpysky.filter((p) => p.tovar === 'osbb').map((p) => rozdilOsbb(p, dovidky)).join('');
+  const rieltor = pidpysky.find((p) => p.tovar === 'rieltor');
   return storinka('Кабінет', `<section class="zaholovok"><h1>Кабінет</h1><p>${e(poshta)}</p>
 ${pov ? `<p class="prymitka" role="status">${e(pov)}</p>` : ''}</section>
+${osbb}${rieltor ? rozdilRieltora(rieltor, dovidky) : ''}
 <section class="rozdil"><h2>Мої довідки</h2><div class="kartka"><ul class="spysok-tekst">${ryadky}</ul></div>
 <p class="prymitka">Можна взяти ще: ${dostupno.opys}. Довідку на будинок — кнопкою «Довідка» біля адреси нижче.</p></section>
 <section class="rozdil"><h2>Стежу</h2><div class="kartka"><ul class="spysok-tekst">${stezh}</ul>
@@ -211,6 +265,7 @@ ${vybir || '<p class="prymitka">Щоб обміняти на довідку, с�
 export const CSS = `/* Сервер продажу (ZAVDANNYA-99): форми в стилі сайту (docs/STYL.md) */
 .forma{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;max-width:460px}
 .forma label{font-weight:600;font-size:14px;line-height:20px}
+.lichylnyk{font-variant-numeric:tabular-nums}
 .forma input[type=email],.forma input[name=budynok]{font:inherit;padding:10px 12px;border:1.5px solid var(--mezha);border-radius:var(--radius-m);background:var(--surface);color:var(--ink);box-shadow:0 3px 0 var(--bort)}
 .forma .pravyla{font-weight:400;font-size:13px}
 .forma select{font:inherit;width:100%;min-width:0;padding:10px 12px;border:1.5px solid var(--mezha);border-radius:var(--radius-m);background:var(--surface);color:var(--ink);box-shadow:0 3px 0 var(--bort)}

@@ -93,10 +93,10 @@ async function stvorytyZamovlennia(request, env, url) {
     if (f.odrazu !== 'tak') return znovu('Позначте: «Прошу надіслати одразу…» — без цього оплатити не можна.');
     return doOplaty(env, url, { tovar, budynok: null, adresa: v.opys, poshta, parametry: v.parametry });
   }
-  let budynok = f.budynok ? String(f.budynok) : null, adresa = null;
+  let budynok = f.budynok ? L.shliakhBudynku(f.budynok) : null, adresa = null;
   if (budynok) {
     adresa = await L.perevirytyBudynok(env, budynok, url);
-    if (!adresa) return S.povidomlennia('Не вдалося', 'Такого будинку на сайті немає.', 400);
+    if (!adresa) return S.formaZamovlennia({ tovar, budynok: null, adresa: null, pomylka: 'Такого будинку на сайті немає. Вставте посилання на сторінку будинку з нашого сайту.' });
   } else if (L.potribenBudynok(tovar)) {
     return S.formaZamovlennia({ tovar, budynok: null, adresa: null });
   }
@@ -219,7 +219,7 @@ async function uviity(request, env, url) {
 }
 
 async function kabinet(env, ja, povidomlennia = '') {
-  const dovidky = await L.vsi(env, 'SELECT id, adresa, rezhym, status, stvoreno FROM dovidky WHERE korystuvach_id = ? ORDER BY stvoreno DESC', ja.id);
+  const dovidky = await L.vsi(env, 'SELECT id, budynok, adresa, rezhym, status, pidpyska_id, stvoreno FROM dovidky WHERE korystuvach_id = ? ORDER BY stvoreno DESC', ja.id);
   const stezhu = await L.vsi(env, 'SELECT budynok, adresa FROM stezhu WHERE korystuvach_id = ? ORDER BY stvoreno', ja.id);
   const d = await L.dostupno(env, ja.id);
   const pidpysky = (await L.stanPidpysok(env, ja.id)).filter((p) => p.diie);
@@ -230,6 +230,7 @@ async function kabinet(env, ja, povidomlennia = '') {
 
 async function diiaKabinetu(request, env, url, ja, dia) {
   const f = await forma(request);
+  if (f.budynok) f.budynok = L.shliakhBudynku(f.budynok);      // ZAVDANNYA-143: можна вставити й повне посилання на сторінку
   if (dia === 'stezhu' || dia === 'dovidka') {
     const adresa = await L.perevirytyBudynok(env, f.budynok, url);
     if (!adresa) return kabinet(env, ja, 'Такого будинку на сайті немає. Скопіюйте адресу його сторінки: /budynok/…/…/');

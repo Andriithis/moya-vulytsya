@@ -7,6 +7,8 @@ import { nadislaty } from './poshta.js';
 import { budynok as zPachky } from '../budynky.js';
 import { nahaduvanniaOsbb } from './lysty.js';
 
+const dataT = (t) => { const d = new Date(t * 1000); return `${String(d.getUTCDate()).padStart(2, '0')}.${String(d.getUTCMonth() + 1).padStart(2, '0')}.${d.getUTCFullYear()}`; };
+
 export const teper = (env) => (env.__CHAS ? env.__CHAS() : Math.floor(Date.now() / 1000));
 
 const q = (env, sql, ...p) => env.BAZA.prepare(sql).bind(...p);
@@ -73,18 +75,29 @@ export async function stvorytyZamovlennia(env, { tovar, budynok, adresa, korystu
   return { zam: await odyn(env, 'SELECT * FROM zamovlennia WHERE id = ?', id), pidpyska };
 }
 
+/** Адреса сторінки будинку з того, що вставила людина: шлях «/budynok/…/…/» або повне посилання на сторінку (з будь-якого
+ *  домену беремо лише шлях — будинок однаково перевіряє perevirytyBudynok). Без кінцевої «/» — додаємо. */
+export function shliakhBudynku(t) {
+  let s = String(t ?? '').trim();
+  const m = s.match(/^https?:\/\/[^/]+(\/[^?#]*)/i);
+  if (m) s = m[1];
+  s = s.split(/[?#]/)[0];
+  if (/^\/budynok\/[^/]+\/[^/]+$/.test(s)) s += '/';
+  return s.slice(0, 200);
+}
+
 export function potribenBudynok(tovar) {
   return !BEZ_BUDYNKU.includes(tovar);
 }
 
 // ---------------------------------------------------------------- довідки й лічильник
 
-export async function postavytyDovidku(env, { korystuvach_id, zamovlennia_id, pidpyska_id = null, budynok, adresa, rezhym, parametry = null }) {
+export async function postavytyDovidku(env, { korystuvach_id, zamovlennia_id, pidpyska_id = null, budynok, adresa, rezhym, parametry = null, poshtovkh = true }) {
   const id = 'd' + vypadkovyi(15);
   await zrobyty(env, `INSERT INTO dovidky (id, korystuvach_id, zamovlennia_id, pidpyska_id, budynok, adresa, rezhym, parametry, stvoreno)
                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, id, korystuvach_id, zamovlennia_id, pidpyska_id, budynok || '', adresa, rezhym,
   parametry ? (typeof parametry === 'string' ? parametry : JSON.stringify(parametry)) : null, teper(env));
-  await shturhnuty(env, 'dovidka');      // видавач у GitHub Actions (ZAVDANNYA-133): довідку ставлять лише після оплати
+  if (poshtovkh) await shturhnuty(env, 'dovidka');      // видавач у GitHub Actions (ZAVDANNYA-133): довідку ставлять лише після оплати
   return id;
 }
 
@@ -99,6 +112,11 @@ export async function stanPidpysok(env, korystuvach_id) {
     while (dodatyMisiatsi(p.pochatok, k) <= t) vid = dodatyMisiatsi(p.pochatok, k++);
     const vziato = (await odyn(env, 'SELECT COUNT(*) AS n FROM dovidky WHERE pidpyska_id = ? AND stvoreno >= ?', p.id, vid)).n;
     p.zalyshok = p.diie ? Math.max(0, TS.dovidok[p.tovar] - vziato) : 0;
+    // ZAVDANNYA-143: межі поточного місяця підписки — для кабінету («нові 5 — з …», «наступна довідка ОСББ — …»)
+    p.misiats_vid = vid;
+    p.misiats_do = dodatyMisiatsi(p.pochatok, k);
+    p.vziato = vziato;
+    p.dovidok = TS.dovidok[p.tovar];
   }
   return ps;
 }
@@ -124,7 +142,8 @@ export async function vzyatyDovidku(env, korystuvach_id, budynok, adresa) {
   const { ps, pakety } = await dostupno(env, korystuvach_id);
   for (const p of ps) {
     if (p.zalyshok > 0 && (p.tovar !== 'osbb' || p.budynok === budynok)) {
-      return { dovidka: await postavytyDovidku(env, { korystuvach_id, zamovlennia_id: p.zamovlennia_id, pidpyska_id: p.id, budynok, adresa, rezhym: 'dovidka' }) };
+      const rezhym = p.tovar === 'osbb' ? 'osbb' : 'dovidka';
+      return { dovidka: await postavytyDovidku(env, { korystuvach_id, zamovlennia_id: p.zamovlennia_id, pidpyska_id: p.id, budynok, adresa, rezhym }) };
     }
   }
   for (const z of pakety) {
@@ -189,7 +208,7 @@ export async function obrobytyPodiiu(env, servis, p) {
 
 /** Оплачено → довідка в чергу генератора (і/або підписка активна). «Судова практика»: довідка без будинку — з параметрами. */
 async function vydaty(env, zam, pidpyska, t) {
-  const rezhym = TS.rezhym[zam.tovar] || 'dovidka';
+  const rezhym = TS.rezhym[zam.tovar] || (zam.tovar === 'osbb' ? 'osbb' : 'dovidka');
   if (zam.tovar === 'spdovidka' && zam.parametry) {
     await postavytyDovidku(env, { korystuvach_id: zam.korystuvach_id, zamovlennia_id: zam.id, budynok: '', adresa: zam.adresa, rezhym, parametry: zam.parametry });
     return;
@@ -241,12 +260,24 @@ export async function dovidkaHotova(env, id, html, adresaSaitu) {
         `Посилання особисте — не пересилайте його. Усі довідки — також у кабінеті: ${adresaSaitu}/kabinet/\n` +
         'Це статистика минулих рішень, а не юридична допомога і не відповідь, чим закінчиться конкретна справа.',
     });
+  } else if (d.poshta && d.rezhym === 'osbb') {
+    // ZAVDANNYA-143: щомісячна довідка ОСББ (генератор --osbb) — приходить сама щомісяця
+    await nadislaty(env, {
+      komu: d.poshta, tema: `Щомісячна довідка для ОСББ: ${d.adresa}`,
+      tekst: `Готово: щомісячна довідка про будинок ${d.adresa} — звернення мешканців до 1551 за останній місяць і за рік, ` +
+        `порівняння з сусідніми будинками, події з рішень судів.\n\n` +
+        `Відкрити: ${adresaSaitu}/dovidka/${d.id}/?k=${kliuch}\n\n` +
+        `Наступна прийде сама через місяць. Усі довідки — у кабінеті: ${adresaSaitu}/kabinet/\n` +
+        'Посилання особисте — не пересилайте його. Це не оцінка безпеки: лише скарги мешканців і події з рішень судів, як їх записано.',
+    });
   } else if (d.poshta) {
+    const r = d.pidpyska_id ? (await stanPidpysok(env, d.korystuvach_id)).find((p) => p.id === d.pidpyska_id && p.tovar === 'rieltor') : null;
+    const zalyshok = r ? `З підписки рієлтора цього місяця лишилось довідок: ${r.zalyshok} з ${r.dovidok} (нові — з ${dataT(r.misiats_do)}).\n` : '';
     await nadislaty(env, {
       komu: d.poshta, tema: `${d.rezhym === 'povnyi' ? 'Повний звіт' : 'Довідка'}: ${d.adresa}`,
       tekst: `Готово: ${d.rezhym === 'povnyi' ? 'повний звіт' : 'довідка'} про будинок ${d.adresa}.\n\n` +
         `Відкрити: ${adresaSaitu}/dovidka/${d.id}/?k=${kliuch}\n\n` +
-        `Посилання особисте — не пересилайте його. Усі довідки — також у кабінеті: ${adresaSaitu}/kabinet/\n` +
+        `Посилання особисте — не пересилайте його. Усі довідки — також у кабінеті: ${adresaSaitu}/kabinet/\n` + zalyshok +
         'Це не оцінка безпеки: лише скарги мешканців і події з рішень судів, як їх записано.',
     });
   }
@@ -334,4 +365,28 @@ export async function vzyatySpDovidku(env, korystuvach_id, { parametry, opys }) 
   if (!p) return { nemaie: true };
   if (p.zalyshok <= 0) return { vycherpano: true };
   return { dovidka: await postavytyDovidku(env, { korystuvach_id, zamovlennia_id: p.zamovlennia_id, pidpyska_id: p.id, budynok: '', adresa: opys, rezhym: 'sp', parametry }) };
+}
+
+// ---------------------------------------------------------------- щомісячна довідка ОСББ (ZAVDANNYA-143; MV-140, S-Зв.5 dani-edrsr)
+
+/**
+ * Щодня (той самий Cron Trigger, що й нагадування): кожній чинній підписці ОСББ, у якої в поточному місяці підписки ще немає
+ * довідки, — поставити щомісячну довідку свого будинку (режим osbb, генератор --osbb). Перший місяць — довідка з оплати;
+ * далі — сама, щомісяця, без жодної дії правління. Скасована, але ще оплачена — теж отримує (рік оплачено).
+ * Один поштовх видавачу на всіх. Повертає, скільки довідок поставлено.
+ */
+export async function shchomisiachnaOsbb(env) {
+  const ids = await vsi(env, `SELECT DISTINCT korystuvach_id AS k FROM pidpysky WHERE tovar = 'osbb' AND status IN ('aktyvna', 'skasovana')
+    AND diie_do > ? AND korystuvach_id IS NOT NULL AND budynok IS NOT NULL`, teper(env));
+  let n = 0;
+  for (const { k } of ids) {
+    for (const p of await stanPidpysok(env, k)) {
+      if (p.tovar !== 'osbb' || !p.diie || p.zalyshok <= 0 || !p.budynok) continue;
+      await postavytyDovidku(env, { korystuvach_id: k, zamovlennia_id: p.zamovlennia_id, pidpyska_id: p.id, budynok: p.budynok,
+        adresa: p.adresa, rezhym: 'osbb', poshtovkh: false });
+      n++;
+    }
+  }
+  if (n) await shturhnuty(env, 'osbb');
+  return n;
 }
