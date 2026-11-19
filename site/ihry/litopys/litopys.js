@@ -61,6 +61,8 @@
       tost('Поки вас не було (' + String(hod).replace('.', ',') + ' год), помічники прочитали ' + ch(r.storinok) + ' ' + slovo(r.storinok, STOR) +
         (r.obrizano ? '. Більше ' + Y.N.offlain_hodyn + ' годин вони без вас не читають.' : '.'), 6000);
     }
+    var pt = Y.poshta(S, teper());
+    if (pt > 0) setTimeout(function () { tost('Пошта архіву: нові справи — ' + ch(pt) + ' ' + slovo(pt, STOR) + '. Вистачить на ' + Y.N.poshta_vulyts + ' наступні вулиці.', 6000); }, r.sekund > 120 ? 6200 : 0);
     Y.den(S, teper());
     malyuvaty();
   }

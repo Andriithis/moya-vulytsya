@@ -15,7 +15,7 @@
   'use strict';
 
   var N = {
-    versiia: 1,
+    versiia: 2,                     // 2 — ZAVDANNYA-141 (новий баланс; старий прогрес починається заново)
     dotyk: 1,                       // сторінок за дотик (+ частка від виробництва нижче)
     dotyk_vid_vyrobnytstva: 0.05,   // дотик дає ще 5 % від «сторінок за секунду»
     pomichnyky: [
@@ -26,21 +26,22 @@
       { id: 'drukarnia', nazva: 'Друкарня', opys: 'видає літопис накладом', tsina: 130000, za_sek: 450 }
     ],
     rist_tsiny: 1.15,               // кожен наступний помічник того ж виду дорожчий на 15 %
-    vulytsia_tsina: 10,             // перша вулиця
-    vulytsia_stepin: 3.2,           // ціна вулиці k: 10 × k^3,2 × 1,01^k — росте швидко, але не «стіною»
-    vulytsia_rist: 1.01,
-    bonus_vulytsi: 0.03,            // +3 % до читання за кожну відкриту вулицю
+    vulytsia_tsina: 20,             // перша вулиця (ZAVDANNYA-141: темп — симулятор symuliatsiia.js)
+    vulytsia_stepin: 2.6,           // ціна вулиці k: 20 × k^2,6 × 1,12^k — бонус вулиць складний (×1,01 за кожну), тож
+    vulytsia_rist: 1.12,            // ціна росте швидше за бонус: перший тиждень повільніший, далі темп тримає «Пошта архіву»
+    bonus_vulytsi: 0.01,            // ×1,01 до читання за кожну відкриту вулицю (складний відсоток)
     bonus_karty: { zvychaina: 0.02, nechasta: 0.04, ridkisna: 0.08, duzhe: 0.15 },
     rayon_kozhni: 15,               // новий район — за кожні 15 відкритих вулиць
     offlain_hodyn: 8,               // поки гравця немає, помічники читають до 8 годин
-    offlain_chastka: 0.5,           // …удвічі повільніше, ніж при гравцеві (гра — щоб приходити, а не лише чекати)
+    offlain_chastka: 0.15,          // …у 0,15 швидкості (ZVIT-140: ніч давала в 24 рази більше, ніж гра; тепер — ≈ 7)
     vydannia_vid_storinok: 20000,   // «нове видання» — коли за видання прочитано стільки сторінок
-    vydannia_rist: 8,
-    avtorytet_bonus: 0.1,           // кожен пункт авторитету — +10 % до читання назавжди
+    vydannia_rist: 10,
+    avtorytet_bonus: 0.05,          // кожен пункт авторитету — +5 % до читання назавжди
     natkhnennia_khv: 60,            // нагорода щоденної задачі — година подвійного читання
     natkhnennia_mnozhnyk: 2,
     seriia_bonus_den: 0.02, seriia_bonus_max: 0.3,   // серія днів: +2 % за день, не більше +30 %
-    vykhidnykh_na_tyzhden: 1        // один пропущений день на тиждень серію не рве
+    vykhidnykh_na_tyzhden: 1,       // один пропущений день на тиждень серію не рве
+    poshta_vulyts: 3                // «Пошта архіву»: раз на день — сторінки рівно на 3 наступні вулиці (темп, ZAVDANNYA-141)
   };
 
   // ---------- час за Києвом ----------
@@ -77,7 +78,7 @@
   }
   // Множник читання: вулиці × картки × серія × авторитет (усе — від дій гравця, не від випадку).
   function mnozhnyk(s, vydy) {
-    return (1 + N.bonus_vulytsi * s.vulytsi.length) * (1 + bonusKart(s, vydy)) * (1 + bonusSerii(s)) *
+    return Math.pow(1 + N.bonus_vulytsi, s.vulytsi.length) * (1 + bonusKart(s, vydy)) * (1 + bonusSerii(s)) *
       (1 + N.avtorytet_bonus * s.avtorytet);
   }
   function bazaZaSek(s) {
@@ -155,13 +156,31 @@
     s.rayony.push(rayon); return true;
   }
 
+  // ---------- «Пошта архіву» (ZAVDANNYA-141, темп) ----------
+  // Раз на день (за Києвом), коли гравець приходить, — сторінки на N наступних вулиць за їхньою поточною ціною. Так щодня є
+  // що відкрити й тоді, коли ціни вже високі; однаково для всіх, без випадку. Перший день — без пошти (є навчання).
+  function skilkyNaVulytsi(s, k) {
+    var sum = 0, kopiia = { vulytsi: s.vulytsi.slice() };
+    for (var i = 0; i < k; i++) { sum += tsinaVulytsi(kopiia); kopiia.vulytsi.push('~' + i); }
+    return sum;
+  }
+  function poshta(s, ms) {
+    var d = denKyiv(ms);
+    if (!s.poshta) { s.poshta = d; return 0; }
+    if (s.poshta === d) return 0;
+    s.poshta = d;
+    var n = skilkyNaVulytsi(s, N.poshta_vulyts);
+    dodaty(s, n);
+    return n;
+  }
+
   // ---------- «Нове видання» (престиж) ----------
   // Авторитет — за порядок прочитаного (кожне «вдесятеро більше» — ще пункт), тож перезапуск вигідний, але не вибуховий.
   function avtorytetZa(s) {
     var porih = porihVydannia(s);
     return s.za_vydannia < porih ? 0 : 1 + Math.floor(Math.log10(s.za_vydannia / porih));
   }
-  // Поріг кожного наступного видання — увосьмеро вищий: перезапуск лишається цікавим, але не розганяє гру до кінця за тиждень.
+  // Поріг кожного наступного видання — удесятеро вищий: перезапуск лишається цікавим, але не розганяє гру до кінця за тиждень.
   function porihVydannia(s) { return N.vydannia_vid_storinok * Math.pow(N.vydannia_rist, s.vydannia); }
   function mozhnaVydannia(s) { return avtorytetZa(s) >= 1; }
   // Скидаються сторінки й помічники; вулиці, райони, картки й серія лишаються (колекція — назавжди).
@@ -283,7 +302,7 @@
     plyn: plyn, dotyk: dotyk, naiaty: naiaty, vydniPomichnyky: vydniPomichnyky, kilkist: kilkist,
     skilkyRayoniv: skilkyRayoniv, vidkrytyVulytsiu: vidkrytyVulytsiu, vidkrytyRayon: vidkrytyRayon,
     avtorytetZa: avtorytetZa, porihVydannia: porihVydannia, mozhnaVydannia: mozhnaVydannia, noveVydannia: noveVydannia,
-    spravaDnia: spravaDnia, den: den, vidpovisty: vidpovisty, perevirytyVulytsi: perevirytyVulytsi,
+    poshta: poshta, skilkyNaVulytsi: skilkyNaVulytsi, spravaDnia: spravaDnia, den: den, vidpovisty: vidpovisty, perevirytyVulytsi: perevirytyVulytsi,
     vseZrobleno: vseZrobleno, zavtra: zavtra, chyslo: chyslo, rivenKarty: rivenKarty, bonusSerii: bonusSerii, bonusKart: bonusKart
   };
 });

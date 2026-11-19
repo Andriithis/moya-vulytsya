@@ -69,7 +69,7 @@ class Yadro(unittest.TestCase):
         r = node(self.T0 + "const s=Y.novyi(t0,'Подільський');s.pomichnyky.chytach=10;"
                  "const r=Y.plyn(s,D.vydy,t0+24*3600e3);return [r.obrizano,Math.round(r.storinok)]")
         self.assertTrue(r[0])
-        self.assertEqual(r[1], round(10 * 0.2 * 0.5 * 8 * 3600))   # 8 годин, удвічі повільніше
+        self.assertEqual(r[1], round(10 * 0.2 * 0.15 * 8 * 3600))   # 8 годин, у 0,15 швидкості (ZAVDANNYA-141)
 
     def test_vydannia_zberihaie_kolektsiiu(self):
         r = node(self.T0 + "const s=Y.novyi(t0,'Подільський');s.storinky=1e9;Y.vidkrytyVulytsiu(s,D.vulytsi[0],D.podii);"
@@ -80,7 +80,7 @@ class Yadro(unittest.TestCase):
         self.assertEqual(r[3], {})
         self.assertEqual(r[4], ['a'])
         self.assertEqual(r[5], 2)
-        self.assertEqual(r[6], 160000)            # наступний поріг — увосьмеро вищий
+        self.assertEqual(r[6], 200000)            # наступний поріг — удесятеро вищий
 
     def test_sprava_dnia_odnakova_dlia_vsikh_i_pravylna_sered_variantiv(self):
         r = node("const a=Y.spravaDnia('2026-11-19',D),b=Y.spravaDnia('2026-11-19',D);"
@@ -115,8 +115,28 @@ class Yadro(unittest.TestCase):
         self.assertNotIn('4-1', r[1])
         self.assertNotIn('VARIANT', r[1])
 
+    def test_poshta_arkhivu_raz_na_den(self):
+        r = node(self.T0 + "const s=Y.novyi(t0,'Подільський');const a=Y.poshta(s,t0);const b=Y.poshta(s,t0+3600e3);"
+                 "const tr=Y.skilkyNaVulytsi(s,3);const c=Y.poshta(s,t0+864e5);const d=Y.poshta(s,t0+864e5+60e3);"
+                 "return [a,b,c===tr,d,tr===Y.tsinaVulytsi(s)+Y.tsinaVulytsi({vulytsi:['x']})+Y.tsinaVulytsi({vulytsi:['x','y']})]")
+        self.assertEqual(r, [0, 0, True, 0, True], 'перший день без пошти; далі — раз на день, рівно на 3 наступні вулиці')
+
     def test_zlamanyi_stan_ne_valyt_hru(self):
         self.assertEqual(node("return [Y.pryniaty(null,1),Y.pryniaty({v:99},1),Y.pryniaty('x',1)]"), [None, None, None])
+
+
+@unittest.skipUnless(NODE and (LIT / 'litopys.json').exists(), 'потрібні Node.js і зібраний litopys.json (з колоди, поза git)')
+class Temp(unittest.TestCase):
+    """ZAVDANNYA-141, крок 3: місто не закінчується за тиждень, щодня є що відкрити (симулятор, 60 днів)."""
+
+    def test_60_dniv(self):
+        r = subprocess.run([NODE, str(LIT / 'symuliatsiia.js'), str(LIT / 'litopys.json'), '--json'],
+                           capture_output=True, text=True, timeout=300)
+        d = json.loads(r.stdout)
+        dni = {x['den']: x for x in d['dni'] if 'mitka' not in x}
+        self.assertLess(dni[7]['vulyts'], d['vsogo_vulyts'] * 0.15, 'за тиждень — менше 15 % вулиць')
+        self.assertLess(dni[60]['vulyts'], d['vsogo_vulyts'] * 0.5)
+        self.assertGreaterEqual(min(dni[n]['novykh'] for n in range(2, 61)), 3, 'щодня щонайменше 3 нові вулиці')
 
 
 class Mezhi(unittest.TestCase):
