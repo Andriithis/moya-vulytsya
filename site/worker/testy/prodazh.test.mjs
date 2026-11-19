@@ -54,7 +54,7 @@ const polia = (html) => [...html.matchAll(/<form method="post" action="\/api\/sp
 }));
 
 async function zamovyty(env, tovar, budynok, poshta = 'ana@poshta.ua', dod = {}) {
-  const f = { tovar, poshta, zghoda: 'tak', ...dod };
+  const f = { tovar, poshta, zghoda: 'tak', odrazu: 'tak', ...dod };
   if (budynok) f.budynok = budynok;
   const { r, kudy } = await zapyt(env, 'POST', '/api/zamovlennia', { forma: f });
   assert.equal(r.status, 303, 'замовлення має вести на оплату');
@@ -120,11 +120,11 @@ test('бізнес, «додаткова» без підписки, неісну
   const env = seredovyshche();
   for (const f of [{ tovar: 'biznes' }, { tovar: 'dodatkova', budynok: '/budynok/zhylianska/5/' }, { tovar: 'shcho', budynok: '/budynok/zhylianska/5/' },
     { tovar: 'dovidka', budynok: '/budynok/nemaie/1/' }, { tovar: 'dovidka', budynok: '/zahlushka/../budynok/zhylianska/5/' }]) {
-    const { r } = await zapyt(env, 'POST', '/api/zamovlennia', { forma: { ...f, poshta: 'a@b.ua', zghoda: 'tak' } });
+    const { r } = await zapyt(env, 'POST', '/api/zamovlennia', { forma: { ...f, poshta: 'a@b.ua', zghoda: 'tak', odrazu: 'tak' } });
     assert.notEqual(r.status, 303);
   }
   assert.equal(sql(env, 'SELECT COUNT(*) n FROM zamovlennia')[0].n, 0);
-  const { r } = await zapyt(env, 'POST', '/api/zamovlennia', { forma: { tovar: 'dovidka', budynok: '/budynok/zhylianska/5/', poshta: 'a@b.ua', zghoda: 'tak' }, origin: 'https://zlyi.test' });
+  const { r } = await zapyt(env, 'POST', '/api/zamovlennia', { forma: { tovar: 'dovidka', budynok: '/budynok/zhylianska/5/', poshta: 'a@b.ua', zghoda: 'tak', odrazu: 'tak' }, origin: 'https://zlyi.test' });
   assert.equal(r.status, 403, 'форма з чужого сайту');
 });
 
@@ -201,7 +201,7 @@ test('підпис сповіщення перевіряється; повтор
 
 test('тестова оплата вимкнена, якщо не ввімкнено обидві змінні; PRODAZH вимкнено — звичайний сайт', async () => {
   const env = seredovyshche({ TESTOVA_OPLATA: undefined });
-  assert.equal((await zapyt(env, 'POST', '/api/zamovlennia', { forma: { tovar: 'dovidka', budynok: '/budynok/zhylianska/5/', poshta: 'a@b.ua', zghoda: 'tak' } })).r.status, 503);
+  assert.equal((await zapyt(env, 'POST', '/api/zamovlennia', { forma: { tovar: 'dovidka', budynok: '/budynok/zhylianska/5/', poshta: 'a@b.ua', zghoda: 'tak', odrazu: 'tak' } })).r.status, 503);
   const f = { zamovlennia: 'zaaaa', suma: '199', podiia: 'oplata', chas: '1' };
   assert.equal((await zapyt(env, 'POST', '/api/spovishchennia/test', { forma: { ...f, pidpys: pidpysTestu(env, f) } })).r.status, 404);
   const vymk = seredovyshche({ PRODAZH: undefined });
@@ -242,7 +242,11 @@ test('підписка: 1 довідка на місяць, далі «дода�
   assert.match(text, /лишилось: 1/);
   ({ text } = await zapyt(env, 'POST', '/kabinet/dovidka', { kuka, forma: { budynok: '/budynok/zhylianska/5/' } }));
   assert.match(text, /готуємо/);
-  const { r, kudy } = await zapyt(env, 'POST', '/kabinet/dovidka', { kuka, forma: { budynok: '/budynok/obolonskyi/16/' } });
+  // MV-155, П6: додаткова (оплата 99) — спершу сторінка з галочкою «надіслати одразу», без неї до оплати не пускає.
+  ({ text } = await zapyt(env, 'POST', '/kabinet/dovidka', { kuka, forma: { budynok: '/budynok/obolonskyi/16/' } }));
+  assert.match(text, /name="odrazu" value="tak" required/);
+  assert.equal(sql(env, `SELECT COUNT(*) n FROM zamovlennia WHERE tovar = 'dodatkova'`)[0].n, 0);
+  const { r, kudy } = await zapyt(env, 'POST', '/kabinet/dovidka', { kuka, forma: { budynok: '/budynok/obolonskyi/16/', odrazu: 'tak' } });
   assert.equal(r.status, 303);
   const dod = new URL(kudy).pathname.match(/(z[a-z2-7]+)/)[1];
   const z = sql(env, 'SELECT * FROM zamovlennia WHERE id = ?', dod)[0];
@@ -274,7 +278,8 @@ test('рієлтор — 5 довідок на місяць; ОСББ — рік
     const { text } = await zapyt(env, 'POST', '/kabinet/dovidka', { kuka: kr, forma: { budynok: '/budynok/zhylianska/5/' } });
     assert.match(text, /готуємо/, `довідка ${i + 1}`);
   }
-  assert.equal((await zapyt(env, 'POST', '/kabinet/dovidka', { kuka: kr, forma: { budynok: '/budynok/zhylianska/5/' } })).r.status, 303);
+  assert.match((await zapyt(env, 'POST', '/kabinet/dovidka', { kuka: kr, forma: { budynok: '/budynok/zhylianska/5/' } })).text, /Додаткова довідка/);
+  assert.equal((await zapyt(env, 'POST', '/kabinet/dovidka', { kuka: kr, forma: { budynok: '/budynok/zhylianska/5/', odrazu: 'tak' } })).r.status, 303);
 
   await oplatyty(env, await zamovyty(env, 'osbb', '/budynok/obolonskyi/16/', 'osbb@poshta.ua'));
   const o = sql(env, `SELECT * FROM pidpysky WHERE tovar = 'osbb'`)[0];

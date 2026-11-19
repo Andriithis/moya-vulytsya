@@ -143,9 +143,10 @@ def roky_html(st: Stattia, poroku: Counter, roky_vid: str) -> str:
 
 def knopky_kupity(st: Stattia) -> str:
     d = f'sp-{SLUG[st.kodeks]}-{st.nomer}'
-    return (f'<div class="diyi"><a class="knopka knopka--holovna" href="/oplata/?tovar=spdovidka&amp;dzherelo={d}">'
-            f'Довідка по моєму суду — {T.tsina("spdovidka")}</a>'
-            f'<a class="knopka" href="/oplata/?tovar=spyurist&amp;dzherelo={d}">Юристу: усі суди й фільтри — {T.tsina("spyurist")}</a></div>')
+    return ('<div class="diyi">'
+            + T.knopka_oplaty(f'/oplata/?tovar=spdovidka&amp;dzherelo={d}', f'Довідка по моєму суду — {T.tsina("spdovidka")}', True)
+            + T.knopka_oplaty(f'/oplata/?tovar=spyurist&amp;dzherelo={d}', f'Юристу: усі суди й фільтри — {T.tsina("spyurist")}')
+            + '</div>')
 
 
 def zamok_sudiv(st: Stattia) -> str:
@@ -301,11 +302,11 @@ def storinka_rozdilu(statti: list, dani: dict, adresa_saitu: str) -> str:
 <div class="kartka tovar tovar--holovnyi"><h3>{e(T.TOVARY["spdovidka"])}</h3><p class="tovar__tsina">{T.tsina("spdovidka")}</p>
 <p class="tovar__pidpys">Разово, для людини зі справою</p><ul><li>ваш суд і частина статті</li><li>частки результатів і покарань за 3 роки</li>
 <li>строк від події до рішення</li><li>простими словами, без прогнозу й порад</li></ul>
-<a class="knopka knopka--holovna" href="/oplata/?tovar=spdovidka&amp;dzherelo=sudova-praktyka">Замовити</a></div>
+{T.knopka_oplaty('/oplata/?tovar=spdovidka&amp;dzherelo=sudova-praktyka', 'Замовити', True)}</div>
 <div class="kartka tovar"><h3>{e(T.TOVARY["spyurist"])}</h3><p class="tovar__tsina">{T.tsina("spyurist")}</p>
 <p class="tovar__pidpys">Для юристів і адвокатів</p><ul><li>усі статті й суди Києва</li><li>частини статті, кожен рік, фільтри</li>
 <li>вивантаження таблиць</li></ul>
-<a class="knopka" href="/oplata/?tovar=spyurist&amp;dzherelo=sudova-praktyka">Замовити</a></div></div>
+{T.knopka_oplaty('/oplata/?tovar=spyurist&amp;dzherelo=sudova-praktyka', 'Замовити')}</div></div>
 <p class="prymitka">Числа — справи за {period} у наших даних (тексти ще докачуються). Це статистика минулих рішень, а не юридична
 порада. Оплата ще не працює: кнопка відкриє сторінку, де можна залишити пошту.</p></section>''')
     return Z.storinka(shlyakh='/sudova-praktyka/', title='Судова практика Києва за статтями: чим закінчуються справи | Моя вулиця',

@@ -9,6 +9,8 @@ MV-122 (17.11.2026): «Судова практика» — довідка люд
 """
 from __future__ import annotations
 
+import re
+
 NBSP = ' '
 
 TSINY = {
@@ -47,6 +49,26 @@ def tsina(kl: str, strok: bool = True) -> str:
     if t is None:
         return ZA_DOMOVLENISTIU
     return f'{suma(t)}{NBSP}грн' + (STROK.get(kl, '') if strok else '')
+
+
+# ---------------------------------------------------------------- кнопки оплати (ZAVDANNYA-132)
+# Один перемикач на весь сайт: 'skoro' — оплату не підключено, на кожній кнопці оплати другий рядок «Скоро — залиште
+# пошту» (кнопка веде на /oplata/, де сервер записує пошту, товар і будинок); 'tak' — звичайні кнопки, /oplata/ — справжня
+# оплата. Ставить збирач (`zibraty_sait.py --oplata`, у скрипті викладки — змінна MV_OPLATA). Ціни й адреси кнопок — ті самі.
+REZHYMY_OPLATY = ('skoro', 'tak')
+OPLATA = {'rezhym': 'skoro'}
+NAPYS_SKORO = 'Скоро — залиште пошту'
+
+
+def knopka_oplaty(href: str, napys: str, holovna: bool = False) -> str:
+    """<a> кнопки оплати; href і napys — уже екрановані. Товар, якого ще немає в продажу (NA_PRODAZH; «Судова практика»),
+    лишається «скоро» й після ввімкнення оплати — сервер на нього показує «залиште пошту»."""
+    klas = 'knopka' + (' knopka--holovna' if holovna else '')
+    tovar = re.search(r'[?&;]tovar=([a-z]+)', href)
+    if OPLATA['rezhym'] == 'skoro' or (tovar and tovar.group(1) not in NA_PRODAZH):
+        return (f'<a class="{klas} knopka--skoro" href="{href}"><span>{napys}</span>'
+                f'<small class="knopka__skoro">{NAPYS_SKORO}</small></a>')
+    return f'<a class="{klas}" href="{href}">{napys}</a>'
 
 
 def dozvoleni_sumy() -> set[int]:

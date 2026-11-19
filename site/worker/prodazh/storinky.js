@@ -22,7 +22,7 @@ export function data(t) {
 export const CSP = "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; " +
   "form-action 'self' https://www.liqpay.ua; frame-ancestors 'none'; base-uri 'none'";
 
-export function storinka(title, tilo, { status = 200, zaholovky = {} } = {}) {
+export function storinka(title, tilo, { status = 200, zaholovky = {}, kabinet = true } = {}) {
   const html = `<!doctype html>
 <html lang="uk" data-koren="/">
 <head>
@@ -37,7 +37,7 @@ export function storinka(title, tilo, { status = 200, zaholovky = {} } = {}) {
 </head>
 <body>
 <header class="shapka"><div class="shapka__vnutri"><a class="lohotyp" href="/"><span class="lohotyp__nazva">Моя вулиця</span></a>
-<nav class="menyu" aria-label="Розділи"><a href="/miy-budynok/">Мій будинок</a><a href="/kabinet/">Кабінет</a></nav></div></header>
+<nav class="menyu" aria-label="Розділи"><a href="/miy-budynok/">Мій будинок</a>${kabinet ? '<a href="/kabinet/">Кабінет</a>' : '<a href="/karta/">Карта</a>'}</nav></div></header>
 <main class="storinka">
 ${tilo}
 </main>
@@ -56,13 +56,18 @@ ${tilo}
   });
 }
 
-export const povidomlennia = (title, tekst, status = 200, dii = '') =>
-  storinka(title, `<section class="zaholovok"><h1>${e(title)}</h1><p>${tekst}</p>${dii}</section>`, { status });
+export const povidomlennia = (title, tekst, status = 200, dii = '', kabinet = true) =>
+  storinka(title, `<section class="zaholovok"><h1>${e(title)}</h1><p>${tekst}</p>${dii}</section>`, { status, kabinet });
 
 export const nemaie = () => povidomlennia('Сторінки немає', 'Такої сторінки немає або посилання застаріло.', 404,
   '<div class="diyi"><a class="knopka" href="/kabinet/">Кабінет</a></div>');
 
 // ---------------------------------------------------------------- замовлення
+
+// MV-155, П6: без цієї галочки не оплатити (сервер перевіряє поле odrazu). 14 днів на відмову (ЗУ «Про захист прав
+// споживачів») не діють, якщо людина сама попросила надіслати цифровий вміст одразу — оферта, розд. про відмову.
+export const NAPYS_ODRAZU = 'Прошу надіслати одразу; після надсилання відмовитися не можна';
+export const GALOCHKA_ODRAZU = `<label class="pravyla"><input type="checkbox" name="odrazu" value="tak" required> ${NAPYS_ODRAZU}</label>`;
 
 export function formaZamovlennia({ tovar, budynok, adresa, pomylka = '' }) {
   const nazva = TS.nazvy[tovar];
@@ -77,6 +82,7 @@ export function formaZamovlennia({ tovar, budynok, adresa, pomylka = '' }) {
 <input id="poshta" name="poshta" type="email" autocomplete="email" required maxlength="254" placeholder="name@poshta.ua">
 ${pomylka ? `<p class="pomylka" role="alert">${e(pomylka)}</p>` : ''}
 <label class="pravyla"><input type="checkbox" name="zghoda" value="tak" required> Погоджуюсь з <a href="/zahlushka/oferta.html">офертою</a> і <a href="/zahlushka/polityka.html">політикою конфіденційності</a></label>
+${GALOCHKA_ODRAZU}
 <button class="knopka knopka--holovna" type="submit">Перейти до оплати — ${tsina(tovar)}</button>
 </form>` : '<div class="diyi"><a class="knopka knopka--holovna" href="/miy-budynok/">Знайти будинок</a></div>';
   return storinka(`${nazva} — оплата`, `<section class="zaholovok"><h1>${e(nazva)}</h1>${pro}<p class="tsina">${tsina(tovar)}</p></section>
@@ -105,6 +111,40 @@ export function testovaOplata(zam, polia) {
 export const dyakuiemo = () => povidomlennia('Дякуємо!',
   'Щойно платіжний сервіс підтвердить оплату, довідку почнемо готувати. Коли буде готова — надішлемо посилання на пошту (зазвичай кілька хвилин). Усі довідки — також у кабінеті.',
   200, '<div class="diyi"><a class="knopka knopka--holovna" href="/kabinet/">Кабінет</a></div>');
+
+/** Додаткова довідка підписника з кабінету (оплата 99): та сама галочка П6, що й у звичайному замовленні. */
+export function pidtverdytyDodatkovu({ budynok, adresa, pomylka = '' }) {
+  return storinka('Додаткова довідка — оплата', `<section class="zaholovok"><h1>${e(TS.nazvy.dodatkova)}</h1>
+<p>Будинок: <b>${e(adresa)}</b>. Довідки цього місяця з підписки вже використано.</p><p class="tsina">${tsina('dodatkova')}</p></section>
+<section class="rozdil"><form class="forma" method="post" action="/kabinet/dovidka">
+<input type="hidden" name="budynok" value="${e(budynok)}">
+${pomylka ? `<p class="pomylka" role="alert">${e(pomylka)}</p>` : ''}${GALOCHKA_ODRAZU}
+<button class="knopka knopka--holovna" type="submit">Перейти до оплати — ${tsina('dodatkova')}</button></form></section>`);
+}
+
+// ---------------------------------------------------------------- «скоро» (PRODAZH = 'skoro', ZAVDANNYA-132)
+
+/** Сторінка «Скоро — залиште пошту»: що обрали (товар, будинок) + пошта. Оплати ще немає — лише заявка. */
+export function skoro({ tovar, nazva, budynok, adresa, kanal, pomylka = '', kabinet = false }) {
+  const tsinaT = TS.tsiny[tovar] ? `<p class="prymitka">Ціна після запуску: ${tsina(tovar)}.</p>` : '';
+  const pro = budynok ? `<p>Будинок: <b>${e(adresa)}</b> (<a href="${e(budynok)}">сторінка будинку</a>).</p>` : '';
+  return storinka('Скоро — залиште пошту', `<section class="zaholovok"><span class="mitka">Скоро</span><h1>Скоро — залиште пошту</h1>
+<p>Оплату ще не підключено. Залиште пошту — напишемо <b>один раз</b>, коли це можна буде замовити.</p>
+<div class="kartka vybir"><p>Ви обрали: <b>${e(nazva)}</b></p>${pro}${tsinaT}</div></section>
+<section class="rozdil"><form class="forma" method="post" action="/api/skoro">
+<input type="hidden" name="tovar" value="${e(tovar)}">${budynok ? `<input type="hidden" name="budynok" value="${e(budynok)}">` : ''}
+<input type="hidden" name="dzherelo" value="${e(kanal)}">
+<label for="poshta">Пошта</label>
+<input id="poshta" name="poshta" type="email" autocomplete="email" required maxlength="254" placeholder="name@poshta.ua">
+${pomylka ? `<p class="pomylka" role="alert">${e(pomylka)}</p>` : ''}
+<label class="pravyla"><input type="checkbox" name="zghoda" value="tak" required> Погоджуюсь з <a href="/zahlushka/polityka.html">політикою конфіденційності</a>: пошту використаємо лише для цього листа</label>
+<button class="knopka knopka--holovna" type="submit">Залишити пошту</button></form>
+<p class="prymitka">Ми не списуємо грошей і не просимо картку. Пошту можна видалити — напишіть на адресу з <a href="/zahlushka/pro-nas.html">«Хто ми»</a>.</p></section>`,
+  { kabinet });     // у режимі «скоро» кабінету ще немає — у шапці «Карта» замість «Кабінет»
+}
+
+export const skoroDyakuiemo = () => povidomlennia('Дякуємо!', 'Записали. Напишемо один раз, коли оплату буде підключено.', 200,
+  '<div class="diyi"><a class="knopka knopka--holovna" href="/">На головну</a><a class="knopka" href="/karta/">Карта</a></div>', false);
 
 // ---------------------------------------------------------------- кабінет
 

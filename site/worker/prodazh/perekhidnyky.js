@@ -69,6 +69,9 @@ const liqpay = {
       amount: zam.suma, currency: 'UAH', description: opys, order_id: zam.id, language: 'uk',
       result_url: `${adresa}/oplata/dyakuiemo/?z=${zam.id}`, server_url: `${adresa}/api/spovishchennia/liqpay`,
     };
+    // Тестовий режим LiqPay (ZAVDANNYA-132): LIQPAY_SANDBOX = 'tak' → поле sandbox = 1 (за документацією checkout:
+    // гроші не списуються, сповіщення приходить як справжнє). Ключі — пісочниці з кабінету LiqPay (sandbox_…).
+    if (env.LIQPAY_SANDBOX === 'tak') p.sandbox = '1';
     if (pidpyska) {
       p.subscribe = '1';
       p.subscribe_date_start = liqpayChas(zam.stvoreno);

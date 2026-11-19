@@ -1,0 +1,87 @@
+# Викладка сайту «Моя вулиця» на Cloudflare — кнопкою в GitHub (ZAVDANNYA-132; покроково — docs/ZAPUSK-SAITU.md).
+#
+# Куди класти: у ПРИВАТНИЙ репозиторій організації партнера (той самий, що для автопостингу, MV-154) як
+# `.github/workflows/vyklasty.yml`. Запуск — лише вручну: Actions → «Викладка сайту» → Run workflow → тег випуску.
+# Ключі — тільки «секрети» репозиторію (Settings → Secrets and variables → Actions), у файлах — ніколи:
+#   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID — Cloudflare партнера;
+#   MV_DANI_TOKEN — ключ лише на читання `dani-edrsr` (той самий, що для автопостингу): випуск і довідник перейменувань;
+#   MV_ZAPOVNENNYA_JSON — увесь вміст файла з даними партнера (зразок — site/zapovnennya.zrazok.json).
+# Звичайні змінні (Variables): MV_DOMEN, MV_D1, MV_OPLATA (skoro | tak), MV_PLATIZHNYI_SERVIS, MV_LIQPAY_SANDBOX,
+#   MV_POSHTA_SERVIS, MV_POSHTA_PARTNERA, MV_POSHTA_VID, MV_POSHTA_URL, MV_CF_ANALITYKA.
+# НЕ ПЕРЕВІРЕНО на GitHub (ZVIT-132): зібрано з тих самих кроків, що перевірено локально (site/vyklasty.py --suho).
+
+name: Викладка сайту
+
+on:
+  workflow_dispatch:
+    inputs:
+      vypusk:
+        description: 'Тег випуску dani-edrsr (напр. vypusk-2026-11-08)'
+        required: true
+      suho:
+        description: 'Лише зібрати й перевірити, нічого не викладати'
+        type: boolean
+        default: false
+
+concurrency:
+  group: vyklasty
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  vyklasty:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      MV_DOMEN: ${{ vars.MV_DOMEN }}
+      MV_D1: ${{ vars.MV_D1 }}
+      MV_OPLATA: ${{ vars.MV_OPLATA || 'skoro' }}
+      MV_PLATIZHNYI_SERVIS: ${{ vars.MV_PLATIZHNYI_SERVIS }}
+      MV_LIQPAY_SANDBOX: ${{ vars.MV_LIQPAY_SANDBOX }}
+      MV_POSHTA_SERVIS: ${{ vars.MV_POSHTA_SERVIS || 'zahlushka' }}
+      MV_POSHTA_PARTNERA: ${{ vars.MV_POSHTA_PARTNERA }}
+      MV_POSHTA_VID: ${{ vars.MV_POSHTA_VID }}
+      MV_POSHTA_URL: ${{ vars.MV_POSHTA_URL }}
+      MV_CF_ANALITYKA: ${{ vars.MV_CF_ANALITYKA }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: andriithis/moya-vulytsya
+          path: moya-vulytsya
+      - uses: actions/checkout@v4
+        with:
+          repository: andriithis/dani-edrsr
+          token: ${{ secrets.MV_DANI_TOKEN }}
+          path: dani-edrsr
+          sparse-checkout: config
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Залежності
+        run: python -m pip install -q h3 pillow
+      - name: Файли випуску
+        env:
+          GH_TOKEN: ${{ secrets.MV_DANI_TOKEN }}
+        run: |
+          mkdir -p vypusk
+          gh release download "${{ inputs.vypusk }}" --repo andriithis/dani-edrsr --dir vypusk \
+            --pattern 'events-*.db' --pattern 'events-*.db.xz' --pattern 'budynky*.json' --pattern 'perekazy*.json' \
+            --pattern 'sudova-praktyka*.json' --pattern 'koloda*.json'
+          ls -la vypusk
+      - name: Дані партнера (з секрету — у тимчасовий файл поза репозиторієм)
+        env:
+          ZAP: ${{ secrets.MV_ZAPOVNENNYA_JSON }}
+        run: |
+          printf '%s' "$ZAP" > "$RUNNER_TEMP/zapovnennya.json"
+          echo "MV_ZAPOVNENNYA=$RUNNER_TEMP/zapovnennya.json" >> "$GITHUB_ENV"
+      - name: Викладка
+        run: |
+          python moya-vulytsya/site/vyklasty.py vypusk --dani-edrsr dani-edrsr --robocha "$RUNNER_TEMP/vykladka" \
+            ${{ inputs.suho && '--suho' || '' }}

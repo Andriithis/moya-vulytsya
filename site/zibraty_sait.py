@@ -62,9 +62,35 @@ ZAMOK_SVG = ('<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke
              '<path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>')
 NBSP = ' '
 
-CSP = ("default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data: blob:; "
-       "worker-src 'self' blob:; child-src 'self' blob:; connect-src 'self' https://tiles.openfreemap.org; "
-       "form-action 'self'; base-uri 'none'")
+CSP_BAZOVYI = ("default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data: blob:; "
+               "worker-src 'self' blob:; child-src 'self' blob:; connect-src 'self' https://tiles.openfreemap.org; "
+               "form-action 'self'; base-uri 'none'")
+CSP = CSP_BAZOVYI
+# Лічба відвідувань без кукі (ZAVDANNYA-132): Cloudflare Web Analytics — безкоштовно, без кукі й без збереження IP
+# (за описом Cloudflare). Токен — публічний (видно в коді кожної сторінки), не секрет; без токена скрипта немає взагалі.
+CF_SKRYPT = 'https://static.cloudflareinsights.com'
+CF_CONNECT = 'https://cloudflareinsights.com'
+ANALITYKA = ''
+TOKEN_ANALITYKY = re.compile(r'^[0-9a-f]{32}$')
+
+
+def csp_i_analityka(token: str) -> tuple[str, str]:
+    """CSP сторінок і тег лічильника (порожній — без лічби)."""
+    token = (token or '').strip()
+    if not token:
+        return CSP_BAZOVYI, ''
+    if not TOKEN_ANALITYKY.match(token):
+        raise SystemExit('Токен Cloudflare Web Analytics — 32 знаки 0-9a-f (Web Analytics → Add a site → «token»).')
+    csp = CSP_BAZOVYI.replace("script-src 'self'", f"script-src 'self' {CF_SKRYPT}").replace(
+        "connect-src 'self'", f"connect-src 'self' {CF_CONNECT}")
+    return csp, (f'<script defer src="{CF_SKRYPT}/beacon.min.js" data-cf-beacon=\'{{"token": "{token}", "spa": false}}\'></script>\n')
+
+
+def robots_txt(adresa_saitu: str) -> str:
+    """Пошуковикам — усе публічне; службові адреси (оплата, кабінет, довідки, сервер, форма звернення) — ні."""
+    zaboroneno = ['/zahlushka/zvernennya.html', '/oplata/', '/kabinet/', '/dovidka/', '/api/', '/prodazh/']
+    return ('User-agent: *\nAllow: /\n' + ''.join(f'Disallow: {z}\n' for z in zaboroneno)
+            + f'\nSitemap: {adresa_saitu}/sitemap.xml\n')
 
 SONTSE = ('<svg class="ik-sontse" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" '
           'stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4'
@@ -260,7 +286,7 @@ def storinka(*, shlyakh: str, title: str, opys: str, tilo: str, adresa_saitu: st
 <p><a href="/pro-dani/">Як ми працюємо з даними</a> · <a href="/vydalyty/">Видалити або виправити подію</a> · <a href="/zahlushka/polityka.html">Політика конфіденційності</a> · <a href="/zahlushka/oferta.html">Оферта</a> · Карта: <a href="https://www.openstreetmap.org/copyright">© учасники OpenStreetMap</a></p>
 </div>
 </footer>
-{js}</body>
+{js}{ANALITYKA}</body>
 </html>
 '''
 
@@ -877,9 +903,25 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
                  zvit_zvedennia: Path | None = None, budynky: Path | None = None,
                  mezha_failiv: int | None = None, khostynh: str = 'pages', perekazy: Path | None = None,
                  kandydaty_istorii: Path | None = None, media: Path | None = None, sudova_praktyka: Path | None = None,
-                 prodazh: dict | None = None) -> dict:
-    """khostynh: 'pages' — кожна сторінка файлом (межа 20 000); 'workers' — будинки в пачках (site/khostynh.py)."""
+                 prodazh: dict | None = None, oplata: str = 'skoro', zapovnennya: dict | None = None,
+                 dlya_publikatsiyi: bool = False, cf_analityka: str = '', domen: str = '') -> dict:
+    """khostynh: 'pages' — кожна сторінка файлом (межа 20 000); 'workers' — будинки в пачках (site/khostynh.py).
+    oplata (ZAVDANNYA-132): 'skoro' — на кнопках оплати «Скоро — залиште пошту»; 'tak' — звичайні кнопки (продаж увімкнено).
+    prodazh — {'d1', 'servis', 'adresa', 'poshta'} для Workers: з базою D1 форми сайту пишуться в неї (не в Supabase).
+    zapovnennya — дані партнера для оферти й політики ([ВЛАСНИК] тощо); dlya_publikatsiyi — зупинитися, якщо щось не заповнено.
+    cf_analityka — публічний токен Cloudflare Web Analytics (лічба відвідувань без кукі); domen — свій домен для Workers."""
     import khostynh as KH
+    import tsiny as T
+    if oplata not in T.REZHYMY_OPLATY:
+        raise SystemExit(f'Невідомий режим оплати {oplata!r}: {", ".join(T.REZHYMY_OPLATY)}')
+    if oplata == 'tak' and not (prodazh and prodazh.get('servis')):
+        raise SystemExit('Оплата «tak» працює лише з сервером продажу: --khostynh workers --d1 … --platizhnyi-servis …')
+    T.OPLATA['rezhym'] = oplata
+    global CSP, ANALITYKA
+    CSP, ANALITYKA = csp_i_analityka(cf_analityka)
+    # Сторінки пишуть і інші модулі через `import zibraty_sait` — коли збирач запущено як скрипт, це інший об'єкт модуля.
+    import zibraty_sait as _Z
+    _Z.CSP, _Z.ANALITYKA = CSP, ANALITYKA
     if khostynh not in KH.VARIANTY:
         raise SystemExit(f'Невідомий варіант хостингу {khostynh!r}: {", ".join(KH.VARIANTY)}')
     if mezha_failiv is None:
@@ -1035,7 +1077,23 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
             K.dlya_publikatsiyi(K.pidhotuvaty(K.prochytaty(koloda)))
         except K.PomylkaKolody as pomylka:
             raise SystemExit(f'Колоду гри не можна публікувати: {pomylka}') from pomylka
-    zahlushka.zibraty(vykhid / 'zahlushka', '', '', {}, False, koloda)
+    # Форми заглушки: на Workers з базою — у базу сайту (ZAVDANNYA-132); інакше — Supabase зі змінних середовища (MV-8).
+    import os
+    skhovyshche = 'sait' if (khostynh == 'workers' and prodazh and prodazh.get('d1')) else 'supabase'
+    try:
+        nezapovneni = zahlushka.zibraty(vykhid / 'zahlushka', os.environ.get('MV_SUPABASE_URL', ''),
+                                        os.environ.get('MV_SUPABASE_PUBLICHNYI_KLYUCH', ''), zapovnennya or {},
+                                        dlya_publikatsiyi, koloda, skhovyshche=skhovyshche)
+    except zahlushka.PomylkaZbyrannya as pomylka:
+        raise SystemExit(f'Сторінки оферти й форм: {pomylka}') from pomylka
+    if ANALITYKA:      # лічба відвідувань і на сторінках заглушки (оферта, політика, форми)
+        for f in sorted((vykhid / 'zahlushka').rglob('*.html')):
+            tekst = f.read_text(encoding='utf-8')
+            if "script-src 'self'" not in tekst or '</body>' not in tekst:
+                continue     # сторінки без скриптів (зразок довідки) і переадресації — без лічби
+            tekst = re.sub(r"connect-src 'none'|connect-src 'self'", lambda m: f"connect-src 'self' {CF_CONNECT}", tekst, count=1)
+            tekst = tekst.replace("script-src 'self'", f"script-src 'self' {CF_SKRYPT}", 1).replace('</body>', ANALITYKA + '</body>', 1)
+            f.write_text(tekst, encoding='utf-8')
     adresy.append('/zahlushka/')
     # Стара сторінка гри — переадресація на гру в карті (ZAVDANNYA-117, MV-129).
     for stara, tsil in (('index.html', '/karta/?hra=vgadai'), ('vulytsia.html', '/karta/?hra=vulytsia')):
@@ -1058,7 +1116,7 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
         zapysaty(vykhid / 'sitemap.xml', '<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
                  + ''.join(f'<sitemap><loc>{html.escape(adresa_saitu)}/sitemap-{i}.xml</loc>{lm}</sitemap>\n'
                            for i in range(1, len(chastyny) + 1)) + '</sitemapindex>\n')
-    zapysaty(vykhid / 'robots.txt', f'User-agent: *\nAllow: /\nDisallow: /zahlushka/zvernennya.html\nDisallow: /oplata/\n\nSitemap: {adresa_saitu}/sitemap.xml\n')
+    zapysaty(vykhid / 'robots.txt', robots_txt(adresa_saitu))
 
     failiv = sum(1 for p in vykhid.rglob('*') if p.is_file())
     zv = dn.zvedennia
@@ -1074,9 +1132,11 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
         'istorii_vulyts': istorii, 'perekaziv_u_faili': len(dn.perekazy), 'sudova_praktyka_u_sitemap': sp_storinok,
         'media_mists': media_mists,
         'mistsia': len(mistsia),
+        'oplata': oplata, 'formy': skhovyshche, 'nezapovneno': len(nezapovneni), 'analityka': bool(ANALITYKA),
     }
     if khostynh == 'workers':
-        zvit['teka_workera'] = str(KH.pidhotuvaty_worker(vykhid, pachky.n if pachky is not None else 1, prodazh=prodazh))
+        zvit['teka_workera'] = str(KH.pidhotuvaty_worker(vykhid, pachky.n if pachky is not None else 1, prodazh=prodazh,
+                                                         oplata=oplata, domen=domen))
     if zvit_zvedennia:
         import csv
         zvit_zvedennia.parent.mkdir(parents=True, exist_ok=True)
@@ -1114,18 +1174,29 @@ def main(argv=None) -> int:
     p.add_argument('--media', type=Path, help='візуали публічних місць для медіа (brend/media/zrobyty_media.py, тека <slug>/ на місце); '
                    'без них блоку «Для медіа» немає')
     p.add_argument('--mezha-failiv', type=int, help='межа кількості файлів (план хостингу; без ключа — 20 000)')
-    p.add_argument('--prodazh-d1', help='увімкнути сервер продажу: ідентифікатор бази Cloudflare D1 (docs/PRODAZH-SERVER.md)')
+    p.add_argument('--d1', '--prodazh-d1', dest='prodazh_d1',
+                   help='ідентифікатор бази Cloudflare D1: форми сайту й «скоро» (і продаж з --oplata tak); docs/ZAPUSK-SAITU.md')
+    p.add_argument('--oplata', choices=('skoro', 'tak'), default='skoro',
+                   help='skoro — «Скоро — залиште пошту» на кнопках оплати (типово); tak — справжній продаж (потрібен --platizhnyi-servis)')
     p.add_argument('--platizhnyi-servis', choices=('liqpay', 'mono', 'test'), help='платіжний сервіс для продажу')
+    p.add_argument('--zapovnennya', type=Path, help='JSON з даними партнера для оферти й політики ({"ВЛАСНИК": "…", …})')
+    p.add_argument('--dlya-publikatsiyi', action='store_true', help='зупинитися, якщо в оферті чи політиці лишилось [НЕЗАПОВНЕНЕ]')
+    p.add_argument('--cf-analityka', default='', help='публічний токен Cloudflare Web Analytics (лічба відвідувань без кукі)')
+    p.add_argument('--domen', default='', help='свій домен для Workers (напр. moyavulytsya.com.ua) — прив\'язка під час викладки')
     p.add_argument('--poshta-servis', choices=('zahlushka', 'http-json'), default='zahlushka', help='сервіс листів')
     a = p.parse_args(argv)
     prodazh = None
     if a.prodazh_d1 or a.platizhnyi_servis:
         if a.khostynh != 'workers':
-            p.error('продаж працює лише з --khostynh workers')
-        prodazh = {'d1': a.prodazh_d1, 'servis': a.platizhnyi_servis, 'adresa': a.adresa_saitu, 'poshta': a.poshta_servis}
+            p.error('база D1 і продаж працюють лише з --khostynh workers')
+        prodazh = {'d1': a.prodazh_d1, 'servis': a.platizhnyi_servis if a.oplata == 'tak' else None,
+                   'adresa': a.adresa_saitu, 'poshta': a.poshta_servis}
+    zapovnennya = json.loads(a.zapovnennya.read_text(encoding='utf-8')) if a.zapovnennya else None
     zvit = zibraty_sait(a.baza, a.vykhid, a.pereimenuvannya, a.mezhi_rayoniv, a.adresa_saitu, a.koloda,
                         a.zvit_zvedennia, a.budynky, a.mezha_failiv, a.khostynh, a.perekazy, a.kandydaty_istorii,
-                        media=a.media, sudova_praktyka=a.sudova_praktyka, prodazh=prodazh)
+                        media=a.media, sudova_praktyka=a.sudova_praktyka, prodazh=prodazh, oplata=a.oplata,
+                        zapovnennya=zapovnennya, dlya_publikatsiyi=a.dlya_publikatsiyi, cf_analityka=a.cf_analityka,
+                        domen=a.domen)
     for k, v in zvit.items():
         print(f'{k}: {v}')
     return 0

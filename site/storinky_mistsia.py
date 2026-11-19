@@ -149,8 +149,9 @@ def storinka_mistsia(dn: D.Dani, m: MS.Mistse, pr: dict, adresa_saitu: str, bud=
         posylannia.append(f'<a class="knopka" href="/rayon/{Z.slug_rayonu(m.rayon)}/">{e(m.rayon)} район</a>')
     posylannia.append(f'<a class="knopka" href="/mistsia/#{e(m.typ)}">{e(MS.TYPY[m.typ][1])}</a>')
     ch.append(f'<section class="rozdil"><h2>Довкола</h2><div class="diyi">{"".join(posylannia)}</div></section>')
+    knopka_pidpysky = M.T.knopka_oplaty('/oplata/?tovar=pidpyska&amp;dzherelo=mistse', f'Підписка — події з адресами, {M.tsina("pidpyska")}', True)
     ch.append(f'''<section class="rozdil"><h2>Що далі</h2><p class="haslo">{e(HASLO)}</p>
-<div class="diyi"><a class="knopka knopka--holovna" href="/oplata/?tovar=pidpyska&amp;dzherelo=mistse">Підписка — події з адресами, {M.tsina("pidpyska")}</a>
+<div class="diyi">{knopka_pidpysky}
 <a class="knopka" href="/karta/">Карта Києва</a></div></section>''')
     ch.append('<p class="prymitka">Дані — з рішень судів, які дійшли до реєстру; це не всі події тут. Рахуємо лише події, де '
               f'суд назвав саме це місце; домашнє насильство — нарівні, статеві й щодо дітей — ні. Дані станом на {e(dn.versiia)}.</p>')

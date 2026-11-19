@@ -97,7 +97,12 @@ site/hra/vulytsia-dnia.json
 # Сервер продажу (ZAVDANNYA-99): видавач довідок — у git.
 !site/prodazh/
 site/prodazh/__pycache__/
+# Запуск сайту (ZAVDANNYA-132): скрипт викладки, файл для GitHub, зразок даних партнера (без справжніх даних) — у git.
+!site/vyklasty.py
+!site/github/
+!site/zapovnennya.zrazok.json
 # === РОЛИКИ (ZAVDANNYA-11) ===
 # Готові .mp4 у git не кладемо: їх завжди можна відрендерити заново (video/rendery.py).
 video/vyhid/
 *.mp4
+_vykladka/

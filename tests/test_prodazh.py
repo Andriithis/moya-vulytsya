@@ -131,7 +131,7 @@ class Vydavach(unittest.TestCase):
 
     def test_naskrizno(self):
         st, h, _ = self.vidkryty('/api/zamovlennia', {'tovar': 'zvit', 'budynok': '/budynok/obolonskyi/16/',
-                                                      'poshta': 'ana@poshta.ua', 'zghoda': 'tak', 'suma': '1'})
+                                                      'poshta': 'ana@poshta.ua', 'zghoda': 'tak', 'odrazu': 'tak', 'suma': '1'})
         self.assertEqual(st, 303)
         _, _, html = self.vidkryty(urllib.parse.urlparse(h['location']).path)
         forma = re.search(r'<form method="post" action="/api/spovishchennia/test">([\s\S]*?)Оплата пройшла', html).group(1)

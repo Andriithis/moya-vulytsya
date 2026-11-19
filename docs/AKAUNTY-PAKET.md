@@ -43,7 +43,7 @@ ZAVDANNYA-131, 19.11.2026 (хмара), за MV-153, MV-105, MV-106, MV-151, `do
 4. Email → **Email Routing** → увімкнути → адреса `pochta@moyavulytsya.com.ua` → пересилати на Gmail → підтвердити лист.
 5. My Profile → API Tokens → Create Token → шаблон **Edit Cloudflare Workers** (лише цей акаунт і цей домен). Токен не
    копіювати нікуди, крім секрету GitHub `CLOUDFLARE_API_TOKEN` (крок 4) — ним GitHub викладатиме сайт (`docs/HOSTYNG.md`).
-6. Саму прив'язку сайту до домену (Workers → Domains & Routes) зробимо, коли буде що викладати; до того — заглушка.
+6. Саму прив'язку сайту до домену робить скрипт викладки (`docs/ZAPUSK-SAITU.md`, ZAVDANNYA-132) — окремо нічого не налаштовувати.
 
 **4. GitHub (15 хв).** Микита: github.com → New organization → **Free** → `moyavulytsya` → запросити Андрія (роль
 Member). Створити **приватний** репозиторій `avtopostynh`, покласти туди `.github/workflows/avtopostynh.yml` з

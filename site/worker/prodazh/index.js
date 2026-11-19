@@ -1,5 +1,12 @@
-// Сервер продажу «Моєї вулиці» (ZAVDANNYA-99) — маршрути. Вмикається змінною PRODAZH = 'tak'; без неї ці адреси
-// віддають статичний сайт як раніше (сторінка «Оплата скоро»). Як увімкнути — docs/PRODAZH-SERVER.md.
+// Сервер продажу «Моєї вулиці» (ZAVDANNYA-99) — маршрути. Змінна PRODAZH (ZAVDANNYA-132 — один перемикач):
+//   'tak'   — справжній продаж (оплата, кабінет, довідки) + форми сайту;
+//   'skoro' — оплату не підключено: /oplata/ — «Скоро — залиште пошту» (пошта + товар + будинок у базу), форми сайту;
+//   інше    — ці адреси віддають статичний сайт як раніше (сторінка «Оплата скоро»).
+// Як увімкнути — docs/ZAPUSK-SAITU.md, docs/PRODAZH-SERVER.md.
+//
+//   POST /api/skoro                        заявка «скоро» (лише PRODAZH = 'skoro')
+//   POST /api/forma/<zayavka|zvernennya|podiya>   форми заглушки й чотири числа (JSON, як у Supabase) — 'skoro' і 'tak'
+//   GET  /api/admin/vyvantazhennia/<таблиця>      CSV для партнера, Authorization: Bearer ADMIN_KLIUCH
 //
 //   GET  /oplata/?tovar=…&budynok=…      форма замовлення (ціна — з таблиці)
 //   POST /api/zamovlennia                  створити замовлення → платіжний сервіс
@@ -18,6 +25,7 @@ import { nadislaty } from './poshta.js';
 import * as L from './logika.js';
 import * as S from './storinky.js';
 import * as B from './bali.js';
+import * as F from './formy.js';
 
 export const MARSHRUTY = ['/oplata/*', '/api/*', '/kabinet/*', '/dovidka/*', '/prodazh/*'];
 const SESIIA_S = 30 * 86400, VKHID_S = 30 * 60, LYSTIV_NA_HODYNU = 5;
@@ -75,6 +83,7 @@ async function stvorytyZamovlennia(request, env, url) {
   }
   if (!poshta) return S.formaZamovlennia({ tovar, budynok, adresa, pomylka: 'Перевірте пошту.' });
   if (f.zghoda !== 'tak') return S.formaZamovlennia({ tovar, budynok, adresa, pomylka: 'Потрібна згода з офертою.' });
+  if (f.odrazu !== 'tak') return S.formaZamovlennia({ tovar, budynok, adresa, pomylka: 'Позначте: «Прошу надіслати одразу…» — без цього оплатити не можна.' });
   return doOplaty(env, url, { tovar, budynok, adresa, poshta });
 }
 
@@ -211,6 +220,7 @@ async function diiaKabinetu(request, env, url, ja, dia) {
     }
     const v = await L.vzyatyDovidku(env, ja.id, f.budynok, adresa);
     if (v.dovidka) return kabinet(env, ja, `Довідку на ${adresa} готуємо — посилання прийде на пошту.`);
+    if (v.dodatkova && f.odrazu !== 'tak') return S.pidtverdytyDodatkovu({ budynok: f.budynok, adresa });   // MV-155, П6
     if (v.dodatkova) return doOplaty(env, url, { tovar: 'dodatkova', budynok: f.budynok, adresa, korystuvach_id: ja.id, pidpyska_id: v.dodatkova.id });
     return pereity(url, `/oplata/?tovar=dovidka&budynok=${encodeURIComponent(f.budynok)}`);
   }
@@ -293,6 +303,8 @@ async function skasuvatyVsi(env, korystuvach_id) {
 async function admin(request, env, shliakh) {
   const avt = (request.headers.get('authorization') || '').replace(/^Bearer /, '');
   if (!env.ADMIN_KLIUCH || !rivni(avt, env.ADMIN_KLIUCH)) return new Response('ні', { status: 401 });
+  const v = shliakh.match(/^vyvantazhennia\/([a-z]+)$/);
+  if (v && request.method === 'GET') return F.vyvantazhennia(env, v[1]);
   if (shliakh === 'vydalyty' && request.method === 'POST') {
     const poshta = L.chystaPoshta((await forma(request)).poshta);
     const k = poshta && await L.odyn(env, 'SELECT * FROM korystuvachi WHERE poshta = ?', poshta);
@@ -306,13 +318,63 @@ async function admin(request, env, shliakh) {
 
 // ---------------------------------------------------------------- вхід
 
+// ---------------------------------------------------------------- «скоро» і форми (ZAVDANNYA-132)
+
+async function skoroForma(env, url) {
+  const tovar = url.searchParams.get('tovar') || '';
+  if (tovar === 'biznes') return pereity(url, '/biznes/');
+  if (!F.TOVARY_SKORO.includes(tovar)) return pereity(url, '/miy-budynok/');
+  const budynok = url.searchParams.get('budynok');
+  const adresa = budynok ? await L.perevirytyBudynok(env, budynok, url) : null;
+  return S.skoro({ tovar, nazva: tovar === 'sudova' ? F.NAZVA_SUDOVA : TS.nazvy[tovar], budynok: adresa ? budynok : null, adresa,
+                   kanal: F.kanal(url.searchParams.get('dzherelo')), kabinet: env.PRODAZH === 'tak' });
+}
+
+async function skoroZapys(request, env, url) {
+  if (!zNashohoSaitu(request, env)) return S.povidomlennia('Не вдалося', 'Залиште пошту на нашому сайті.', 403);
+  const f = await forma(request);
+  const v = await F.zapysatySkoro(env, url, f);
+  if (v.ok) return pereity(url, '/oplata/dyakuiemo/');
+  const tovar = F.TOVARY_SKORO.includes(String(f.tovar)) ? String(f.tovar) : null;
+  if (!tovar) return S.povidomlennia('Не вдалося', v.pomylka, 400);
+  const adresa = f.budynok ? await L.perevirytyBudynok(env, String(f.budynok), url) : null;
+  return S.skoro({ tovar, nazva: tovar === 'sudova' ? F.NAZVA_SUDOVA : TS.nazvy[tovar], budynok: adresa ? String(f.budynok) : null,
+                   adresa, kanal: F.kanal(f.dzherelo), pomylka: v.pomylka, kabinet: env.PRODAZH === 'tak' });
+}
+
+/** Спільне для 'skoro' і 'tak': стилі сторінок, форми сайту, вивантаження для партнера. Null — не наша адреса. */
+async function spilne(request, env, url) {
+  const s = url.pathname;
+  if (s === '/prodazh/prodazh.css') return new Response(S.CSS, { headers: { 'content-type': 'text/css; charset=utf-8', 'cache-control': 'public, max-age=3600' } });
+  const r = s.match(/^\/api\/forma\/([a-z]+)$/);
+  if (r && request.method === 'POST') {
+    if (!zNashohoSaitu(request, env)) return new Response('ні', { status: 403 });
+    return F.forma(request, env, r[1]);
+  }
+  const a = s.match(/^\/api\/admin\/(.+)$/);
+  if (a) return admin(request, env, a[1]);
+  return null;
+}
+
 /** Відповідь сервера продажу або null (тоді — звичайний сайт). */
 export async function prodazh(request, env) {
-  if (env.PRODAZH !== 'tak') return null;
+  if (env.PRODAZH !== 'tak' && env.PRODAZH !== 'skoro') return null;
   const url = new URL(request.url);
   const s = url.pathname;
   const m = request.method;
-  if (s === '/prodazh/prodazh.css') return new Response(S.CSS, { headers: { 'content-type': 'text/css; charset=utf-8', 'cache-control': 'public, max-age=3600' } });
+  const sp = await spilne(request, env, url);
+  if (sp) return sp;
+  if (env.PRODAZH === 'skoro') {
+    if (s === '/oplata/' && m === 'GET') return skoroForma(env, url);
+    if (s === '/api/skoro' && m === 'POST') return skoroZapys(request, env, url);
+    if (s === '/oplata/dyakuiemo/' && m === 'GET') return S.skoroDyakuiemo();
+    if (s.startsWith('/api/')) return new Response('ні', { status: 404 });
+    return null;     // кабінет, довідки, тестова оплата — у режимі «скоро» їх немає (звичайний сайт, 404)
+  }
+  // Товари, яких ще немає в продажу («Судова практика»), — «Скоро — залиште пошту» і з увімкненою оплатою.
+  const tovar = url.searchParams.get('tovar');
+  if (s === '/oplata/' && m === 'GET' && F.TOVARY_SKORO.includes(tovar) && !TS.na_prodazh.includes(tovar)) return skoroForma(env, url);
+  if (s === '/api/skoro' && m === 'POST') return skoroZapys(request, env, url);
   if (s === '/oplata/' && m === 'GET') return formaZamovlennia(request, env, url);
   if (s === '/oplata/dyakuiemo/' && m === 'GET') return S.dyakuiemo();
   let r = s.match(/^\/oplata\/test\/(z[a-z2-7]+)\/$/);
@@ -322,8 +384,6 @@ export async function prodazh(request, env) {
   if (r && m === 'POST') return spovishchennia(request, env, r[1]);
   r = s.match(/^\/api\/vnutr\/(.+)$/);
   if (r) return vnutr(request, env, url, r[1]);
-  r = s.match(/^\/api\/admin\/(.+)$/);
-  if (r) return admin(request, env, r[1]);
   r = s.match(/^\/dovidka\/(d[a-z2-7]+)\/?$/);
   if (r && m === 'GET') return vidkrytyDovidku(request, env, url, r[1]);
   if (s === '/kabinet/vkhid' && m === 'POST') return nadislatyVkhid(request, env, url);
