@@ -111,7 +111,7 @@ class Zapusk(unittest.TestCase):
             t = f.read_text(encoding='utf-8')
             for m in re.finditer(r'<a class="knopka[^"]*knopka--skoro" href="([^"]+)"', t):
                 tovar = re.search(r'tovar=([a-z]+)', m.group(1)).group(1)
-                self.assertNotIn(tovar, self.T.NA_PRODAZH, f'{f}: товар у продажу, а кнопка «скоро»')
+                self.assertNotIn(tovar, self.T.prodaietsia(), f'{f}: товар у продажу, а кнопка «скоро»')
         b = self.budynok(self.tak, self.zv_tak)
         self.assertIn(f'>Довідка — {self.T.tsina("dovidka")}</a>', b)
         k = wrangler_konfig(Path(self.zv_tak['teka_workera']))

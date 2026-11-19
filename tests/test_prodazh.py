@@ -362,3 +362,52 @@ class ShablonVydavacha(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class SudovaPraktyka135(unittest.TestCase):
+    """ZAVDANNYA-135: довідка «Судової практики» через того самого видавача; таблиці юриста — у сховище R2, не на сайт."""
+
+    def test_tovary_prodaiutsia_lyshe_z_ofertoiu(self):
+        self.assertIn('spdovidka', T.NA_PRODAZH)
+        self.assertIn('spyurist', T.NA_PRODAZH)
+        for t in T.NE_V_OFERTI:
+            self.assertNotIn(t, T.prodaietsia(), 'товар без оферти не продається')
+        self.assertEqual((T.REZHYM['spdovidka'], T.PERIOD_MISIATSIV['spyurist'], T.DOVIDOK['spyurist']), ('sp', 1, 3))
+
+    def test_vydavach_sp_inshyi_generator_z_parametramy(self):
+        with tempfile.TemporaryDirectory() as t:
+            src = Path(t) / 'src'
+            (src / 'zvit').mkdir(parents=True)
+            (src / 'zvit' / 'zibraty.py').write_text('raise SystemExit(5)\n', encoding='utf-8')
+            (src / 'sp_dovidka.py').write_text(
+                'import sys, json\na = sys.argv[1:]\nv = a[a.index("--vyhid") + 1]\n'
+                'open(v, "w", encoding="utf-8").write("<!doctype html>" + json.dumps(a, ensure_ascii=False))\n', encoding='utf-8')
+            d = {'id': 'dabc', 'rezhym': 'sp', 'adresa': 'ст. 130 КУпАП — усі суди міста',
+                 'parametry': {'stattia': 'ст.130 КУпАП', 'sud': 'Голосіївський', 'chastyna': '1'}}
+            f = vydavach.zibraty(src / 'zvit' / 'zibraty.py', d, Path(t), shi=True)
+            self.assertIsNotNone(f)
+            a = json.loads(f.read_text(encoding='utf-8')[len('<!doctype html>'):])
+            self.assertEqual(json.loads(a[a.index('--parametry') + 1]), d['parametry'])
+            self.assertNotIn('--shi', a, 'у довідці «Судової практики» ШІ немає')
+            self.assertEqual(a[a.index('--nomer') + 1], 'dabc')
+
+    def test_praktyka_r2_po_failu_na_stattiu(self):
+        import praktyka_r2
+        dani = {'versiia': '2026-11-19', 'stroky': ['ст.130 КУпАП'], 'statti': [
+            {'kodeks': 'КУпАП', 'nomer': '130', 'nazva': 'Н', 'kat': ['штраф'], 'pokarano': ['штраф'], 'ryadky': [['Г', '2025', '1', 'штраф', '', 5, {}]]},
+            {'kodeks': 'КК', 'nomer': '185', 'nazva': 'К', 'kat': ['штраф'], 'pokarano': ['штраф'], 'ryadky': []}]}
+        with tempfile.TemporaryDirectory() as t:
+            dz = Path(t) / 'sp.json'
+            dz.write_text(json.dumps(dani, ensure_ascii=False), encoding='utf-8')
+            self.assertEqual(praktyka_r2.main([str(dz), '--do-teky', str(Path(t) / 'r2')]), 0)
+            r = Path(t) / 'r2' / 'praktyka'
+            self.assertEqual(json.loads((r / 'potochna.json').read_text(encoding='utf-8')), {'versiia': '2026-11-19'})
+            st = json.loads((r / '2026-11-19' / 'kupap-130.json').read_text(encoding='utf-8'))
+            self.assertTrue(st['strok'])
+            self.assertEqual(st['stattia'], 'ст.130 КУпАП')
+            self.assertFalse(json.loads((r / '2026-11-19' / 'kk-185.json').read_text(encoding='utf-8'))['strok'])
+
+    def test_workflow_bere_dani_sudovoi_praktyky(self):
+        t = (KORIN / 'site' / 'prodazh' / 'github' / 'vydavach.yml').read_text(encoding='utf-8')
+        self.assertIn('SP_DANI:', t)
+        self.assertIn("--pattern 'sp-dovidka-*.json'", t)

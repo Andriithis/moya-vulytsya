@@ -12,7 +12,7 @@
                                                        (шаблон site/prodazh/github/vydavach.yml, ZAVDANNYA-133)
 
 Ключ видавача — лише змінна середовища VYDACHA_KLIUCH (той самий, що секрет Workers). Видавач не бачить пошти покупців,
-сум і платежів — лише номер довідки, адресу будинку й режим.
+сум і платежів — лише номер довідки, адресу будинку й режим («Судова практика» — статтю, суд і частину, ZAVDANNYA-135).
 """
 from __future__ import annotations
 
@@ -39,11 +39,18 @@ def zapyt(server: str, kliuch: str, metod: str, shliakh: str, tilo: bytes | None
 
 
 def zibraty(generator: Path, d: dict, teka: Path, shi: bool) -> Path | None:
-    """Один запуск генератора. Повертає файл або None (генератор упав чи не знайшов будинок)."""
+    """Один запуск генератора. Повертає файл або None (генератор упав чи не знайшов будинок).
+    Режим sp («Судова практика», ZAVDANNYA-135) — інший генератор (dani-edrsr/src/sp_dovidka.py, поруч зі zvit/) з
+    параметрами {stattia, sud, chastyna}; дані — змінна SP_DANI (dovidka.json з Release dani-edrsr). ШІ там немає."""
     vyhid = teka / f'{d["id"]}.html'
-    komanda = [sys.executable, str(generator), d['adresa'], '--dovidka' if d['rezhym'] == 'dovidka' else '--povnyi',
-               '--vyhid', str(vyhid), '--chysto']
-    if shi:
+    if d['rezhym'] == 'sp':
+        sp = generator.parent.parent / 'sp_dovidka.py'
+        komanda = [sys.executable, str(sp), '--parametry', json.dumps(d.get('parametry') or {}, ensure_ascii=False),
+                   '--vyhid', str(vyhid), '--nomer', d['id']]
+    else:
+        komanda = [sys.executable, str(generator), d['adresa'], '--dovidka' if d['rezhym'] == 'dovidka' else '--povnyi',
+                   '--vyhid', str(vyhid), '--chysto']
+    if shi and d['rezhym'] != 'sp':
         komanda.append('--shi')
     p = subprocess.run(komanda, capture_output=True, text=True, timeout=30 * 60)
     if p.returncode != 0 or not vyhid.exists():

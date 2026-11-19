@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS zamovlennia (
   status         TEXT NOT NULL DEFAULT 'stvoreno',  -- stvoreno | oplacheno | vidmova | povernuto
   servis         TEXT NOT NULL,              -- перехідник: test | liqpay | mono
   pidpyska_id    TEXT,                       -- для «додаткової» і для списань підписки
+  parametry      TEXT,                       -- «Судова практика» (ZAVDANNYA-135): JSON {stattia, sud, chastyna}; інакше NULL
   zalyshok       INTEGER NOT NULL DEFAULT 0, -- скільки довідок ще можна взяти з цього замовлення (пакет «3 довідки»)
   stvoreno       INTEGER NOT NULL,
   oplacheno      INTEGER
@@ -49,7 +50,8 @@ CREATE TABLE IF NOT EXISTS dovidky (
   pidpyska_id    TEXT,                       -- взято в межах підписки (лічильник місяця)
   budynok        TEXT NOT NULL,
   adresa         TEXT NOT NULL,              -- її й передаємо генератору
-  rezhym         TEXT NOT NULL,              -- dovidka | povnyi
+  rezhym         TEXT NOT NULL,              -- dovidka | povnyi | sp («Судова практика»: budynok = '', adresa = опис вибору)
+  parametry      TEXT,                       -- sp: JSON {stattia, sud, chastyna} — передаємо генератору (dani-edrsr/src/sp_dovidka.py)
   status         TEXT NOT NULL DEFAULT 'v_cherzi', -- v_cherzi | hotuietsia | hotova | pomylka | vydaleno (минув строк)
   kliuch_hash    TEXT,                       -- SHA-256 ключа з посилання в листі (з'являється, коли готова); сам ключ не зберігаємо
   fail           TEXT,                       -- ім'я файла в сховищі
@@ -156,4 +158,12 @@ CREATE TABLE IF NOT EXISTS podiya (
   kanal          TEXT NOT NULL,
   n              INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (den, nazva, kanal)
+);
+
+-- ZAVDANNYA-135: «Судова практика» — скільки CSV вивантажив юрист за добу (ліміт — prodazh/sudova.js, VYVANTAZHEN_NA_DEN).
+CREATE TABLE IF NOT EXISTS sp_vyvantazhennia (
+  korystuvach_id INTEGER NOT NULL,
+  den            TEXT NOT NULL,              -- РРРР-ММ-ДД (UTC)
+  n              INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (korystuvach_id, den)
 );

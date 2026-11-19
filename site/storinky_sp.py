@@ -37,6 +37,23 @@ MIN_INDEKS = 100                               # менше справ за 3 р
 SKHOZHI = {'130': ['124', '126', '122-4'], '124': ['122-4', '130', '286'], '122-4': ['124', '130'], '126': ['130', '124'],
            '173-2': ['173'], '173': ['173-2'], '185': ['186', '190'], '186': ['185', '190'], '190': ['185', '186'],
            '286': ['124', '130'], '309': ['185']}
+# Пошук у покажчику (ZAVDANNYA-135): як люди називають справу своїми словами. Лише назви ситуацій, без порад і оцінок;
+# «п'яний за кермом» → ст. 130. Номер статті шукається й так («130», «ст 130», «173-2»).
+SLOVA = {
+    '130': "п'яний за кермом, напідпитку, нетверезий водій, алкоголь, сп'яніння, керування у стані сп'яніння, відмова від огляду, драгер, наркотичне сп'яніння за кермом",
+    '124': 'ДТП, аварія, зіткнення, пошкодив машину, подряпав авто, порушення ПДР, пошкодження транспорту',
+    '173-2': "домашнє насильство, насильство в сім'ї, побиття вдома, сварка вдома, кривдник, психологічне насильство",
+    '122-4': 'залишення місця ДТП, поїхав з місця аварії, втік з місця ДТП',
+    '126': 'без прав, без посвідчення водія, керування без документів, без права керування, позбавлений прав за кермом',
+    '173': 'дрібне хуліганство, нецензурна лайка, лайка в громадському місці, хуліганство',
+    '185': 'крадіжка, вкрав, крадіжка в магазині, кишенькова крадіжка, крадіжка велосипеда',
+    '186': 'грабіж, вирвав телефон, вирвав сумку, відкрите викрадення',
+    '190': 'шахрайство, обман, ошуканство, обдурили, шахрай',
+    '286': "ДТП з потерпілими, збив пішохода, аварія з травмами, тілесні ушкодження в ДТП, смерть у ДТП",
+    '309': 'наркотики, зберігання наркотиків, канабіс, коноплі, закладка для себе, без мети збуту, психотропні',
+}
+ZASTEREZHENNIA = ('Це статистика минулих рішень, а не юридична допомога і не відповідь, чим закінчиться ваша справа: '
+                  'кожна справа залежить від доказів і обставин.')
 # додаткові покарання з поєднань (dani-edrsr: sudova_praktyka.DOD_KOROTKO)
 DODATKOVI = ('позбавлення права керування', 'позбавлення права обіймати посади', 'конфіскація майна',
              'конфіскація чи вилучення транспорту')
@@ -124,7 +141,7 @@ def smuhy(ryady: list) -> str:
     for nazva, v, x in ryady:
         out.append(f'<div class="sp-ryad"><span class="sp-ryad__nazva">{e(nazva)}</span>'
                    f'<span class="sp-smuha"><i data-shyr="{max(0.5, round(x * 100, 1))}"></i></span>'
-                   f'<b>{vids(x)}</b><small>{chyslo(v)}</small></div>')
+                   f'<b>{e(vids(x))}</b><small>{chyslo(v)}</small></div>')
     return '<div class="sp-smuhy">' + ''.join(out) + '</div>'
 
 
@@ -144,7 +161,8 @@ def roky_html(st: Stattia, poroku: Counter, roky_vid: str) -> str:
 def knopky_kupity(st: Stattia) -> str:
     d = f'sp-{SLUG[st.kodeks]}-{st.nomer}'
     return ('<div class="diyi">'
-            + T.knopka_oplaty(f'/oplata/?tovar=spdovidka&amp;dzherelo={d}', f'Довідка по моєму суду — {T.tsina("spdovidka")}', True)
+            + T.knopka_oplaty(f'/oplata/?tovar=spdovidka&amp;stattia={SLUG[st.kodeks]}-{st.nomer}&amp;dzherelo={d}',
+                              f'Довідка по моєму суду — {T.tsina("spdovidka")}', True)
             + T.knopka_oplaty(f'/oplata/?tovar=spyurist&amp;dzherelo={d}', f'Юристу: усі суди й фільтри — {T.tsina("spyurist")}')
             + '</div>')
 
@@ -165,9 +183,9 @@ def zamok_sudiv(st: Stattia) -> str:
 <div class="sp-filtry sp-filtry--zamk" aria-label="Фільтри платної частини">{filtry}</div>
 <div class="sp-tablytsia-ramka"><table class="sp-tablytsia sp-tablytsia--zamk"><thead><tr>{shapka}</tr></thead><tbody>{ryady}</tbody></table></div>
 {knopky_kupity(st)}
-<p class="prymitka">Довідка — разово: ваш суд і частина статті, частки результатів і покарань за 3 роки, строк. Підписка юристу —
-усі статті й суди Києва, частини, роки, фільтри, вивантаження таблиць. Оплата ще не працює: кнопка відкриє сторінку, де можна
-залишити пошту.</p></section>'''
+<p class="prymitka">Довідка — разово: ваш суд і частина статті, частки результатів і покарань за 3 роки поруч з усім Києвом, строк,
+як змінювалось за роками, до 12 останніх схожих рішень з посиланням на оригінал. Підписка юристу — усі статті й суди Києва,
+частини, роки, фільтри, вивантаження таблиць, 3 довідки на місяць для клієнтів.</p></section>'''
 
 
 def faq_statti(st: Stattia, p: dict, period: str, korotko: str) -> list:
@@ -184,7 +202,8 @@ def faq_statti(st: Stattia, p: dict, period: str, korotko: str) -> list:
                     f'{sprav(p["dni_n"])} з датою події в тексті). Дати надходження справи до суду в рішеннях майже немає, тож строк '
                     'розгляду в самому суді ми не рахуємо.'))
     faq += [('Чи можна за цими цифрами передбачити рішення в моїй справі?',
-             'Ні. Це частки минулих рішень у реєстрі. Кожна справа залежить від доказів і обставин; ми не прогнозуємо й не радимо.'),
+             'Ні. Це частки минулих рішень у реєстрі, а не юридична допомога. Кожна справа залежить від доказів і обставин; '
+             'ми не передбачаємо результат і не радимо. Оцінити свою справу допоможе адвокат або центр безоплатної правової допомоги.'),
             ('Звідки дані?', 'Рішення районних судів Києва з Єдиного державного реєстру судових рішень. Статтю, результат і '
              'покарання читає програма; точність перевірено на вибірці рішень.')]
     return faq
@@ -219,7 +238,8 @@ def storinka_statti(st: Stattia, vsi: dict, dani: dict, adresa_saitu: str) -> st
         chysla.append((strok_slovamy(p['dni']), 'за стільки від події вирішено половину справ'))
     chysla.append((str(len(st.sudy)), 'районних судів Києва'))
     ch.append('<section class="chysla" aria-label="Коротко">' + ''.join(
-        f'<div class="kartka chyslo-blok"><b class="chyslo">{a}</b><span>{b}</span></div>' for a, b in chysla) + '</section>')
+        f'<div class="kartka chyslo-blok"><b class="chyslo">{e(a)}</b><span>{b}</span></div>' for a, b in chysla) + '</section>')
+    ch.append(f'<p class="sp-zast" role="note"><b>Важливо.</b> {e(ZASTEREZHENNIA)}</p>')
     if malo:
         ch.append(f'<section class="rozdil"><p class="prymitka">Справ замало (менше {MIN_N}), щоб рахувати частки.</p></section>')
     else:
@@ -254,7 +274,7 @@ def storinka_statti(st: Stattia, vsi: dict, dani: dict, adresa_saitu: str) -> st
 воно може включати й покарання за іншу статтю (наприклад, позбавлення права керування, коли поруч ст.{NBSP}130).</li>
 <li>Статтю, результат і покарання читає програма з тексту рішення; точність перевірено на вибірці рішень (показуємо лише те,
 що проходить 95{NBSP}%).{"" if st.stroky else " Строк від події до рішення для цієї статті не показуємо: дату події в таких рішеннях програма читає недостатньо точно (часто кілька епізодів чи період)."}</li>
-<li>Це статистика минулих рішень, а не прогноз вашої справи й не юридична порада. Імен суддів ми не показуємо.</li>
+<li>Це статистика минулих рішень, а не юридична допомога. Імен суддів ми не показуємо.</li>
 </ul></section>''')
     faq = faq_statti(st, p, period, korotko)
     ch.append('<section class="rozdil"><h2>Питання й відповіді</h2>' + ''.join(
@@ -289,31 +309,44 @@ def storinka_rozdilu(statti: list, dani: dict, adresa_saitu: str) -> str:
 <h1>Судова практика — як суди Києва вирішують справи за статтями</h1>
 <p>Для кожної статті: скільки справ, чим закінчуються, які покарання призначають і разом з чим, скільки часу минає від події до
 рішення. По кожному суду й частині статті — у платній частині. Без імен суддів і без прогнозів.</p>
-</section>''']
+</section>''', '''<section class="rozdil sp-poshuk" id="poshuk"><h2>Знайти статтю</h2>
+<label class="sp-poshuk__pole"><span>Номер статті або своїми словами</span>
+<input type="search" id="sp-poshuk" placeholder="130, «п’яний за кермом», крадіжка…" autocomplete="off" enterkeyhint="search"></label>
+<p class="prymitka" id="sp-poshuk-rez" aria-live="polite"></p></section>''']
     for kodeks in ('КУпАП', 'КК'):
         ryady = []
         for st in statti:
             if st.kodeks != kodeks:
                 continue
             p = st.pidsumok()
-            ryady.append(f'<li><a href="{st.slug}">Ст.{NBSP}{e(st.nomer)} — {e(st.nazva)}</a><small>{sprav(p["n"])}</small></li>')
-        ch.append(f'<section class="rozdil"><h2>{NAZVA_KODEKSU[kodeks]}</h2><ul class="spysok-vulyts">{"".join(ryady)}</ul></section>')
+            ryady.append(f'<li class="sp-stattia" data-nomer="{e(st.nomer)}" data-slova="{e(st.nazva + ", " + SLOVA.get(st.nomer, ""))}">'
+                         f'<a href="{st.slug}">Ст.{NBSP}{e(st.nomer)} {e(st.kodeks)} — {e(st.nazva)}</a><small>{sprav(p["n"])}</small></li>')
+        ch.append(f'<section class="rozdil sp-kodeks"><h2>{NAZVA_KODEKSU[kodeks]}</h2><ul class="spysok-vulyts">{"".join(ryady)}</ul></section>')
+    ch.append(f'<p class="sp-zast" role="note"><b>Важливо.</b> {e(ZASTEREZHENNIA)}</p>')
     ch.append(f'''<section class="rozdil"><h2>Що можна замовити</h2><div class="tovary">
 <div class="kartka tovar tovar--holovnyi"><h3>{e(T.TOVARY["spdovidka"])}</h3><p class="tovar__tsina">{T.tsina("spdovidka")}</p>
-<p class="tovar__pidpys">Разово, для людини зі справою</p><ul><li>ваш суд і частина статті</li><li>частки результатів і покарань за 3 роки</li>
-<li>строк від події до рішення</li><li>простими словами, без прогнозу й порад</li></ul>
+<p class="tovar__pidpys">Разово, для людини зі справою</p><ul><li>ваш суд і частина статті</li><li>частки результатів і покарань за 3 роки — поруч з усім Києвом</li>
+<li>строк від події до рішення, як змінювалось за роками</li><li>до 12 останніх схожих рішень з посиланням на оригінал</li>
+<li>простими словами, без прогнозу й порад; на пошту за кілька хвилин</li></ul>
 {T.knopka_oplaty('/oplata/?tovar=spdovidka&amp;dzherelo=sudova-praktyka', 'Замовити', True)}</div>
 <div class="kartka tovar"><h3>{e(T.TOVARY["spyurist"])}</h3><p class="tovar__tsina">{T.tsina("spyurist")}</p>
 <p class="tovar__pidpys">Для юристів і адвокатів</p><ul><li>усі статті й суди Києва</li><li>частини статті, кожен рік, фільтри</li>
-<li>вивантаження таблиць</li></ul>
+<li>вивантаження таблиць (CSV)</li><li>3 довідки на місяць для клієнтів</li></ul>
 {T.knopka_oplaty('/oplata/?tovar=spyurist&amp;dzherelo=sudova-praktyka', 'Замовити')}</div></div>
-<p class="prymitka">Числа — справи за {period} у наших даних (тексти ще докачуються). Це статистика минулих рішень, а не юридична
-порада. Оплата ще не працює: кнопка відкриє сторінку, де можна залишити пошту.</p></section>''')
+<p class="prymitka">Числа — справи за {period} у наших даних (тексти ще докачуються).</p></section>''')
     return Z.storinka(shlyakh='/sudova-praktyka/', title='Судова практика Києва за статтями: чим закінчуються справи | Моя вулиця',
                       opys='Як суди Києва вирішують справи за статтями КУпАП і КК: частки результатів і покарань, строки, роки. Без імен суддів.',
                       tilo='\n'.join(ch), adresa_saitu=adresa_saitu, aktyvne='sudova-praktyka/',
                       dodatkovo_head=ld_skrypt(kryhty_ld(kryhty, adresa_saitu)) + '<link rel="stylesheet" href="/sait/sp.css">\n',
                       skrypty=('/sait/sp.js',))
+
+
+def dovidnyk(statti: list) -> str:
+    """Що можна вибрати в замовленні довідки (ZAVDANNYA-135): статті, суди, частини — без жодного числа. Сервер продажу
+    (`site/worker/prodazh/sudova.js`) перевіряє вибір людини лише за цим файлом."""
+    return json.dumps({'statti': {f'{SLUG[s.kodeks]}-{s.nomer}': {
+        'stattia': f'ст.{s.nomer} {s.kodeks}', 'nazva': s.nazva, 'sudy': s.sudy, 'chastyny': s.chastyny} for s in statti}},
+        ensure_ascii=False, separators=(',', ':'))
 
 
 def prochytaty(shliakh: Path) -> dict:
@@ -333,6 +366,7 @@ def zibraty(shliakh: Path, vykhid: Path, adresa_saitu: str) -> list:
     vsi = {s.nomer: s for s in statti}
     adresy = ['/sudova-praktyka/']
     Z.zapysaty(vykhid / 'sudova-praktyka' / 'index.html', storinka_rozdilu(statti, dani, adresa_saitu))
+    Z.zapysaty(vykhid / 'sudova-praktyka' / 'dovidnyk.json', dovidnyk(statti))
     for st in statti:
         Z.zapysaty(vykhid / st.slug.strip('/') / 'index.html', storinka_statti(st, vsi, dani, adresa_saitu))
         if st.pidsumok()['n'] >= MIN_INDEKS:

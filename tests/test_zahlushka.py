@@ -561,11 +561,14 @@ def tsiny_z_rishennya():
     mv100 = rishennya.split('## MV-100.', 1)[1].split('\n## ', 1)[0]
     mv102 = rishennya.split('## MV-102.', 1)[1].split('\n## ', 1)[0]
     mv136 = rishennya.split('## MV-136.', 1)[1].split('\n## ', 1)[0]
+    mv122 = rishennya.split('## MV-122.', 1)[1].split('\n## ', 1)[0]
     chyslo = lambda t, vz: int(re.search(vz, t).group(1).replace(' ', ''))   # noqa: E731
     return {'dovidka': chyslo(mv100, r'Довідка про будинок — (\d+) грн'), 'try': chyslo(mv100, r'«3 довідки» — (\d+) грн'),
             'zvit': chyslo(mv136, r'«перед купівлею» — (\d+) грн'), 'pidpyska': chyslo(mv100, r'підписка (\d+) грн/міс'),
             'dodatkova': chyslo(mv100, r'додаткові — по (\d+) грн'), 'rieltor': chyslo(mv102, r'рієлтор — (\d+) грн/міс'),
-            'osbb': chyslo(mv102, r'ОСББ — ([\d ]+) грн/рік')}
+            'osbb': chyslo(mv102, r'ОСББ — ([\d ]+) грн/рік'),
+            'spdovidka': chyslo(mv122, r'довідка людині — \*\*(\d+) грн'),
+            'spyurist': chyslo(mv122, r'підписка юристу — \*\*(\d+) грн/міс')}   # MV-164: в оферті
 
 
 def rozmir_png(p: Path):

@@ -127,7 +127,7 @@ class SudovaPraktykaTests(unittest.TestCase):
                 self.assertEqual(re.findall(r'<td[^>]*>[^<]*\d', tabl), [], f)
             self.assertNotIn('sp-dani', t)
         t = self.st('kupap/130') if not self.spravzhnie else self.storinky[1].read_text(encoding='utf-8')
-        self.assertIn('/oplata/?tovar=spdovidka&amp;dzherelo=sp-', t)
+        self.assertRegex(t, r'/oplata/\?tovar=spdovidka&amp;stattia=(kupap|kk)-[0-9-]+&amp;dzherelo=sp-')
         self.assertIn('/oplata/?tovar=spyurist&amp;dzherelo=sp-', t)
         self.assertIn('199 грн', t)
         self.assertIn('490 грн на місяць', t)
@@ -201,3 +201,60 @@ class SaitZRozdilomTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+    def test_dovidnyk_dlia_servera_bez_chysel(self):
+        """ZAVDANNYA-135: довідник замовлення — статті, суди, частини; жодного числа справ."""
+        d = json.loads((self.sait / 'sudova-praktyka' / 'dovidnyk.json').read_text(encoding='utf-8'))
+        for k, s in d['statti'].items():
+            self.assertRegex(k, r'^(kupap|kk)-\d+(-\d+)?$')
+            self.assertEqual(set(s), {'stattia', 'nazva', 'sudy', 'chastyny'})
+            self.assertTrue(all(isinstance(x, str) for x in s['sudy'] + s['chastyny']))
+        if not self.spravzhnie:
+            self.assertEqual(d['statti']['kupap-130']['sudy'], ['Голосіївський', 'Дарницький'])
+
+    def test_poshuk_i_zasterezhennia(self):
+        """ZAVDANNYA-135: покажчик з пошуком («п'яний за кермом» — у словах ст. 130) і застереження на кожній сторінці."""
+        rozdil = self.st('')
+        self.assertIn('id="sp-poshuk"', rozdil)
+        m = re.search(r'<li class="sp-stattia" data-nomer="130" data-slova="([^"]+)"', rozdil)
+        self.assertIsNotNone(m)
+        self.assertIn('за кермом', m.group(1))
+        for f in self.storinky:
+            self.assertIn('не юридична допомога', f.read_text(encoding='utf-8'), f)
+
+
+    def test_chastky_ekranovani(self):
+        """«<1 %» у HTML має бути «&lt;1» — інакше браузер сприймає його як тег і частка зникає (вада, знайдена на справжніх даних)."""
+        for f in self.storinky:
+            self.assertNotRegex(f.read_text(encoding='utf-8'), r'<\d', f)
+
+class VkhodyVProdukt(unittest.TestCase):
+    """ZAVDANNYA-135, п. 4: входи на сторінки статей — сторінки вулиць, картка соти на карті, ролик «Що буває за…»."""
+
+    def test_kliuch_statti(self):
+        sys.path.insert(0, str(KORIN / 'site' / 'sait'))
+        import dani as D
+        self.assertEqual(D.kliuch_statti("ст.130 ч.1 КУпАП · керування у стані сп'яніння"), 'kupap-130')
+        self.assertEqual(D.kliuch_statti('ст.173-2 КУпАП'), 'kupap-173-2')
+        self.assertEqual(D.kliuch_statti('ст.185 ч.4 КК · крадіжка'), 'kk-185')
+        self.assertIsNone(D.kliuch_statti(''))
+
+    def test_blok_vulytsi(self):
+        from collections import Counter
+        sp = {'kupap-130': {'kodeks': 'КУпАП', 'nomer': '130', 'nazva': 'Керування в стані сп’яніння'},
+              'kk-185': {'kodeks': 'КК', 'nomer': '185', 'nazva': 'Крадіжка'}}
+        b = Z.blok_sudova_praktyka(Counter({'kupap-130': 7, 'kk-185': 2, 'kupap-51': 9}), sp)
+        self.assertIn('href="/sudova-praktyka/kupap/130/"', b)
+        self.assertNotIn('kk/185', b, 'менше 3 подій — без посилання')
+        self.assertNotIn('51', b, 'статті поза вітриною — ні')
+        self.assertEqual(Z.blok_sudova_praktyka(Counter({'kupap-130': 7}), None), '', 'без розділу — без посилань')
+        self.assertNotRegex(b, r'уникайте|будьте уважні|найімовірніше')
+
+    def test_karta_i_rolyk(self):
+        k = (KORIN / 'site' / 'sait' / 'karta.js').read_text(encoding='utf-8')
+        self.assertIn("sudova-praktyka/?q=", k)
+        self.assertNotIn("nas: '", k.split('SP_HRUPY')[1].split(';')[0], 'насильство — без посилання')
+        r = (KORIN / 'video' / 'vau' / 'stsenarii.py').read_text(encoding='utf-8')
+        self.assertIn("kudy='/sudova-praktyka/kupap/130/'", r)
+        self.assertNotIn('/sudova-praktyka/st-', r)
+
