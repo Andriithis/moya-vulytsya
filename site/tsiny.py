@@ -36,6 +36,10 @@ TOVARY = {
 # Товари, яких ще немає в оферті заглушки (тексти оферти — окремим рішенням, MV-152). Вони — «скоро», навіть коли оплату
 # ввімкнено (prodaietsia()).
 NE_V_OFERTI = set()  # MV-164: обидва товари «Судової практики» — в оферті
+# ZAVDANNYA-150, п. 11: товари, для яких ще немає даних генератора (оплачену довідку не буде з чого зібрати). «Судова
+# практика»: генератор довідки — dani-edrsr PR #87 (не злито), файл sp-dovidka-<дата>.json — Release dani-edrsr (немає;
+# хмара Release не створює). Коли обидва є і у видавачі задано SP_VYPUSK — прибрати їх звідси (одна зміна тут).
+BEZ_DANYKH = {'spdovidka', 'spyurist'}
 # За який строк ціна (порожньо — разово).
 STROK = {'pidpyska': ' на місяць', 'rieltor': ' на місяць', 'osbb': ' на рік', 'spyurist': ' на місяць'}
 ZA_DOMOVLENISTIU = 'ціна за домовленістю'
@@ -111,8 +115,8 @@ SUDOVA = ('spdovidka', 'spyurist')
 
 
 def prodaietsia() -> tuple:
-    """Що продається зараз: у продажу й уже в оферті."""
-    return tuple(t for t in NA_PRODAZH if t not in NE_V_OFERTI)
+    """Що продається зараз: у продажу, уже в оферті й з даними для довідки."""
+    return tuple(t for t in NA_PRODAZH if t not in NE_V_OFERTI and t not in BEZ_DANYKH)
 
 
 MODUL_JS = '// Зібрано з site/tsiny.py (python site/tsiny.py). Не редагувати руками.\nexport default '
