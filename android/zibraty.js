@@ -1,4 +1,4 @@
-// Збирання оболонки Android «Моя вулиця» (Trusted Web Activity, Bubblewrap) — ZAVDANNYA-102, прототип.
+// Збирання оболонки Android «Моя вулиця» (Trusted Web Activity, Bubblewrap) — ZAVDANNYA-102; для Google Play — ZAVDANNYA-144.
 //
 //   npm i @bubblewrap/core            (у будь-якій теці; шлях до неї — BUBBLEWRAP_CORE, якщо не поруч)
 //   ANDROID_HOME=<Android SDK> JAVA_HOME=<JDK 17> node android/zibraty.js [тека-виходу]
@@ -47,9 +47,11 @@ function zapustyty(komanda, argumenty, teka) {
   const srv = await server();
   const lokalno = `http://127.0.0.1:${srv.address().port}/`;
   const zaminy = (url) => (url ? lokalno + path.basename(new URL(url).pathname) : url);
+  // Одноколірна іконка (ZAVDANNYA-144) — значок сповіщень і тематична іконка Android 13+.
   const robochi = { ...dani, webManifestUrl: zaminy(dani.webManifestUrl), iconUrl: zaminy(dani.iconUrl), maskableIconUrl: zaminy(dani.maskableIconUrl),
+    monochromeIconUrl: zaminy(dani.monochromeIconUrl),
     shortcuts: dani.shortcuts.map((s) => ({ ...s, chosenIconUrl: zaminy(s.chosenIconUrl) })) };
-  delete robochi.monochromeIconUrl;
+  if (!robochi.monochromeIconUrl) delete robochi.monochromeIconUrl;
   fs.rmSync(VYKHID, { recursive: true, force: true });
   fs.mkdirSync(VYKHID, { recursive: true });
   try {
