@@ -195,3 +195,22 @@ body { font-family: Plex, system-ui, sans-serif; color: var(--ink); -webkit-font
 .t.slovo small { flex-basis: 100%; display: block; font: 800 66px/1.15 Plex; letter-spacing: 0; margin-top: 28px; }
 .t.mala.zaklyk { color: var(--accent); font-weight: 700; }
 .t.slovo .vn { width: 100%; }
+
+/* ---------- ZAVDANNYA-138 ---------- */
+/* поділений екран «День і ніч»: друга сцена — у рамці, межа — тонка смуга акценту */
+#druha { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; border: 0; pointer-events: none; }
+#druha-liniia { position: absolute; left: 0; right: 0; height: 6px; background: #66E6BA; box-shadow: 0 0 24px rgba(102,230,186,.8); opacity: 0; }
+.bez-nakladok #znak, .bez-nakladok #dzherelo, .bez-nakladok #vinietka, .bez-nakladok .maplibregl-ctrl-attrib { display: none; }
+/* «Календар року» (не карта): 12 місяців по 3 в ряд, клітинка = день, колір = скільки подій у даних того дня */
+.t.kalendar { left: 44px; right: 44px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px 30px; }
+.t.kalendar .mis b { display: block; font: 800 30px/1 Plex; color: var(--ink2); margin: 0 0 10px 4px; text-transform: uppercase; letter-spacing: 2px; }
+.t.kalendar .sitka { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+.t.kalendar .d { aspect-ratio: 1; border-radius: 7px; background: var(--tint); opacity: .35; transform: scale(.6); }
+.t.kalendar .d.pust { visibility: hidden; }
+.t.kalendar .d.on { opacity: 1; transform: none; }
+.t.kalendar .d.k1 { background: #3A3F86; } .t.kalendar .d.k2 { background: #5C61C4; } .t.kalendar .d.k3 { background: #8A8FEA; }
+.t.kalendar .d.k4 { background: #66E6BA; box-shadow: 0 0 16px rgba(102,230,186,.6); }
+[data-t="svitla"] .t.kalendar .d.k1 { background: #C9CCF2; } [data-t="svitla"] .t.kalendar .d.k2 { background: #9CA1E3; }
+[data-t="svitla"] .t.kalendar .d.k3 { background: #6066C1; } [data-t="svitla"] .t.kalendar .d.k4 { background: #31B88D; box-shadow: none; }
+.t.kalendar .d.akc { outline: 6px solid #FFE45C; outline-offset: 2px; transform: scale(1.25); z-index: 2; position: relative; }
+[data-t="svitla"] .t.kalendar .d.akc { outline-color: #1C1E2D; }

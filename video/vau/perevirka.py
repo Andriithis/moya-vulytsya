@@ -90,8 +90,7 @@ def montazh(S: dict, meta: dict) -> list[str]:
     styli |= {'ui-' + u['typ'] for u in S.get('ui', []) if u.get('typ') not in ('zavisa', 'sota')}
     if T >= 9 and len(styli) < 3:
         z.append(f'С6: лише {len(styli)} компонування ({", ".join(sorted(styli))}) — потрібно >= 3')
-    if S.get('tema') == 'svitla' and not meta.get('ne_tiktok'):
-        z.append('С7: світла тема в ролику для TikTok')
+    # С7 «лише темна» скасовано (MV-158, MV-161): світла тема — повноправна (В4)
     if meta.get('petlia'):
         K = sorted(S.get('kamera', []), key=lambda k: k['t'])
         a, b = K[0], K[-1]
@@ -183,8 +182,74 @@ def pereviryty(S: dict, meta: dict | None = None) -> list[str]:
     for k in ('nazva', 'hachok', 'meta'):
         if not meta.get(k):
             z.append(f'немає meta {k}')
-    if meta.get('pravyla') == 129:          # ролики ZAVDANNYA-129 і новіші (старі чернетки 127 — як були)
+    if (meta.get('pravyla') or 0) >= 129:   # ролики ZAVDANNYA-129 і новіші (старі чернетки 127 — як були)
         z += mezhi_129(S, meta)
         if not meta.get('dovhyi'):
             z += montazh(S, meta)
+    if (meta.get('pravyla') or 0) >= 138:
+        z += pravyla_138(S, meta)
+    return z
+
+
+# ------------------------------------------------------------------ ZAVDANNYA-138: вигляди, адреси, чергування (В2)
+
+SHARY = {'soty', 'adresy', 'tochky', 'zvit', 'zapys', 'ne_karta'}     # «шар» ролика — вісь В2
+RIVNI = ('misto', 'rayon', 'vulytsia', 'mistse')
+
+
+def pravyla_138(S: dict, meta: dict) -> list[str]:
+    """Стиль сот — лише явний вибір сценарію (жодного типового); шар ролика названо; адреси — лише число, без підписів."""
+    z = []
+    for sh in S.get('soty', []):
+        if not sh.get('styl_sot'):
+            z.append('В2/В9: стиль сот не вибрано (styl_sot) — типового немає')
+    if meta.get('shar') not in SHARY:
+        z.append(f"В2: шар ролика ({meta.get('shar')}) — один з {', '.join(sorted(SHARY))}")
+    for sh in S.get('adresy', []):
+        for f in sh['dani'].get('features', []):
+            zaivi = set(f.get('properties', {})) - {'n', 't'}
+            if zaivi:
+                z.append(f'MV-25: у шарі адрес лише число подій — зайве: {", ".join(sorted(zaivi))}')
+                break
+    if S.get('druha') and not S['druha'].get('s'):
+        z.append('поділений екран без другої сцени')
+    return z
+
+
+def zum_u_chasi(S: dict, t: float) -> float:
+    K = sorted(S.get('kamera', []), key=lambda k: k['t'])
+    if not K:
+        return 10.0
+    if t <= K[0]['t']:
+        return K[0]['z']
+    for a, b in zip(K, K[1:]):
+        if t <= b['t']:
+            k = (t - a['t']) / max(1e-6, b['t'] - a['t'])
+            return a['z'] + (b['z'] - a['z']) * k
+    return K[-1]['z']
+
+
+def osi(S: dict, meta: dict) -> dict:
+    """Три осі В2: тема, шар, рівень наближення (за зумом камери, медіана кожні 0,5 с; «не карта» — свій рівень)."""
+    shar = meta.get('shar', '?')
+    tema = meta.get('tema_os') or S.get('tema', 'temna')
+    if shar in ('ne_karta', 'zvit'):
+        riven = 'ne_karta'
+    else:
+        T = float(S.get('tryvalist', 0))
+        zz = sorted(zum_u_chasi(S, i * 0.5) for i in range(int(T * 2) + 1))
+        m = zz[len(zz) // 2]
+        riven = RIVNI[0] if m < 11.2 else RIVNI[1] if m < 13.5 else RIVNI[2] if m < 15.5 else RIVNI[3]
+    return {'tema': tema, 'shar': shar, 'riven': meta.get('riven') or riven}
+
+
+def pereviryty_pachku(rolyky: list[tuple[dict, dict]]) -> list[str]:
+    """В2 (Андрій: «всі відео однотипні»): два ролики поспіль різняться щонайменше за двома осями з трьох."""
+    z = []
+    oo = [(m.get('id', S.get('id')), osi(S, m)) for S, m in rolyky]
+    for (ia, a), (ib, b) in zip(oo, oo[1:]):
+        rizni = [k for k in ('tema', 'shar', 'riven') if a[k] != b[k]]
+        if len(rizni) < 2:
+            z.append(f'В2: {ia} → {ib} різні лише за {len(rizni)} осями ({", ".join(rizni) or "жодною"}): '
+                     f'{a} / {b}')
     return z
