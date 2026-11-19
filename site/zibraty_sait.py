@@ -807,8 +807,8 @@ def ekran_karty(dn: D.Dani) -> str:
 <p class="karta__zboi" hidden>Підкладка карти не завантажилася — видно соти й межу Києва.</p>
 <div class="verkh-ryad">
 <form class="plashka verkh" role="search" action="/vulytsi/"><span class="znak">{znak}</span>
-<label class="prykhovano" for="poshuk-karty">Вулиця або район</label>
-<input id="poshuk-karty" type="search" autocomplete="off" spellcheck="false" placeholder="Вулиця або район" aria-controls="pidkazky" aria-autocomplete="list" aria-expanded="false" role="combobox">
+<label class="prykhovano" for="poshuk-karty">Вулиця, будинок або район</label>
+<input id="poshuk-karty" type="search" autocomplete="off" spellcheck="false" placeholder="Вулиця, будинок або район" aria-controls="pidkazky" aria-autocomplete="list" aria-expanded="false" role="combobox">
 </form>
 <button id="f3d" class="znachok klav" type="button" aria-label="Зараз 3D (об’ємно). Натисніть — пласка карта 2D"><span class="zn-v">{kub}<small>3D</small></span></button>
 <button id="ftema" class="znachok klav" type="button" data-tema-perem aria-label="Нічна тема">{MISYATS}{SONTSE}</button>

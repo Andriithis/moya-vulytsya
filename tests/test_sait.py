@@ -1073,7 +1073,9 @@ class KartaUBrauzeri(unittest.TestCase):
         tmp = Path(cls.tmp.name)
         stvoryty_bazu(tmp / 'events.db')
         stvoryty_pereimenuvannya(tmp / 'pereim.csv')
-        zibraty_sait.zibraty_sait(tmp / 'events.db', tmp / 'sait', tmp / 'pereim.csv', KORIN / 'data' / 'borders.json')
+        (tmp / 'budynky.json').write_text(json.dumps(BUDYNKY, ensure_ascii=False), encoding='utf-8')
+        zibraty_sait.zibraty_sait(tmp / 'events.db', tmp / 'sait', tmp / 'pereim.csv', KORIN / 'data' / 'borders.json',
+                                  budynky=tmp / 'budynky.json')
         http.server.SimpleHTTPRequestHandler.log_message = lambda *a: None
         cls.server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), functools.partial(
             http.server.SimpleHTTPRequestHandler, directory=str(tmp / 'sait')))
@@ -1153,6 +1155,20 @@ class KartaUBrauzeri(unittest.TestCase):
         s.mouse.click(640, 500)
         s.wait_for_timeout(300)
         self.assertEqual(s.inner_text('#pidkazka'), 'Тут немає подій у даних')
+
+    def test_poshuk_budynku_na_holovnii(self):
+        """ZAVDANNYA-150, п. 1: «вулиця + номер» на головній → сторінка будинку, як у «Мій будинок»."""
+        s, pomylky = self.storinka()
+        znaideno = s.evaluate("() => MvKarta.poshuk('Хрещатик, буд. 22')")
+        self.assertTrue(znaideno[0].endswith('/budynok/khreshchatyk/22/'), znaideno)
+        s.fill('#poshuk-karty', '')
+        s.click('#poshuk-karty')
+        s.keyboard.type('хрещатик 24а')
+        s.wait_for_selector('#pidkazky li[data-j]')
+        self.assertIn('будинок', s.inner_text('#pidkazky li[data-j="0"]'))
+        s.keyboard.press('Enter')
+        s.wait_for_url('**/budynok/khreshchatyk/24-a/', timeout=10000)
+        self.assertEqual(pomylky, [])
 
 
 if __name__ == '__main__':

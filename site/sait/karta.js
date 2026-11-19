@@ -608,7 +608,38 @@
         return MISTSIA;
       });
     }
-    function znaity(q) {
+    // ZAVDANNYA-150 (п. 1): будинок — «Оболонський 16», «Хрещатик, буд. 22» → сторінка будинку, як у «Мій будинок»
+    // (той самий файл vulytsi/budynky.json; вантажиться, лише коли в запиті є номер).
+    var BUDYNKY = null;
+    function zavantazhytyBudynky() {
+      if (BUDYNKY) return Promise.resolve(BUDYNKY);
+      return fetch(KOREN + 'vulytsi/budynky.json', { credentials: 'omit' })
+        .then(function (v) { return v.ok ? v.json() : []; }).catch(function () { return []; })
+        .then(function (d) { BUDYNKY = d.map(function (v) { return { n: v[0], p: norm(v[0] + ' ' + (v[2] || '')), b: v[3] }; }); return BUDYNKY; });
+    }
+    function rozibratyAdresu(z) {
+      var m = /^(.*?)[\s,]+(?:буд(?:инок)?\.?\s*)?(?:№\s*)?(\d+[^\s,]*(?:\s?[а-яіїєa-z])?)$/i.exec((z || '').trim());
+      return m && m[1].trim() ? { nazva: m[1], nomer: m[2] } : null;
+    }
+    function normNomer(t) { return (t || '').toLowerCase().replace(/[\s-]/g, '').replace(/\\/g, '/'); }
+    function znaityBudynky(syryi) {
+      var adr = /\d/.test(syryi) ? rozibratyAdresu(syryi) : null;
+      if (!adr || !BUDYNKY) return [];
+      var slova = norm(adr.nazva).split(' ').filter(Boolean), nn = normNomer(adr.nomer), vyhid = [];
+      BUDYNKY.forEach(function (v) {
+        if (!slova.every(function (s) { return v.p.indexOf(s) !== -1; })) return;
+        v.b.forEach(function (x) {
+          if (vyhid.length < 5 && normNomer(x[0]) === nn) vyhid.push({ m: { nazva: v.n + ', ' + x[0], dod: 'будинок', url: x[1], p: '' }, i: -1, poch: 0 });
+        });
+      });
+      return vyhid;
+    }
+    function znaity(q, syryi) {
+      var budynky = znaityBudynky(syryi || '');
+      if (budynky.length) return budynky.concat(znaityMistsia(norm(rozibratyAdresu(syryi).nazva))).slice(0, telefon() ? 6 : 8);
+      return znaityMistsia(q);
+    }
+    function znaityMistsia(q) {
       var slova = q.split(' ');
       return MISTSIA.map(function (m) {
         var i = m.p.indexOf(q), vsi = slova.every(function (s) { return m.p.indexOf(s) !== -1 || m.alt.indexOf(s) !== -1; });
@@ -620,20 +651,23 @@
     function pokazatyPidkazky() {
       var q = norm(pole.value);
       if (q.length < 2) { ul.hidden = true; PIDK = []; pole.setAttribute('aria-expanded', 'false'); return; }
-      zavantazhytyPoshuk().then(function () {
+      var syryi = pole.value;
+      Promise.all([zavantazhytyPoshuk(), /\d/.test(syryi) ? zavantazhytyBudynky() : null]).then(function () {
         if (norm(pole.value) !== q) return;
-        PIDK = znaity(q); VYBR = -1;
+        PIDK = znaity(q, syryi); VYBR = -1;
         ul.innerHTML = PIDK.length ? PIDK.map(function (x, j) {
           var t = x.m.nazva, nt = norm(t), i = nt === x.m.p ? x.i : -1;
           // Підсвічуємо знайдене: решта назви — жирніша (як у М7). Назву з апострофом показуємо цілою.
           var html = i >= 0 && nt.length === t.length ? '<b>' + esc(t.slice(0, i)) + '</b>' + esc(t.slice(i, i + q.length)) + '<b>' + esc(t.slice(i + q.length)) + '</b>' : '<b>' + esc(t) + '</b>';
           return '<li role="option" id="pk' + j + '" data-j="' + j + '" aria-selected="false"><span>' + html + '</span><small>' + esc(x.m.dod) + '</small></li>';
-        }).join('') : '<li class="porozh">Такої назви немає в даних</li>';
+        }).join('') : '<li class="porozh">' + (/\d/.test(syryi) ? 'Такого будинку чи вулиці в даних немає' : 'Такої назви немає в даних') + '</li>';
         ul.hidden = false; pole.setAttribute('aria-expanded', 'true');
       });
     }
     function vybraty(j) {
-      var x = PIDK[j]; if (!x || !map) return;
+      var x = PIDK[j]; if (!x) return;
+      if (x.m.url) { window.location.href = x.m.url; return; }   // будинок — його сторінка
+      if (!map) return;
       var m = x.m; ul.hidden = true; pole.value = m.nazva; pole.blur(); ekran.classList.remove('shukayu'); zakryty();
       var pt = D3 ? PITCH : 0;
       if (m.mezhi) {
@@ -668,13 +702,14 @@
     });
     pole.form.addEventListener('submit', function (e) {
       e.preventDefault();
-      zavantazhytyPoshuk().then(function () {
-        if (!PIDK.length && norm(pole.value).length >= 2) PIDK = znaity(norm(pole.value));
+      var syryi = pole.value;
+      Promise.all([zavantazhytyPoshuk(), /\d/.test(syryi) ? zavantazhytyBudynky() : null]).then(function () {
+        if (!PIDK.length && norm(syryi).length >= 2) PIDK = znaity(norm(syryi), syryi);
         if (PIDK.length) vybraty(VYBR >= 0 ? VYBR : 0); else pidkazka('Такої назви немає в даних');
       });
     });
     ul.addEventListener('pointerdown', function (e) { var li = e.target.closest('[data-j]'); if (li) { e.preventDefault(); vybraty(+li.getAttribute('data-j')); } });
-    if (telefon()) pole.placeholder = 'Вулиця або район';
+    if (telefon()) pole.placeholder = 'Ваша адреса';
 
     // ---------- картка соти: коротко, як у М7; лише числа, без адрес і описів ----------
     var ZAMOK = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>';
@@ -1067,7 +1102,12 @@
     MV.vidkryty = function (id, k) { var b = HEXB[id].get(k); if (b) vidkryty(GI[id], b); };
     MV.zakryty = zakryty;
     MV.zaraz = function () { return ZARAZ && { id: ZARAZ.G.id, k: ZARAZ.b.k, nazva: ZARAZ.nazva }; };
-    MV.poshuk = function (t) { pole.value = t; return zavantazhytyPoshuk().then(function () { PIDK = znaity(norm(t)); return PIDK.map(function (x) { return x.m.nazva; }); }); };
+    MV.poshuk = function (t) {
+      pole.value = t;
+      return Promise.all([zavantazhytyPoshuk(), /\d/.test(t) ? zavantazhytyBudynky() : null]).then(function () {
+        PIDK = znaity(norm(t), t); return PIDK.map(function (x) { return x.m.nazva + (x.m.url ? ' → ' + x.m.url : ''); });
+      });
+    };
     MV.vybraty = function (j) { vybraty(j); };
     MV.colG = function () { return colG(); };
     MV.vershyny = function (id) { return Array.from(HEXB[id].values()).filter(vershyna).map(function (b) { return b.k; }); };
