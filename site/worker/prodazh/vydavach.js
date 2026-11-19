@@ -1,11 +1,11 @@
 // Поштовх видавачу довідок у GitHub Actions (ZAVDANNYA-133, п. 2; docs/PLATNA-CHASTYNA.md, розд. 3).
 //
 // Видавач (site/prodazh/vydavach.py + генератор dani-edrsr/src/zvit) працює не на своєму сервері, а запуском GitHub Actions
-// у приватному dani-edrsr (.github/workflows/vydavach.yml). Сервер продажу, поставивши оплачену довідку в чергу, просить
+// у приватному репозиторії організації партнера (шаблон — site/prodazh/github/vydavach.yml). Сервер продажу, поставивши оплачену довідку в чергу, просить
 // GitHub почати запуск (workflow_dispatch) — і запуск забирає всю чергу тим самим шляхом, що й раніше (/api/vnutr/…).
 // Якщо поштовх не дійшов (GitHub недоступний), кожні 10 хв розклад Workers дивиться в чергу й штовхає знову (index.js).
 //
-//   змінна  VYDAVACH_GITHUB         'власник/репозиторій/файл.yml@гілка', напр. 'Andriithis/dani-edrsr/vydavach.yml@main'
+//   змінна  VYDAVACH_GITHUB         'власник/репозиторій/файл.yml@гілка', напр. 'moyavulytsya/vydavach/vydavach.yml@main'
 //   секрет  VYDAVACH_GITHUB_TOKEN   токен GitHub лише на цей репозиторій, право «Actions: read and write» (і нічого більше)
 // Без них — нічого не робить (як і було: видавач можна запускати й самому, будь-де).
 import { odyn, teper } from './logika.js';

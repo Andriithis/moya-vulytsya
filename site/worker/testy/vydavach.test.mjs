@@ -27,7 +27,7 @@ function seredovyshche(dod = {}) {
   env.krok = (s) => { chas += s; };
   return env;
 }
-const GH = { VYDAVACH_GITHUB: 'Andriithis/dani-edrsr/vydavach.yml@main', VYDAVACH_GITHUB_TOKEN: 'gh-test' };
+const GH = { VYDAVACH_GITHUB: 'moyavulytsya/vydavach/vydavach.yml@main', VYDAVACH_GITHUB_TOKEN: 'gh-test' };
 
 function zamovlennia(env, status = 'oplacheno') {
   env.BAZA.db.prepare(`INSERT INTO zamovlennia (id, korystuvach_id, tovar, suma, status, servis, stvoreno) VALUES ('z1', 1, 'dovidka', 199, ?, 'test', ?)`)
@@ -49,7 +49,7 @@ test('оплачена довідка в черзі → один запит work
   zamovlennia(env);
   await L.postavytyDovidku(env, { korystuvach_id: 1, zamovlennia_id: 'z1', budynok: '/budynok/a/1/', adresa: 'вулиця А, 1', rezhym: 'dovidka' });
   assert.equal(z.length, 1);
-  assert.equal(z[0].url, 'https://api.github.com/repos/Andriithis/dani-edrsr/actions/workflows/vydavach.yml/dispatches');
+  assert.equal(z[0].url, 'https://api.github.com/repos/moyavulytsya/vydavach/actions/workflows/vydavach.yml/dispatches');
   assert.equal(z[0].metod, 'POST');
   assert.equal(z[0].h.authorization, 'Bearer gh-test');
   assert.equal(z[0].tilo.ref, 'main');

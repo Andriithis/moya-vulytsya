@@ -344,5 +344,21 @@ class PerevirkaFormyD1(unittest.TestCase):
             perevirka_formy.perevirka_d1('http://127.0.0.1:9', 'k', vyvid=lambda *_: None)
 
 
+class ShablonVydavacha(unittest.TestCase):
+    """Шаблон запуску видавача для репозиторію партнера (ZAVDANNYA-133): вимкнений до налаштування, ключі — лише секрети."""
+
+    def test_shablon(self):
+        t = (KORIN / 'site' / 'prodazh' / 'github' / 'vydavach.yml').read_text(encoding='utf-8')
+        self.assertIn("if: ${{ vars.VYDAVACH == 'uvimknuto' }}", t)
+        self.assertIn('workflow_dispatch:', t)
+        self.assertIn('cancel-in-progress: false', t, 'новий поштовх не скасовує запуск, що видає довідку')
+        for sekret in ('MV_DANI_TOKEN', 'VYDACHA_KLIUCH', 'ANTHROPIC_API_KEY'):
+            self.assertIn('${{ secrets.%s }}' % sekret, t)
+        self.assertIn('--do-porozhnoi', t)
+        self.assertIn('site/prodazh/shi_api.py', t)
+        self.assertNotRegex(t, r'sk-ant-|ghp_|github_pat_')
+        self.assertNotIn('schedule:', t, 'розклад — у Workers (кожні 10 хв), щоб не палити хвилини GitHub порожніми запусками')
+
+
 if __name__ == '__main__':
     unittest.main()

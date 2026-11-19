@@ -1,0 +1,141 @@
+# Видавач довідок без власного сервера (ZAVDANNYA-133; docs/PLATNA-CHASTYNA.md, розд. 3).
+#
+# Куди класти: у ПРИВАТНИЙ репозиторій організації GitHub партнера (порада — `moyavulytsya/vydavach`, поруч з `avtopostynh`,
+# MV-154) як .github/workflows/vydavach.yml. Ключ API Claude і хвилини GitHub — на партнері (AGENTS.md, розд. 11); дані й
+# генератор читаються з приватного dani-edrsr ключем лише на читання (MV_DANI_TOKEN — той самий, що в автопостингу).
+# Публічний репозиторій не годиться: у журналі запуску — адреси будинків, які купують.
+#
+# Сервер продажу (Cloudflare Workers) після оплати ставить довідку в чергу (D1) і просить GitHub почати цей запуск
+# (workflow_dispatch; кожні 10 хв — ще раз, якщо довідка чекає довше за 5 хв). Запуск: дані генератора з кешу (випуск із
+# Release dani-edrsr, OSM Києва, скарги 1551) → видавач site/prodazh/vydavach.py забирає всю чергу через /api/vnutr/… →
+# генератор dani-edrsr/src/zvit/zibraty.py → файл серверу → сервер кладе його в R2 і надсилає лист покупцю.
+# Пошти й сум запуск не бачить: лише номер довідки, адресу будинку й режим.
+#
+# Вимкнено, доки не налаштовано: змінна VYDAVACH = uvimknuto (Settings → Secrets and variables → Actions).
+#   змінна  VYDAVACH           uvimknuto
+#   змінна  MV_ADRESA_SAITU    https://<сайт> (той самий, що ADRESA_SAITU у Workers)
+#   змінна  VYPUSK             тег Release dani-edrsr з випуском, напр. vypusk-2026-11-08 (файл events-*.db у ньому)
+#   змінна  VYDAVACH_SHI       tak — перекази ШІ (потрібен ANTHROPIC_API_KEY); інакше — описи правилами
+#   змінна  SHI_STELIA_USD     м'яка стеля витрат ШІ на місяць, $ (типово 10; жорстка — у консолі Anthropic)
+#   секрет  MV_DANI_TOKEN      ключ лише на читання dani-edrsr (Contents: Read-only) — вписує Андрій, як для автопостингу
+#   секрет  VYDACHA_KLIUCH     той самий, що секрет VYDACHA_KLIUCH у Workers
+#   секрет  ANTHROPIC_API_KEY  ключ API Claude з місячною стелею (docs/SPYSOK-DLIA-MYKYTY.md)
+# У Workers: змінна VYDAVACH_GITHUB = moyavulytsya/vydavach/vydavach.yml@main і секрет VYDAVACH_GITHUB_TOKEN — ключ лише
+# на цей репозиторій з правом «Actions: Read and write» (prodazh/vydavach.js).
+name: Видавач довідок
+
+on:
+  workflow_dispatch:
+    inputs:
+      prychyna:
+        description: 'Хто штовхнув (dovidka | rozklad | ruchno)'
+        required: false
+        default: ruchno
+
+permissions:
+  contents: read
+
+# Один запуск за раз: поки йде запуск, новий поштовх чекає (і забере те, що надійшло тим часом).
+concurrency:
+  group: vydavach
+  cancel-in-progress: false
+
+jobs:
+  vydavach:
+    if: ${{ vars.VYDAVACH == 'uvimknuto' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    env:
+      ZVIT_DB: ${{ github.workspace }}/_dani/vypusk.db
+      ZVIT_SKARGY: ${{ github.workspace }}/_dani/1551
+      ZVIT_OSM: ${{ github.workspace }}/_dani/kyiv.osm.pbf
+      ZVIT_KESH: ${{ github.workspace }}/_kesh
+    steps:
+      - name: Генератор — dani-edrsr (приватний, ключем лише на читання)
+        uses: actions/checkout@v4
+        with:
+          repository: Andriithis/dani-edrsr
+          token: ${{ secrets.MV_DANI_TOKEN }}
+          path: dani-edrsr
+
+      - name: Видавач — moya-vulytsya (публічний)
+        uses: actions/checkout@v4
+        with:
+          repository: Andriithis/moya-vulytsya
+          ref: main
+          path: produkt
+          sparse-checkout: site/prodazh
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: dani-edrsr/requirements.txt
+
+      - name: Бібліотеки генератора (лише потрібні звіту — без браузера й аналітики)
+        run: |
+          grep -E '^(numpy|scipy|shapely|osmium)==' dani-edrsr/requirements.txt | cut -d' ' -f1 > /tmp/vymohy.txt
+          if [ "${{ vars.VYDAVACH_SHI }}" = "tak" ]; then echo 'anthropic' >> /tmp/vymohy.txt; fi
+          python -m pip install -r /tmp/vymohy.txt
+
+      - name: Тиждень (ключ кешу OSM)
+        id: tyzhden
+        run: echo "t=$(date -u +%G-%V)" >> "$GITHUB_OUTPUT"
+
+      - name: Випуск з кешу
+        id: dani
+        uses: actions/cache@v4
+        with:
+          path: _dani/vypusk.db
+          key: vypusk-${{ vars.VYPUSK }}
+
+      - name: Випуск із Release dani-edrsr (лише коли кешу немає)
+        if: steps.dani.outputs.cache-hit != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.MV_DANI_TOKEN }}
+        run: |
+          mkdir -p _dani
+          gh release download "${{ vars.VYPUSK }}" -R Andriithis/dani-edrsr --pattern 'events-*.db' --output _dani/vypusk.db --clobber
+          ls -la _dani
+
+      - name: OSM Києва з кешу (оновлюється щотижня)
+        id: osm
+        uses: actions/cache@v4
+        with:
+          path: _dani/kyiv.osm.pbf
+          key: osm-${{ steps.tyzhden.outputs.t }}
+
+      - name: OSM Києва (BBBike, вирізка Києва ≈ 35 МБ; лише коли кешу немає)
+        if: steps.osm.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p _dani
+          curl -fsSL --retry 3 -o _dani/kyiv.osm.pbf https://download.bbbike.org/osm/bbbike/Kiew/Kiew.osm.pbf
+          ls -la _dani/kyiv.osm.pbf
+
+      - name: Скарги 1551 (гілка dani-1551, свіжа щоразу — ≈ 40 МБ)
+        working-directory: dani-edrsr
+        run: |
+          git fetch --depth 1 origin dani-1551
+          git worktree add ../_dani/1551 FETCH_HEAD
+
+      - name: Кеш генератора (шари OSM, відповіді ШІ, витрати місяця) — з минулих запусків
+        uses: actions/cache@v4
+        with:
+          path: _kesh
+          key: kesh-${{ github.run_id }}
+          restore-keys: kesh-
+
+      - name: Забрати всю чергу
+        env:
+          VYDACHA_KLIUCH: ${{ secrets.VYDACHA_KLIUCH }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SHI_STELIA_USD: ${{ vars.SHI_STELIA_USD || '10' }}
+          ZVIT_SHI_KOMANDA: python ${{ github.workspace }}/produkt/site/prodazh/shi_api.py
+        run: |
+          SHI=""
+          if [ "${{ vars.VYDAVACH_SHI }}" = "tak" ]; then SHI="--shi"; fi
+          START=$(date +%s)
+          python produkt/site/prodazh/vydavach.py --server "${{ vars.MV_ADRESA_SAITU }}" --dani-edrsr dani-edrsr \
+            --do-porozhnoi --maks-khvylyn 40 $SHI | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "Тривалість: $(( $(date +%s) - START )) с" | tee -a "$GITHUB_STEP_SUMMARY"

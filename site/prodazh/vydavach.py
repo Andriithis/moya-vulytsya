@@ -9,7 +9,7 @@
   VYDACHA_KLIUCH=… ZVIT_DB=… ZVIT_SKARGY=… ZVIT_OSM=… \\
   python site/prodazh/vydavach.py --server https://<сайт> --dani-edrsr ../dani-edrsr [--raz] [--pauza 20] [--shi]
   python site/prodazh/vydavach.py --server https://<сайт> --do-porozhnoi --maks-khvylyn 40 …   # запуск GitHub Actions
-                                                       (dani-edrsr/.github/workflows/vydavach.yml, ZAVDANNYA-133)
+                                                       (шаблон site/prodazh/github/vydavach.yml, ZAVDANNYA-133)
 
 Ключ видавача — лише змінна середовища VYDACHA_KLIUCH (той самий, що секрет Workers). Видавач не бачить пошти покупців,
 сум і платежів — лише номер довідки, адресу будинку й режим.
