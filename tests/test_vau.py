@@ -258,3 +258,53 @@ class Soty129(unittest.TestCase):
         menshe = D.soty(podii, 8, min_chastka=0.3, min_n=3)
         self.assertEqual(len(vsi['features']), 3)
         self.assertEqual(len(menshe['features']), 2)
+
+
+class Holos129(unittest.TestCase):
+    """ZAVDANNYA-129, крок 2: зовнішній голос — лише за змінною середовища, кеш, ключ ніде не пишеться."""
+
+    def setUp(self):
+        import os
+        import tempfile
+        self.os = os
+        sys.path.insert(0, str(VAU))
+        self.HS = modul('vau_holos_servis', 'holos_servis.py')
+        self.tmp = tempfile.TemporaryDirectory()
+        self.HS.KESH = Path(self.tmp.name)
+        self.stari = {k: os.environ.get(k) for k in ('MV_HOLOS', 'MV_HOLOS_KLUCH')}
+
+    def tearDown(self):
+        for k, v in self.stari.items():
+            if v is None:
+                self.os.environ.pop(k, None)
+            else:
+                self.os.environ[k] = v
+        self.tmp.cleanup()
+
+    def test_bez_zminnoi_piper(self):
+        self.os.environ.pop('MV_HOLOS', None)
+        self.assertEqual(self.HS.servis(), 'piper')
+
+    def test_platnyi_bez_kliucha_zupyniaietsia(self):
+        self.os.environ['MV_HOLOS'] = 'elevenlabs'
+        self.os.environ.pop('MV_HOLOS_KLUCH', None)
+        with self.assertRaises(SystemExit):
+            self.HS.servis()
+
+    def test_kesh_i_kliuch_ne_v_fayli(self):
+        self.os.environ['MV_HOLOS'] = 'azure'
+        self.os.environ['MV_HOLOS_KLUCH'] = 'SEKRET-123'
+        vyklyky = []
+
+        def zapyt(t, imia, sh):
+            vyklyky.append(t)
+            return self.HS._pcm_v_wav(b'\x00\x10' * 4410, 44100)
+        x, sr = self.HS.holos('64 події біля ТЦ', 'tetiana', zapyt=zapyt)
+        self.HS.holos('64 події біля ТЦ', 'tetiana', zapyt=zapyt)
+        self.assertEqual(len(vyklyky), 1)                       # вдруге — з кешу, не оплачується
+        self.assertIn('шістдесят чотири', vyklyky[0])
+        self.assertIn('те-це', vyklyky[0])
+        self.assertEqual(sr, 44100)
+        for f in Path(self.tmp.name).iterdir():
+            self.assertNotIn('SEKRET', f.name)
+            self.assertNotIn(b'SEKRET', f.read_bytes())

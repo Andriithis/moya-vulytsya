@@ -2,7 +2,7 @@
 
 Усе синтезується тут, з синусоїд, пилок і шуму (numpy): жодного чужого семплу, тож немає скарг Content ID.
 Голос — Piper (безкоштовний, офлайн, MIT), модель uk_UA-ukrainian_tts-medium (голоси lada, mykyta, tetiana) з
-huggingface.co/rhasspy/piper-voices; шлях — MV_PIPER_MODEL або ~/.cache/mv-holosy/. Платні голоси — docs у ZVIT-127.
+huggingface.co/rhasspy/piper-voices; шлях — MV_PIPER_MODEL або ~/.cache/mv-holosy/. Платний голос — змінною MV_HOLOS (video/vau/holos_servis.py, ZAVDANNYA-129).
 
 Сценарій: S['zvuk'] = {
     'muzyka': {'styl': 'puls|nich|napruha|hra|epik|lofi', 'bpm': 120, 'drop': 3.0, 'stop': 6.8, 'huchnist': 1.0},
@@ -348,7 +348,7 @@ from holos_tekst import DOZVOLENI, chyslo_slovamy, tekst_dlia_holosu  # noqa: E4
 _PIPER = None
 
 
-def holos(tekst: str, imia='mykyta', shvydkist=1.0) -> np.ndarray:
+def _piper(tekst: str, imia: str, shvydkist: float):
     global _PIPER
     from piper import PiperVoice, SynthesisConfig
     if _PIPER is None:
@@ -361,10 +361,21 @@ def holos(tekst: str, imia='mykyta', shvydkist=1.0) -> np.ndarray:
                                                          noise_scale=0.6, noise_w_scale=0.7))
     buf.seek(0)
     with wave.open(buf, 'rb') as w:
-        sr = w.getframerate()
-        x = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(float) / 32768
+        return np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(float) / 32768, w.getframerate()
+
+
+def holos(tekst: str, imia='mykyta', shvydkist=1.0) -> np.ndarray:
+    """Голос: Piper або зовнішній сервіс за змінною MV_HOLOS (ZAVDANNYA-129, holos_servis.py); обробка — однакова."""
+    import holos_servis
+    if holos_servis.servis() == 'piper':
+        x, sr = _piper(tekst, imia, shvydkist)
+    else:
+        x, sr = holos_servis.holos(tekst, imia, shvydkist)
+    from math import gcd
     from scipy.signal import resample_poly
-    x = resample_poly(x, SR // 50, sr // 50) if sr != SR else x
+    if sr != SR:
+        g = gcd(SR, sr)
+        x = resample_poly(x, SR // g, sr // g)
     x = hp(x, 90)
     # легка «присутність»: трохи підняти 2–5 кГц і стиснути піки — голос читається поверх музики
     x = x + 0.35 * bp(x, 2000, 5000)
