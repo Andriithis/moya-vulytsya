@@ -84,6 +84,16 @@ CREATE TABLE IF NOT EXISTS vkhody (
   do_            INTEGER NOT NULL,
   vykorystano    INTEGER
 );
+-- Вхід через Google (ZAVDANNYA-142, google.js): разовий «стан» на 10 хвилин. Хеш стану, nonce, ключ перевірки PKCE і куди
+-- повернутися; пошти й даних Google тут немає. Прострочені стираються під час наступного входу.
+CREATE TABLE IF NOT EXISTS google_stany (
+  hash           TEXT PRIMARY KEY,
+  nonce          TEXT NOT NULL,
+  perevirka      TEXT NOT NULL,
+  kudy           TEXT NOT NULL,
+  do_            INTEGER NOT NULL,
+  vykorystano    INTEGER
+);
 
 -- Журнал сповіщень платіжного сервісу: одне сповіщення обробляється один раз (сервіси повторюють їх днями).
 CREATE TABLE IF NOT EXISTS spovishchennia (

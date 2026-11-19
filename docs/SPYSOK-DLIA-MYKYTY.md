@@ -58,3 +58,52 @@ TikTok (бізнес), X — усе на ім'я `moyavulytsya`. Двофакт�
 
 Hetzner після завантаження України (MV-153, MV-154) — **для продажу не потрібен**: видавач — у п. 5, дані карти — у п. 4,
 форми й замовлення — у базі D1 з п. 1. Supabase — теж не потрібен (MV-157).
+
+## Вхід через Google (ZAVDANNYA-142, `docs/PRODAZH-SERVER.md`, розд. 4а)
+
+Кнопка «Увійти через Google» у кабінеті й у формі замовлення. Код готовий і **вимкнений**, доки на сервері немає двох
+секретів. Робить партнер на обліковому записі Google **проєкту** (пошта Gmail проєкту з `AKAUNTY-PAKET.md`), не на
+особистому. Безкоштовно, ≈ 20 хвилин + кілька днів на перевірку назви Google (якщо знадобиться). Коли — разом з
+увімкненням оплати (`ZAPUSK-SAITU.md`, розд. 8), домен і сайт на https уже мають працювати.
+
+Назви пунктів у Google Cloud змінюються — якщо пункт зветься інакше, шукайте за змістом. **Не перевірено на живому акаунті.**
+
+1. **Проєкт.** console.cloud.google.com → увійти поштою проєкту → угорі «Select a project» → «New project» → назва
+   `moya-vulytsya` → Create. (Картка не потрібна: вхід через Google безкоштовний.)
+2. **Екран згоди** (що людина бачить у вікні Google): меню → «Google Auth Platform» (раніше «APIs & Services → OAuth
+   consent screen») → Get started:
+   - App name: **Моя вулиця**; User support email: пошта проєкту;
+   - Audience: **External** (будь-хто з обліковим записом Google);
+   - Contact information: пошта проєкту → погодитися з правилами Google → Create.
+3. **Брендинг** (Branding): Application home page — `https://moyavulytsya.com.ua/`; Privacy policy —
+   `https://moyavulytsya.com.ua/zahlushka/polityka.html`; Terms of service — `https://moyavulytsya.com.ua/zahlushka/oferta.html`;
+   Authorized domains — `moyavulytsya.com.ua`. Логотип — **не завантажувати** (з логотипом Google вимагає довшої перевірки).
+4. **Дозволи** (Data access → Add or remove scopes): лише **`openid`** і **`.../auth/userinfo.email`**. Більше нічого —
+   ні `profile`, ні Диска, ні контактів. Це «не чутливі» дозволи: перевірка застосунку Google для них не потрібна.
+5. **Клієнт** (Clients → Create client): Application type — **Web application**; Name — `sait`;
+   - Authorized JavaScript origins — порожньо (не потрібно);
+   - Authorized redirect URIs — **рівно** `https://moyavulytsya.com.ua/kabinet/google/povernennia/` (зі скісною рискою в
+     кінці; інша адреса — Google відмовить з `redirect_uri_mismatch`);
+   - Create → Google покаже **Client ID** і **Client secret**. Секрет — одразу в менеджер паролів; більше нікуди
+     (ні в чат, ні в листи, ні в репозиторій).
+6. **Секрети на сервері** — у теці викладеного сайту `<випуск>-worker` (як інші секрети, `PRODAZH-SERVER.md`, розд. 5):
+   ```bash
+   npx wrangler secret put GOOGLE_KLIIENT_ID
+   ```
+   ```bash
+   npx wrangler secret put GOOGLE_SEKRET
+   ```
+   (кожна команда питає значення — вставити Client ID і Client secret). Або в панелі Cloudflare: Workers → `moya-vulytsya` →
+   Settings → Variables and Secrets → Add → тип **Secret**. Після цього кнопка з'являється сама, нового викладання не треба.
+7. **Опублікувати екран згоди** (Audience → Publishing status → **Publish app** → «In production»). Поки стан «Testing»,
+   увійти можуть лише до 100 людей, яких вписано в Test users, — для першої перевірки так і зробіть: впишіть себе й Андрія,
+   перевірте, потім публікуйте. Google може попросити підтвердити назву застосунку (brand verification): тоді — підтвердити
+   домен у Google Search Console (запис TXT у Cloudflare DNS) і чекати 2–3 робочі дні; вхід працює й до цього, лише у вікні
+   Google видно домен замість назви.
+8. **Перевірка** (5 хвилин): `https://moyavulytsya.com.ua/kabinet/` → «Увійти через Google» → обрати обліковий запис → має
+   відкритися кабінет із вашою поштою. Ще раз — з поштою, з якою вже купували (тестова оплата): має відкритися **той самий**
+   кабінет із довідками. Вікно Google має казати лише про пошту — якщо просить щось ще, зупиніться й напишіть нам.
+
+Вимкнути вхід через Google — видалити будь-який із двох секретів (`npx wrangler secret delete GOOGLE_SEKRET`): кнопка
+зникне, вхід за посиланням на пошту працює далі. Ключ скомпрометовано — у Google Cloud: Clients → `sait` → додати новий
+секрет, вписати його на сервер (крок 6), старий видалити.
