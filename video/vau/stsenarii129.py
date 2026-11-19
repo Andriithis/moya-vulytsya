@@ -404,12 +404,14 @@ def n5(B):
 def n6(B):
     """Нове: ролик-відповідь на коментар (К-23) — «а що на Кадетському Гаю?». ШАБЛОН: публікувати лише зі справжнім коментарем."""
     vs = B.V.po_vulytsi()
-    pod = vs.get('вул. Кадетський Гай', []) + vs.get('вул. Кадетський гай', [])
+    # період — як на безкоштовній сторінці вулиці сайту (2024–2026): ролик і сторінка показують ті самі числа
+    pod = [p for p in vs.get('вул. Кадетський Гай', []) + vs.get('вул. Кадетський гай', []) if (p.rik or 0) >= 2024]
     c = tsentr(pod)
     n = len(pod)
     vtekly = sum(1 for p in pod if p.mitka == 'поїхав з місця ДТП')
     dtp = sum(1 for p in pod if p.vyd == 'ДТП')
-    misto = sum(1 for p in B.P if p.mitka == 'поїхав з місця ДТП') / len(B.P)
+    P24 = [p for p in B.P if (p.rik or 0) >= 2024]
+    misto = sum(1 for p in P24 if p.mitka == 'поїхав з місця ДТП') / len(P24)
     R = R129('n6-vidpovid-na-komentar', 15, nazva='Відповідь на коментар: Кадетський Гай', hrupa='Відповіді на коментарі',
              hachok='наклейка-коментар «а що на Кадетському Гаю?»', meta='серія, що живиться коментарями → сторінка вулиці',
              liniia='Мій будинок', kudy='/vulytsia/kadetskyi-hai/', shablon='підставити справжній коментар перед публікацією')
@@ -426,7 +428,7 @@ def n6(B):
     R.tochky(pod, chasy, rozmir=((0, 20),), glow=0.5)
     R.zvuk_tochok(chasy, maks=12, h0=1.0, h1=1.7, v=0.45)
     R.tekst(2.0, 4.6, 'velykyi', 'Кадетський Гай.\n*Відповідаємо.*', y='verkh', anim='slam')
-    R.tekst(4.7, 7.4, 'lich', kluchi=[[4.7, 0], [5.9, n, 'o']], pidpys='{f} на вулиці\nу рішеннях судів', formy=FORMY, y='verkh')
+    R.tekst(4.7, 7.4, 'lich', kluchi=[[4.7, 0], [5.9, n, 'o']], pidpys='{f} на вулиці\nза 2024–2026', formy=FORMY, y='verkh')
     R.udar(5.9, 0.2, 8)
     R.holos(4.8, f'{n} {fp(n)} на вулиці. З них {dtp} — де-те-пе.', 'tetiana')
     R.tekst(7.5, 10.4, 'split', riady=[{'zag': 'Тут', 'n': round(vtekly / n * 100), 'pislia': ' %', 'tekst': 'поїхав з місця ДТП'},
