@@ -233,8 +233,9 @@
     var kolir = ['match', ['get', 'k'], 1, Kc.sc[0], 2, Kc.sc[1], 3, Kc.sc[2], 4, Kc.sc[3], Kc.sc[4]];
     var vershyna = ['case', ['>', ['get', 'v'], 0], ['interpolate', ['linear'], ['get', 'v'], 0, Kc.pk[0], 1, Kc.pk[1]], kolir];
     map.addLayer({ id: id + '-f', type: 'fill', source: id, paint: { 'fill-color': kolir, 'fill-opacity': 0 } }, pered);
-    map.addLayer({ id: id + '-l', type: 'line', source: id, paint: { 'line-color': Kc.sl,
-      'line-width': ['interpolate', ['linear'], ['zoom'], 9, 1.4, 12, 2.6, 15, 4], 'line-opacity': 0 } }, pered);
+    map.addLayer({ id: id + '-l', type: 'line', source: id, paint: { 'line-color': sh.styl_sot === 'plytka' ? Kc.tlo : Kc.sl,
+      'line-width': ['interpolate', ['linear'], ['zoom'], 9, sh.styl_sot === 'plytka' ? 2.4 : 1.4, 12, sh.styl_sot === 'plytka' ? 4 : 2.6, 15, sh.styl_sot === 'plytka' ? 6 : 4], 'line-opacity': 0 } }, pered);
+    if (sh.styl_sot === 'sklo' || sh.styl_sot === 'plytka') zibratyZnyk(sh.styl_sot);
     var rozpadIds = (sh.rozpad || []).map(function (r) { return r.id; });
     sh._ids = rozpadIds;
     map.addLayer({ id: id + '-3d', type: 'fill-extrusion', source: id,
@@ -244,6 +245,17 @@
       'fill-extrusion-height': 0, 'fill-extrusion-base': 0, 'fill-extrusion-opacity': 0.9,
       'fill-extrusion-vertical-gradient': true } }, pered);
   }
+  // під «склом» дороги й будинки приглушені (рівна напівпрозорість замість доріжок); під «плиткою» — ще й назви вулиць
+  var ZNYK = [];
+  function zibratyZnyk(ss) {
+    if (ZNYK.length) return;
+    map.getStyle().layers.forEach(function (l) {
+      var sl = l['source-layer'];
+      if (l.type === 'line' && (sl === 'transportation' || sl === 'aeroway')) ZNYK.push([l.id, 'line-opacity', map.getPaintProperty(l.id, 'line-opacity') === undefined ? 1 : +map.getPaintProperty(l.id, 'line-opacity') || 1]);
+      else if (l.id === 'building') ZNYK.push([l.id, 'fill-opacity', 1]);
+      else if (ss === 'plytka' && l.type === 'symbol' && sl === 'transportation_name') ZNYK.push([l.id, 'text-opacity', 1]);
+    });
+  }
   function onovytySoty(i, sh) {
     var id = 'soty-' + i;
     var a = trek(sh.prozorist, T, 1) * (T < (sh.t0 || 0) || T > (sh.t1 || 1e9) ? 0 : 1);
@@ -251,8 +263,13 @@
     var zum = map.getZoom();
     // зблизька заливка яскравіша (MV-151): на z 12+ сота читається плямою, а не сіткою поверх вулиць
     var zal = (sh.zalyvka === undefined ? 0.55 : sh.zalyvka) * (sh.yaskravo_zblyzka === false ? 1 : lerp(1, 1.8, clamp((zum - 11) / 2, 0, 1)));
-    map.setPaintProperty(id + '-f', 'fill-opacity', a * Math.min(0.8, zal));
-    map.setPaintProperty(id + '-l', 'line-opacity', a * (sh.mezha_prozorist === undefined ? 0.85 : sh.mezha_prozorist));
+    // В1 («мурашник», ZAVDANNYA-134): styl_sot — 'sait' (над дорогами, як на сайті), 'sklo' (рівна напівпрозорість),
+    // 'plytka' (суцільна мозаїка); без нього — як було (соти під дорогами й будинками)
+    var ss = sh.styl_sot;
+    var fz = ss === 'plytka' ? 0.94 : ss === 'sklo' ? (sh.zalyvka === undefined ? 0.5 : sh.zalyvka) : Math.min(0.8, zal);
+    map.setPaintProperty(id + '-f', 'fill-opacity', a * fz);
+    map.setPaintProperty(id + '-l', 'line-opacity', a * (sh.mezha_prozorist === undefined ? (ss === 'plytka' ? 1 : 0.85) : sh.mezha_prozorist));
+    if (ss === 'sklo' || ss === 'plytka') ZNYK.forEach(function (l) { map.setPaintProperty(l[0], l[1], l[2] * (1 - a * (ss === 'plytka' ? 1 : 0.6))); });
     // висота відносно наближення: зблизька стовпчики нижчі, інакше закривають вулиці (як на сайті)
     var maks = (sh.maks_vysota || 2500) * clamp(Math.pow(2, (sh.z_ref || 10.5) - zum), 0.06, 1.4);
     var rozpad = ['coalesce', ['feature-state', 'r'], 1];
@@ -681,7 +698,11 @@
         map.addSource('mezha', { type: 'geojson', data: S.mezha });
         map.addLayer({ id: 'mezha', type: 'line', source: 'mezha', paint: { 'line-color': KOL[K.t].mezha, 'line-width': 2, 'line-opacity': 0.7 } }, pershyiSymvol);
       }
-      (S.soty || []).forEach(function (sh, i) { dodatySoty(i, sh, pershyiSymvol); });
+      // pershyiSymvol у стилях OpenFreeMap — назва води, вона йде ДО будинків і доріг: усе, що вставлено перед нею, лежить
+      // під дорогами (причина «мурашника», В1). nadLiniiamy — над останнім шаром ліній, під підписами (як на сайті).
+      var shary = map.getStyle().layers, ost = shary.map(function (l) { return l.type !== 'symbol'; }).lastIndexOf(true);
+      var nadLiniiamy = (shary[ost + 1] || {}).id;
+      (S.soty || []).forEach(function (sh, i) { dodatySoty(i, sh, sh.styl_sot ? nadLiniiamy : pershyiSymvol); });
       (S.tochky || []).forEach(function (sh, i) { map.addLayer(sharTochok('tochky-' + i, sh), S.tochky_nad_pidpysamy ? undefined : pershyiSymvol); });
       return document.fonts.ready;
     }).then(function () { return window.kadr(0); }).then(function () {
