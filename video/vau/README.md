@@ -80,6 +80,28 @@ video/vau/montazh_kadriv.sh <префікс id> [ширина]                  
 мозаїка зі швами кольору тла, дороги й назви вулиць під сотами сховані. Без параметра — як було. Знімки до/після —
 `docs/rolyky-v1/`, порада — `docs/ROLYKY-SYSTEMA.md`, розд. 3.
 
+## ZAVDANNYA-138: стилі на вибір, світла тема, адреси, нові типи, пачка тижня
+
+```bash
+python video/vau/stsenarii138.py <events.db> --koloda <koloda.json>          # 13 сценаріїв → video/vyhid/kesh/stsenarii/138-*.json
+python video/vau/stsenarii138.py <events.db> --pachka                        # лише перевірка чергування пачки (В2)
+python video/vau/rushii.py video/vyhid/kesh/stsenarii/138-*.json --vykhid video/vyhid/138 [--cpu]
+python video/vau/zapys_saitu.py video/vyhid/sait --lyshe z3 --vykhid video/vyhid/138 [--cpu]   # «POV: застава завтра»
+```
+
+- **Вигляди — реєстр, не типовий стиль.** `stsena.js`: `VAU.temy` (тема = основа темна/світла + кольори),
+  `VAU.styliSot` (`sait` — напівпрозорі над дорогами, як на сайті; `plytka`; `stovpchyky` — кожна сота стовпчиком за числом,
+  крізь них видно вулиці; `stovpchyky_shchilno`; `sklo`), `VAU.styliAdres` (`kola`, `kiltsia`, `svitni`). Свої вигляди
+  (ZAVDANNYA-139) — окремим файлом у `S.moduli`: він лише дописує записи в реєстр, рушій не переписується.
+- **Правила 138** (`meta['pravyla'] = 138`): стиль сот — лише явний (`styl_sot`), шар ролика названо (`meta['shar']`:
+  soty · adresy · tochky · zvit · zapys · ne_karta), в адресах лише число подій; С7 «лише темна» прибрано (MV-158).
+- **Точки й межа міста — над дорогами** (`S.nad_dorohamy`, MV-161).
+- **Шар адрес** (`R.adresy(…)`): місце → число подій, як карта підписника; номерів будинків немає (MV-25).
+- **Поділений екран** (`R.druha(R2, kordon)`, `S.druha.os` 'x' або 'y'): друга сцена зі своєю темою в рамці.
+- **Календар року** (`styl: 'kalendar'`), гра без жодних назв на карті (`S.bez_pidpysiv`), без 3D-будинків (`S.bez_3d`).
+- **В2:** `perevirka.osi(S, meta)` — тема, шар, рівень наближення; `pereviryty_pachku` — два ролики поспіль різні
+  щонайменше за двома осями. Порядок пачки — `PACHKA` у `stsenarii138.py`.
+
 ## ZAVDANNYA-139: візуальна лабораторія — теми й вигляди (`tema`, `styl`)
 
 Окремий модуль `vyhliady139.js` + `vyhliady139.css` (сцена вантажить його перед `stsena.js`; у `stsena.js` — лише три гачки:

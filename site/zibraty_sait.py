@@ -780,7 +780,8 @@ DZHERELA_KARTY = ('Підкладка: <a href="https://openfreemap.org" target=
 
 # Ігри в карті (ZAVDANNYA-117): значок «Ігри» — сота з зірочкою; дані ігор — /ihry/*.json (збирає zibraty_ihry).
 IHRY_IK = svg_html('<path d="M12 3 19.8 7.5V16.5L12 21 4.2 16.5V7.5Z"/><path d="m12 8.6 1.1 2.3 2.5.3-1.8 1.7.5 2.5-2.3-1.2-2.3 1.2.5-2.5-1.8-1.7 2.5-.3Z"/>', 22)
-SKRYPTY_IHOR = ('/sait/hra-yadro.js', '/sait/vulytsia-yadro.js', '/sait/ihry-yadro.js', '/sait/ihry.js')
+SKRYPTY_IHOR = ('/sait/hra-yadro.js', '/sait/vulytsia-yadro.js', '/sait/ihry-yadro.js', '/sait/litopys-yadro.js', '/sait/litopys.js',
+                '/sait/ihry.js')   # «Літопис міста» — у панелі ігор (ZAVDANNYA-141)
 IHRY_DANI: dict = {}
 
 
@@ -904,7 +905,7 @@ def storinka_hra_pereadresatsiia(tsil: str) -> str:
 '''
 
 
-def zibraty_ihry(dn: D.Dani, vykhid: Path, koloda: Path | None) -> dict:
+def zibraty_ihry(dn: D.Dani, vykhid: Path, koloda: Path | None, baza: Path | None = None, mezhi: Path | None = None) -> dict:
     """Дані ігор у карті (ZAVDANNYA-117) у /ihry/: справи детектива (кожна — через перевірку site/ihry/detektyv.py; не
     проходить — збирання падає), «Кваліфікуй» (без уривків рішень), налаштування балів, колода гри «Вгадай» (та сама, що й
     у заглушці: справжня або демо) і «Вулиця дня» (якщо з цього випуску вийшла хоч одна загадка)."""
@@ -942,6 +943,15 @@ def zibraty_ihry(dn: D.Dani, vykhid: Path, koloda: Path | None) -> dict:
         if vd['zahadky']:
             zapysaty(tsil / 'vulytsia-dnia.json', json.dumps(vd, ensure_ascii=False, separators=(',', ':')))
             IHRY_DANI['vulytsia'] = '/ihry/vulytsia-dnia.json'
+        # «Літопис міста» (ZAVDANNYA-141): з тієї самої колоди; рідкість — за частотами випуску (без конвеєра поруч — за колодою).
+        if mezhi and mezhi.exists():
+            sys.path.insert(0, str(DZHERELO / 'ihry' / 'litopys'))
+            import litopys as LT
+            lt = LT.zibraty_z_dani(dn, gotova, LT.chastoty_vydiv(baza) if baza else {},
+                                   json.loads(mezhi.read_text(encoding='utf-8')))
+            if lt['vulytsi'] and lt['podii']:
+                zapysaty(tsil / 'litopys.json', json.dumps(lt, ensure_ascii=False, separators=(',', ':')))
+                IHRY_DANI['litopys'] = '/ihry/litopys.json'
     return dict(IHRY_DANI)
 
 
@@ -966,9 +976,12 @@ def kopiyuvaty_spilne(vykhid: Path) -> None:
         shutil.copyfile(DZHERELO / 'hra' / f, sait / f)
     for f in ('ihry-yadro.js', 'ihry.js'):
         shutil.copyfile(DZHERELO / 'ihry' / f, sait / f)
+    for f in ('litopys-yadro.js', 'litopys.js'):             # «Літопис міста» в панелі ігор (ZAVDANNYA-141)
+        shutil.copyfile(DZHERELO / 'ihry' / 'litopys' / f, sait / f)
     # Кольори обох тем — на початок стилів (одна сторінка стилів, без зайвого запиту); ігри в карті — у кінець.
     zapysaty(sait / 'sait.css', kolory_css() + (DZHERELO / 'sait' / 'sait.css').read_text(encoding='utf-8')
-             + '\n' + (DZHERELO / 'ihry' / 'ihry.css').read_text(encoding='utf-8'))
+             + '\n' + (DZHERELO / 'ihry' / 'ihry.css').read_text(encoding='utf-8')
+             + '\n' + (DZHERELO / 'ihry' / 'litopys' / 'litopys.css').read_text(encoding='utf-8'))
     for f in sorted((DZHERELO / 'sait' / 'shryfty').iterdir()):   # IBM Plex Sans і ліцензія OFL поруч
         shutil.copyfile(f, sait / 'shryfty' / f.name)
     (sait / 'biblioteka').mkdir(exist_ok=True)
@@ -1117,7 +1130,7 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
         zapysaty(vykhid / 'vulytsi' / 'budynky.json', json.dumps(budynky_poshuku, ensure_ascii=False, separators=(',', ':')))
 
     # Ігри в карті (ZAVDANNYA-117): дані ігор — до сторінок з картою (панель знає, які ігри є).
-    zibraty_ihry(dn, vykhid, koloda)
+    zibraty_ihry(dn, vykhid, koloda, baza, mezhi_rayoniv)
 
     # Карта і головна.
     if D.h3 is None:

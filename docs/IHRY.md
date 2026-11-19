@@ -1,6 +1,6 @@
 # Ігри «Моєї вулиці»
 
-Довга гра — «Літопис міста» (ZAVDANNYA-140, прототип, на вибір): [`HRA-DOVHA.md`](HRA-DOVHA.md).
+Довга гра — «Літопис міста» (MV-165; у панелі «Ігри» карти — ZAVDANNYA-141): [`HRA-DOVHA.md`](HRA-DOVHA.md), [`ZVIT-141.md`](../ZVIT-141.md).
 
 Друга гра — «Вулиця дня» (MV-126): [`HRA-2.md`](HRA-2.md) (прототип — ZAVDANNYA-101, робоча версія — ZAVDANNYA-114, `docs/ZVIT-114.md`).
 
