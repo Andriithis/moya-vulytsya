@@ -49,6 +49,12 @@ def novynky(S: dict) -> list[float]:
     for a, b in zip(K, K[1:]):
         if b.get('luk') or abs(b['z'] - a['z']) >= 0.8 or abs(b.get('b', 0) - a.get('b', 0)) >= 35:
             t.append(a['t'] + 0.15)
+    for it in S.get('tekst', []):          # відлік 3-2-1 і годинник — нове число щосекунди
+        if it.get('styl') in ('vidlik', 'godynnyk', 'taimer'):
+            x = it['t0']
+            while x < it['t1']:
+                x += 1.0
+                t.append(x)
     t += S.get('novynky', [])
     return sorted(t)
 

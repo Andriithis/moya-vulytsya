@@ -327,6 +327,7 @@
         if (s.br) html += '<br>'; else if (s.sp) html += ' '; else html += '<span class="w' + (s.a ? ' a' : '') + '">' + s.w + '</span>';
       });
       if (it.styl === 'pidpys') html += '</span>';
+      if (it.pid) html += '<small>' + it.pid + '</small>';   // slovo: другий рядок дрібніше
       el.innerHTML = html;
     }
     document.getElementById('tekst').appendChild(el);

@@ -131,6 +131,128 @@ def t5(B):
     return R
 
 
+def t2(B):
+    """Топ-2 «Вгадай, де це було» — 23 сосни (чернетка 04 → К-08): 12 с, темна; картка повна з кадру 0, відлік, відповідь."""
+    p = B.podiia('124940125-1')
+    ray = B.V.rayon(p) or 'Дарницький'
+    c = (p.lon, p.lat)
+    R = R129('t2-vgadai-sosny', 12, nazva='Вгадай, де це було: 23 сосни', hrupa='Ігри',
+             hachok='«Вгадай, де це було» + картка «23 сосни без бирок» з кадру 0', meta='коментарі, гра → «Де це було?» щодня',
+             liniia='Гра', kudy='/hra/', odna_podiia=True)
+    R.muzyka('hra', bpm=120)
+    tlo = [x for x in B.P if x.id != p.id]
+    R.tochky(tlo, [-1] * len(tlo), rozmir=((0, 5),), yaskr=((0, 0.45), (5.8, 0.45), (6.6, 0.15)), glow=0.15, kiltse=False)
+    R.kam(0, KYIV, 10.2, 20, 0).kam(6.0, KYIV, 10.5, 30, 8, e='l').kam(8.0, (c[0], c[1] - 0.0022), 15.0, 55, -25, e='io', luk=0.9)
+    R.kam(12, (c[0], c[1] - 0.0018), 15.2, 60, -55, e='l')
+    R.tochky([p], [7.6], rozmir=((0, 60),), glow=0.7)
+    R.tekst(0, 6.0, 'hook', 'Вгадай,\n*де це було*', y='verkh')
+    R.tekst(0, 3.0, 'kartka', 'Грудень, 14:00. Людина продавала з рук 23 новорічні сосни — без бирок обліку деревини.',
+            zag='Що сталося', dz=f'Рішення суду № {p.nomer_rishennia}', y=640)
+    variant = [('А', 'Оболонський'), ('Б', ray), ('В', 'Святошинський')]
+    for i, (b, v) in enumerate(variant):
+        R.tekst(1.5 + i * 0.2, 8.0, 'variant', v, bukva=b, y=1060 + i * 130, pravylno=(v == ray), vidpovid=6.0)
+        R.efekt(1.5 + i * 0.2, 'pop', h=1.2 + i * 0.15, v=0.5)
+    R.tekst(1.9, 6.0, 'mala', 'Пиши букву в коментарях', y=1450, klas='zaklyk')
+    R.tekst(3.0, 6.0, 'vidlik', y=600)
+    for t in (3.0, 4.0, 5.0):
+        R.efekt(t, 'tik', h=1.3)
+    R.efekt(6.0, 'dzvin', h=1.2)
+    R.udar(7.6, 0.3, 10)
+    R.kiltse(7.7, c, '#66E6BA', 300)
+    R.mitka(7.8, 12, c, f'{ray} район', styl='velyka')
+    R.tekst(8.2, 10.6, 'velykyi', f'*{ray}* район.\nВи вгадали?', y='verkh', anim='slam')
+    R.mitka(9.4, 12, (c[0] + 0.0012, c[1] - 0.0009), D.vulytsia(p.adresa))
+    R.efekt(9.4, 'pop', h=1.4)
+    R.baner(10.7, 'Нова загадка — щодня', 'Гра «Де це було?» · посилання в профілі')
+    R.pidpys(f'Справжня справа з рішення суду № {p.nomer_rishennia}. Гра «Де це було?» — нова загадка щодня, посилання в профілі.')
+    return R
+
+
+def t3(B):
+    """Топ-3 «Самокат. 00:46. 1,68 проміле» (чернетка 18 → К-16): 7 с, петля; три удари — гачок повністю з кадру 0."""
+    p = B.podiia('130939371-1')
+    c = (p.lon, p.lat)
+    vsi = sorted([x for x in B.fabula('самокат') if x.data], key=lambda x: x.data)
+    R = R129('t3-samokat-7s', 7, nazva='Самокат. 00:46. 1,68 проміле', hrupa='Історії з даних',
+             hachok='«Самокат. 00:46. 1,68 проміле.» — три удари', meta='гачок-вимір → сторінка вулиці',
+             liniia='Мій район', kudy='/vulytsia/petra-sahaidachnoho/', odna_podiia=True)
+    R.muzyka('puls', bpm=128, drop=0.0)
+    R.kam(0, (c[0], c[1] - 0.0016), 14.8, 60, 20).kam(2.4, (c[0], c[1] - 0.0014), 15.2, 62, -5, e='o')
+    R.kam(4.4, (c[0], c[1] - 0.0014), 15.2, 62, -15, e='l').kam(6.0, KYIV, 11.0, 40, -10, e='io', luk=0.4)
+    R.tochky([p], [-0.5], rozmir=((0, 60), (4.4, 60), (5.6, 18)), glow=0.7)
+    rng = random.Random(18)
+    inshi = [x for x in vsi if x.id != p.id]
+    chasy = sorted(4.5 + 1.6 * ((i + 1) / len(inshi)) ** 0.6 + rng.uniform(0, 0.05) for i in range(len(inshi)))
+    R.tochky(inshi, chasy, rozmir=((0, 10),), glow=0.5)
+    R.zvuk_tochok(chasy, maks=14, h0=1.0, h1=1.9, v=0.4)
+    R.tekst(0, 2.3, 'hook', 'Самокат.\n00:46.\n*1,68 проміле.*', y='verkh')
+    for t, s in ((0.02, 0.2), (0.75, 0.15), (1.5, 0.25)):        # три удари поверх повного гачка
+        R.udar(t, s, 16)
+    R.tekst(2.4, 4.4, 'kartka', 'Серпень 2025, Поділ. Водій електросамоката напідпитку: прилад показав 1,68 проміле.',
+            zag='Дійшло до суду', dz=f'{D.vulytsia(p.adresa)} · рішення суду № {p.nomer_rishennia}', y='verkh')
+    R.efekt(2.4, 'svish')
+    R.mitka(3.4, 4.4, c, 'Поділ · 00:46', styl='velyka')
+    R.efekt(3.4, 'pop', h=1.3)
+    R.tekst(4.5, 6.6, 'lich', kluchi=[[4.5, 0], [6.1, len(vsi), 'io']], pidpys='{f} у даних,\nде згадано самокат', formy=FORMY, y='verkh')
+    R.efekt(4.4, 'vzhukh', v=0.7)
+    R.petlia(0.45)
+    R.pidpys(f'Справжня справа: рішення суду № {p.nomer_rishennia}. Що ще на твоїй вулиці — посилання в профілі.')
+    R.meta['kintsivka'] = 'у підписі: посилання в профілі'
+    return R
+
+
+def dani_1551(f: Path) -> dict:
+    """Місячні числа й групи 1551 з dani-edrsr/docs/1551-DLIA-ZVITU.md (заміри ZAVDANNYA-66) — без ручних чисел."""
+    t = f.read_text(encoding='utf-8')
+    num = lambda x: int(x.replace(' ', '').replace(' ', ''))
+    mis = [(m.group(1), num(m.group(2))) for m in re.finditer(r'^\| (\d{4}-\d{2}) \| ([\d  ]+) \|', t, re.M)]
+    hr = {m.group(1).strip(): num(m.group(2)) for m in re.finditer(r'^\| ([а-яєіїґ\' ,()]+?) \| ([\d  ]+) \| [\d  ]+ \|', t, re.M)}
+    return {'misiatsi': mis, 'hrupy': hr}
+
+
+def t4(B):
+    """Топ-4 «Січень: 211 тисяч» (К-28, 1551): 15 с; число на весь кадр з кадру 0, місяці стовпчиками, тема №1 — тепло."""
+    d = dani_1551(B.dani_1551)
+    mis = d['misiatsi']
+    sich = [n for m, n in mis if m.endswith('-01')][0]
+    serp = [n for m, n in mis if m == '2025-08'][0]
+    liut = [n for m, n in mis if m.endswith('-02')][0]
+    hr = d['hrupy']
+    tema = [(k, hr[k]) for k in ('тепло', 'вода', 'світло', 'ліфт')]
+    raz = round(sich / serp)
+    R = R129('t4-sichen-211-tysiach', 15, nazva='Січень: 211 тисяч', hrupa='«Що болить будинку»',
+             hachok=f'«{D.chyslo(sich)}» на весь кадр — стільки разів кияни написали в 1551 за один січень',
+             meta='охоплення → «Мій будинок»', liniia='Мій будинок', kudy='/miy-budynok/')
+    R.S['dzherelo'] = DZHERELO_1551
+    R.muzyka('napruha', bpm=100)
+    R.kam(0, KYIV, 10.6, 45, -20).kam(15, (30.55, 50.45), 11.2, 55, -80, e='l')
+    R.slovo(0, 1.8, D.chyslo(sich), pid='разів кияни написали в 1551\nза один січень')
+    R.holos(0.15, 'Стільки разів кияни написали в п\'ятнадцять п\'ятдесят один за один січень.', 'tetiana')
+    R.efekt(0.0, 'udar', v=0.8)
+    riady = [{'tekst': MISIATSI[int(m[5:]) - 1], 'n': n, 'akc': m.endswith('-01'), 'pokaz': m.endswith('-01')} for m, n in mis]
+    R.tekst(1.8, 7.4, 'kolony', riady=riady, y=760, krok=0.1)
+    R.efekt(1.8, 'vzhukh')
+    R.tekst(2.0, 3.9, 'velykyi', f'Серпень — *{D.chyslo(serp)}*', y='verkh', anim='vgoru')
+    R.tekst(4.0, 5.7, 'velykyi', f'Січень — *у {raz} рази* більше', y='verkh', anim='slam')
+    R.udar(4.0, 0.3, 12)
+    R.holos(4.1, f'У січні — у {raz} рази більше, ніж у серпні.', 'tetiana')
+    R.tekst(5.8, 7.4, 'velykyi', f'Лютий — майже стільки ж:\n*{D.chyslo(liut)}*', y='verkh', anim='vgoru')
+    R.tekst(7.5, 10.9, 'stovpchyky', riady=[{'tekst': k, 'n': n, 'kolir': '#66E6BA' if i == 0 else '#9C9DF0'} for i, (k, n) in enumerate(tema)], y=900)
+    R.tekst(7.5, 10.9, 'velykyi', 'Тема №1 за 15 місяців —\n*тепло*', y='verkh', anim='slam')
+    R.efekt(7.5, 'svish')
+    R.holos(7.7, f'Тема номер один — тепло: {tema[0][1] // 1000} тисяча звернень.', 'tetiana')
+    R.udar(9.3, 0.2, 8)
+    R.tekst(11.0, 13.7, 'velykyi', 'Що писали про\n*ваш будинок?*', y='verkh', anim='slam')
+    R.udar(11.0, 0.25, 10)
+    R.holos(11.1, 'А що писали про ваш будинок?', 'tetiana')
+    R.efekt(12.6, 'pop', h=1.3)
+    R.S['novynky'] = [12.6]
+    R.baner(13.8, 'Мій будинок', 'Скарги 1551 по кожному будинку · посилання в профілі')
+    R.pidpys('Дані: звернення до 1551 (відкриті дані Києва), серпень 2025 — жовтень 2026; повторні перенаправлення рахуємо раз.',
+             'Скарга — звернення, а не перевірений факт. Що писали про ваш будинок — посилання в профілі.')
+    return R
+
+
 SCENARII = {k: v for k, v in dict(globals()).items() if re.match(r'[tn]\d+$', k)}
 
 

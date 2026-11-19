@@ -43,9 +43,9 @@ body { font-family: Plex, system-ui, sans-serif; color: var(--ink); -webkit-font
 [data-t="svitla"] #znak .z1 { fill: #4447A6; } [data-t="svitla"] #znak .z2 { fill: #DFE3FC; }
 /* С5 (ZAVDANNYA-129): джерело й «Голос згенеровано» — під логотипом, великі й контрастні; верх 150–330 px вільний від
    кнопок TikTok (вкладки — вище 150, кнопки праворуч — нижче 900, підпис — нижче 1500) */
-#dzherelo { position: absolute; left: 56px; top: 228px; max-width: 860px; display: flex; flex-wrap: wrap; gap: 8px 10px; }
+#dzherelo { position: absolute; left: 56px; top: 228px; max-width: 968px; display: flex; flex-wrap: wrap; gap: 8px 10px; }
 #dzherelo span { font: 600 30px/1.2 Plex; color: var(--ink); background: rgba(10, 12, 32, .66); padding: 8px 16px; border-radius: 14px; }
-#dzherelo span.hp { color: #11142A; background: #66E6BA; }
+#dzherelo span.hp { color: #11142A; background: #66E6BA; box-shadow: 0 0 0 3px #11142A; }
 [data-t="svitla"] #dzherelo span { background: rgba(255, 255, 255, .85); }
 
 /* ---------- кінетичний текст ---------- */
@@ -89,7 +89,7 @@ body { font-family: Plex, system-ui, sans-serif; color: var(--ink); -webkit-font
   margin-right: 22px; color: var(--accent2); }
 .t.variant.pravylno { background: var(--accent); color: var(--on-accent); }
 .t.variant.pravylno b { background: rgba(255,255,255,.35); color: var(--on-accent); }
-.t.variant.ni { opacity: .35 !important; }
+.t.variant.ni { filter: opacity(.35); }   /* не !important: інакше варіант не зникає після t1 */
 .t.stovpchyky { left: 70px; right: 150px; }
 .t.stovpchyky .r { display: flex; align-items: center; gap: 18px; margin: 18px 0; font: 700 44px/1.1 Plex; color: var(--ink); text-shadow: 0 0 18px var(--ground); }
 .t.stovpchyky .r .s { height: 54px; border-radius: 14px; }
@@ -192,3 +192,5 @@ body { font-family: Plex, system-ui, sans-serif; color: var(--ink); -webkit-font
 .t.taimer { left: 60px; right: 60px; height: 34px; background: rgba(255,255,255,.14); border-radius: 17px; }
 .t.taimer .s { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 17px; background: #FFE45C; }
 .t.taimer .n { position: absolute; right: 0; top: 50px; font: 900 64px/1 Plex; color: #FFE45C; }
+.t.slovo small { flex-basis: 100%; display: block; font: 800 66px/1.15 Plex; letter-spacing: 0; margin-top: 28px; }
+.t.mala.zaklyk { color: var(--accent); font-weight: 700; }
