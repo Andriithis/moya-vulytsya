@@ -50,6 +50,8 @@ class R138(Rolyk):
     def __init__(self, id_, tryv, tema='temna', shar='soty', **meta):
         super().__init__('138-' + id_, tryv, tema=tema, pravyla=138, shar=shar, **meta)
         self.S['nad_dorohamy'] = True          # MV-161: точки й межа міста — над дорогами
+        if tema == 'svitla':                   # світле затемнення під текстом на 100 % стирає карту (аркуш 138-01)
+            self.S['zatemnennia'] = 0.55
         self._druha = None
 
     def soty(self, podii, riven=8, styl_sot=None, **kw):
