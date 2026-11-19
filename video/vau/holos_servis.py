@@ -59,16 +59,6 @@ def kliuch_keshu(s: str, imia: str, tekst: str, shvydkist: float) -> str:
     return hashlib.sha1(json.dumps([s, holos_id(s, imia), tekst, round(shvydkist, 3)], ensure_ascii=False).encode()).hexdigest()
 
 
-def _wav_v_masyv(dani: bytes):
-    import numpy as np
-    with wave.open(io.BytesIO(dani)) as w:
-        sr = w.getframerate()
-        x = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(float) / 32768
-        if w.getnchannels() == 2:
-            x = x.reshape(-1, 2).mean(1)
-    return x, sr
-
-
 def _pcm_v_wav(pcm: bytes, sr: int) -> bytes:
     b = io.BytesIO()
     with wave.open(b, 'wb') as w:
@@ -111,14 +101,15 @@ def _teka(tekst: str, imia: str, shvydkist: float) -> bytes:
 ZAPYTY = {'elevenlabs': _elevenlabs, 'azure': _azure, 'teka': _teka}
 
 
-def holos(tekst: str, imia: str = 'mykyta', shvydkist: float = 1.0, zapyt=None):
-    """→ (масив float −1…1, частота) зовнішнього голосу; кеш на диску. zapyt — підміна мережі (тести)."""
+def holos(tekst: str, imia: str = 'mykyta', shvydkist: float = 1.0, zapyt=None) -> bytes:
+    """→ WAV зовнішнього голосу (байти; у масив перетворює zvuk.py — тут без numpy, щоб перевірялось у CI); кеш на диску.
+    zapyt — підміна мережі (тести)."""
     s = servis()
     t = tekst_dlia_servisu(tekst)
     f = KESH / f'{s}-{kliuch_keshu(s, imia, t, shvydkist)}.wav'
     if f.is_file():
-        return _wav_v_masyv(f.read_bytes())
+        return f.read_bytes()
     dani = (zapyt or ZAPYTY[s])(t, imia, shvydkist)
     KESH.mkdir(parents=True, exist_ok=True)
     f.write_bytes(dani)
-    return _wav_v_masyv(dani)
+    return dani
