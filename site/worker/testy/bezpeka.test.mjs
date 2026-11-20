@@ -177,3 +177,159 @@ test('гонка: ліміт юриста (3 на місяць) — шість �
   assert.equal(r.filter((x) => x.dovidka).length, TS.dovidok.spyurist);
   assert.equal(r.filter((x) => x.vycherpano).length, 6 - TS.dovidok.spyurist);
 });
+
+// ---------------------------------------------------------------- 3. чужий кабінет, чужа довідка (IDOR), XSS, CSRF, пошти
+
+async function hotovaDovidka(env, poshta) {
+  const zam = sql(env, 'SELECT * FROM zamovlennia WHERE id = ?', await zamovyty(env, 'dovidka', '/budynok/zhylianska/5/', poshta))[0];
+  await spovistyty(env, podiiaTestu(env, zam, 'oplata', poshta));
+  const AVT = { authorization: 'Bearer vydacha-kliuch' };
+  const { text } = await zapyt(env, 'GET', '/api/vnutr/cherha?n=10', { zaholovky: AVT });
+  for (const d of JSON.parse(text).dovidky) await zapyt(env, 'PUT', `/api/vnutr/dovidka/${d.id}`, { zaholovky: AVT, tilo: '<!doctype html><p>опис</p>' });
+  const lyst = env.__LYSTY.find((l) => l.komu === poshta && /Готово/.test(l.tekst));
+  return new URL(lyst.tekst.match(/https:\S+\/dovidka\/\S+/)[0]);
+}
+
+test('чужа довідка за номером: без ключа, з чужим ключем, з чужим входом — «сторінки немає», як і неіснуюча', async () => {
+  const env = seredovyshche();
+  const moia = await hotovaDovidka(env, 'ana@poshta.ua');
+  const id = moia.pathname;
+  assert.equal((await zapyt(env, 'GET', moia.pathname + moia.search)).r.status, 200, 'своя з ключем — так');
+  const chuzha = await uviity(env, 'ana@poshta.ua').then(() => hotovaDovidka(env, 'bob@poshta.ua'));
+  const kukaAny = await uviity(env, 'ana@poshta.ua');
+  const nemaie = await zapyt(env, 'GET', '/dovidka/dzzzzzzzzzzzzzzzzzzzzzzzz/');
+  for (const [shliakh, kuka] of [[id, null], [`${id}?k=nevirnyi`, null], [chuzha.pathname, kukaAny], [`${chuzha.pathname}${moia.search}`, null]]) {
+    const v = await zapyt(env, 'GET', shliakh, { kuka });
+    assert.equal(v.r.status, 404, shliakh);
+    assert.equal(v.text, nemaie.text, 'чужа виглядає так само, як неіснуюча');
+  }
+});
+
+test('довідка відкривається в «пісочниці»: її скрипт не бачить кабінету й кук нашого сайту', async () => {
+  const env = seredovyshche();
+  const u = await hotovaDovidka(env, 'ana@poshta.ua');
+  const { r } = await zapyt(env, 'GET', u.pathname + u.search);
+  const csp = r.headers.get('content-security-policy');
+  assert.match(csp, /sandbox allow-scripts/);
+  assert.doesNotMatch(csp, /allow-same-origin/);
+  assert.match(csp, /form-action 'none'/);
+  assert.equal(r.headers.get('referrer-policy'), 'no-referrer', 'ключ з адреси не йде на сайт реєстру');
+});
+
+test('кабінет: чужу підписку не скасувати, чужий «Стежу» не прибрати — користувач лише з сесії', async () => {
+  const env = seredovyshche();
+  const zam = sql(env, 'SELECT * FROM zamovlennia WHERE id = ?', await zamovyty(env, 'pidpyska', null, 'bob@poshta.ua'))[0];
+  await spovistyty(env, podiiaTestu(env, zam, 'oplata', 'x'));
+  const kb = await uviity(env, 'bob@poshta.ua');
+  await zapyt(env, 'POST', '/kabinet/stezhu', { kuka: kb, forma: { budynok: '/budynok/zhylianska/5/' } });
+  await zamovyty(env, 'dovidka', '/budynok/zhylianska/5/', 'ana@poshta.ua');
+  const ka = await uviity(env, 'ana@poshta.ua');
+  const p = sql(env, 'SELECT id FROM pidpysky')[0].id;
+  const { text } = await zapyt(env, 'POST', '/kabinet/skasuvaty', { kuka: ka, forma: { pidpyska: p, korystuvach_id: '1' } });
+  assert.match(text, /Такої підписки немає/);
+  assert.equal(sql(env, 'SELECT status FROM pidpysky')[0].status, 'aktyvna');
+  await zapyt(env, 'POST', '/kabinet/stezhu/prybraty', { kuka: ka, forma: { budynok: '/budynok/zhylianska/5/' } });
+  assert.equal(sql(env, 'SELECT COUNT(*) n FROM stezhu')[0].n, 1);
+  const { text: kabAny } = await zapyt(env, 'GET', '/kabinet/', { kuka: ka });
+  assert.doesNotMatch(kabAny, /bob@poshta\.ua/, 'чужа пошта не видна');
+});
+
+test('CSRF: дія кабінету з чужого сайту або без Origin — 403, дані цілі', async () => {
+  const env = seredovyshche();
+  await zamovyty(env, 'dovidka', '/budynok/zhylianska/5/');
+  const kuka = await uviity(env);
+  for (const origin of ['https://zlyi.example', null, 'null', 'https://mv.test.zlyi.example']) {
+    const { r } = await zapyt(env, 'POST', '/kabinet/vydalyty', { kuka, origin, forma: { pidtverdzhuiu: 'tak' } });
+    assert.equal(r.status, 403, String(origin));
+    const z = await zapyt(env, 'POST', '/api/zamovlennia', { origin, forma: { tovar: 'dovidka', poshta: 'x@poshta.ua', zghoda: 'tak', odrazu: 'tak' } });
+    assert.equal(z.r.status, 403);
+    assert.equal((await zapyt(env, 'POST', '/kabinet/vkhid', { origin, forma: { poshta: 'ana@poshta.ua' } })).text.includes('на нашому сайті'), true);
+  }
+  assert.equal(sql(env, 'SELECT COUNT(*) n FROM korystuvachi')[0].n, 1, 'нікого не видалено й не створено');
+});
+
+test('XSS: адреса й поля форм з тегами — на сторінці лише як текст', async () => {
+  const env = seredovyshche();
+  const zlo = '"><script>alert(1)</script><img src=x onerror=alert(2)> 5';
+  const { text } = await zapyt(env, 'POST', '/api/zamovlennia', { forma: { tovar: 'dovidka', budynok: zlo, poshta: '<b>@x.ua', zghoda: 'tak', odrazu: 'tak' } });
+  assert.doesNotMatch(text, /<script>alert|<img src=x/);
+  assert.match(text, /&lt;script&gt;/);
+  const kuka = await zamovyty(env, 'dovidka', '/budynok/zhylianska/5/').then(() => uviity(env));
+  const k = await zapyt(env, 'POST', '/kabinet/stezhu', { kuka, forma: { budynok: zlo } });
+  assert.doesNotMatch(k.text, /<script>alert|<img src=x/);
+  // CSP сторінок продажу: лише власні скрипти, жодних вбудованих
+  assert.match(k.r.headers.get('content-security-policy'), /script-src 'self'; /);
+  // пошта з тегами — не пошта
+  assert.equal(L.chystaPoshta('<script>@x.ua'), null);
+  assert.equal(L.chystaPoshta('a@b.ua\r\nBcc: c@d.ua'), null, 'без переносу рядка в заголовок листа');
+});
+
+test('пошти не витікають: вхід відповідає однаково для відомої й невідомої пошти; посилання входу — одноразове', async () => {
+  const env = seredovyshche();
+  await zamovyty(env, 'dovidka', '/budynok/zhylianska/5/');
+  const a = await zapyt(env, 'POST', '/kabinet/vkhid', { forma: { poshta: 'ana@poshta.ua' } });
+  const b = await zapyt(env, 'POST', '/kabinet/vkhid', { forma: { poshta: 'nikhto@poshta.ua' } });
+  assert.equal(a.text, b.text);
+  assert.equal(a.r.status, b.r.status);
+  const posylannia = new URL(env.__LYSTY.at(-1).tekst.match(/https:\S+/)[0]);
+  const pershyi = await zapyt(env, 'GET', posylannia.pathname + posylannia.search);
+  assert.equal(pershyi.r.status, 303);
+  assert.match(pershyi.r.headers.get('set-cookie'), /HttpOnly; Secure; SameSite=Lax/);
+  const druhyi = await zapyt(env, 'GET', posylannia.pathname + posylannia.search);
+  assert.equal(druhyi.r.status, 200);
+  assert.equal(druhyi.r.headers.get('set-cookie'), null, 'вдруге — без входу');
+  // перебір листів входу на одну пошту — не більше 5 на годину
+  env.__LYSTY.length = 0;
+  for (let i = 0; i < 12; i++) await zapyt(env, 'POST', '/kabinet/vkhid', { forma: { poshta: 'ana@poshta.ua' } });
+  assert.ok(env.__LYSTY.length <= 5, `листів: ${env.__LYSTY.length}`);
+});
+
+test('вбудовані назви замість таблиці чи обміну («constructor») — відмова, а не помилка сервера', async () => {
+  const env = seredovyshche({ OBMIN_BALIV: 'tak' });
+  const { r } = await zapyt(env, 'GET', '/api/admin/vyvantazhennia/constructor', { zaholovky: { authorization: 'Bearer admin-kliuch' } });
+  assert.equal(r.status, 404);
+  const { r: bez } = await zapyt(env, 'GET', '/api/admin/vyvantazhennia/skoro', { zaholovky: { authorization: 'Bearer ne-toi' } });
+  assert.equal(bez.status, 401);
+  const B = await import('../prodazh/bali.js');
+  for (const tovar of ['constructor', '__proto__', 'toString']) {
+    assert.equal((await B.obminiaty(env, 1, { tovar, zapyt: 'abcdefgh12' })).chomu, 'Такого обміну немає.', tovar);
+  }
+});
+
+test('«Стежу»: не більше 100 адрес на людину', async () => {
+  const env = seredovyshche();
+  await zamovyty(env, 'dovidka', '/budynok/zhylianska/5/');
+  const kuka = await uviity(env);
+  const k = sql(env, 'SELECT id FROM korystuvachi')[0].id;
+  for (let i = 0; i < 100; i++) env.BAZA.db.prepare('INSERT INTO stezhu (korystuvach_id, budynok, adresa, stvoreno) VALUES (?, ?, ?, 0)').run(k, `/budynok/x/${i}/`, `x ${i}`);
+  const { text } = await zapyt(env, 'POST', '/kabinet/stezhu', { kuka, forma: { budynok: '/budynok/zhylianska/5/' } });
+  assert.match(text, /до 100 адрес/);
+  assert.equal(sql(env, 'SELECT COUNT(*) n FROM stezhu')[0].n, 100);
+});
+
+test('карта підписника: без підписки — 403, без входу — на вхід, шлях за межі теки — немає', async () => {
+  const KARTA = r2();
+  await KARTA.put('karta/potochna.json', JSON.stringify({ versiia: 'v1' }));
+  await KARTA.put('karta/v1/index.html', '<!doctype html>карта');
+  await KARTA.put('karta/v1/spravy/1_1.json', '[[[0,"2024",0,0,[],"опис справи"]]]');
+  await KARTA.put('karta/potochna.json.bak', 'секрет');
+  const env = seredovyshche({ KARTA });
+  assert.equal((await zapyt(env, 'GET', '/pidpysnyk/spravy/1_1.json')).r.status, 303);
+  await zamovyty(env, 'dovidka', '/budynok/zhylianska/5/');
+  const kuka = await uviity(env);
+  const bez = await zapyt(env, 'GET', '/pidpysnyk/spravy/1_1.json', { kuka });
+  assert.equal(bez.r.status, 403);
+  assert.doesNotMatch(bez.text, /опис справи/);
+  const zam = sql(env, 'SELECT * FROM zamovlennia WHERE id = ?', await zamovyty(env, 'pidpyska', null))[0];
+  await spovistyty(env, podiiaTestu(env, zam, 'oplata', 'p'));
+  const z = await zapyt(env, 'GET', '/pidpysnyk/spravy/1_1.json', { kuka });
+  assert.equal(z.r.status, 200);
+  assert.match(z.r.headers.get('cache-control'), /private/);
+  for (const s of ['/pidpysnyk/../potochna.json.bak', '/pidpysnyk/%2e%2e/potochna.json.bak', '/pidpysnyk/.%2e/.%2e/karta/potochna.json']) {
+    assert.notEqual((await zapyt(env, 'GET', s, { kuka })).text, 'секрет', s);
+  }
+  // скасована й прострочена — доступу немає
+  env.krok(40 * DEN);
+  const kuka2 = await uviity(env);
+  assert.equal((await zapyt(env, 'GET', '/pidpysnyk/spravy/1_1.json', { kuka: kuka2 })).r.status, 403);
+});

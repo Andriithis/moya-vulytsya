@@ -98,7 +98,7 @@ function csvKlityna(v) {
 
 /** Вивантаження для партнера (CSV, UTF-8 з BOM — відкривається в Excel і Google Таблицях). */
 export async function vyvantazhennia(env, tablytsia) {
-  const stovptsi = TABLYTSI[tablytsia];
+  const stovptsi = Object.hasOwn(TABLYTSI, tablytsia) ? TABLYTSI[tablytsia] : null;   // лише свої таблиці (ZAVDANNYA-156)
   if (!stovptsi) return new Response('ні', { status: 404 });
   const ryadky = await L.vsi(env, `SELECT ${stovptsi} FROM ${tablytsia} ORDER BY 1`);
   const nazvy = stovptsi.split(', ');

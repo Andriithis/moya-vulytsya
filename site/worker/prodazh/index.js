@@ -36,6 +36,7 @@ import * as ST from './stezhu.js';
 
 export const MARSHRUTY = ['/oplata/*', '/api/*', '/kabinet/*', '/dovidka/*', '/prodazh/*', '/pidpysnyk/*'];
 const SESIIA_S = 30 * 86400, VKHID_S = 30 * 60, LYSTIV_NA_HODYNU = 5;
+export const STEZHU_MAKS = 100;
 
 const adresaSaitu = (env, url) => (env.ADRESA_SAITU || new URL(url).origin).replace(/\/$/, '');
 const pereity = (url, kudy, zaholovky = {}) => new Response(null, { status: 303, headers: { location: new URL(kudy, url).toString(), ...zaholovky } });
@@ -196,7 +197,10 @@ async function vidkrytyDovidku(request, env, url, id) {
       'content-type': 'text/html; charset=utf-8', 'cache-control': 'private, no-store', 'x-robots-tag': 'noindex, nofollow',
       'referrer-policy': 'no-referrer', 'x-content-type-options': 'nosniff', 'x-frame-options': 'DENY',
       // Довідка — один файл із вбудованими стилями, скриптом і картинками (генератор dani-edrsr/src/zvit), без зовнішніх ресурсів.
-      'content-security-policy': "default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; font-src data:; frame-ancestors 'none'; form-action 'none'",
+      // sandbox (ZAVDANNYA-156): скрипт довідки працює як «чужий» сайт — без кук і без доступу до кабінету на нашому домені,
+      // навіть якщо в довідку колись потрапить чужий текст зі скриптом. Дозволено: скрипт, друк (кнопка PDF), посилання на рішення в новій вкладці.
+      'content-security-policy': "default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; font-src data:; frame-ancestors 'none'; form-action 'none'; base-uri 'none'; " +
+        'sandbox allow-scripts allow-modals allow-popups allow-popups-to-escape-sandbox',
     },
   });
 }
@@ -278,7 +282,12 @@ async function diiaKabinetu(request, env, url, ja, dia) {
     f.budynok = z.budynok;
     const adresa = z.adresa;
     if (dia === 'stezhu') {
-      await L.zrobyty(env, 'INSERT OR IGNORE INTO stezhu (korystuvach_id, budynok, adresa, stvoreno) VALUES (?, ?, ?, ?)', ja.id, f.budynok, adresa, L.teper(env));
+      // ZAVDANNYA-156: межа адрес на людину — щоб один вхід не засмічував базу й щомісячний лист тисячами адрес
+      const r = await L.zrobyty(env, `INSERT OR IGNORE INTO stezhu (korystuvach_id, budynok, adresa, stvoreno) SELECT ?, ?, ?, ?
+        WHERE (SELECT COUNT(*) FROM stezhu WHERE korystuvach_id = ?) < ?`, ja.id, f.budynok, adresa, L.teper(env), ja.id, STEZHU_MAKS);
+      if (!r.meta?.changes && !(await L.odyn(env, 'SELECT 1 AS t FROM stezhu WHERE korystuvach_id = ? AND budynok = ?', ja.id, f.budynok))) {
+        return kabinet(env, ja, `У «Стежу» — до ${STEZHU_MAKS} адрес. Приберіть якусь, щоб додати нову.`);
+      }
       return kabinet(env, ja, `Стежите: ${adresa}.`);
     }
     const v = await L.vzyatyDovidku(env, ja.id, f.budynok, adresa);
