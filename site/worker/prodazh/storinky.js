@@ -242,7 +242,9 @@ const STATUS_DOVIDKY = { v_cherzi: 'готується', hotuietsia: 'готує
 const NAZVA_PIDPYSKY = { pidpyska: 'Підписка', rieltor: 'Підписка для рієлтора', osbb: 'Будинок для ОСББ', spyurist: 'Підписка юриста «Практика»' };
 const VYD_DOVIDKY = { povnyi: 'повний звіт', dovidka: 'довідка', sp: 'судова практика', osbb: 'щомісячна довідка ОСББ' };
 
-const posylannia = (d) => (d.status === 'hotova' ? `<a href="/dovidka/${e(d.id)}/">відкрити</a>` : e(STATUS_DOVIDKY[d.status]));
+// «готується» сама не оновлюється (сторінка без скриптів) — поруч посилання «оновити» (ZVIT-167)
+const posylannia = (d) => (d.status === 'hotova' ? `<a href="/dovidka/${e(d.id)}/">відкрити</a>`
+  : ['v_cherzi', 'hotuietsia'].includes(d.status) ? `${e(STATUS_DOVIDKY[d.status])} (<a href="/kabinet/">оновити</a>)` : e(STATUS_DOVIDKY[d.status]));
 
 /** ZAVDANNYA-143: правлінню ОСББ — свій будинок, довідки приходять самі щомісяця; лист за 3 дні до річного списання. */
 function rozdilOsbb(p, dovidky) {
@@ -285,34 +287,80 @@ function lystStezhu(lyst) {
 <form class="v-riadok" method="post" action="/kabinet/stezhu/lyst"><input type="hidden" name="lyst" value="${lyst.vymkneno ? 'tak' : 'ni'}"><button class="knopka" type="submit">${lyst.vymkneno ? 'Надсилати лист' : 'Не надсилати лист'}</button></form>`;
 }
 
-export function kabinet({ poshta, dovidky, stezhu, pidpysky, dostupno, povidomlennia: pov = '', bali = null, lyst = null, partner = false }) {
-  const ryadky = dovidky.length ? dovidky.map((d) => `<li><b>${e(d.adresa)}</b> — ${VYD_DOVIDKY[d.rezhym] || 'довідка'}, ${data(d.stvoreno)}: ${posylannia(d)}</li>`).join('')
-    : '<li>Поки немає довідок.</li>';
+// ZAVDANNYA-172 (ZVIT-167, п. 8): кабінет за роллю. Рієлтор бачить свої довідки в «Мої об'єкти» (без другого списку й
+// другого лічильника); ОСББ — у «Мій будинок»; решта — «Мої довідки» з дією «ще одна». «Відкрити карту» — тим, кому вона
+// відкрита (ZVIT-166, З-4). «Видалити мої дані» — окрема сторінка з переліком, що зникне (ZVIT-167, п. 1).
+export function kabinet({ poshta, dovidky, stezhu, pidpysky, dostupno, povidomlennia: pov = '', bali = null, lyst = null, partner = false, karta = false }) {
+  const rieltor = pidpysky.find((p) => p.tovar === 'rieltor');
+  const maieOsbb = pidpysky.some((p) => p.tovar === 'osbb');
+  // довідки, які вже показано в розділі ролі, у «Мої довідки» не повторюємо
+  const inshi = dovidky.filter((d) => !(rieltor && d.budynok && d.rezhym !== 'sp') && !(maieOsbb && d.rezhym === 'osbb'));
+  const ryadky = inshi.map((d) => `<li><b>${e(d.adresa)}</b> — ${VYD_DOVIDKY[d.rezhym] || 'довідка'}, ${data(d.stvoreno)}: ${posylannia(d)}</li>`).join('');
+  const zalyshok = dostupno.opys !== 'немає';
+  // Узяти ще: є залишок — поле адреси тут же (а не «кнопкою біля адреси нижче», коли нижче нічого); немає — купити одну.
+  const shche = zalyshok
+    ? `<p class="prymitka">Можна взяти без оплати: ${e(dostupno.opys)}.</p>
+<form class="forma" method="post" action="/kabinet/dovidka">${poleBudynku({ id: 'shche', napys: 'Довідка на будинок — вулиця й номер', holovne: false })}
+<button class="knopka knopka--holovna" type="submit">Взяти довідку</button></form>`
+    : `<div class="diyi"><a class="knopka" href="/oplata/?tovar=dovidka">Ще одна довідка — ${tsina('dovidka')}</a></div>`;
+  const mojiDovidky = rieltor
+    ? (ryadky ? `<section class="rozdil"><h2>Інші довідки</h2><div class="kartka"><ul class="spysok-tekst">${ryadky}</ul></div></section>` : '')
+    : (maieOsbb && !ryadky ? ''
+      : `<section class="rozdil"><h2>Мої довідки</h2><div class="kartka"><ul class="spysok-tekst">${ryadky || '<li>Поки немає довідок.</li>'}</ul>${shche}</div></section>`);
   const stezh = stezhu.length ? stezhu.map((s) => `<li><a href="${e(s.budynok)}">${e(s.adresa)}</a>
 <form class="v-riadok" method="post" action="/kabinet/stezhu/prybraty"><input type="hidden" name="budynok" value="${e(s.budynok)}"><button class="knopka" type="submit">Прибрати</button></form>
 <form class="v-riadok" method="post" action="/kabinet/dovidka"><input type="hidden" name="budynok" value="${e(s.budynok)}"><button class="knopka" type="submit">Довідка</button></form></li>`).join('')
     : '<li>Додайте адресу — тут будуть будинки, за якими стежите.</li>';
   const pidp = pidpysky.length ? pidpysky.map((p) => `<li><b>${e(NAZVA_PIDPYSKY[p.tovar])}</b>${p.adresa ? ` (${e(p.adresa)})` : ''} — ${
-    p.status === 'aktyvna' ? `діє до ${data(p.diie_do)}, ${p.tovar === 'osbb' ? 'довідка приходить сама щомісяця' : `довідок цього місяця лишилось: ${p.zalyshok}`}${p.tovar === 'spyurist' ? ' — <a href="/pidpysnyk/praktyka/">відкрити практику</a>' : ''}
+    p.status === 'aktyvna' ? `діє до ${data(p.diie_do)}${
+      p.tovar === 'osbb' ? ', довідка приходить сама щомісяця' : p.tovar === 'rieltor' ? ' — довідки в «Мої об\'єкти»' : `, довідок цього місяця лишилось: ${p.zalyshok}`}${p.tovar === 'spyurist' ? ' — <a href="/pidpysnyk/praktyka/">відкрити практику</a>' : ''}
 <form class="v-riadok" method="post" action="/kabinet/skasuvaty"><input type="hidden" name="pidpyska" value="${e(p.id)}"><button class="knopka" type="submit">Скасувати підписку</button></form>`
       : p.zaBali ? `за бали, діє до ${data(p.diie_do)}, без продовження` : p.status === 'skasovana' ? `скасована, діє до ${data(p.diie_do)}` : 'очікує оплати'}</li>`).join('')
     : `<li>Немає. <a href="/oplata/?tovar=pidpyska">Підписка — ${tsina('pidpyska')}</a></li>`;
+  const vidkrytyKartu = karta ? '<div class="diyi"><a class="knopka knopka--holovna" href="/pidpysnyk/">Відкрити карту</a></div>' : '';
   const osbb = pidpysky.filter((p) => p.tovar === 'osbb').map((p) => rozdilOsbb(p, dovidky)).join('');
-  const rieltor = pidpysky.find((p) => p.tovar === 'rieltor');
   return storinka('Кабінет', `<section class="zaholovok"><h1>Кабінет</h1><p>${e(poshta)}</p>
-${pov ? `<p class="prymitka" role="status">${e(pov)}</p>` : ''}${partner ? '<p><a class="knopka" href="/kabinet/zvernennia/">Звернення людей (для партнера)</a></p>' : ''}</section>
+${pov ? `<p class="prymitka" role="status">${e(pov)}</p>` : ''}${vidkrytyKartu}${partner ? '<p><a class="knopka" href="/kabinet/zvernennia/">Звернення людей (для партнера)</a></p>' : ''}</section>
 ${osbb}${rieltor ? rozdilRieltora(rieltor, dovidky) : ''}
-<section class="rozdil"><h2>Мої довідки</h2><div class="kartka"><ul class="spysok-tekst">${ryadky}</ul></div>
-<p class="prymitka">Можна взяти ще: ${dostupno.opys}. Довідку на будинок — кнопкою «Довідка» біля адреси нижче.</p></section>
+${mojiDovidky}
 <section class="rozdil" id="stezhu"><h2>Стежу</h2><div class="kartka"><ul class="spysok-tekst">${stezh}</ul>${lystStezhu(lyst)}
 <form class="forma" method="post" action="/kabinet/stezhu">${poleBudynku({ napys: 'Додати будинок — вулиця й номер', holovne: false })}
 <button class="knopka" type="submit">Стежити</button></form></div></section>
-<section class="rozdil"><h2>Підписка</h2><div class="kartka"><ul class="spysok-tekst">${pidp}</ul></div></section>
+<section class="rozdil" id="pidpyska"><h2>Підписка</h2><div class="kartka"><ul class="spysok-tekst">${pidp}</ul>${vidkrytyKartu}</div></section>
 ${bali ? rozdilBaliv(bali, stezhu) : ''}
-<section class="rozdil"><h2>Мої дані</h2><p class="prymitka">Зберігаємо пошту, замовлення, довідки й адреси «Стежу» — <a href="/zahlushka/polityka.html">політика конфіденційності</a>. Видалення — одразу; записи про оплату партнер зберігає для обліку без пошти.</p>
-<div class="diyi"><form method="post" action="/kabinet/vyhid"><button class="knopka" type="submit">Вийти</button></form>
-<form method="post" action="/kabinet/vydalyty"><input type="hidden" name="pidtverdzhuiu" value="tak"><button class="knopka" type="submit">Видалити мої дані</button></form></div></section>`,
+<section class="rozdil"><h2>Вийти</h2><form method="post" action="/kabinet/vyhid"><button class="knopka" type="submit">Вийти з кабінету</button></form></section>
+<section class="rozdil"><h2>Мої дані</h2><p class="prymitka">Зберігаємо пошту, замовлення, довідки й адреси «Стежу» — <a href="/zahlushka/polityka.html">політика конфіденційності</a>.
+Видалити все можна тут: <a href="/kabinet/vydalyty/">видалити мої дані…</a> — спершу покажемо, що саме зникне.</p></section>`,
   { skrypty: [SKRYPT_POLIA] });
+}
+
+/** ZAVDANNYA-172 (ZVIT-167, п. 1): підтвердження перед видаленням — що зникне назавжди, кнопка іншого вигляду, «Не видаляти» — головна. */
+export function pidtverdytyVydalennia(z) {
+  const chysla = (n, a, b, c) => `${n}${NBSP}${n % 10 === 1 && n % 100 !== 11 ? a : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? b : c}`;
+  const punkty = [`пошта й вхід у кабінет`];
+  if (z.dovidok) punkty.push(`${chysla(z.dovidok, 'довідка', 'довідки', 'довідок')} і посилання на них — відкрити їх більше не вийде${z.vCherzi ? ` (з них ${z.vCherzi} ще готуються — їх не буде)` : ''}`);
+  if (z.zalyshok) punkty.push(`${chysla(z.zalyshok, 'оплачена довідка', 'оплачені довідки', 'оплачених довідок')}, яких ще не взяли`);
+  for (const p of z.pidpysky) {
+    punkty.push(`${NAZVA_PIDPYSKY[p.tovar] || 'Підписка'}${p.adresa ? ` (${e(p.adresa)})` : ''}, оплачена до ${data(p.diie_do)} — ${p.status === 'aktyvna' ? 'скасуємо, і доступ закінчиться одразу' : 'доступ закінчиться одразу'}`);
+  }
+  if (z.stezhu) punkty.push(`${chysla(z.stezhu, 'адреса', 'адреси', 'адрес')} у «Стежу» і лист «Нове біля дому»`);
+  return storinka('Видалити мої дані?', `<section class="zaholovok"><h1>Видалити мої дані?</h1>
+<p>Це назавжди: повернути не зможемо — ні довідки, ні оплачений час. Гроші за невикористане видалення не повертає.</p></section>
+<section class="rozdil"><h2>Що зникне</h2><div class="kartka"><ul class="spysok-tekst">${punkty.map((x) => `<li>${x}</li>`).join('')}</ul>
+<p class="prymitka">Записи про оплату (сума, дата, товар) партнер зберігає для обліку — без пошти.</p></div>
+<div class="diyi"><a class="knopka knopka--holovna" href="/kabinet/">Не видаляти — назад у кабінет</a></div>
+<form class="forma vydalennia" method="post" action="/kabinet/vydalyty"><input type="hidden" name="pidtverdzhuiu" value="tak">
+<label class="pravyla"><input type="checkbox" name="rozumiiu" value="tak" required> Розумію, що це не повернути</label>
+<button class="knopka knopka--nebezpechna" type="submit">Так, видалити все</button></form></section>`);
+}
+
+/** ZAVDANNYA-172 (ZVIT-167): той самий будинок за добу — спершу спитати, а не мовчки витратити ще одну довідку. */
+export function povtorDovidky({ budynok, adresa, dovidka }) {
+  return storinka('Довідка вже є', `<section class="zaholovok"><h1>На цей будинок довідка вже є</h1>
+<p><b>${e(adresa)}</b> — довідку брали ${data(dovidka.stvoreno)}: ${posylannia(dovidka)}. Дані між оновленнями не змінюються — друга довідка буде такою самою.</p></section>
+<section class="rozdil"><div class="diyi"><a class="knopka knopka--holovna" href="/kabinet/">Назад у кабінет</a></div>
+<form class="forma" method="post" action="/kabinet/dovidka"><input type="hidden" name="budynok" value="${e(budynok)}"><input type="hidden" name="shche" value="tak">
+<button class="knopka" type="submit">Однаково взяти ще одну</button></form></section>`);
 }
 
 /** Бали ігор (ZAVDANNYA-123) — лише коли обмін увімкнено (OBMIN_BALIV). Разовий номер форми — захист від повторного надсилання. */
@@ -386,4 +434,6 @@ export const CSS = `/* Сервер продажу (ZAVDANNYA-99): форми в
 .vkhid-google .prymitka{margin:8px 0 0}
 .abo{display:flex;align-items:center;gap:10px;color:var(--ink-2,inherit);font-size:13px;margin:16px 0 0}
 .abo::before,.abo::after{content:"";flex:1;border-top:1px solid var(--mezha)}
+.vydalennia{margin-top:28px}
+.knopka--nebezpechna{background:var(--surface);color:var(--vyd);border-color:var(--vyd)}
 `;

@@ -322,7 +322,9 @@ async function kabinet(env, ja, povidomlennia = '') {
   for (const p of pidpysky) p.zaBali = (await L.odyn(env, 'SELECT servis FROM zamovlennia WHERE id = ?', p.zamovlennia_id))?.servis === 'bali';
   const bali = B.uvimkneno(env) ? { balans: await B.balans(env, ja.id), kurs: B.KURS, zapyt: vypadkovyi(16) } : null;
   const lyst = { pidpyska: pidpysky.some((p) => ['pidpyska', 'rieltor'].includes(p.tovar)), vymkneno: await ST.vymknenyi(env, ja.id) };
-  return S.kabinet({ poshta: ja.poshta, dovidky, stezhu, pidpysky, dostupno: d, povidomlennia, bali, lyst, partner: jePartner(env, ja) });
+  // «Відкрити карту» — коли карту викладено (KARTA) і є підписка, що її відкриває (як K.maieDostup: усе, крім юриста)
+  const karta = !!env.KARTA && pidpysky.some((p) => !TS.sudova.includes(p.tovar));
+  return S.kabinet({ poshta: ja.poshta, dovidky, stezhu, pidpysky, dostupno: d, povidomlennia, bali, lyst, partner: jePartner(env, ja), karta });
 }
 
 async function diiaKabinetu(request, env, url, ja, dia) {
@@ -341,6 +343,12 @@ async function diiaKabinetu(request, env, url, ja, dia) {
         return kabinet(env, ja, `У «Стежу» — до ${STEZHU_MAKS} адрес. Приберіть якусь, щоб додати нову.`);
       }
       return kabinet(env, ja, `Стежите: ${adresa}.`);
+    }
+    // ZAVDANNYA-172 (ZVIT-167): той самий будинок за останню добу — спершу спитати (shche=tak — людина підтвердила)
+    if (f.shche !== 'tak') {
+      const bula = await L.odyn(env, `SELECT id, status, stvoreno FROM dovidky WHERE korystuvach_id = ? AND budynok = ? AND rezhym != 'sp'
+        AND status != 'pomylka' AND stvoreno > ? ORDER BY stvoreno DESC LIMIT 1`, ja.id, f.budynok, L.teper(env) - 86400);
+      if (bula) return S.povtorDovidky({ budynok: f.budynok, adresa, dovidka: bula });
     }
     const v = await L.vzyatyDovidku(env, ja.id, f.budynok, adresa);
     if (v.dovidka) return kabinet(env, ja, `Довідку на ${adresa} готуємо — посилання прийде на пошту.`);
@@ -385,7 +393,9 @@ async function diiaKabinetu(request, env, url, ja, dia) {
     await L.zrobyty(env, 'DELETE FROM sesii WHERE hash = ?', sha256(kuky(request).mv_sesiia || ''));
     return pereity(url, '/kabinet/', { 'set-cookie': 'mv_sesiia=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax' });
   }
-  if (dia === 'vydalyty' && f.pidtverdzhuiu === 'tak') {
+  // ZAVDANNYA-172 (ZVIT-167, п. 1): без підтвердження зі сторінки «Що зникне» нічого не видаляємо
+  if (dia === 'vydalyty' && (f.pidtverdzhuiu !== 'tak' || f.rozumiiu !== 'tak')) return pereity(url, '/kabinet/vydalyty/');
+  if (dia === 'vydalyty') {
     if (!(await skasuvatyVsi(env, ja.id))) return kabinet(env, ja, 'Спершу треба скасувати підписку, а сервіс не відповів. Спробуйте ще раз.');
     await L.vydalytyDani(env, ja.id);
     return S.storinka('Дані видалено', `<section class="zaholovok"><h1>Дані видалено</h1>
@@ -618,6 +628,7 @@ export async function prodazh(request, env) {
   if (s.startsWith('/kabinet/')) {
     const ja = await sesiia(request, env);
     if (s === '/kabinet/' && m === 'GET') return ja ? kabinet(env, ja) : S.vkhid('', G.uvimkneno(env));
+    if (s === '/kabinet/vydalyty/' && m === 'GET') return ja ? S.pidtverdytyVydalennia(await L.shchoZnykne(env, ja.id)) : pereity(url, '/kabinet/');
     if (m === 'POST') {
       if (!ja) return pereity(url, '/kabinet/');
       if (!zNashohoSaitu(request, env)) return S.povidomlennia('Не вдалося', 'Дію можна зробити лише з нашого сайту.', 403);

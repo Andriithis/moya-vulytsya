@@ -420,6 +420,8 @@ export async function dovidkaPomylka(env, id) {
 export async function vydalytyDani(env, korystuvach_id) {
   const faily = await vsi(env, 'SELECT fail FROM dovidky WHERE korystuvach_id = ? AND fail IS NOT NULL', korystuvach_id);
   for (const f of faily) await env.DOVIDKY.delete(f.fail);
+  // ZAVDANNYA-172 (ZVIT-167): довідки в черзі знімаються — без адреси видавач падав на них тричі, а партнер отримував лист про невдачу
+  await zrobyty(env, `UPDATE dovidky SET status = 'vydaleno' WHERE korystuvach_id = ? AND status IN ('v_cherzi', 'hotuietsia')`, korystuvach_id);
   await zrobyty(env, `UPDATE dovidky SET korystuvach_id = NULL, fail = NULL, kliuch_hash = NULL, adresa = '', budynok = '' WHERE korystuvach_id = ?`, korystuvach_id);
   await zrobyty(env, 'UPDATE zamovlennia SET korystuvach_id = NULL, budynok = NULL, adresa = NULL WHERE korystuvach_id = ?', korystuvach_id);
   await zrobyty(env, 'UPDATE pidpysky SET korystuvach_id = NULL, budynok = NULL, adresa = NULL WHERE korystuvach_id = ?', korystuvach_id);
@@ -431,6 +433,17 @@ export async function vydalytyDani(env, korystuvach_id) {
   await zrobyty(env, 'DELETE FROM sesii WHERE korystuvach_id = ?', korystuvach_id);
   await zrobyty(env, 'DELETE FROM vkhody WHERE korystuvach_id = ?', korystuvach_id);
   await zrobyty(env, 'DELETE FROM korystuvachi WHERE id = ?', korystuvach_id);
+}
+
+/** Що зникне, якщо людина видалить дані (ZAVDANNYA-172, ZVIT-167 п. 1): для сторінки підтвердження. */
+export async function shchoZnykne(env, korystuvach_id) {
+  const n = async (q) => (await odyn(env, q, korystuvach_id)).n;
+  const dovidok = await n(`SELECT COUNT(*) AS n FROM dovidky WHERE korystuvach_id = ? AND status != 'vydaleno'`);
+  const vCherzi = await n(`SELECT COUNT(*) AS n FROM dovidky WHERE korystuvach_id = ? AND status IN ('v_cherzi', 'hotuietsia')`);
+  const stezhu = await n('SELECT COUNT(*) AS n FROM stezhu WHERE korystuvach_id = ?');
+  const { ps, pakety } = await dostupno(env, korystuvach_id);
+  const pidpysky = (await stanPidpysok(env, korystuvach_id)).filter((p) => p.diie);
+  return { dovidok, vCherzi, stezhu, pidpysky, zalyshok: ps.reduce((x, p) => x + p.zalyshok, 0) + pakety.reduce((x, z) => x + z.zalyshok, 0) };
 }
 
 /** Щоденне прибирання (Cron Trigger): прострочені сесії й посилання входу; файли довідок старші за строк зберігання. */

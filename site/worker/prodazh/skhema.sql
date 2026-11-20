@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS dovidky (
   adresa         TEXT NOT NULL,              -- її й передаємо генератору
   rezhym         TEXT NOT NULL,              -- dovidka | povnyi | sp («Судова практика»: budynok = '', adresa = опис вибору)
   parametry      TEXT,                       -- sp: JSON {stattia, sud, chastyna} — передаємо генератору (dani-edrsr/src/sp_dovidka.py)
-  status         TEXT NOT NULL DEFAULT 'v_cherzi', -- v_cherzi | hotuietsia | hotova | pomylka | vydaleno (минув строк)
+  status         TEXT NOT NULL DEFAULT 'v_cherzi', -- v_cherzi | hotuietsia | hotova | pomylka | vydaleno (минув строк або людина видалила дані)
   kliuch_hash    TEXT,                       -- SHA-256 ключа з посилання в листі (з'являється, коли готова); сам ключ не зберігаємо
   fail           TEXT,                       -- ім'я файла в сховищі
   sprob          INTEGER NOT NULL DEFAULT 0,
