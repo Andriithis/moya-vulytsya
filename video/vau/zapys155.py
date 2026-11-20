@@ -52,16 +52,18 @@ PACHKA = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6']
 
 ROZMYTTIA = r"""
 (() => {
-  const RX = /([А-ЯІЇЄҐа-яіїєґ'’.»])(\s*,\s*)(\d{1,4}(?:[-\/][0-9А-ЯІЇЄа-яіїє]{1,4}|[А-ЯІЇЄа-яіїє](?![а-яіїє]))?)(?![\d,]|\.\d|\s*(?:%|грн|под|звер|скарг|м\b|хв|раз|рок))/g;
+  const RX = /([А-ЯІЇЄҐа-яіїєґ'’.»])(\s*,\s*)(\d{1,4}(?:[-\/][0-9А-ЯІЇЄа-яіїє]{1,4}|[А-ЯІЇЄа-яіїє](?![а-яіїє]))?)(?!\d|[,.]\d|\s*(?:%|грн|под|звер|скарг|м\b|хв|раз|рок))/g;
+  const OSOBA = /(?:ОСОБА|Особ[аиіуо]|особ[аиіуо])[_ ]\d+/g;     // знеособлення з тексту рішення — у ролик не йде (AGENTS.md, розд. 4)
   const KARTY = '.leaflet-container, .maplibregl-map, .mapa, #mapa, .karta-zvitu, .zvit-karta, figure.karta, .karta';
   function obrobyty(korin) {
     const w = document.createTreeWalker(korin, NodeFilter.SHOW_TEXT);
     const vuzly = [];
-    while (w.nextNode()) { const n = w.currentNode; RX.lastIndex = 0; if (RX.test(n.nodeValue) && !(n.parentElement && n.parentElement.closest('script,style,.mv-rozm'))) vuzly.push(n); }
+    while (w.nextNode()) { const n = w.currentNode; RX.lastIndex = 0; OSOBA.lastIndex = 0; if ((RX.test(n.nodeValue) || OSOBA.test(n.nodeValue)) && !(n.parentElement && n.parentElement.closest('script,style,.mv-rozm'))) vuzly.push(n); }
     for (const n of vuzly) {
       const f = document.createElement('span');
       f.innerHTML = n.nodeValue.replace(/[&<>]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;'}[c]))
-        .replace(RX, (m, a, b, c) => a + b + '<span class="mv-rozm">' + c + '</span>');
+        .replace(RX, (m, a, b, c) => a + b + '<span class="mv-rozm">' + c + '</span>')
+        .replace(OSOBA, m => '<span class="mv-rozm">' + m + '</span>');
       n.replaceWith(...f.childNodes);
     }
     document.title = document.title.replace(RX, (m, a, b) => a + b + '…');

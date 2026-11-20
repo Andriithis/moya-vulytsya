@@ -43,12 +43,19 @@ class Rozmyttia(unittest.TestCase):
         self.assertEqual(rozmyte('бульвар Лесі Українки, 24'), ['24'])
         self.assertEqual(rozmyte('вулиця Іринська, 5/7.'), ['5/7'])
         self.assertEqual(rozmyte('шосе Столичне, 101Б'), ['101Б'])
+        self.assertEqual(rozmyte('по проспекту Берестейському, 20, керуючи автомобілем'), ['20'])
 
     def test_chysla_danykh_ne_chipaie(self):
         for t in ('1588 скарг 1551 про будинок і двір', 'тут 408 · у сусідніх 0', 'ДТП на вулиці — 10.',
                   'у 2024, 2025 і 2026 роках', 'Звернень до 1551: 186 з 16 будинків', 'у радіусі 300 м',
                   'двір, 408 скарг', 'за рік, 12 разів', 'проти 2,5 %', 'Оплата, 199 грн'):
             self.assertEqual(rozmyte(t), [], t)
+
+    def test_osoba(self):
+        js = re.search(r'const OSOBA = /(.+)/g;', DZHERELO).group(1)
+        self.assertRegex('Особа 1, 13.09.2026 о 10 год.', js)
+        self.assertRegex('ОСОБА_3 керував', js)
+        self.assertNotRegex('особисто бачив', js)
 
     def test_karty_rozmyti(self):
         self.assertIn('.leaflet-container', DZHERELO)
