@@ -118,7 +118,7 @@ class Lab:
 
     def rolyk(self, kod, tema, nazva):
         R = Rolyk(f'139-{kod}-{tema}', TRYV, tema=tema, nazva=nazva, hachok='зразок вигляду', meta='лабораторія вигляду 139',
-                  kudy='/karta/', obryv=True, pravyla=129)
+                  kudy='/karta/', obryv=True, pravyla=129, pro_misto=True)      # зразок вигляду, не ролик
         R.S['zatemnennia'] = 0.85
         return R
 
@@ -203,7 +203,9 @@ def soty_misto(L: Lab, kod, tema, styl=None, styl_sot=None, nazva='', hook=None,
         if st.get('dani') in ('soty', 'soty9'):
             st['dani'] = getattr(L, st['dani'])
         R.S['styl'] = [st]
-    hachok(R, hook or f'{D.chyslo(len(L.P))} подій\n*з рішень судів*')
+    if not hook:      # одне «усього подій» з сайтом і роликами (ZAVDANNYA-175): раніше — len(точок), 71 428 проти 71 420
+        R.pidsumok('vsi', L.V.pidsumky['vsi'])
+    hachok(R, hook or f"{D.chyslo(L.V.pidsumky['vsi'])} подій\n*з рішень судів*")
     R.S['novynky'] = [1.5, 3.0, 4.5]
     return R
 
@@ -326,10 +328,12 @@ def zbuduvaty(L: Lab, lyshe=None):
                         'podii': {'g': [hr.index(p.vyd) if p.vyd in hr else 0 for p in pp], 't': chasy}}]
         R.mitka(0.2, TRYV + 1, VOKZAL, 'Центральний вокзал', dy=-430)
         R.S['novynky'] = [1.5, 3.0, 4.5]
+        R.fakt(bilia_vokzalu=len(pp))
         hachok(R, f'{D.chyslo(len(pp))} {fp(len(pp))}\n*біля вокзалу*')
         R.meta['publichni'] = ['Центральний вокзал']
         S2 = L.rolyk('sonyashnyk', 'svitla', 'Соняшник подій')
         S2.S.update({k: v for k, v in R.S.items() if k not in ('id', 'tema')})
+        S2.meta.update(fakty=dict(R.meta['fakty']), publichni=R.meta['publichni'])
         L.zberehty(R, 'sonyashnyk', 'Адреси', 'Соняшник подій довкола місця', 'Події одного публічного місця розкладаються '
                    'спіраллю довкола нього (по одній, у порядку дат), у центрі — лічильник. Лише публічні місця (вокзал, ТЦ, ринок).',
                    'Адреса зблизька, Одна подія-петля (розгортка), Що всередині соти', svitla=S2)
