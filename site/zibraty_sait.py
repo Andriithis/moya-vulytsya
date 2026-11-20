@@ -1304,6 +1304,8 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
     # ZAVDANNYA-172: оферта, політика, умови, «Хто ми» й форма звернення — у вигляді сайту (шапка, меню, тема, підвал)
     import storinky_pravo
     storinky_pravo.zibraty(vykhid / 'zahlushka', adresa_saitu)
+    import storinka_dostupnist      # ZAVDANNYA-172 (ZVIT-171, п. 10): «Доступність» — що перевірено й відомі обмеження
+    adresy.append(storinka_dostupnist.zibraty(vykhid, adresa_saitu))
     # Стара сторінка гри — переадресація на гру в карті (ZAVDANNYA-117, MV-129).
     for stara, tsil in (('index.html', '/karta/?hra=vgadai'), ('vulytsia.html', '/karta/?hra=vulytsia')):
         if (vykhid / 'zahlushka' / 'hra' / stara).exists():

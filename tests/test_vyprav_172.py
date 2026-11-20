@@ -126,3 +126,18 @@ class DribneZvit169(unittest.TestCase):
         for shl, ye in (('/biznes/', False), ('/sudova-praktyka/kupap-130/', False), ('/vulytsi/', True)):
             st = Z.storinka(shlyakh=shl, title='т', opys='о', tilo='', adresa_saitu='https://mv.test')
             self.assertEqual('Колір і числа показують' in st, ye, shl)
+
+
+class Dostupnist(unittest.TestCase):
+    """ZVIT-171, п. 10: сторінка «Доступність» — чесно, без «відповідає закону»."""
+
+    def test_storinka(self):
+        import storinka_dostupnist as SD
+        st = SD.storinka('https://mv.test')
+        self.assertIn('<h1>Доступність</h1>', st)
+        self.assertIn('Що перевірено', st)
+        self.assertIn('Що ще не працює як слід', st)
+        self.assertIn('/zahlushka/pro-nas.html', st)
+        for zaboroneno in ('відповідає закону', 'відповідає вимогам', 'сертифіковано', 'повністю доступн'):
+            self.assertNotIn(zaboroneno, st)
+        self.assertIn('не висновок про відповідність будь-якому закону', st)
