@@ -206,3 +206,17 @@ test('без прибраних подій колода віддається я�
   const r2_ = await worker.fetch(new Request(`${SAIT}/ihry/koloda.json`), bez);
   assert.equal((await r2_.json()).podii.length, 2);
 });
+
+test('стара база без нових таблиць (не виконано skhema-161.sql): карта, колоди й «Видалити мої дані» працюють', async () => {
+  const env = seredovyshche();
+  env.BAZA.db.exec('DROP TABLE karta_zavantazhennia; DROP TABLE prybrani_podii;');
+  assert.equal((await zapyt(env, 'GET', `/pidpysnyk/spravy/${klitynka(...A)}.json`, { kuka: ANA })).r.status, 200);
+  assert.equal(JSON.parse((await zapyt(env, 'GET', '/ihry/koloda.json')).text).podii.length, 2);
+  // людина без підписки (у підписника спершу скасовується підписка в платіжному сервісі — тут його немає)
+  env.BAZA.db.prepare('INSERT INTO korystuvachi (id, poshta, stvoreno) VALUES (2, ?, ?)').run('bo@poshta.ua', T0);
+  env.BAZA.db.prepare('INSERT INTO sesii (hash, korystuvach_id, do_) VALUES (?, 2, ?)').run(sha256('sesiia-bo'), T0 + 3600);
+  const { r, text } = await zapyt(env, 'POST', '/kabinet/vydalyty', { kuka: 'mv_sesiia=sesiia-bo', forma: { pidtverdzhuiu: 'tak' } });
+  assert.equal(r.status, 200);
+  assert.match(text, /Дані видалено/);
+  assert.equal(env.BAZA.db.prepare(`SELECT COUNT(*) AS n FROM korystuvachi WHERE poshta = 'bo@poshta.ua'`).get().n, 0);
+});

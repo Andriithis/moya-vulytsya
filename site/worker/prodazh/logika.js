@@ -15,6 +15,14 @@ const q = (env, sql, ...p) => env.BAZA.prepare(sql).bind(...p);
 export const odyn = (env, sql, ...p) => q(env, sql, ...p).first();
 export const vsi = async (env, sql, ...p) => (await q(env, sql, ...p).all()).results;
 export const zrobyty = (env, sql, ...p) => q(env, sql, ...p).run();
+/** Те саме, але таблиці, якої ще немає в старій базі (оновлення skhema-<N>.sql не виконано), не зупиняє дію. */
+export async function zrobytyNovu(env, sql, ...p) {
+  try { return await zrobyty(env, sql, ...p); } catch (err) {
+    if (!/no such table/i.test(err.message)) throw err;
+    console.log(`стара база без нової таблиці: ${err.message}`);
+    return { meta: { changes: 0 } };
+  }
+}
 
 export const PIDPYSKY = Object.keys(TS.period_misiatsiv);           // pidpyska, rieltor, osbb
 const BEZ_BUDYNKU = ['pidpyska', 'rieltor', ...TS.sudova];          // будинок необов'язковий («Судова практика» — без будинку)
@@ -418,7 +426,7 @@ export async function vydalytyDani(env, korystuvach_id) {
   await zrobyty(env, 'DELETE FROM stezhu WHERE korystuvach_id = ?', korystuvach_id);
   await zrobyty(env, 'DELETE FROM lysty_stezhu WHERE korystuvach_id = ?', korystuvach_id);   // щомісячний лист «Стежу» (ZAVDANNYA-150)
   await zrobyty(env, 'DELETE FROM bali_rukh WHERE korystuvach_id = ?', korystuvach_id);   // бали ігор (ZAVDANNYA-123)
-  await zrobyty(env, 'DELETE FROM karta_zavantazhennia WHERE korystuvach_id = ?', korystuvach_id);   // ліміт карти (ZAVDANNYA-161)
+  await zrobytyNovu(env, 'DELETE FROM karta_zavantazhennia WHERE korystuvach_id = ?', korystuvach_id);   // ліміт карти (ZAVDANNYA-161)
   await zrobyty(env, 'DELETE FROM sp_vyvantazhennia WHERE korystuvach_id = ?', korystuvach_id);
   await zrobyty(env, 'DELETE FROM sesii WHERE korystuvach_id = ?', korystuvach_id);
   await zrobyty(env, 'DELETE FROM vkhody WHERE korystuvach_id = ?', korystuvach_id);
@@ -431,7 +439,7 @@ export async function prybraty(env) {
   await zrobyty(env, 'DELETE FROM sesii WHERE do_ < ?', t);
   await zrobyty(env, 'DELETE FROM vkhody WHERE do_ < ?', t - 86400);
   const tyzhdenTomu = new Date((t - 7 * 86400) * 1000).toISOString().slice(0, 10);   // лічильники лімітів — лише свіжі
-  await zrobyty(env, 'DELETE FROM karta_zavantazhennia WHERE den < ?', tyzhdenTomu);
+  await zrobytyNovu(env, 'DELETE FROM karta_zavantazhennia WHERE den < ?', tyzhdenTomu);
   await zrobyty(env, 'DELETE FROM sp_vyvantazhennia WHERE den < ?', tyzhdenTomu);
   const dniv = parseInt(env.DOVIDKY_DNIV || '365', 10);
   const stari = await vsi(env, 'SELECT id, fail FROM dovidky WHERE fail IS NOT NULL AND hotovo < ?', t - dniv * 86400);

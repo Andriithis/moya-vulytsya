@@ -102,8 +102,14 @@ export const limitOpysiv = (env) => parseInt(env.KARTA_NA_DEN || '', 10) || OPYS
 export async function zarakhuvatyOpys(env, ja) {
   const t = L.teper(env), mezha = limitOpysiv(env);
   const den = new Date(t * 1000).toISOString().slice(0, 10);
-  const r = await L.zrobyty(env, `INSERT INTO karta_zavantazhennia (korystuvach_id, den, n) VALUES (?, ?, 1)
-    ON CONFLICT (korystuvach_id, den) DO UPDATE SET n = n + 1 WHERE n < ?`, ja.id, den, mezha);
+  let r;
+  try {
+    r = await L.zrobyty(env, `INSERT INTO karta_zavantazhennia (korystuvach_id, den, n) VALUES (?, ?, 1)
+      ON CONFLICT (korystuvach_id, den) DO UPDATE SET n = n + 1 WHERE n < ?`, ja.id, den, mezha);
+  } catch (err) {
+    console.log(`ліміт карти не працює (виконайте skhema-161.sql): ${err.message}`);
+    return true;           // як і ліміт запитів: зламаний лічильник не зупиняє підписника
+  }
   if (!r.meta?.changes) return false;
   const n = (await L.odyn(env, 'SELECT n FROM karta_zavantazhennia WHERE korystuvach_id = ? AND den = ?', ja.id, den))?.n;
   if (n === mezha && env.POSHTA_PARTNERA) {
