@@ -41,7 +41,7 @@ from laboratoriia139 import mistsia  # noqa: E402
 from rushii import ARG_CPU, ARG_GPU, arkush, ffmpeg, lehka  # noqa: E402
 from rushii import rendery as rendery_rushiia  # noqa: E402
 from rushii import server as server_rushiia  # noqa: E402
-from stsenarii import PROFIL, Rolyk, fp  # noqa: E402
+from stsenarii import PROFIL, Rolyk, fp, sait  # noqa: E402
 
 VYHID = KORIN / 'video' / 'vyhid' / '155'
 KESH = KORIN / 'video' / 'vyhid' / 'kesh' / 'stsenarii'
@@ -301,7 +301,8 @@ def p3(stan, P, ix):
         'meta': dict(nazva='Повний звіт перед купівлею', typ='Хтось читає звіт — і вау', hrupa='Потреба → продукт',
                      meta='потреба (велика покупка) → повний звіт «перед купівлею», 299 грн',
                      hachok='«Квартира — за 2 мільйони. А що було на вулиці?» над 3D-шпилями', liniia='Повний звіт',
-                     kudy='/miy-budynok/', shar='zvit', vyhliad='shpyli (139), світла'),
+                     kudy='/miy-budynok/', shar='zvit', vyhliad='shpyli (139), світла',
+                     chysla_ne_z_bazy=['2']),          # «за 2 мільйони» — приклад ціни квартири, не твердження про дані
         'tekst': [
             {'t0': 3.5, 't1': 5.8, 'styl': 'velykyi', 'tekst': 'Повний звіт —\n*перед купівлею*', 'y': 330},
             {'t0': 5.9, 't1': 8.2, 'styl': 'velykyi', 'tekst': f'Рік за роком:\n*{roky[0]}–{roky[-1]}*', 'y': 330},
@@ -493,7 +494,7 @@ def S_rolyka(R: Rolyk, Z: dict) -> tuple[dict, dict]:
 
 def perevir(R, Z) -> list[str]:
     S, meta = S_rolyka(R, Z)
-    z = perevirka.pereviryty(S, meta)
+    z = perevirka.pereviryty(S, meta) + perevirka.posylannia(meta, sait())
     from laboratoriia139 import perevirty_styl
     z += perevirty_styl(S, meta)
     for it in Z['tekst']:
@@ -666,7 +667,11 @@ def main():
     a.add_argument('--pachka', action='store_true', help='лише перевірки всіх роликів і чергування В2')
     a.add_argument('--vykhid', type=Path, default=VYHID)
     a.add_argument('--cpu', action='store_true')
+    a.add_argument('--sait', type=Path, help='зібраний сайт — перевірити, що заклик веде на сторінку, яка існує (або MV_SAIT)')
     arg = a.parse_args()
+    if arg.sait:
+        import os
+        os.environ['MV_SAIT'] = str(arg.sait)
     stan = json.loads(arg.stan.read_text(encoding='utf-8'))
     Proksi.prodazh = stan['server']
     ix = {b['u']: b for b in json.loads(arg.indeks.read_text(encoding='utf-8'))['budynky']}

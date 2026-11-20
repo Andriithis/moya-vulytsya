@@ -30,7 +30,7 @@ P = modul('vau_perevirka', 'perevirka.py')
 HT = modul('vau_holos_tekst', 'holos_tekst.py')
 D = modul('vau_dani', 'dani.py')
 
-META = {'nazva': 'Проба', 'hachok': 'гачок', 'meta': 'перевірка', 'kudy': '/karta/', 'kintsivka': 'посилання в профілі'}
+META = {'nazva': 'Проба', 'hachok': 'гачок', 'meta': 'перевірка', 'kudy': '/vulytsia/tyraspolska/', 'kintsivka': 'посилання в профілі'}
 CHYSTYI = {
     'id': 'proba', 'tryvalist': 10, 'tema': 'temna',
     'kamera': [{'t': 0, 'c': [30.5234, 50.4501], 'z': 11}],

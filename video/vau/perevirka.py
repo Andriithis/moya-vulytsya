@@ -196,6 +196,8 @@ def pereviryty(S: dict, meta: dict | None = None) -> list[str]:
             z += montazh(S, meta)
     if (meta.get('pravyla') or 0) >= 138:
         z += pravyla_138(S, meta)
+    if (meta.get('pravyla') or 0) >= 129:
+        z += pravda(S, meta) + kudy(meta)
     return z
 
 
@@ -261,3 +263,135 @@ def pereviryty_pachku(rolyky: list[tuple[dict, dict]]) -> list[str]:
             z.append(f'В2: {ia} → {ib} різні лише за {len(rizni)} осями ({", ".join(rizni) or "жодною"}): '
                      f'{a} / {b}')
     return z
+
+
+# ------------------------------------------------------------------ ZAVDANNYA-175 (критик ZVIT-170, топ-10 №2, №3, №5)
+# Гачок — правда, яку перевіряє програма: число в гачку — з бази (meta['fakty'], рахує сценарій у момент збирання) або
+# з опису самої події (meta['fabula'], ролик з однією подією); «одне й те саме» — лише коли вид один; «в судах» — не
+# підміна «у наших даних»; відсоток — лише з базою >= VIDSOTOK_BAZA подій (AGENTS.md розд. 6: сигнал без бази не існує).
+
+VULYTSIA = re.compile(r'вул\.|просп\.|бульв\.|пров\.|пл\.|узвіз|шосе|вулиця|проспект|набережна', re.I)
+HACHOK_STYLI = {'hook', 'velykyi', 'pytannia', 'slovo', 'split', 'komentar', 'shtamp'}
+HACHOK_DO = 1.5               # гачок — те, що в кадрі до 1,5 с
+VIDSOTOK_BAZA = 50
+ODNE_I_TE_SAME = re.compile(r'одне й те саме|одне і те саме|те саме\b|однаков\w*|той самий|та сама', re.I)
+V_SUDAKH = re.compile(r'\b(?:в|у) судах\b|\bсуди Києва\b|\bсудів Києва\b', re.I)
+NAI = re.compile(r'найчаст|найбільш|найменш|найрідш|найпоширен', re.I)
+CHYSLO = re.compile(r'\d+(?:[,.:]\d+)?')
+VIDSOTOK = re.compile(r'(\d+(?:[,.]\d+)?)\s?%|(\d+(?:[,.]\d+)?)\s+відсот', re.I)
+NE_DANI = re.compile(r'^(?:19|20)\d\d$|^1551$')          # рік і номер служби 1551 — не твердження про дані
+
+
+def _norm(t: str) -> str:
+    """«71 428» → «71428», «00 год. 46 хв.» → «00:46», зірочки розмітки геть."""
+    t = str(t).replace('*', '')
+    t = re.sub(r'(?<=\d)[    ](?=\d{3}\b)', '', t)
+    t = re.sub(r'\b(\d{1,2})\s*год\.?\s*(\d{2})\s*хв\.?', lambda m: f'{int(m.group(1)):02d}:{m.group(2)}', t)
+    return t
+
+
+def _chysla(t: str) -> list[str]:
+    t = _norm(t)
+    t = re.sub(r'\d+(?:[,.]\d+)?\s*(?:с|сек\w*|секунд\w*)\b', ' ', t)     # «за 9 секунд», «за 3 с» — тривалість ролика
+    return [x for x in CHYSLO.findall(t) if not NE_DANI.match(x)]
+
+
+def _rivni(a: str, b: str) -> bool:
+    if a == b:
+        return True
+    try:
+        return abs(float(a.replace(',', '.').replace(':', '.')) - float(b.replace(',', '.').replace(':', '.'))) < 1e-9
+    except ValueError:
+        return False
+
+
+def hachok(S: dict) -> list[str]:
+    """Тексти, які глядач бачить або чує в перші HACHOK_DO с."""
+    out = []
+    for it in S.get('tekst', []):
+        if it['t0'] <= 1e-6 and it.get('styl') in HACHOK_STYLI:      # С2: гачок стоїть повністю з кадру 0
+            out += [str(it.get(k)) for k in ('tekst', 'pid', 'zag') if it.get(k)]
+            out += [str(r.get('zag', '')) + ' ' + str(r.get('tekst', '')) for r in it.get('riady', [])]
+    out += [str(h.get('tekst', '')) for h in (S.get('zvuk') or {}).get('holos', []) if h.get('t', 0) <= HACHOK_DO]
+    return out
+
+
+def pravda(S: dict, meta: dict) -> list[str]:
+    z = []
+    fakty = meta.get('fakty') or {}
+    dozv = [_norm(str(v)) for v in fakty.values() if not isinstance(v, (dict, list))]
+    dozv += [str(x) for x in meta.get('chysla_ne_z_bazy', [])]        # «за 2 мільйони» — приклад, не дані; пояснити в сценарії
+    fabula = _norm(meta.get('fabula') or '')
+    opys = [meta['hachok']] if meta.get('hachok') else []      # опис гачка в каталозі: слова перевіряємо, числа — ні («з кадру 0»)
+    for t in hachok(S) + opys:
+        for x in ([] if t in opys else _chysla(t)):
+            if not any(_rivni(x, d) for d in dozv) and not (fabula and re.search(r'(?<![\d,.])' + re.escape(x) + r'(?![\d])', fabula)):
+                z.append(f'гачок: число {x} у «{_norm(t)[:50]}» не підтверджене базою (meta fakty) чи описом події (meta fabula)')
+        if ODNE_I_TE_SAME.search(t) and fakty.get('vydiv') != 1:
+            z.append(f'гачок: «{ODNE_I_TE_SAME.search(t).group()}» — лише коли вид один (meta fakty vydiv = 1, зараз {fakty.get("vydiv")})')
+        if V_SUDAKH.search(t) and (NAI.search(t) or _chysla(t)):
+            z.append(f'гачок: «{V_SUDAKH.search(t).group()}» — ми рахуємо події в наших даних, не всі справи судів; '
+                     f'писати «у наших даних»')
+    # підпис на карті: число одразу після назви вулиці («вул. Вишгородська · 45») читається як номер будинку (MV-25)
+    for m in S.get('mitky', []):
+        n = m.get('n')
+        dvoinyk = isinstance(n, str) and re.match(r'\s*[·,:\-–—]?\s*\d', n)
+        dvoinyk = dvoinyk or re.search(r'(?:вул\.|просп\.|бульв\.|пров\.|пл\.|узвіз|шосе|вулиця)[^\d]{2,40}[·:–—-]\s*\d+\s*$', str(m.get('tekst', '')))
+        if VULYTSIA.search(str(m.get('tekst', ''))) and dvoinyk:
+            z.append(f"підпис «{m.get('tekst')}{n if isinstance(n, str) else ''}» — число після назви вулиці схоже на номер будинку: "
+                     f"n числом (сцена пише «N подій» окремим рядком)")
+    # відсоток — лише з базою: кожне «N %» має запис meta['vidsotky'] = [{'v': N, 'k': k, 'n': n}] з n >= VIDSOTOK_BAZA
+    vs = meta.get('vidsotky') or []
+    vsi = list(teksty(S))
+    for it in S.get('tekst', []):
+        for r in it.get('riady', []):
+            if '%' in str(r.get('pislia', '')) and r.get('n') is not None:
+                vsi.append(f"{r['n']} %")
+        if '%' in str(it.get('pislia', '')) and it.get('do') is not None:
+            vsi.append(f"{it['do']} %")
+    for t in vsi:
+        for m in VIDSOTOK.finditer(_norm(t)):
+            v = float((m.group(1) or m.group(2)).replace(',', '.'))
+            ok = [x for x in vs if abs(float(x['v']) - v) < 1e-9 and x['n'] >= VIDSOTOK_BAZA and abs(x['k'] / x['n'] * 100 - v) < 1]
+            if not ok:
+                z.append(f'відсоток {m.group().strip()} без бази >= {VIDSOTOK_BAZA} подій (meta vidsotky) — писати «k з n»')
+    return z
+
+
+# Компас (docs/KOMPAS.md, розд. 0): заклик веде на сторінку того самого місця. Карта загалом — лише для ролика про все місто.
+KUDY_MISTSE = re.compile(r'^/(?:vulytsia|rayon|budynok|mistse)/[^/?#]+/')
+KUDY_PRODUKT = re.compile(r'^/(?:miy-budynok|osbb|sudova-praktyka|biznes|dlia|pidpyska|oplata)/')
+KUDY_HRA = re.compile(r'^/(?:karta/\?ihry|hra/|ihry/)')
+KUDY_KARTA_MISTSE = re.compile(r'^/karta/#\d+(?:\.\d+)?/\d+\.\d+/\d+\.\d+')     # карта, відкрита на цьому місці
+
+
+def kudy(meta: dict) -> list[str]:
+    k = meta.get('kudy') or ''
+    if meta.get('obryv') and k == '/':
+        return []                       # вступ продуктового ролика: заклик — у записі сторінки
+    if KUDY_MISTSE.match(k) or KUDY_PRODUKT.match(k) or KUDY_HRA.match(k) or KUDY_KARTA_MISTSE.match(k):
+        return []
+    if k.split('?')[0].split('#')[0] == '/karta/' and (meta.get('pro_misto') or meta.get('riven') == 'misto'):
+        return []                       # ролик про все місто → карта міста
+    return [f'заклик «{k}» — не конкретне місце (KOMPAS розд. 0): сторінка вулиці, району, місця, будинку, продукту, '
+            f'гри або /karta/#зум/широта/довгота; карта загалом — лише для ролика про все місто (meta pro_misto)']
+
+
+def storinka_isnuie(kudy_: str, sait: Path | str) -> bool:
+    """Чи є сторінка заклику в зібраному сайті (site/zibraty_sait.py): /vulytsia/x/ → <сайт>/vulytsia/x/index.html."""
+    from pathlib import Path as _P
+    shliakh = kudy_.split('#')[0].split('?')[0].strip('/')
+    f = _P(sait) / shliakh / 'index.html' if shliakh else _P(sait) / 'index.html'
+    return f.is_file()
+
+
+def posylannia(meta: dict, sait) -> list[str]:
+    """Перевірка під час збирання ролика: заклик веде на сторінку, яка існує (критик ZVIT-170: n7 → 404)."""
+    if not sait:
+        return ['не перевірено посилання: немає зібраного сайту (--sait або MV_SAIT) — ролик без перевірки заклику не збираємо']
+    k = meta.get('kudy') or ''
+    if meta.get('obryv') and k == '/':
+        return []
+    if not storinka_isnuie(k, sait):
+        return [f'заклик «{k}»: такої сторінки в зібраному сайті {sait} немає (404)']
+    return []

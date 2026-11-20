@@ -585,8 +585,9 @@
       it.riady.forEach(function (r, i) {
         var kp = odrazu(it) ? 1 : E.oo(clamp((t - it.t0 - 0.12 * i) / 0.35, 0, 1));
         pol[i].style.transform = 'translateX(' + lerp(i ? 560 : -560, 0, kp) + 'px)';
-        if (r.n !== undefined) pol[i].querySelector('.n').textContent = (r.pered || '') +
-          chyslo(r.n * (odrazu(it) ? 1 : E.oo(clamp((t - it.t0 - 0.2 - 0.12 * i) / 0.8, 0, 1)))) + (r.pislia || '');
+        // обидва числа біжать разом і з'являються лише разом із рахунком: без кадру «7 570 / 0» (критик ZVIT-170, ZAVDANNYA-175)
+        var kn = odrazu(it) ? 1 : E.oo(clamp((t - it.t0 - 0.15) / 0.8, 0, 1));
+        if (r.n !== undefined) pol[i].querySelector('.n').textContent = kn <= 0 ? '' : (r.pered || '') + chyslo(r.n * kn) + (r.pislia || '');
       });
     }
     if (it.styl === 'komentar') {
@@ -715,7 +716,10 @@
   function zbuduvatyMitku(m) {
     var el = document.createElement('div');
     el.className = 'm' + (m.styl ? ' ' + m.styl : '');
-    el.innerHTML = (m.kolir ? '<i style="background:' + m.kolir + '"></i>' : '') + m.tekst + (m.n !== undefined ? '<b>' + m.n + '</b>' : '');
+    // число подій (n — число) — окремим рядком над назвою: «45 подій», а не «вул. … · 45», що читається як номер будинку
+    // (критик ZVIT-170, ZAVDANNYA-175); рядок n — як було (старі сценарії)
+    var lich = typeof m.n === 'number' ? '<b class="lich">' + chyslo(m.n) + ' ' + vidm(m.n, ['подія', 'події', 'подій']) + '</b>' : '';
+    el.innerHTML = lich + (m.kolir ? '<i style="background:' + m.kolir + '"></i>' : '') + m.tekst + (typeof m.n === 'string' ? '<b>' + m.n + '</b>' : '');
     document.getElementById('mitky').appendChild(el);
     m.el = el;
   }

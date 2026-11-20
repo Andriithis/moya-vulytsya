@@ -105,6 +105,7 @@ body { font-family: Plex, system-ui, sans-serif; color: var(--ink); -webkit-font
 .m i { display: inline-block; width: 18px; height: 18px; border-radius: 50%; margin-right: 12px; vertical-align: 1px; }
 .m.velyka { font: 800 46px/1 Plex; padding: 18px 26px; }
 .m.tsyfra b { color: var(--accent2); margin-left: 10px; }
+.m b.lich { display: block; margin: 0 0 8px; font-size: .78em; color: var(--accent); }   /* «45 подій» над назвою (ZAVDANNYA-175) */
 [data-t="svitla"] .m.tsyfra b { color: var(--accent); }
 
 /* ---------- макети інтерфейсу сайту (не скріншоти, а намальовані за STYL.md) ---------- */
