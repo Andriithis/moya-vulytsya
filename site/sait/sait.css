@@ -177,6 +177,14 @@ body.z-kartoyu .shapka__vnutri { max-width: none; padding: 6px 16px; min-height:
 .pidval__vnutri { max-width: 1120px; margin: 0 auto; padding: 24px 24px 40px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: var(--muted); }
 .pidval__vnutri p { margin: 0; }
 .pidval a { color: var(--muted); }
+/* ZAVDANNYA-177 (ZVIT-165, п. 9): посилання підвалу — ціль дотику ≥ 24 px (WCAG 2.5.8), рядки не впритул */
+.pidval__vnutri p { line-height: 28px; }
+.pidval a { display: inline-block; min-height: 24px; padding: 2px 0; }
+/* «Перейти до змісту» — перше, куди веде Tab; видно лише у фокусі */
+.do-zmistu { position: absolute; z-index: 100; left: 8px; top: -60px; padding: 10px 16px; border-radius: var(--radius-m);
+  background: var(--surface); color: var(--ink); font-weight: 600; outline: 2px solid var(--accent); }
+.do-zmistu:focus { top: 8px; }
+main.storinka:focus { outline: none; }
 
 /* Під картою на головній */
 .vstup-ryad { display: flex; flex-direction: column; gap: 8px; max-width: 760px; }
@@ -397,6 +405,10 @@ body.z-kartoyu .shapka__vnutri { max-width: none; padding: 6px 16px; min-height:
 .tabl th:first-child { text-align: left; }
 .tabl thead th { font-size: 13px; color: var(--muted); font-weight: 600; }
 .tsiny { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+/* ZAVDANNYA-177 (ZVIT-165, п. 7): на сторінці будинку — одна головна кнопка, інші товари посиланнями під нею */
+.tsiny--odna { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.tsiny__inshi { margin: 0; font-size: 15px; line-height: 24px; color: var(--muted); }
+.tsiny__inshi a { display: inline-block; padding: 4px 0; }
 .spysok-bud { columns: 6 90px; }
 .spysok-tekst { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
 
@@ -484,7 +496,15 @@ html[data-dodatok="hotuiu"] body { visibility: hidden; }
 .haslo-karty b { font: 700 15px/20px var(--sans); }
 .haslo-karty span { color: var(--accent); font-weight: 600; }
 .ekran-karty.shukayu .haslo-karty { display: none; }
+/* ZAVDANNYA-177 (ZVIT-165, п. 1): перший екран головної — одне речення й одна кнопка; бігучого лічильника місяців тут не видно */
+.vstup-holovnoi { position: absolute; z-index: 4; left: 16px; top: 128px; max-width: 360px; padding: 14px 16px; display: flex;
+  flex-direction: column; gap: 12px; }
+.vstup-holovnoi__rech { margin: 0; font: 700 19px/25px var(--sans); color: var(--ink); }
+.vstup-holovnoi .knopka { align-self: flex-start; }
+.ekran-karty.shukayu .vstup-holovnoi, .ekran-karty--holovna .vau-lich { display: none; }
 @media (max-width: 700px) {
   .haslo-karty { left: 8px; top: 116px; padding: 6px 12px; }
+  .vstup-holovnoi { left: 8px; right: 8px; top: 116px; max-width: none; padding: 12px 14px; gap: 10px; }
+  .vstup-holovnoi__rech { font-size: 17px; line-height: 23px; }
   .vau-lich { top: 176px; }
 }

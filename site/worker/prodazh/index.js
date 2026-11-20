@@ -113,7 +113,9 @@ async function formaZamovlennia(request, env, url) {
   // ZAVDANNYA-150, п. 3: увійшли з пакетом «3 довідки» чи підпискою — спершу «Використати залишок», а не нова оплата
   const ja = await sesiia(request, env);
   const zalyshok = ja && adresa && tovar === 'dovidka' ? await L.zalyshokNaBudynok(env, ja.id, budynok) : 0;
-  return S.formaZamovlennia({ tovar, budynok: adresa ? budynok : null, adresa, zalyshok, ...(await vkhidGoogle(request, env, ja)) });
+  // ZAVDANNYA-177 (ZVIT-165, п. 5): адресу, введену на сторінці входу, не вводити вдруге — вона вже в полі «Будинок»
+  const vvedeno = adresa ? '' : String(url.searchParams.get('adresa') || '').slice(0, 200);
+  return S.formaZamovlennia({ tovar, budynok: adresa ? budynok : null, adresa, zalyshok, vvedeno, ...(await vkhidGoogle(request, env, ja)) });
 }
 
 /** Для форми замовлення (ZAVDANNYA-142): пошта з сесії (після входу через Google) і чи показувати кнопку Google. */

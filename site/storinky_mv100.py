@@ -127,10 +127,17 @@ def ld_skrypt(*obiekty) -> str:
                    for o in obiekty)
 
 
-def knopky_dovidky(budynok: str = '', dzherelo: str = '', adresa: str = '') -> str:
+def knopky_dovidky(budynok: str = '', dzherelo: str = '', adresa: str = '', odna: bool = False) -> str:
+    """Кнопки покупки. odna (ZAVDANNYA-177, ZVIT-165, п. 7): на сторінці будинку — одна головна кнопка «Довідка», а «3 довідки»
+    й повний звіт — посиланнями під нею (три рівні кнопки на сторінці одного будинку плутали)."""
     from urllib.parse import quote
     q = (f'&amp;budynok={e(budynok)}' if budynok else '') + (f'&amp;adresa={quote(adresa)}' if adresa else '')
     d = f'&amp;dzherelo={e(dzherelo)}' if dzherelo else ''
+    if odna:
+        return (f'<div class="tsiny tsiny--odna">'
+                + T.knopka_oplaty(f'/oplata/?tovar=dovidka{q}{d}', f'Довідка про цей будинок — {tsina("dovidka")}', True)
+                + f'<p class="tsiny__inshi">Або: <a href="/oplata/?tovar=zvit{q}{d}">повний звіт перед купівлею — {tsina("zvit")}</a> · '
+                f'<a href="/oplata/?tovar=try{q}{d}">3 довідки для трьох адрес — {tsina("try")}</a></p></div>')
     return (f'<div class="tsiny">'
             + T.knopka_oplaty(f'/oplata/?tovar=dovidka{q}{d}', f'Довідка — {tsina("dovidka")}', True)
             + T.knopka_oplaty(f'/oplata/?tovar=try{q}{d}', f'3 довідки — {tsina("try")}')
@@ -247,8 +254,7 @@ def abzats_budynku(b: dict, period: str, r_m: int) -> str:
         t += '. Найчастіше — ' + ' і '.join(f'{e(h)} ({chyslo(n)})' for h, n in top) + '.'
         if b['susidy']:
             h0, n0 = top[0]
-            s0 = b['susidy'].get(h0, 0)
-            t += (f' Сусідній будинок у радіусі {r_m}{NBSP}м зазвичай має на тему «{e(h0)}» — {chyslo_m(s0)}.')
+            t += ' ' + rechennia_susidiv(h0, b['susidy'].get(h0, 0), r_m)
         rechennia.append(t)
     else:
         rechennia.append(f'За {period} звернень до 1551 з адресою цього будинку в даних немає.')
@@ -265,6 +271,15 @@ def abzats_budynku(b: dict, period: str, r_m: int) -> str:
     return ' '.join(rechennia)
 
 
+def rechennia_susidiv(tema: str, s0: float, r_m: int) -> str:
+    """ZVIT-165, п. 7: «Сусідній будинок … зазвичай має на тему «…» — 0» звучало незграбно й наче будинок «вирізняється».
+    Число — те саме (медіана сусідніх), сказане людською мовою; оцінки немає."""
+    if not s0:
+        return f'У більшості сусідніх будинків у радіусі {r_m}{NBSP}м звернень на тему «{e(tema)}» не було.'
+    return (f'У сусідніх будинках у радіусі {r_m}{NBSP}м на цю тему зазвичай {chyslo_m(s0)} '
+            f'{vidminok(int(s0), ("звернення", "звернення", "звернень")) if s0 == int(s0) else "звернення"} на будинок.')
+
+
 def urivok_dovidky(b: dict, r_m: int) -> str:
     """ZAVDANNYA-150, п. 13: біля кнопок купівлі — що саме буде в довідці ЦЬОГО будинку, з його ж відкритих чисел
     (без нових фактів: опис, місяці й статуси — лише в довідці)."""
@@ -272,7 +287,8 @@ def urivok_dovidky(b: dict, r_m: int) -> str:
     if b['skarh']:
         h0, n0 = next(iter(b['skarhy'].items()))
         s0 = (b['susidy'] or {}).get(h0)
-        por = (f' — тут {chyslo(n0)}, у сусідніх у радіусі {r_m}{NBSP}м зазвичай {chyslo_m(s0)}' if s0 is not None else '')
+        por = ((f' — тут {chyslo(n0)}, у більшості сусідніх у радіусі {r_m}{NBSP}м — жодного' if not s0 else
+                f' — тут {chyslo(n0)}, у сусідніх у радіусі {r_m}{NBSP}м зазвичай {chyslo_m(s0)}') if s0 is not None else '')
         punkty.append(f'{skarhy_slovo(b["skarh"])} до 1551 — по місяцях і статусах: що вирішили, що ні; найчастіше «{e(h0)}»{por}')
     else:
         punkty.append('скарги 1551 будинку й двору за 12 місяців — їх тут немає, і це теж відповідь')
@@ -336,6 +352,9 @@ def storinka_budynku(b: dict, bud: Budynky, adresa_saitu: str, susidni: list, pe
         pidpys_sus = (f'Сусідні — скільки звернень цієї теми зазвичай має один будинок у радіусі {bud.r_susidy}{NBSP}м: '
                       f'половина з {chyslo(b["susidiv"])} сусідніх будинків має менше, половина — більше.' if sus else
                       'Сусідніх будинків зі зверненнями замало для порівняння.')
+        if sus and not any(sus.get(h) for h in b['skarhy']):      # ZVIT-165, п. 7: «0» у всіх темах
+            pidpys_sus += (f' У більшості з {chyslo(b["susidiv"])} сусідніх будинків звернень на ці теми не було — тому в '
+                           'стовпчику «сусідні» нулі.')
         ch.append(f'''<section class="rozdil"><h2>Скарги 1551 за 12 місяців</h2>
 <p class="rozdil__pidpys">{e(z_velykoi(period))}. Це звернення людей до гарячої лінії міста, а не перевірені факти. Масові відключення
 світла чи тепла торкаються багатьох будинків одразу. {pidpys_sus}</p>
@@ -364,12 +383,12 @@ def storinka_budynku(b: dict, bud: Budynky, adresa_saitu: str, susidni: list, pe
         ch.append(f'<section class="rozdil"><h2>Події з рішень судів</h2><p class="rozdil__pidpys">За {roky_t} подій з адресою '
                   f'цього будинку немає; за {Z.PERIOD_ZAMKNENYI} — є, у підписці.</p></section>')
 
+    # ZVIT-165, п. 7: без другого опису тієї самої довідки; одна головна кнопка. Гасло лінії над блоком лишається (MV-106).
     ch.append(f'''<section class="rozdil">{haslo_budynku()}<h2>Довідка про будинок</h2>
 {urivok_dovidky(b, bud.r_susidy)}
-<p class="rozdil__pidpys">У довідці: теми звернень 1551 по місяцях і статуси простими словами, порівняння з сусідніми будинками,
-події біля будинку й на вулиці коротко — прочитати за 2–3 хвилини. Повний звіт «перед купівлею» — ще й {podii_zvitu(period_podii)},
-рік за роком, що повторюється на вулиці й поруч, порівняння зі схожими будинками й карта будинку та вулиці.</p>
-{knopky_dovidky(b['url'], 'budynok', b['adresa'])}
+{knopky_dovidky(b['url'], 'budynok', b['adresa'], odna=True)}
+<p class="rozdil__pidpys">Повний звіт «перед купівлею» — ще й {podii_zvitu(period_podii)}, рік за роком, що повторюється на вулиці
+й поруч, порівняння зі схожими будинками й карта будинку та вулиці.</p>
 <p class="prymitka">{prymitka_oplaty('Кнопка відкриє сторінку, де можна залишити пошту.')}<a href="/miy-budynok/">Що входить і підписка</a>.</p></section>''')
 
     if susidni:
@@ -380,14 +399,16 @@ def storinka_budynku(b: dict, bud: Budynky, adresa_saitu: str, susidni: list, pe
                   f'у радіусі {R_PORUCH_M}{NBSP}м, що мають свою сторінку.</p><ul class="spysok-tekst">' + ''.join(
                       f'<li><a href="{x["url"]}">{e(x["adresa"])}</a></li>' for x in poruch) + '</ul></section>')
     posylannia = []
+    # ZVIT-165, п. 6: «де це» — будинок на карті Києва (та сама безкоштовна карта сотами, без адрес подій)
+    posylannia.append(f'<a class="knopka" href="/karta/#16.5/{b["lat"]:.5f}/{b["lon"]:.5f}/0/0">Показати місце на карті</a>')
     if b['vulytsia_slug']:
         posylannia.append(f'<a class="knopka" href="/vulytsia/{b["vulytsia_slug"]}/">{e(b["vulytsia"])} — уся вулиця</a>')
     if b['rayon']:
         posylannia.append(f'<a class="knopka" href="/rayon/{Z.slug_rayonu(b["rayon"])}/">{e(b["rayon"])} район</a>')
     if posylannia:
-        ch.append(f'<section class="rozdil"><h2>Поруч</h2><div class="diyi">{"".join(posylannia)}</div></section>')
+        ch.append(f'<section class="rozdil"><h2>Де це й що поруч</h2><div class="diyi">{"".join(posylannia)}</div></section>')
     ch.append(f'<p class="prymitka">Скарги 1551 — відкриті дані міста (КМДА, data.gov.ua, CC BY), {e(period)}. Події — з рішень судів '
-              f'у Єдиному державному реєстрі судових рішень, станом на {e(bud.versiia)}. Колір смуг показує кількість, а не оцінку будинку. '
+              f'у Єдиному державному реєстрі судових рішень, станом на {e(Z.data_slovamy(bud.versiia))}. Колір смуг показує кількість, а не оцінку будинку. '
               f'<a href="/pro-dani/">Як ми працюємо з даними</a> · <a href="/vydalyty/">Видалити або виправити подію</a>.</p>')
 
     place = {'@context': 'https://schema.org', '@type': 'Place', 'name': f'{b["adresa"]}, Київ',
@@ -435,7 +456,7 @@ def storinka_rayonu(dn: D.Dani, rayon: str, vulytsi: list, bud: Budynky | None, 
         skarhy.update(b['skarhy'])
     kryhty = [('/', 'Головна'), ('/rayony/', 'Райони'), ('', f'{rayon} район')]
     ch = [kryhty_html(kryhty)]
-    rech = [f'У {e(rayon)} районі за {roky_t} у даних судів — {Z.podii_slovo(vsogo)} з точною адресою'
+    rech = [f'{e(Z.u_rayoni(rayon))} за {roky_t} у даних судів — {Z.podii_slovo(vsogo)} з точною адресою'
             + (': ' + ', '.join(f'{D.HR.SLOVO[k]} — {chyslo(n)}'
                                 for k, n in podii_hrupy.most_common(3)) if vsogo else '') + '.']
     if skarhy:
@@ -491,7 +512,7 @@ def storinka_rayonu(dn: D.Dani, rayon: str, vulytsi: list, bud: Budynky | None, 
         Z.zapysaty_bajty(vykhid / 'rayon' / slug / 'kartynka.png', K.kartynka('Київ · район', f'{rayon} район', chysla, kolory))
         kartynka = (f'/rayon/{slug}/kartynka.png', f'{rayon} район: ' + ', '.join(f'{a} {p}' for a, p in chysla))
     return Z.storinka(shlyakh=f'/rayon/{slug}/', title=title, opys=opys, tilo='\n'.join(ch), adresa_saitu=adresa_saitu,
-                      aktyvne='vulytsi/', dodatkovo_head=ld_skrypt(place, kryhty_ld(kryhty, adresa_saitu)), kartynka=kartynka)
+                      aktyvne='rayony/', dodatkovo_head=ld_skrypt(place, kryhty_ld(kryhty, adresa_saitu)), kartynka=kartynka)
 
 
 def storinka_rayoniv(rayony: list, adresa_saitu: str, bez_rayonu: list | None = None) -> str:
@@ -505,7 +526,7 @@ def storinka_rayoniv(rayony: list, adresa_saitu: str, bez_rayonu: list | None = 
                      f'<li><a href="{b["url"]}">{e(b["adresa"])}</a></li>' for b in bez_rayonu) + '</ul></section>')
     return Z.storinka(shlyakh='/rayony/', title='Райони Києва — події з судових рішень і скарги 1551 | Моя вулиця',
                       opys='Райони Києва: події з судових рішень, скарги 1551 і вулиці кожного району.', tilo=tilo,
-                      adresa_saitu=adresa_saitu, aktyvne='vulytsi/', dodatkovo_head=ld_skrypt(kryhty_ld(kryhty, adresa_saitu)))
+                      adresa_saitu=adresa_saitu, aktyvne='rayony/', dodatkovo_head=ld_skrypt(kryhty_ld(kryhty, adresa_saitu)))
 
 
 # ---------------------------------------------------------------- вітрини
@@ -568,7 +589,7 @@ def vitryna_miy_budynok(adresa_saitu: str, prykl: list, kartynka: tuple | None =
         + '<section class="zaholovok"><span class="mitka">Мій будинок · для мешканців, орендарів і покупців</span>'
           f'<h1>{HASLO_BUDYNKU}</h1><p class="zaholovok__opys">{OPYS_BUDYNKU}.</p>'
           f'<p>{MESEDZH["miy-budynok"]} На що скаржаться мешканці в 1551 і які події з рішень судів були з цією адресою.</p></section>' + tilo,
-        adresa_saitu=adresa_saitu, aktyvne='miy-budynok/', skrypty=('/sait/poshuk.js',), kartynka=kartynka,
+        adresa_saitu=adresa_saitu, aktyvne='miy-budynok/', skrypty=('/sait/poshuk-spilne.js', '/sait/poshuk.js'), kartynka=kartynka,
         dodatkovo_head=ld_skrypt(kryhty_ld([('/', 'Головна'), ('', 'Мій будинок')], adresa_saitu)))
 
 

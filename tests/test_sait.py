@@ -572,7 +572,8 @@ class Sait(unittest.TestCase):
         описів подій і посилань на рішення."""
         faily = sorted((self.sait / 'karta').glob('*.json')) + [self.sait / 'vulytsi' / 'pokazhchyk.json']
         self.assertEqual({f.name for f in faily}, {'soty-7.json', 'soty-8.json', 'soty-9.json', 'soty-8-m.json', 'soty-9-m.json',   # місяці — окремо (ZAVDANNYA-125)
-                                                      'poshuk.json', 'pokazhchyk.json', 'rayony.json'})   # rayony — лише межі районів (ZAVDANNYA-174)
+                                                      'poshuk.json', 'pokazhchyk.json', 'rayony.json',
+                                                      'mistsevosti.json'})   # rayony — межі районів (174); народні назви місцевостей (177)
         opys = re.compile(r'керуючи|зіткнення|порушив|визнав|reyestr\.court\.gov\.ua/Review|doc_url|fabula', re.I)
         for f in faily:
             tekst = f.read_text(encoding='utf-8')
@@ -727,8 +728,8 @@ class Sait(unittest.TestCase):
         self.assertIn('href="/rayon/pecherskyi/"', t)               # будинок → район
         self.assertIn('надійшло 7 звернень. Найчастіше — вода (5) і світло (2)', t)
         self.assertLess(t.index('>Вода<'), t.index('>Світло<'))      # теми — від більшої
-        self.assertIn('Сусідній будинок у радіусі 300', t)
-        for k in ('Довідка — 199', '3 довідки — 449', 'Повний звіт — 299'):
+        self.assertIn('У сусідніх будинках у радіусі 300', t)   # ZAVDANNYA-177: людською мовою
+        for k in ('Довідка про цей будинок — 199', '3 довідки для трьох адрес — 449', 'повний звіт перед купівлею — 299'):   # ZAVDANNYA-177
             self.assertIn(k, t)
         self.assertIn('Події за 2023 з адресою будинку теж є — у підписці', t)
         tabl = t.split('Події з рішень')[1].split('</table>')[0]

@@ -94,7 +94,7 @@ class HolovnaLehka(unittest.TestCase):
 
     def test_roky_ozhyvaiut_i_smuha(self):
         s = self.vidkryty('/')            # «Роки оживають» за замовчуванням
-        s.wait_for_selector('.vau-lich', timeout=20000)
+        s.wait_for_selector('.vau-lich', state='attached', timeout=20000)   # ZAVDANNYA-177: на головній лічильник прихований
         s.wait_for_function("() => !document.querySelector('.vau-lich') || document.querySelector('.vau-lich--hasne')", timeout=60000)
         vydno = s.evaluate('() => MvKarta.colG()')
         if vydno == 'L':

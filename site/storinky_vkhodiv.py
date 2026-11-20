@@ -183,7 +183,7 @@ def urivok(b: dict | None, bud, versiia: str) -> str:
 <div class="por"><div class="por__shapka" aria-hidden="true"><span>Тема</span><span>цей будинок</span><span></span><span>сусідні</span><span></span></div>
 {ryady}</div>
 <p class="vkhid-urivok__z">{podii}</p>
-<p class="prymitka">Ті самі числа, що на відкритій сторінці будинку{f", дані станом на {e(versiia)}" if versiia else ""}. Скарга — звернення людей,
+<p class="prymitka">Ті самі числа, що на відкритій сторінці будинку{f", дані станом на {e(Z.data_slovamy(versiia))}" if versiia else ""}. Скарга — звернення людей,
 не перевірений факт. У довідці — ще місяці, статуси й події поруч з посиланням на кожне рішення.
 <a href="{b["url"]}">Відкрити сторінку цього будинку</a> · {zrazok}.</p></div>'''
 
@@ -275,7 +275,7 @@ def storinka_vkhodu(slug: str, adresa_saitu: str, ur: str, period_podii: str = '
         tilo += ('<section class="rozdil"><h2>Звідки дані</h2><p class="rozdil__pidpys">Скарги 1551 — відкриті дані міста (КМДА). '
                  'Події — з рішень судів у Єдиному державному реєстрі судових рішень: лише те, що дійшло до суду, а не всі події. '
                  'Колір і числа показують кількість, а не оцінку будинку. <a href="/pro-dani/">Як ми працюємо з даними</a>.</p></section>')
-    skrypty = ('/sait/sp.js',) if slug == 'yurysta' else ('/sait/poshuk.js',)
+    skrypty = ('/sait/sp.js',) if slug == 'yurysta' else ('/sait/poshuk-spilne.js', '/sait/poshuk.js')
     return Z.storinka(shlyakh=f'/dlia/{slug}/', title=v['title'], opys=v['opys'].format(**ts), tilo=tilo,
                       adresa_saitu=adresa_saitu, aktyvne='', skrypty=skrypty, indeksuvaty=False,
                       dodatkovo_head='<link rel="stylesheet" href="/sait/vkhid.css">\n')

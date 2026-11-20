@@ -22,4 +22,28 @@
     u.searchParams.set('dzherelo', mitka);
     a.setAttribute('href', u.pathname + u.search + u.hash);
   });
+
+})();
+
+// ZAVDANNYA-177 (ZVIT-165, п. 5): адреса з поля сторінки входу йде в кнопку ціни — на оплаті не вводити вдруге.
+// Знайдено будинок (перша підказка пошуку — сторінка будинку) — його адреса сторінки й назва; ні — те, що введено.
+(function () {
+  'use strict';
+  var pole = document.getElementById('poshuk-vulytsi');
+  if (!pole || !document.querySelector('[data-vkhid]')) return;
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href*="/oplata/"]');
+    var z = (pole.value || '').trim().slice(0, 200);
+    if (!a || !z) return;
+    var u = new URL(a.getAttribute('href'), window.location.href);
+    if (u.origin !== window.location.origin || u.pathname !== '/oplata/' || u.searchParams.get('budynok')) return;
+    var bud = document.querySelector('#poshuk-spysok a[href^="/budynok/"]');
+    if (bud && /\d/.test(z)) {
+      u.searchParams.set('budynok', bud.getAttribute('href'));
+      u.searchParams.set('adresa', bud.firstChild ? bud.firstChild.textContent : z);
+    } else {
+      u.searchParams.set('adresa', z);
+    }
+    a.setAttribute('href', u.pathname + u.search + u.hash);
+  }, true);
 })();

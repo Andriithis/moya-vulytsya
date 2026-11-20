@@ -265,6 +265,44 @@ def slug_rayonu(r: str) -> str:
     return D.translit(r)
 
 
+# ZVIT-165, п. 4 (ZAVDANNYA-177): «У Оболонський районі» → «В Оболонському районі». Місцевий відмінок прикметника:
+# «-ський» → «-ському», «-цький» → «-цькому»; «у/в» — за першою літерою (перед голосною на початку речення — «в»).
+GOLOSNI = 'АЕЄИІЇОУЮЯаеєиіїоуюя'
+
+
+def rayon_mistsevyi(r: str) -> str:
+    """«Оболонський» → «Оболонському»; «Солом'янський» → «Солом'янському»; інше закінчення — як є."""
+    return re.sub(r'(ськ|цьк|зьк)ий$', r'\1ому', r)
+
+
+def u_rayoni(r: str, z_velykoi: bool = True) -> str:
+    """«В Оболонському районі», «У Дарницькому районі» (або з малої — посеред речення)."""
+    pr = 'в' if r[:1] in GOLOSNI else 'у'
+    return f'{pr.upper() if z_velykoi else pr} {rayon_mistsevyi(r)} районі'
+
+
+# ZVIT-165, п. 8: вулиця на межі районів (Хрещатик — Печерський і Шевченківський) — усі райони, де в неї помітна частка
+# подій; будинок — свій район з координати (dani-edrsr/src/budynky_sait.py, S-М.21). Тоді вулиця й будинок не суперечать.
+CHASTKA_RAYONU = 0.1
+
+
+def rayony_vulytsi(v: D.Vulytsia, n: int = 3) -> list:
+    """Головний район вулиці і ті, де в неї ≥ 10 % і ≥ 3 подій (не більше трьох)."""
+    if not v.rayony:
+        return []
+    vsogo = sum(v.rayony.values())
+    rr = v.rayony.most_common()
+    return [rr[0][0]] + [r for r, k in rr[1:n] if k >= 3 and k >= CHASTKA_RAYONU * vsogo]
+
+
+def rayony_tekst(rr: list, slovo: bool = True) -> str:
+    """['Печерський', 'Шевченківський'] → «Печерський і Шевченківський райони»; без слова — для підказки пошуку."""
+    if not rr:
+        return 'Київ' if slovo else ''
+    t = rr[0] if len(rr) == 1 else ', '.join(rr[:-1]) + ' і ' + rr[-1]
+    return t + ((' район' if len(rr) == 1 else ' райони') if slovo else '')
+
+
 # ---------------------------------------------------------------- рамка сторінки
 
 MISIATSI = ('січень', 'лютий', 'березень', 'квітень', 'травень', 'червень', 'липень', 'серпень', 'вересень',
@@ -289,6 +327,18 @@ def onovleno(versiia: str) -> str:
     if not m or not 1 <= int(m.group(2)) <= 12:
         return ''
     return (f'<p class="onovleno"><time datetime="{e(versiia)}">Оновлено: {MISIATSI[int(m.group(2)) - 1]} {m.group(1)}</time></p>')
+
+
+MISIATSI_RODOVYI = ('січня', 'лютого', 'березня', 'квітня', 'травня', 'червня', 'липня', 'серпня', 'вересня', 'жовтня',
+                    'листопада', 'грудня')
+
+
+def data_slovamy(versiia: str) -> str:
+    """«2026-11-08» → «8 листопада 2026» — для видимого тексту (ZVIT-165, п. 10); не дата — як є."""
+    m = re.match(r'^(\d{4})-(\d{2})-(\d{2})', versiia or '')
+    if not m or not 1 <= int(m.group(2)) <= 12:
+        return versiia or ''
+    return f'{int(m.group(3))}{NBSP}{MISIATSI_RODOVYI[int(m.group(2)) - 1]} {m.group(1)}'
 
 
 def og_kartynka(adresa_saitu: str, url: str, alt: str) -> str:
@@ -355,6 +405,7 @@ def storinka(*, shlyakh: str, title: str, opys: str, tilo: str, adresa_saitu: st
 {css_mapy}<link rel="stylesheet" href="/sait/sait.css">
 {dodatkovo_head}</head>
 <body{' class="z-kartoyu"' if pered_main else ''}>
+<a class="do-zmistu" href="#zmist">Перейти до змісту</a>
 <header class="shapka">
 <div class="shapka__vnutri">
 <a class="lohotyp" href="/" aria-label="Моя вулиця — на головну">{ZNAK}<span class="lohotyp__nazva">Моя вулиця</span></a>
@@ -362,7 +413,7 @@ def storinka(*, shlyakh: str, title: str, opys: str, tilo: str, adresa_saitu: st
 {'' if pered_main else KNOPKA_TEMY}
 </div>
 </header>
-{pered_main}<main class="storinka">
+{pered_main}<main class="storinka" id="zmist" tabindex="-1">
 {tilo}
 </main>
 <footer class="pidval">
@@ -442,7 +493,7 @@ def blok_media(d: dict, slug: str, baza: str | None = None) -> str:
  loading="lazy" alt="{e(d['nazva'])}: {d['podii']} подій з рішень судів у колі {d['radius']} м — картка для медіа"></a>
 <ul class="media-faily">{faily}</ul>
 <p class="prymitka"><b>Умови:</b> {e(d['umovy'])} Числа — станом на
-{e('.'.join(reversed(d['versiia'].split('-'))))}; оновлюються з кожним випуском.</p></section>'''
+{e(data_slovamy(d['versiia']))}; оновлюються з кожним випуском.</p></section>'''
 
 
 def blok_sudova_praktyka(statti_vulytsi: dict, sp_statti: dict | None) -> str:
@@ -464,10 +515,11 @@ def blok_sudova_praktyka(statti_vulytsi: dict, sp_statti: dict | None) -> str:
 def storinka_vulytsi(dn: D.Dani, v: D.Vulytsia, pr: dict, adresa_saitu: str, susidy: list, budynky: list | None = None,
                      media: dict | None = None, mistsia: list | None = None, sp_statti: dict | None = None) -> str:
     rayon = v.rayony.most_common(1)[0][0] if v.rayony else None
-    inshi_rayony = [r for r, _ in v.rayony.most_common()[1:] if v.rayony[r] >= 3]
+    rr = rayony_vulytsi(v)
+    inshi_rayony = [r for r, _ in v.rayony.most_common()[1:] if v.rayony[r] >= 3 and r not in rr]
     vsogo = pr['vsogo']
     roky_t = PERIOD_VIDKRYTYI
-    rayon_t = f'{rayon} район' if rayon else 'Київ'
+    rayon_t = rayony_tekst(rr)
     # ZAVDANNYA-154: шаблони під запити людей — site/zaholovky.py
     import zaholovky as ZH
     title = ZH.title_vulytsi(v.nazva, rayon, podii_slovo(vsogo), roky_t)
@@ -598,7 +650,7 @@ def storinka_vulytsi(dn: D.Dani, v: D.Vulytsia, pr: dict, adresa_saitu: str, sus
     chastyny.append('<p class="prymitka">Дані — з рішень судів, які дійшли до реєстру; це не всі події на вулиці. '
                     f'Події без точної адреси сюди не потрапили. Домашнє насильство рахуємо нарівні з іншими подіями — лише числом. Статеві '
                     f'злочини й справи щодо дітей на сторінках вулиць не рахуємо — лише в загальному числі великих сот на карті Києва. '
-                    f'Дані станом на {e(dn.versiia)}.</p>')
+                    f'Дані станом на {e(data_slovamy(dn.versiia))}.</p>')
 
     # schema.org/Place
     tsentr = None
@@ -731,15 +783,15 @@ def storinka_pokazhchyka(vulytsi: list, rayony: list, adresa_saitu: str, rayon: 
     opys = (f'Покажчик вулиць Києва ({rayon} район) з кількістю подій у даних судів.' if rayon
             else 'Покажчик вулиць Києва за абеткою й районами: скільки подій із судових рішень на кожній вулиці.')
     return storinka(shlyakh=shlyakh, title=f'{nazva} — події в даних судів | Моя вулиця', opys=opys, tilo=tilo,
-                    adresa_saitu=adresa_saitu, aktyvne='vulytsi/', skrypty=('/sait/poshuk.js',))
+                    adresa_saitu=adresa_saitu, aktyvne='vulytsi/', skrypty=('/sait/poshuk-spilne.js', '/sait/poshuk.js'))
 
 
 def holovna(dn: D.Dani, vulytsi: list, rayony: list, adresa_saitu: str, sudova_praktyka: bool = False,
             zastavka: dict | None = None) -> str:
     """Головна — одразу карта Києва з пошуком (AGENTS.md, розд. 3: без вступу), під нею — входи."""
     tilo = f'''<section class="vstup-ryad">
-<div><h1 class="h-mala">Що відбувається під боком</h1>
-<p class="prymitka">{chyslo(len(vulytsi))} вулиць Києва зі своєю сторінкою: скільки подій, коли, яких видів. Дані станом на {e(dn.versiia)};
+<div><h2 class="h-mala">Що відбувається під боком</h2>
+<p class="prymitka">{chyslo(len(vulytsi))} вулиць Києва зі своєю сторінкою: скільки подій, коли, яких видів. Дані станом на {e(data_slovamy(dn.versiia))};
 безкоштовно — {PERIOD_VIDKRYTYI}, {PERIOD_ZAMKNENYI} — у підписці.</p></div>
 </section>
 <section class="vkhody" aria-label="Куди далі">
@@ -761,8 +813,8 @@ def holovna(dn: D.Dani, vulytsi: list, rayony: list, adresa_saitu: str, sudova_p
                       'logo': adresa_saitu + '/zahlushka/ikony/ikona-192.png'})
     return storinka(shlyakh='/', title='Моя вулиця — що відбувається під боком: вулиці й будинки Києва', dodatkovo_head=ld + predzavantazhennia(zastavka),
                     opys='Що відбувається під боком: скарги мешканців і події з рішень судів — на кожній вулиці й по кожному будинку Києва. Карта, покажчик вулиць, гра.',
-                    tilo=tilo, adresa_saitu=adresa_saitu, pered_main=ekran_karty(dn),
-                    skrypty=('/sait/karta.js',))
+                    tilo=tilo, adresa_saitu=adresa_saitu, pered_main=ekran_karty(dn, holovna=True),
+                    skrypty=('/sait/karta.js', '/sait/poshuk-spilne.js', '/sait/poshuk-holovna.js'))
 
 
 def soty_geojson(dn: D.Dani, riven: int) -> dict:
@@ -847,7 +899,12 @@ def dani_ihor() -> str:
     return ''.join(f' data-{k}="{e(v)}"' for k, v in sorted(IHRY_DANI.items()))
 
 
-def ekran_karty(dn: D.Dani) -> str:
+# ZVIT-165, п. 1 (ZAVDANNYA-177): перший екран головної — одне речення, що це, і одна дія, як на /dlia/meshkantsia/.
+# Без ціни першим словом і без бігучого лічильника місяців (на головній його не видно; на /karta/ лишається).
+REChENNIA_HOLOVNOI = 'Скарги мешканців до 1551 і події з рішень судів — по кожній вулиці й кожному будинку Києва.'
+
+
+def ekran_karty(dn: D.Dani, holovna: bool = False) -> str:
     """Карта на весь екран у вигляді макета М7 (MV-58): угорі ліворуч — рядок пошуку зі значками 3D/2D, день/ніч і «ⓘ»,
     під ним — фільтр «Усі події ▾»; картка соти — «в повітрі» праворуч (телефон — шторка); джерела — правий нижній кут
     (телефон — у «ⓘ»). Легенди й «+/−» немає. Поведінка зуму — як у карті Києва (S-К.4, S-К.6, S-К.13, S-К.18, S-К.21)."""
@@ -862,7 +919,10 @@ def ekran_karty(dn: D.Dani) -> str:
     kub = svg_html('<path d="M12 3 20 7.5V16.5L12 21 4 16.5V7.5Z"/><path d="M4 7.5 12 12 20 7.5M12 12V21"/>', 20)
     # Ігри на карті (≈ 215 КБ скриптів) першому екрану не потрібні: karta.js вантажить їх після завантаження сторінки,
     # з живою картою або з першим натиском «Ігри» (ZAVDANNYA-164).
-    return f'''<section class="ekran-karty" aria-label="Карта Києва" data-ihry="{' '.join(SKRYPTY_IHOR)}">
+    VSTUP_HOLOVNOI = (f'<div class="vstup-holovnoi plashka"><h1 class="vstup-holovnoi__rech">{REChENNIA_HOLOVNOI}</h1>'
+                      '<a class="knopka knopka--holovna klav" href="/miy-budynok/?dzherelo=holovna">Перевірити свій будинок</a></div>')
+    klas = ' ekran-karty--holovna' if holovna else ''
+    return f'''<section class="ekran-karty{klas}" aria-label="Карта Києва" data-ihry="{' '.join(SKRYPTY_IHOR)}">
 <div id="karta-mista" class="karta-povna" data-soty-7="/karta/soty-7.json" data-soty-8="/karta/soty-8.json" data-soty-9="/karta/soty-9.json" data-soty-8-m="/karta/soty-8-m.json" data-soty-9-m="/karta/soty-9-m.json" data-poshuk="/karta/poshuk.json" data-rayony="/karta/rayony.json" data-versiia="{e(dn.versiia)}" data-oplata="{e(T.OPLATA['rezhym'])}" data-tsina-pidpysky="{e(T.tsina('pidpyska'))}" data-tsina-dovidky="{e(T.tsina('dovidka'))}"></div>
 <div class="zastavka" aria-hidden="true"></div>
 <noscript><p class="karta-bez-js">Щоб побачити карту, увімкніть JavaScript. Без нього — <a href="/vulytsi/">покажчик вулиць</a>.</p></noscript>
@@ -879,7 +939,7 @@ def ekran_karty(dn: D.Dani) -> str:
 <button id="finfo" class="znachok klav" type="button" aria-label="Як читати карту" title="Як читати карту" aria-expanded="false" aria-controls="info">{info_ik}</button>
 </div>
 <ul id="pidkazky" class="plashka" role="listbox" aria-label="Знайдені місця" hidden></ul>
-<a class="haslo-karty plashka klav" href="/miy-budynok/?dzherelo=holovna"><b>Що болить вашому будинку?</b><span>Довідка — {T.tsina("dovidka")}</span></a>
+{VSTUP_HOLOVNOI if holovna else f'<a class="haslo-karty plashka klav" href="/miy-budynok/?dzherelo=holovna"><b>Що болить вашому будинку?</b><span>Довідка — {T.tsina("dovidka")}</span></a>'}
 <div id="filtr" class="filtr">
 <button type="button" class="f-knopka klav" aria-expanded="false" aria-controls="f-spysok">{filtr_ik}<span id="f-pidpys">Усі події</span><span aria-hidden="true">▾</span></button>
 <div id="f-spysok" class="f-spysok plashka" hidden>
@@ -933,7 +993,7 @@ def poshuk_karty(dn: D.Dani, vulytsi: list, tsentry: dict) -> dict:
             continue
         buly.add(v.nazva)
         inshi = sorted(set(v.varianty) | set(stari.get(v.slug, [])))
-        vs.append([v.nazva, v.rayony.most_common(1)[0][0] if v.rayony else '', v.slug, *tsentry[v.slug], len(v.nedavni),
+        vs.append([v.nazva, rayony_tekst(rayony_vulytsi(v), False), v.slug, *tsentry[v.slug], len(v.nedavni),
                    ' '.join(inshi)])
     rayony = []
     if dn.rayony is not None:
@@ -942,6 +1002,26 @@ def poshuk_karty(dn: D.Dani, vulytsi: list, tsentry: dict) -> dict:
             rayony.append([nazva, round(min(x[1][2] for x in r), 4), round(min(x[1][0] for x in r), 4),
                            round(max(x[1][3] for x in r), 4), round(max(x[1][1] for x in r), 4)])
     return {'versiia': dn.versiia, 'vulytsi': vs, 'rayony': rayony}
+
+
+def mistsevosti(pereimenuvannya: Path | None, rayony: list) -> list:
+    """Народні назви місцевостей («Оболонь», «Троєщина», «Борщагівка») → райони (ZVIT-165, п. 3; ZAVDANNYA-177).
+    Словник — у даних, не в коді: dani-edrsr/config/mistsevosti-<місто>.csv поруч із таблицею перейменувань.
+    Вихід для пошуку: [назва, [інші назви], [[район, адреса сторінки району], …]] — лише райони, що мають сторінку."""
+    if not pereimenuvannya:
+        return []
+    p = Path(pereimenuvannya)
+    f = p.with_name(p.name.replace('pereimenuvannia-', 'mistsevosti-', 1))
+    if f == p or not f.is_file():
+        return []
+    import csv
+    vykhid = []
+    with open(f, encoding='utf-8') as fl:
+        for r in csv.DictReader(fl):
+            rr = [[x, f'/rayon/{slug_rayonu(x)}/'] for x in (r.get('rayony') or '').split(';') if x.strip() in rayony]
+            if r.get('nazva') and rr:
+                vykhid.append([r['nazva'].strip(), [x.strip() for x in (r.get('inshi_nazvy') or '').split(';') if x.strip()], rr])
+    return vykhid
 
 
 def geojson_rayoniv(dn: D.Dani, zi_storinkoyu: set) -> dict:
@@ -982,7 +1062,7 @@ def storinka_karty(dn: D.Dani, adresa_saitu: str, zastavka: dict | None = None) 
     return storinka(shlyakh='/karta/', title='Карта Києва — події з судових рішень | Моя вулиця', dodatkovo_head=predzavantazhennia(zastavka),
                     opys='Карта Києва шестикутниками: скільки подій із судових рішень у кожній частині міста, яких видів і коли.',
                     tilo=tilo, adresa_saitu=adresa_saitu, aktyvne='karta/', pered_main=ekran_karty(dn),
-                    skrypty=('/sait/karta.js',))
+                    skrypty=('/sait/karta.js', '/sait/poshuk-spilne.js', '/sait/poshuk-holovna.js'))
 
 
 def storinka_404(adresa_saitu: str) -> str:
@@ -990,6 +1070,25 @@ def storinka_404(adresa_saitu: str) -> str:
             'Спробуйте <a href="/vulytsi/">покажчик вулиць</a> або <a href="/karta/">карту Києва</a>.</p></section>')
     return storinka(shlyakh='/404.html', title='Сторінку не знайдено | Моя вулиця', opys='Сторінку не знайдено.',
                     tilo=tilo, adresa_saitu=adresa_saitu, indeksuvaty=False)
+
+
+# ZVIT-165, п. 2 (ZAVDANNYA-177): «такого будинку немає» — окрема сторінка для /budynok/…, а не 404 про вулиці.
+# Збирач пише шаблон; Worker (site/worker/budynky.js, nemaieBudynku) підставляє назву вулиці з покажчика й номер з адреси.
+MITKA_NEMAIE = ('<!--NEMAIE-BUDYNKU--><span class="mitka">будинок</span><h1>Такого будинку в даних немає</h1>'
+                '<p>Сторінки будинку немає: у даних немає ні звернень до 1551, ні подій з рішень судів з цією адресою.</p>'
+                '<!--/NEMAIE-BUDYNKU-->')
+
+
+def storinka_nemaie_budynku(adresa_saitu: str) -> str:
+    tilo = (f'<section class="zaholovok">{MITKA_NEMAIE}</section>'
+            '<section class="rozdil"><h2>Знайти інший будинок</h2>'
+            '<form class="poshuk" role="search" action="/vulytsi/"><label class="prykhovano" for="poshuk-vulytsi">Вулиця й номер будинку</label>'
+            '<input id="poshuk-vulytsi" type="search" autocomplete="off" placeholder="Вулиця або адреса, наприклад: Хрещатик 22" value="%%ZAPYT%%">'
+            '<ul class="poshuk__spysok" id="poshuk-spysok" hidden></ul></form>'
+            '<p class="rozdil__pidpys">Або відкрийте <a href="/vulytsi/">покажчик вулиць</a> чи <a href="/karta/">карту Києва</a>.</p></section>')
+    return storinka(shlyakh='/404.html', title='Такого будинку в даних немає | Моя вулиця', opys='Такого будинку в даних немає: ні звернень до 1551, ні подій з рішень судів з цією адресою. Знайдіть інший будинок.',
+                    tilo=tilo, adresa_saitu=adresa_saitu, indeksuvaty=False, aktyvne='miy-budynok/',
+                    skrypty=('/sait/poshuk-spilne.js', '/sait/poshuk.js'))
 
 
 def storinka_hra_pereadresatsiia(tsil: str) -> str:
@@ -1075,7 +1174,7 @@ def zapysaty(shlyakh: Path, tekst: str) -> None:
 def kopiyuvaty_spilne(vykhid: Path) -> None:
     sait = vykhid / 'sait'
     (sait / 'shryfty').mkdir(parents=True, exist_ok=True)
-    for f in ('karta.js', 'poshuk.js', 'tema.js', 'oplata.js', 'sp.js', 'sp.css', 'budynok-pole.js', 'vkhid.js', 'vkhid.css',
+    for f in ('karta.js', 'poshuk.js', 'poshuk-spilne.js', 'poshuk-holovna.js', 'tema.js', 'oplata.js', 'sp.js', 'sp.css', 'budynok-pole.js', 'vkhid.js', 'vkhid.css',
               'biznes.js', 'biznes.css', 'pravo.css'):
         shutil.copyfile(DZHERELO / 'sait' / f, sait / f)
     for f in ('hra-yadro.js', 'vulytsia-yadro.js'):          # спільне ядро ігор (ZAVDANNYA-117)
@@ -1232,7 +1331,7 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
     for stara, tsili in dn.zvedennia.pereimenuvannia:
         for t in tsili:
             stari_nazvy[t].add(stara)
-    pokazhchyk = [[v.slug, v.nazva, v.rayony.most_common(1)[0][0] if v.rayony else '', len(v.nedavni),
+    pokazhchyk = [[v.slug, v.nazva, rayony_tekst(rayony_vulytsi(v), False), len(v.nedavni),
                    ' '.join(sorted(set(v.varianty) | stari_nazvy.get(v.slug, set())))]
                   for v in sorted(vulytsi, key=lambda v: (kliuch_abetky(v.korotka), v.slug))]
     zapysaty(vykhid / 'vulytsi' / 'pokazhchyk.json', json.dumps(pokazhchyk, ensure_ascii=False, separators=(',', ':')))
@@ -1274,9 +1373,12 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
     zapysaty(vykhid / 'karta' / 'rayony.json', json.dumps(geojson_rayoniv(dn, set(rayony)), ensure_ascii=False, separators=(',', ':')))
     zapysaty(vykhid / 'karta' / 'poshuk.json', json.dumps(poshuk_karty(dn, vulytsi, tsentry_vulyts), ensure_ascii=False,
                                                           separators=(',', ':')))
+    zapysaty(vykhid / 'karta' / 'mistsevosti.json', json.dumps(mistsevosti(pereimenuvannya, rayony), ensure_ascii=False,
+                                                                separators=(',', ':')))
     zapysaty(vykhid / 'karta' / 'index.html', storinka_karty(dn, adresa_saitu, fayly_zastavky))
     zapysaty(vykhid / 'index.html', holovna(dn, vulytsi, rayony, adresa_saitu, bool(sudova_praktyka), fayly_zastavky))
     zapysaty(vykhid / '404.html', storinka_404(adresa_saitu))
+    zapysaty(vykhid / '_404-budynok.html', storinka_nemaie_budynku(adresa_saitu))
 
     # Будинки, райони, вітрини, оплата-заглушка, видалення, про дані (ZAVDANNYA-85).
     pachky = KH.Pachky(len(bud.spysok)) if (bud and khostynh == 'workers') else None

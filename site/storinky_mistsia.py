@@ -154,7 +154,7 @@ def storinka_mistsia(dn: D.Dani, m: MS.Mistse, pr: dict, adresa_saitu: str, bud=
 <div class="diyi">{knopka_pidpysky}
 <a class="knopka" href="/karta/">Карта Києва</a></div></section>''')
     ch.append('<p class="prymitka">Дані — з рішень судів, які дійшли до реєстру; це не всі події тут. Рахуємо лише події, де '
-              f'суд назвав саме це місце; домашнє насильство — нарівні, статеві й щодо дітей — ні. Дані станом на {e(dn.versiia)}.</p>')
+              f'суд назвав саме це місце; домашнє насильство — нарівні, статеві й щодо дітей — ні. Дані станом на {e(Z.data_slovamy(dn.versiia))}.</p>')
 
     title = f'{nazva}, Київ: {Z.podii_slovo(vsogo)} з рішень судів {roky_t} | Моя вулиця'
     opys = (f'{nazva} ({m.rayon + " район" if m.rayon else "Київ"}): {Z.podii_slovo(vsogo)} з судових рішень за {roky_t}'
