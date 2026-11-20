@@ -11,6 +11,7 @@
 import { chromium } from 'playwright';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -38,7 +39,9 @@ function nazad(x, y, z) {
 }
 
 const meta = { _pro: 'Підкладка першого екрана: центр [довгота, широта], зум карти (плитки 512), розмір у CSS-пікселях, щільність. ' +
-  'Пише site/sait/pidkladka/znimaty.mjs; читає site/zastavka.py.', znyato: new Date().toISOString().slice(0, 10), varianty: {} };
+  'Пише site/sait/pidkladka/znimaty.mjs; читає site/zastavka.py. kolory_sha256 — відбиток site/sait/kolory.json на час знімків: ' +
+  'змінили кольори — перезніміть (тест стереже).', znyato: new Date().toISOString().slice(0, 10),
+  kolory_sha256: createHash('sha256').update(fs.readFileSync(path.join(TEKA, '..', 'kolory.json'))).digest('hex'), varianty: {} };
 const tymch = fs.mkdtempSync(path.join(os.tmpdir(), 'pidkladka-'));
 const brauzer = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 try {

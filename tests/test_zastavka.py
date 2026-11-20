@@ -61,6 +61,14 @@ class StaliZKartoyu(unittest.TestCase):
         self.assertLess(meta['telefon']['z'], zmina)
         self.assertGreater(meta['komp']['z'], zmina)
 
+    def test_pidkladka_znyata_z_tymy_zh_koloramy(self):
+        """Підкладку знято з поточними кольорами карти; змінили kolory.json — перезніміть (site/sait/pidkladka/znimaty.mjs)."""
+        import hashlib
+        import json
+        meta = json.loads((Z.PIDKLADKA / 'meta.json').read_text(encoding='utf-8'))
+        self.assertEqual(meta['kolory_sha256'], hashlib.sha256((KORIN / 'site' / 'sait' / 'kolory.json').read_bytes()).hexdigest(),
+                         'kolory.json змінено після знімків підкладки — перезніміть її')
+
     def test_chastky_yak_u_karti(self):
         soty = [{'properties': {'id': str(i), 'all3': n}} for i, n in enumerate([0, 1, 1, 2, 5, 9])]
         q = Z.chastky(soty)
