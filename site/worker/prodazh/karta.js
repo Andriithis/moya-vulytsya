@@ -9,6 +9,9 @@
 //   GET /pidpysnyk/                       сторінка карти (index.html чинної версії)
 //   GET /pidpysnyk/<файл>                 файли карти (dani/…, spravy/…, adresy/…, vendor/…, shryfty/…)
 //   GET /pidpysnyk/api/podii?la=…&lo=…    «події адреси»: JSON з адресою й подіями точки (клітинка → покажчик → справи)
+//   GET  /pidpysnyk/api/stezhu            «Стежу» з кабінету: { adresy: [{ budynok, adresa }] } (ZAVDANNYA-151)
+//   POST /pidpysnyk/api/stezhu            { dia: 'dodaty', adresa } | { dia: 'prybraty', budynok } — кнопка «Стежити»
+//                                         у картці адреси пише в ту саму таблицю stezhu, що й кабінет, і лист «Нове біля дому»
 //
 // Без входу — на вхід у кабінет; з входом, але без дійсної підписки — сторінка «Карта — для підписників» (403).
 // Ліміт (ZAVDANNYA-161, п. 2; MV-173): описи подій (spravy/<клітинка>.json і «події адреси») — до OPYSIV_NA_DEN запитів на
@@ -126,6 +129,33 @@ const LIMIT_VYCHERPANO = (env) => Response.json({ pomylka: 'limit',
   tekst: `За добу можна відкрити до ${limitOpysiv(env)} адрес і клітинок з описами. Завтра — знову.` },
 { status: 429, headers: { ...PRYVATNO, 'cache-control': 'private, no-store' } });
 
+const MAKS_STEZHU = 50;                 // адрес «Стежу» на людину — запобіжник від скрипта, не обмеження для людини
+
+/** «Стежу» з картки адреси (ZAVDANNYA-151): ті самі таблиця й пошук будинку, що в кабінеті (index.js, diiaKabinetu). */
+async function stezhu(request, env, url, ja) {
+  const spysok = async () => L.vsi(env, 'SELECT budynok, adresa FROM stezhu WHERE korystuvach_id = ? ORDER BY stvoreno', ja.id);
+  const h = { ...PRYVATNO, 'cache-control': 'private, no-store' };
+  if (request.method === 'GET') return Response.json({ adresy: await spysok() }, { headers: h });
+  // запис — лише з нашого сайту (як форми кабінету): чужа сторінка не додасть адрес у чужий кабінет
+  const o = request.headers.get('origin');
+  if (!o || o !== new URL(env.ADRESA_SAITU || url.origin).origin) return Response.json({ pomylka: 'origin' }, { status: 403, headers: h });
+  let f = {};
+  try { f = await request.json(); } catch { f = {}; }
+  if (f.dia === 'prybraty') {
+    await L.zrobyty(env, 'DELETE FROM stezhu WHERE korystuvach_id = ? AND budynok = ?', ja.id, String(f.budynok || ''));
+    return Response.json({ ok: true, adresy: await spysok() }, { headers: h });
+  }
+  if (f.dia !== 'dodaty') return Response.json({ pomylka: 'dia' }, { status: 400, headers: h });
+  const z = await L.znaityBudynok(env, url, String(f.adresa || '').slice(0, 200));
+  if (!z.budynok) return Response.json({ ok: false, chomu: L.chomuNeZnaideno(z) }, { status: 404, headers: h });
+  const vzhe = await spysok();
+  if (!vzhe.some((x) => x.budynok === z.budynok) && vzhe.length >= MAKS_STEZHU) {
+    return Response.json({ ok: false, chomu: `У «Стежу» вже ${MAKS_STEZHU} адрес — приберіть зайві в кабінеті.` }, { status: 409, headers: h });
+  }
+  await L.zrobyty(env, 'INSERT OR IGNORE INTO stezhu (korystuvach_id, budynok, adresa, stvoreno) VALUES (?, ?, ?, ?)', ja.id, z.budynok, z.adresa, L.teper(env));
+  return Response.json({ ok: true, budynok: z.budynok, adresa: z.adresa, adresy: await spysok() }, { headers: h });
+}
+
 const dlyaPidpysnykiv = () => S.povidomlennia('Карта — для підписників',
   'Адреси й описи подій на карті — у підписці. Оформіть її або увійдіть тією поштою, на яку оформили.', 403,
   `<p><a class="knopka" href="/oplata/?tovar=pidpyska">Оформити підписку</a> <a href="/kabinet/">Кабінет</a></p>`);
@@ -135,12 +165,14 @@ export async function karta(request, env, url, ja) {
   const s = url.pathname;
   if (!(s === KOREN.slice(0, -1) || s.startsWith(KOREN))) return null;
   if (!env.KARTA) return null;                         // сховище карти не прив'язано — карти підписника ще немає
-  if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('ні', { status: 405 });
+  const zapysStezhu = request.method === 'POST' && s === `${KOREN}api/stezhu`;
+  if (request.method !== 'GET' && request.method !== 'HEAD' && !zapysStezhu) return new Response('ні', { status: 405 });
   if (s === KOREN.slice(0, -1)) return Response.redirect(new URL(KOREN, url).toString(), 301);
   if (!ja) return Response.redirect(new URL('/kabinet/', url).toString(), 303);
   if (!(await maieDostup(env, ja))) return dlyaPidpysnykiv();
 
   const shliakh = s.slice(KOREN.length) || 'index.html';
+  if (shliakh === 'api/stezhu') return stezhu(request, env, url, ja);
   if (shliakh === 'api/podii') {
     const la = Number(url.searchParams.get('la')), lo = Number(url.searchParams.get('lo'));
     if (!Number.isFinite(la) || !Number.isFinite(lo) || Math.abs(la) > 90 || Math.abs(lo) > 180) {

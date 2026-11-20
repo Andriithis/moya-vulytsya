@@ -25,6 +25,9 @@
 //                                          закрити звернення, журнал прибраних (prybrannia.js, ZAVDANNYA-161, п. 5)
 //   POST /api/admin/prybraty-podiyu, povernuty-podiyu; GET /api/admin/prybrani  — те саме для скриптів, ключ ADMIN_KLIUCH
 //   GET  /api/vnutr/prybrani               список прибраних рішень для видавача й збирання даних (ключ VYDACHA_KLIUCH)
+//   POST /api/forma/biznes                 запит «Для бізнесу» зі сторінки /biznes/ — 'skoro' і 'tak' (biznes.js, ZAVDANNYA-157)
+//   /api/admin/biznes/…                    клієнти «Для бізнесу», посилання на N днів, вимкнення — ADMIN_KLIUCH (biznes.js)
+//   GET  /kopiia/<ключ>/…                  копія бази для компанії за особистим посиланням — 'skoro' і 'tak' (biznes.js)
 import TS from './tsiny.js';
 import { vypadkovyi, sha256, rivni } from './bezpeka.js';
 import { perekhidnyk, pidpysTestu, PomylkaPidpysu, NePidtrymano } from './perekhidnyky.js';
@@ -38,8 +41,9 @@ import * as SP from './sudova.js';
 import * as G from './google.js';
 import * as ST from './stezhu.js';
 import * as PR from './prybrannia.js';
+import * as BZ from './biznes.js';
 
-export const MARSHRUTY = ['/oplata/*', '/api/*', '/kabinet/*', '/dovidka/*', '/prodazh/*', '/pidpysnyk/*'];
+export const MARSHRUTY = ['/oplata/*', '/api/*', '/kabinet/*', '/dovidka/*', '/prodazh/*', '/pidpysnyk/*', '/kopiia/*'];
 const SESIIA_S = 30 * 86400, VKHID_S = 30 * 60, LYSTIV_NA_HODYNU = 5;
 export const STEZHU_MAKS = 100;
 
@@ -487,6 +491,8 @@ async function skasuvatyVsi(env, korystuvach_id) {
 async function admin(request, env, shliakh) {
   const avt = (request.headers.get('authorization') || '').replace(/^Bearer /, '');
   if (!env.ADMIN_KLIUCH || !rivni(avt, env.ADMIN_KLIUCH)) return new Response('ні', { status: 401 });
+  const b = shliakh.match(/^biznes\/(.+)$/);
+  if (b) return BZ.admin(request, env, new URL(request.url), b[1]);
   const v = shliakh.match(/^vyvantazhennia\/([a-z_]+)$/);
   if (v && request.method === 'GET') return F.vyvantazhennia(env, v[1]);
   // щоденна перевірка форм прибирає свої тестові рядки (лише канал «perevirka»)
@@ -546,7 +552,11 @@ async function spilne(request, env, url) {
   if (r && request.method === 'POST') {
     if (!zNashohoSaitu(request, env)) return new Response('ні', { status: 403 });
     if (await zabahato(request, env, 'forma')) return new Response('zabahato', { status: 429 });
-    return F.forma(request, env, r[1]);
+    return r[1] === 'biznes' ? BZ.zapyt(request, env) : F.forma(request, env, r[1]);
+  }
+  if (s === BZ.KOREN.slice(0, -1) || s.startsWith(BZ.KOREN)) {
+    if (await zabahato(request, env, 'kopiia')) return ZABAHATO();
+    return BZ.kopiia(request, env, url);
   }
   const a = s.match(/^\/api\/admin\/(.+)$/);
   if (a) return admin(request, env, a[1]);

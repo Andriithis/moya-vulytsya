@@ -75,6 +75,7 @@ def zminni(suho: bool) -> dict:
         'poshta': e.get('MV_POSHTA_SERVIS', 'zahlushka').strip() or 'zahlushka',
         'analityka': e.get('MV_CF_ANALITYKA', '').strip(),
         'karta': e.get('MV_KARTA_R2', '').strip() == 'tak',   # карта підписника зі сховища R2 (docs/PLATNA-CHASTYNA.md)
+        'biznes': e.get('MV_BIZNES_R2', '').strip() == 'tak',  # «Для бізнесу»: копії бази для компаній (docs/BIZNES-DOSTUP.md)
         'zapovnennya': e.get('MV_ZAPOVNENNYA', '').strip(),
         'vars': {k: e.get(f'MV_{k}', '').strip() for k in ('POSHTA_PARTNERA', 'POSHTA_VID', 'POSHTA_URL', 'LIQPAY_SANDBOX')},
     }
@@ -162,7 +163,8 @@ def zibraty(f: dict, z: dict, robocha: Path) -> dict:
     import zibraty_sait as ZS
     vykhid = robocha / 'sait'
     prodazh = {'d1': z['d1'], 'servis': z['servis'] if z['oplata'] == 'tak' else None,
-               'adresa': f'https://{z["domen"]}', 'poshta': z['poshta'], 'vars': z['vars'], 'karta': z.get('karta', False)}
+               'adresa': f'https://{z["domen"]}', 'poshta': z['poshta'], 'vars': z['vars'], 'karta': z.get('karta', False),
+               'biznes': z.get('biznes', False)}
     zapovnennya = json.loads(Path(z['zapovnennya']).read_text(encoding='utf-8')) if z['zapovnennya'] else None
     zvit = ZS.zibraty_sait(f['baza'], vykhid, f['pereimenuvannya'], KORIN / 'data' / 'borders.json',
                            adresa_saitu=f'https://{z["domen"]}', koloda=f['koloda'], budynky=f['budynky'],

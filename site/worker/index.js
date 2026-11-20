@@ -8,6 +8,7 @@ import { prybraty, nahadatyOsbb, shchomisiachnaOsbb, styratyZaStrokom } from './
 import { budynok } from './budynky.js';
 import { pidhaniaty } from './prodazh/vydavach.js';
 import { KOLODY, koloda } from './prodazh/prybrannia.js';
+import { nahadaty as nahadatyBiznes } from './prodazh/biznes.js';
 
 export const CHASTO = '*/10 * * * *';     // той самий рядок — у site/khostynh.py (triggers)
 
@@ -31,5 +32,6 @@ export default {
     await prybraty(env);
     await nahadatyOsbb(env, (env.ADRESA_SAITU || '').replace(/\/$/, ''));
     await shchomisiachnaOsbb(env);
+    await nahadatyBiznes(env);          // «Для бізнесу» (ZAVDANNYA-157): договір клієнта спливає за 14 днів — лист партнеру
   },
 };

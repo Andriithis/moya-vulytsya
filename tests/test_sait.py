@@ -795,7 +795,9 @@ class Sait(unittest.TestCase):
                 self.assertIn(int(re.sub(r'\D', '', n)), dozvoleni, f'{f.relative_to(self.sait)}: {n} грн')
         biznes = (self.sait / 'biznes' / 'index.html').read_text(encoding='utf-8')
         self.assertIn('ціна за домовленістю', biznes)
-        self.assertIn('href="/zahlushka/?shcho=kompaniya&amp;dzherelo=biznes#peredzamovlennya">Надіслати запит', biznes)
+        # ZAVDANNYA-157: своя форма запиту (POST /api/forma/biznes), стара форма заглушки — запасна
+        self.assertIn('id="biznes-forma"', biznes)
+        self.assertIn('href="/zahlushka/?shcho=kompaniya&amp;dzherelo=biznes#peredzamovlennya">запасна форма', biznes)
         mb = (self.sait / 'miy-budynok' / 'index.html').read_text(encoding='utf-8')
         self.assertIn('799\u00a0грн на місяць', mb)
         self.assertIn('1\u00a0490\u00a0грн на рік', (self.sait / 'osbb' / 'index.html').read_text(encoding='utf-8'))

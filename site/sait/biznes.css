@@ -1,0 +1,23 @@
+/* «Для бізнесу» (ZAVDANNYA-157): таблиця полів і форма запиту — у стилі сайту (docs/STYL.md), кольори — змінні sait.css. */
+.tablytsia-obhortka { overflow-x: auto; }
+.biznes-tablytsia { width: 100%; max-width: 860px; border-collapse: collapse; font-size: 15px; line-height: 22px; }
+.biznes-tablytsia th, .biznes-tablytsia td { text-align: left; vertical-align: top; padding: 10px 12px 10px 0; border-top: 1px solid var(--line); }
+.biznes-tablytsia thead th { border-top: 2px solid var(--ink); font-size: 13px; color: var(--muted); font-weight: 600; }
+.biznes-tablytsia th[scope="row"] { width: 38%; font-weight: 400; }
+.biznes-tablytsia code { font-size: 14px; color: var(--ink); background: var(--surface-tint); padding: 1px 6px; border-radius: var(--radius-s); }
+.biznes-tablytsia caption { caption-side: top; text-align: left; font-size: 14px; color: var(--muted); padding-bottom: 8px; }
+.biznes-tablytsia--pryklad td { font-variant-numeric: tabular-nums; }
+.biznes-forma { display: grid; gap: 16px; max-width: 560px; }
+.biznes-forma label, .biznes-forma legend { display: grid; gap: 6px; font-size: 15px; font-weight: 600; color: var(--ink); }
+.biznes-forma fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 8px; }
+.biznes-forma input:not([type]), .biznes-forma select, .biznes-forma textarea {
+  font: 400 16px/22px var(--sans); color: var(--ink); background: var(--surface); border: 1.5px solid var(--mezha);
+  border-radius: var(--radius-m); padding: 11px 14px; min-height: 48px; width: 100%; box-sizing: border-box; }
+.biznes-forma textarea { resize: vertical; }
+.biznes-forma input:focus-visible, .biznes-forma select:focus-visible, .biznes-forma textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.biznes-forma .vybir-riadok { display: flex; align-items: center; gap: 10px; font-weight: 400; min-height: 32px; }
+.biznes-forma .vybir-riadok input { width: 20px; height: 20px; accent-color: var(--accent); margin: 0; }
+.biznes-forma button { justify-self: start; min-width: 220px; }
+.biznes-forma button[disabled] { opacity: .6; }
+.biznes-forma__stan { margin: 0; font-size: 15px; color: var(--ink); min-height: 22px; }
+.biznes-forma__stan--pomylka { color: var(--ink); font-weight: 600; }
