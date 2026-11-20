@@ -96,6 +96,8 @@ site/hra/vulytsia-dnia.json
 !site/ihry/
 # Дані прототипу «Літопис міста» (ZAVDANNYA-140): з колоди, тож поза git.
 site/ihry/litopys/litopys.json
+# Дані «Кваліфікуй: кар'єра» (ZAVDANNYA-146): фабули з випуску, тож поза git.
+site/ihry/kariera/kariera.json
 # Сервер продажу (ZAVDANNYA-99): видавач довідок — у git.
 !site/prodazh/
 site/prodazh/__pycache__/
