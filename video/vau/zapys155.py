@@ -259,18 +259,19 @@ def p2(stan, P, ix):
             {'t0': 5.9, 't1': 8.2, 'styl': 'velykyi', 'tekst': 'Раз на місяць —\n*лист*', 'y': 330},
             {'t0': 8.3, 't1': 10.8, 'styl': 'velykyi', 'tekst': f'*{n_p} {fp(n_p)}* з рішень\nсудів поруч', 'y': 330},
             {'t0': 10.9, 't1': 13.2, 'styl': 'velykyi', 'tekst': f'*{D.chyslo(n_s)}* звернень\nдо 1551 поруч', 'y': 330},
-            {'t0': 13.3, 't1': 14.4, 'styl': 'velykyi', 'tekst': 'Ти знаєш\n*першим*', 'y': 330},
+            {'t0': 13.3, 't1': 14.4, 'styl': 'velykyi', 'tekst': 'Нове біля дому —\n*у пошті*', 'y': 330},
             {'t0': 14.5, 't1': 15.5, 'styl': 'baner', 'zag': 'Стежу за вулицею', 'knopka': 'Підписка 399 грн · ' + PROFIL, 'y': 1180},
         ],
         'dii': [
             {'t': 3.6, 'dia': 'skrol', 'do_sel': '#stezhu', 'tryv': 1.2},
             {'t': 5.0, 'dia': 'tap', 'sel': '#stezhu li, #stezhu p'},
             {'t': 5.9, 'dia': 'goto', 'url': '/__lyst155.html'},
-            {'t': 6.6, 'dia': 'skrol', 'do_px': 260, 'tryv': 1.0},
-            {'t': 8.3, 'dia': 'skrol', 'do_px': 520, 'tryv': 1.2},
-            {'t': 9.8, 'dia': 'skrol', 'do_px': 900, 'tryv': 1.0},
-            {'t': 10.9, 'dia': 'skrol', 'do_px': 1300, 'tryv': 1.4},
-            {'t': 12.6, 'dia': 'skrol', 'do_px': 1500, 'tryv': 0.8},
+            {'t': 6.8, 'dia': 'skrol', 'do_px': 60, 'tryv': 1.0},
+            {'t': 8.3, 'dia': 'skrol', 'do_frac': 0.25, 'tryv': 1.2},
+            {'t': 9.6, 'dia': 'skrol', 'do_frac': 0.5, 'tryv': 1.2},
+            {'t': 10.9, 'dia': 'skrol', 'do_frac': 0.85, 'tryv': 1.6},
+            {'t': 12.6, 'dia': 'skrol', 'do_frac': 1.0, 'tryv': 0.8},
+            {'t': 13.4, 'dia': 'tap', 'sel': 'a[href*="stezhu"]'},
         ],
         'zvuk': {'muzyka': {'styl': 'nich', 'bpm': 88}, 'efekty': [
             {'t': 0.0, 'typ': 'bas', 'v': 0.5}, {'t': 3.5, 'typ': 'vzhukh', 'v': 0.6}, {'t': 5.9, 'typ': 'spovishchennia', 'v': 0.7},
@@ -307,14 +308,15 @@ def p3(stan, P, ix):
             {'t0': 15.0, 't1': 16.0, 'styl': 'baner', 'zag': 'Повний звіт перед купівлею', 'knopka': '299 грн · ' + PROFIL, 'y': 1180},
         ],
         'dii': [
-            {'t': 4.4, 'dia': 'skrol', 'do_px': 400, 'tryv': 1.2},
-            {'t': 5.9, 'dia': 'skrol', 'do_px': 1500, 'tryv': 1.2},
-            {'t': 7.3, 'dia': 'skrol', 'do_px': 2100, 'tryv': 0.8},
-            {'t': 8.3, 'dia': 'skrol', 'do_px': 3300, 'tryv': 1.2},
-            {'t': 9.7, 'dia': 'skrol', 'do_px': 3900, 'tryv': 0.9},
-            {'t': 10.9, 'dia': 'skrol', 'do_frac': 0.62, 'tryv': 1.3},
-            {'t': 12.4, 'dia': 'skrol', 'do_frac': 0.70, 'tryv': 1.0},
-            {'t': 13.7, 'dia': 'skrol', 'do_frac': 0.78, 'tryv': 1.2},
+            {'t': 4.4, 'dia': 'skrol', 'do_px': 300, 'tryv': 1.2},
+            {'t': 5.9, 'dia': 'skrol', 'do_tekst': 'Як змінювалося', 'tryv': 1.2},
+            {'t': 7.3, 'dia': 'skrol', 'do_dy': 320, 'tryv': 0.9},
+            {'t': 8.3, 'dia': 'skrol', 'do_tekst': 'Що повторюється на вулиці', 'tryv': 1.2},
+            {'t': 9.7, 'dia': 'skrol', 'do_dy': 380, 'tryv': 0.9},
+            {'t': 10.7, 'dia': 'js', 'kod': '() => document.querySelectorAll("details").forEach(d => { if (d.closest("section, div") && d.textContent.length < 40000) d.open = true; })'},
+            {'t': 10.9, 'dia': 'skrol', 'do_tekst': 'Усі події з описами', 'tryv': 1.3},
+            {'t': 12.4, 'dia': 'skrol', 'do_dy': 420, 'tryv': 1.0},
+            {'t': 13.7, 'dia': 'skrol', 'do_dy': 380, 'tryv': 1.2},
         ],
         'zvuk': {'muzyka': {'styl': 'epik', 'bpm': 96, 'drop': 3.5}, 'efekty': [
             {'t': 0.0, 'typ': 'udar', 'v': 0.5}, {'t': 3.5, 'typ': 'vzhukh', 'v': 0.6}, {'t': 5.9, 'typ': 'pop'},
@@ -437,17 +439,18 @@ def p6(stan, P, ix):
             {'t0': 12.5, 't1': 13.5, 'styl': 'baner', 'zag': '«Судова практика» — скоро', 'knopka': PROFIL, 'y': 1180},
         ],
         'dii': [
-            {'t': 4.2, 'dia': 'skrol', 'do_px': 350, 'tryv': 1.2},
-            {'t': 5.9, 'dia': 'skrol', 'do_px': 800, 'tryv': 1.2},
-            {'t': 7.4, 'dia': 'skrol', 'do_px': 1150, 'tryv': 0.8},
-            {'t': 8.3, 'dia': 'skrol', 'do_px': 1600, 'tryv': 1.2},
-            {'t': 9.8, 'dia': 'skrol', 'do_px': 2000, 'tryv': 0.8},
-            {'t': 10.9, 'dia': 'tap', 'sel': 'a[href*="/oplata/"]'},
-            {'t': 11.3, 'dia': 'goto_sel', 'sel': 'a[href*="/oplata/"]'},
+            {'t': 4.2, 'dia': 'skrol', 'do_tekst': 'Що тут буде', 'tryv': 1.2},
+            {'t': 5.9, 'dia': 'tap', 'sel': 'main li:nth-of-type(1)'},
+            {'t': 7.1, 'dia': 'tap', 'sel': 'main li:nth-of-type(2)'},
+            {'t': 8.3, 'dia': 'tap', 'sel': 'main li:nth-of-type(3)'},
+            {'t': 9.5, 'dia': 'tap', 'sel': 'a[href*="/oplata/"]'},
+            {'t': 9.9, 'dia': 'goto_sel', 'sel': 'a[href*="/oplata/"]'},
+            {'t': 10.9, 'dia': 'pyshy', 'sel': '#poshta', 'tekst': 'yurist@proba.ua', 'tryv': 1.2},
         ],
         'zvuk': {'muzyka': {'styl': 'napruha', 'bpm': 90}, 'efekty': [
-            {'t': 0.0, 'typ': 'bas', 'v': 0.5}, {'t': 3.5, 'typ': 'vzhukh', 'v': 0.6}, {'t': 5.9, 'typ': 'pop'},
-            {'t': 8.3, 'typ': 'pop', 'h': 1.15}, {'t': 10.9, 'typ': 'klik', 'h': 1.2}, {'t': 12.5, 'typ': 'dzvin', 'h': 0.8, 'v': 0.5}]},
+            {'t': 0.0, 'typ': 'bas', 'v': 0.5}, {'t': 3.5, 'typ': 'vzhukh', 'v': 0.6}, {'t': 5.9, 'typ': 'klik'},
+            {'t': 7.1, 'typ': 'klik', 'h': 1.1}, {'t': 8.3, 'typ': 'klik', 'h': 1.2}, {'t': 9.5, 'typ': 'klik', 'h': 1.3},
+            {'t': 12.5, 'typ': 'dzvin', 'h': 0.8, 'v': 0.5}] + [{'t': round(10.9 + i * 0.08, 2), 'typ': 'druk', 'v': 0.4} for i in range(14)]},
         'pidpys': ['Запис справжньої сторінки «Судова практика» «Моєї вулиці» — товар ще не продається, можна залишити пошту. '
                    'Це статистика рішень, а не юридична допомога.', 'Залиш пошту — посилання в профілі.'],
     }
@@ -567,12 +570,16 @@ def zapysaty(brauzer, port, stan, R, Z, kadry=None, vykhid=VYHID, cpu=False):
         for d in [d for d in dii if d['t'] <= t and not d.get('_zrobleno')]:
             d['_zrobleno'] = True
             vykonaty(s, sait, d, t, krok)
-            if d['dia'] == 'skrol':
+            if d['dia'] in ('skrol', 'pyshy'):
                 aktyvni.append(d)
         for d in list(aktyvni):
             k_ = min(1.0, (t - d['t']) / d['tryv'])
-            y = d['_z'] + (d['_do'] - d['_z']) * (1 - (1 - k_) ** 3)
-            sait().evaluate('y => window.scrollTo(0, y)', y)
+            if d['dia'] == 'pyshy':
+                sait().evaluate('([sel, v]) => { const e = document.querySelector(sel); if (e) e.value = v; }',
+                                [d['sel'], d['tekst'][:max(1, round(len(d['tekst']) * k_))]])
+            else:
+                y = d['_z'] + (d['_do'] - d['_z']) * (1 - (1 - k_) ** 3)
+                sait().evaluate('y => window.scrollTo(0, y)', y)
             if k_ >= 1:
                 aktyvni.remove(d)
         krok(1000 / FPS, 25)
@@ -582,7 +589,8 @@ def zapysaty(brauzer, port, stan, R, Z, kadry=None, vykhid=VYHID, cpu=False):
                 (vykhid / 'znimky').mkdir(parents=True, exist_ok=True)
                 s.screenshot(path=str(vykhid / 'znimky' / f"{Z['id']}-{t:05.2f}.png"))
             continue
-        r = cdp.send('Page.captureScreenshot', {'format': 'jpeg', 'quality': 93})
+        r = cdp.send('Page.captureScreenshot', {'format': 'jpeg', 'quality': 93,     # кадр 1080×1920: вікно 540×960 × 2
+                                                     'clip': {'x': 0, 'y': 0, 'width': 540, 'height': 960, 'scale': 2}})
         p.stdin.write(base64.b64decode(r['data']))
         if k % (FPS * 5) == 0:
             print(f"  {Z['id']}: {k}/{n}", flush=True)
@@ -602,7 +610,7 @@ def zapysaty(brauzer, port, stan, R, Z, kadry=None, vykhid=VYHID, cpu=False):
         (vykhid / f"{Z['id']}.srt").write_text(zv['srt'], encoding='utf-8')
     mp4 = vykhid / f"{Z['id']}.mp4"
     subprocess.run([ffmpeg(), '-y', '-loglevel', 'error', '-i', str(mp4_vstup), '-i', str(tykho), '-i', str(wav),
-                    '-filter_complex', '[0:v][1:v]concat=n=2:v=1:a=0[v]', '-map', '[v]', '-map', '2:a',
+                    '-filter_complex', '[0:v]scale=1080:1920,setsar=1[a];[1:v]scale=1080:1920,setsar=1[b];[a][b]concat=n=2:v=1:a=0[v]', '-map', '[v]', '-map', '2:a',
                     '-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-pix_fmt', 'yuv420p', '-r', str(FPS),
                     '-af', 'loudnorm=I=-14:TP=-1.5:LRA=11', '-ar', '48000', '-c:a', 'aac', '-b:a', '192k', '-t', str(T),
                     '-movflags', '+faststart', str(mp4)], check=True)
@@ -628,6 +636,8 @@ def vykonaty(s, sait, d, t, krok):
         s.wait_for_timeout(1500)
         for _ in range(12):
             krok(50, 60)
+    elif dia == 'js':
+        sait().evaluate(d['kod'])
     elif dia == 'skrol':
         d['_z'] = sait().evaluate('() => window.scrollY')
         if d.get('do_sel'):
