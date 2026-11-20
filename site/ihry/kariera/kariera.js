@@ -407,7 +407,7 @@
       Object.keys(D.statti).forEach(function (k) {
         var st = D.statti[k];
         var n = D.spravy.filter(function (x) { return x.stattia === k; }).length;
-        spysok.appendChild(el('label', '', '<input type="checkbox" value="' + esc(k) + '"><span>' + esc(statt(k)) + '<br><small>' + esc(st.korotko || st.nazva) + ' · ' + n + ' справ</small></span>'));
+        spysok.appendChild(el('label', '', '<input type="checkbox" value="' + esc(k) + '"><span>' + esc(statt(k)) + '<br><small>' + esc(st.korotko || st.nazva) + ' · ' + chyslo(n, SPRAV) + '</small></span>'));
       });
       m.appendChild(spysok);
       var ryad = el('div', 'ryad', '<label>Справ: <select data-k="nabir-n"><option>5</option><option selected>10</option><option>15</option><option>20</option></select></label>' +
