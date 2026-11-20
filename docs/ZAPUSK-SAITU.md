@@ -178,7 +178,13 @@ python site/vyklasty.py ~/mv/vypusk-2026-11-08
 
 ## 9. Де читати форми
 
-Вивантаження в таблицю (відкривається в Excel / Google Таблицях), таблиця — `skoro`, `zayavka`, `zvernennya` або `podiya`:
+**Найпростіше — кабінет звернень** (ZAVDANNYA-161): увійдіть на сайті в кабінет поштою партнера (`POSHTA_PARTNERA` або список
+`PARTNERY`) → «Звернення людей» (`/kabinet/zvernennia/`): звернення, кнопки «Прибрати подію зараз» (зникає з карти підписника й
+ігор одразу, без перезбірки) і «Відповіли — закрити», журнал прибраних подій з кнопкою «Повернути». Це працює, коли продаж
+увімкнено (`PRODAZH=tak`); у режимі «скоро» — як нижче.
+
+Вивантаження в таблицю (відкривається в Excel / Google Таблицях), таблиця — `skoro`, `zayavka`, `zvernennya`, `podiya` або
+`prybrani_podii` (журнал прибраних подій):
 
 ```bash
 curl -H "Authorization: Bearer $ADMIN_KLIUCH" https://moyavulytsya.com.ua/api/admin/vyvantazhennia/zvernennya -o zvernennya.csv
@@ -186,7 +192,7 @@ curl -H "Authorization: Bearer $ADMIN_KLIUCH" https://moyavulytsya.com.ua/api/ad
 
 Або одразу в базі: `npx wrangler d1 execute moya-vulytsya-prodazh --remote --command "SELECT * FROM zvernennya WHERE zakryto IS NULL"`.
 **Звернення — відповісти протягом 10 робочих днів** (AGENTS.md, розд. 7); після відповіді —
-`UPDATE zvernennya SET zakryto = unixepoch() WHERE id = <номер>`. Видалити чиюсь пошту з «скоро» на прохання —
+`UPDATE zvernennya SET zakryto = unixepoch() WHERE id = <номер>` (через рік після цього сервер звернення стирає сам). Видалити чиюсь пошту з «скоро» на прохання —
 `DELETE FROM skoro WHERE poshta = '<пошта>'`.
 
 ## 10. Що не перевірено (хмара, 19.11)

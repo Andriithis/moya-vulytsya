@@ -270,7 +270,7 @@ function lystStezhu(lyst) {
 <form class="v-riadok" method="post" action="/kabinet/stezhu/lyst"><input type="hidden" name="lyst" value="${lyst.vymkneno ? 'tak' : 'ni'}"><button class="knopka" type="submit">${lyst.vymkneno ? 'Надсилати лист' : 'Не надсилати лист'}</button></form>`;
 }
 
-export function kabinet({ poshta, dovidky, stezhu, pidpysky, dostupno, povidomlennia: pov = '', bali = null, lyst = null }) {
+export function kabinet({ poshta, dovidky, stezhu, pidpysky, dostupno, povidomlennia: pov = '', bali = null, lyst = null, partner = false }) {
   const ryadky = dovidky.length ? dovidky.map((d) => `<li><b>${e(d.adresa)}</b> — ${VYD_DOVIDKY[d.rezhym] || 'довідка'}, ${data(d.stvoreno)}: ${posylannia(d)}</li>`).join('')
     : '<li>Поки немає довідок.</li>';
   const stezh = stezhu.length ? stezhu.map((s) => `<li><a href="${e(s.budynok)}">${e(s.adresa)}</a>
@@ -285,7 +285,7 @@ export function kabinet({ poshta, dovidky, stezhu, pidpysky, dostupno, povidomle
   const osbb = pidpysky.filter((p) => p.tovar === 'osbb').map((p) => rozdilOsbb(p, dovidky)).join('');
   const rieltor = pidpysky.find((p) => p.tovar === 'rieltor');
   return storinka('Кабінет', `<section class="zaholovok"><h1>Кабінет</h1><p>${e(poshta)}</p>
-${pov ? `<p class="prymitka" role="status">${e(pov)}</p>` : ''}</section>
+${pov ? `<p class="prymitka" role="status">${e(pov)}</p>` : ''}${partner ? '<p><a class="knopka" href="/kabinet/zvernennia/">Звернення людей (для партнера)</a></p>' : ''}</section>
 ${osbb}${rieltor ? rozdilRieltora(rieltor, dovidky) : ''}
 <section class="rozdil"><h2>Мої довідки</h2><div class="kartka"><ul class="spysok-tekst">${ryadky}</ul></div>
 <p class="prymitka">Можна взяти ще: ${dostupno.opys}. Довідку на будинок — кнопкою «Довідка» біля адреси нижче.</p></section>
@@ -311,6 +311,42 @@ ${vybir || '<p class="prymitka">Щоб обміняти на довідку, с�
 <form class="forma" method="post" action="/kabinet/obmin"><input type="hidden" name="tovar" value="pidpyska-misiats"><input type="hidden" name="zapyt" value="${e(zapyt)}m">
 <button class="knopka" type="submit"${balans >= m.baliv ? '' : ' disabled'}>Місяць підписки — ${m.baliv} балів</button></form></div>
 <p class="prymitka">Обмін — раз на 30 днів. Бали не передаються й не виводяться в гроші; бали з телефона до акаунта не переносяться.</p></section>`;
+}
+
+// ---------------------------------------------------------------- кабінет звернень партнера (ZAVDANNYA-161, п. 5)
+
+const SHCHO_NE_TAK = { mistse: 'не те місце', opys: 'неточний опис', vydalyty: 'прибрати подію', inshe: 'інше' };
+const PRYCHYNY = [['zvernennya', 'за зверненням людини'], ['skasovano', 'рішення скасоване чи змінене'],
+  ['vpiznaty', 'людину можна впізнати'], ['inshe', 'інше']];
+const posyl = (t) => (/^https:\/\/[^\s"<>]+$/.test(t || '') ? `<a href="${e(t)}" target="_blank" rel="noopener noreferrer">${e(t)}</a>` : e(t));
+const den = (t) => (t ? data(t) : '—');
+
+function formaPrybraty(z = null) {
+  return `<form class="forma" method="post" action="/kabinet/zvernennia/prybraty">
+${z ? `<input type="hidden" name="zvernennya" value="${e(z.id)}">` : ''}
+<label>Посилання на рішення суду або його номер<input name="posylannia" required maxlength="500" value="${e(z && /reyestr\.court\.gov\.ua|^\d{5,12}$/.test(z.posylannya) ? z.posylannya : '')}" placeholder="https://reyestr.court.gov.ua/Review/…"></label>
+<label>Чому<select name="prychyna">${PRYCHYNY.map(([k, n]) => `<option value="${k}"${(z ? 'zvernennya' : 'skasovano') === k ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
+<button class="knopka knopka--holovna" type="submit">Прибрати подію зараз</button></form>`;
+}
+
+/** Сторінка партнера: звернення (відкриті — зверху), прибрати подію одразу, закрити звернення, журнал прибраних. */
+export function zvernenniaPartnera({ vidkryti, zakryti, zhurnal, povidomlennia: pov = '' }) {
+  const zv = (z) => `<li class="kartka"><p><b>№${e(z.id)}</b> · ${den(z.stvoreno)} · ${e(SHCHO_NE_TAK[z.shcho_ne_tak] || z.shcho_ne_tak)}${z.zakryto ? ` · закрито ${den(z.zakryto)}` : ' · <b>чекає відповіді</b>'}</p>
+<p>Що: ${posyl(z.posylannya)}</p>${z.poyasnennya ? `<p>Пояснення: ${e(z.poyasnennya)}</p>` : ''}<p>Контакт: ${e(z.kontakt)}</p>
+${z.zakryto ? '' : `${formaPrybraty(z)}
+<form class="v-riadok" method="post" action="/kabinet/zvernennia/zakryty"><input type="hidden" name="zvernennya" value="${e(z.id)}"><button class="knopka" type="submit">Відповіли — закрити</button></form>`}</li>`;
+  const zh = zhurnal.length ? zhurnal.map((p) => `<li>${den(p.prybrano)} — ${posyl(p.posylannia)}${p.zvernennya_id ? ` (звернення №${e(p.zvernennya_id)})` : ''}${p.prychyna ? `, ${e((PRYCHYNY.find(([k]) => k === p.prychyna) || [0, p.prychyna])[1])}` : ''}${p.khto ? `, ${e(p.khto)}` : ''}: ${
+    p.povernuto ? `повернуто ${den(p.povernuto)}` : `<b>прибрано</b> <form class="v-riadok" method="post" action="/kabinet/zvernennia/povernuty"><input type="hidden" name="id" value="${e(p.id)}"><button class="knopka" type="submit">Повернути</button></form>`}</li>`).join('')
+    : '<li>Поки нічого не прибирали.</li>';
+  return storinka('Звернення', `<section class="zaholovok"><h1>Звернення людей</h1>
+<p>Строк — 10 робочих днів від звернення. «Прибрати подію зараз» прибирає її одразу з карти підписника й ігор сайту — без перезбірки.
+Сторінки будинків і вулиць показують лише числа: число стане меншим з наступним оновленням даних. Уже надіслані довідки — знімок на дату.</p>
+${pov ? `<p class="prymitka" role="status">${e(pov)}</p>` : ''}</section>
+<section class="rozdil"><h2>Чекають відповіді</h2><ul class="spysok-tekst">${vidkryti.length ? vidkryti.map(zv).join('') : '<li>Немає.</li>'}</ul></section>
+<section class="rozdil"><h2>Прибрати подію без звернення</h2><div class="kartka">${formaPrybraty()}</div></section>
+<section class="rozdil"><h2>Журнал прибраних подій</h2><div class="kartka"><ul class="spysok-tekst">${zh}</ul></div></section>
+<section class="rozdil"><h2>Закриті звернення</h2><ul class="spysok-tekst">${zakryti.length ? zakryti.map(zv).join('') : '<li>Немає.</li>'}</ul>
+<p class="prymitka">Закрите звернення сервер стирає через рік після закриття (політика, розд. 5). Журнал прибраних подій лишається — у ньому немає даних людини.</p></section>`);
 }
 
 export const CSS = `/* Сервер продажу (ZAVDANNYA-99): форми в стилі сайту (docs/STYL.md) */

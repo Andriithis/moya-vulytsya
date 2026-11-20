@@ -83,13 +83,16 @@ def teka_workera(vykhid: Path) -> Path:
 
 # Адреси, для яких Cloudflare спершу запускає скрипт (решту віддає сам). Продаж — site/worker/prodazh/index.js, MARSHRUTY.
 MARSHRUTY_PRODAZHU = ['/oplata/*', '/api/*', '/kabinet/*', '/dovidka/*', '/prodazh/*', '/pidpysnyk/*']
+# Колоди ігор — через скрипт, щоб позачергово прибрана подія зникла одразу (ZAVDANNYA-161; prodazh/prybrannia.js, KOLODY)
+KOLODY_IHOR = ['/ihry/koloda.json', '/ihry/vulytsia-dnia.json', '/ihry/litopys.json', '/ihry/kariera.json',
+               '/ihry/detektyv.json', '/ihry/kvalifikuy.json']
 R2_DOVIDOK = 'moya-vulytsya-dovidky'
 R2_KARTY = 'moya-vulytsya-karta'     # карта підписника (ZAVDANNYA-133): лише з prodazh['karta'], сховище створює партнер
 SERVISY_OPLATY = ('liqpay', 'mono', 'test')
 OBMEZHENNIA = {'limit': 20, 'period': 60}      # запитів однієї групи з однієї адреси за 60 с (prodazh/index.js, OBMEZHENI)
 # Не секретні змінні, які скрипт викладки може записати у wrangler.jsonc (ключі — лише `wrangler secret put`).
 DODATKOVI_ZMINNI = {'POSHTA_PARTNERA', 'POSHTA_VID', 'POSHTA_URL', 'LIQPAY_SANDBOX', 'LIQPAY_HESH', 'DOVIDKY_DNIV',
-                    'KARTA_NA_DEN', 'POSHTA_KONTAKT', 'DATA_ZAPUSKU'}   # ZAVDANNYA-161
+                    'KARTA_NA_DEN', 'POSHTA_KONTAKT', 'DATA_ZAPUSKU', 'PARTNERY'}   # ZAVDANNYA-161
 
 
 def pidhotuvaty_worker(vykhid: Path, pachok: int, nazva: str = 'moya-vulytsya', prodazh: dict | None = None,
@@ -116,7 +119,7 @@ def pidhotuvaty_worker(vykhid: Path, pachok: int, nazva: str = 'moya-vulytsya', 
             'binding': 'ASSETS',
             'not_found_handling': '404-page',
             'html_handling': 'auto-trailing-slash',
-            'run_worker_first': ['/budynok/*'] + MARSHRUTY_PRODAZHU,
+            'run_worker_first': ['/budynok/*'] + MARSHRUTY_PRODAZHU + KOLODY_IHOR,
         },
         'vars': {'PACHOK': str(pachok)},
     }

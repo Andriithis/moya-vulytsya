@@ -19,6 +19,7 @@ import * as L from './logika.js';
 import * as S from './storinky.js';
 import TS from './tsiny.js';
 import { nadislaty } from './poshta.js';
+import * as PR from './prybrannia.js';
 
 export const KOREN = '/pidpysnyk/';
 const POTOCHNA = 'karta/potochna.json';
@@ -82,7 +83,8 @@ export async function podiiAdresy(env, la, lo) {
   }
   if (!naikrashcha) return null;
   const spravy = await chytatyJson(env, `karta/${m.versiia}/spravy/${kl}.json`);
-  const ryadky = (spravy && spravy[naikrashcha.i]) || [];
+  // позачергово прибрані події (ZAVDANNYA-161, п. 5) — геть одразу, без нової версії карти
+  const ryadky = PR.vidfiltruvaty((spravy && spravy[naikrashcha.i]) || [], await PR.aktyvni(env)).dani;
   const podii = ryadky.map((r) => ({
     data: r[1], stattia: (m.kategorii || [])[r[0]] ?? null, opys: r[5] || '',
     // посилання на рішення (AGENTS.md, розд. 7): клітинка зберігає «тека + відбиток» файла ЄДРСР
@@ -148,6 +150,14 @@ export async function karta(request, env, url, ja) {
   if (!m) return S.povidomlennia('Карта готується', 'Карту підписника ще не викладено. Спробуйте трохи згодом.', 503);
   const o = await env.KARTA.get(`karta/${m.versiia}/${shliakh}`);
   if (!o) return S.nemaie();
+  if (shliakh.startsWith('spravy/')) {
+    const k = await PR.aktyvni(env);
+    if (k.length) {     // позачергово прибрані події (ZAVDANNYA-161, п. 5): описи клітинки — без них
+      const v = PR.vidfiltruvaty(JSON.parse(await o.text()), k);
+      return new Response(request.method === 'HEAD' ? null : JSON.stringify(v.dani), {
+        headers: { ...PRYVATNO, 'content-type': TYPY.json } });
+    }
+  }
   const typ = TYPY[shliakh.split('.').pop()] || 'application/octet-stream';
   // Файли з відбитком у назві (dani/meta.<хеш>.json) не міняються — браузер може тримати їх довше; решта — 5 хвилин.
   const dovgo = /\.[0-9a-f]{10}\.json$/.test(shliakh) || shliakh.startsWith('vendor/') || shliakh.startsWith('shryfty/');

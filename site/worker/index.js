@@ -7,6 +7,7 @@ import { prodazh } from './prodazh/index.js';
 import { prybraty, nahadatyOsbb, shchomisiachnaOsbb, styratyZaStrokom } from './prodazh/logika.js';
 import { budynok } from './budynky.js';
 import { pidhaniaty } from './prodazh/vydavach.js';
+import { KOLODY, koloda } from './prodazh/prybrannia.js';
 
 export const CHASTO = '*/10 * * * *';     // той самий рядок — у site/khostynh.py (triggers)
 
@@ -14,6 +15,8 @@ export default {
   async fetch(request, env) {
     const p = await prodazh(request, env);
     if (p) return p;
+    // Колоди ігор без позачергово прибраних подій (ZAVDANNYA-161, п. 5) — лише коли є база продажу
+    if (env.BAZA && (env.PRODAZH === 'tak' || env.PRODAZH === 'skoro') && KOLODY.includes(new URL(request.url).pathname)) return koloda(request, env);
     return (await budynok(request, env)) || env.ASSETS.fetch(request);
   },
   // Щодня (Cron Trigger у wrangler.jsonc): прибирання (прострочені входи, старі файли довідок) і лист ОСББ
