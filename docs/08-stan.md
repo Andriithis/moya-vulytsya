@@ -42,7 +42,7 @@
 | «Судова практика»: сторінки статей, довідка 199, підписка юриста 490 (продаж — «скоро», доки немає даних) | MV-122, MV-164, MV-170 | [`SUDOVA-PRAKTYKA-PRODUKT.md`](SUDOVA-PRAKTYKA-PRODUKT.md) |
 | Ігри в карті: «Детектив тижня», «Кваліфікуй: кар'єра», «Літопис міста», «Вулиця дня»; бали — одна скарбничка, обмін вимкнений | MV-129, MV-137, MV-138, MV-169, MV-172 | [`IHRY.md`](IHRY.md), [`ZVIT-141.md`](ZVIT-141.md), [`ZVIT-152.md`](ZVIT-152.md) |
 | Лист «Нове біля дому» / «Стежу» раз на місяць | MV-143, MV-170 | [`LYST-NOVE-BILIA-DOMU.md`](LYST-NOVE-BILIA-DOMU.md) |
-| Ролики: рушій `video/vau/`, 25 виглядів, пачка тижня 1 (10 + 4), тексти для голосу; голос — kNN-VC | MV-158, MV-161, MV-166, MV-168, MV-171 | [`ROLYKY-TYPY.md`](ROLYKY-TYPY.md), [`ROLYKY-SYSTEMA.md`](ROLYKY-SYSTEMA.md), [`HOLOS-TEKSTY.md`](HOLOS-TEKSTY.md) |
+| Ролики: рушій `video/vau/`, 25 виглядів, пачка тижня 1 (10 + 4), тексти для голосу; голос — kNN-VC | MV-158, MV-161, MV-166, MV-168, MV-171 | [`ROLYKY-TYPY.md`](ROLYKY-TYPY.md), [`ROLYKY-SYSTEMA.md`](ROLYKY-SYSTEMA.md), [`HOLOS-TEKSTY.md`](HOLOS-TEKSTY.md), критик — [`ZVIT-170.md`](ZVIT-170.md) |
 | Автопостинг у приватному репозиторії організації Микити: черга, 18:00 за Києвом, YouTube/Reels/Facebook/Telegram, TikTok — щоденний список; статистика `zamiry/` | MV-114, MV-153, MV-154, MV-174 | [`AVTOPOSTYNH.md`](AVTOPOSTYNH.md), [`ZVIT-159.md`](ZVIT-159.md) |
 | Android 1.0.0 під `moyavulytsya.com.ua`, без продажу | MV-126, MV-166 | [`ANDROID.md`](ANDROID.md) |
 | Оферта, політика, «Хто ми», порядок видалення — без юриста | MV-152, MV-155, MV-173 | [`ZVIT-130.md`](ZVIT-130.md), [`ZVIT-160.md`](ZVIT-160.md) |
