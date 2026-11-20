@@ -337,5 +337,89 @@ class OdneDzherelo(unittest.TestCase):
                 self.assertIn(k, t, f'{f}: {k}')
 
 
+class RukhNaStarti(unittest.TestCase):
+    """Топ-10 №4: у перші 1,5 с щось рухається — не нерухомий текст над нерухомою картою."""
+
+    def stoit(self, s):
+        s['kamera'] = [{'t': 0, 'c': [30.5234, 50.4501], 'z': 11}, {'t': 6, 'c': [30.5234, 50.4501], 'z': 11.2}]
+
+    def test_neruhomyi_start(self):
+        self.assertTrue(any('рух у перші' in x for x in z(self.stoit)))
+
+    def test_shcho_rakhuietsia_rukhom(self):
+        variantu = {
+            'камера': lambda s: (self.stoit(s), s['kamera'].insert(1, {'t': 1.5, 'c': [30.5234, 50.4501], 'z': 11, 'b': 8})),
+            'точки': lambda s: (self.stoit(s), s['tochky'][0]['dani'].update(t=[0.6])),
+            'лічильник': lambda s: (self.stoit(s), s['tekst'][1].update(t0=1.0)),
+            'вигляд 139': lambda s: (self.stoit(s), s.update(styl=[{'typ': 'teplo'}])),
+            'запис сайту': lambda s: (self.stoit(s), s.update(zapys_rukh=True)),
+        }
+        for nazva, f in variantu.items():
+            self.assertFalse(any('рух у перші' in x for x in z(f)), nazva)
+
+    def test_hachok_ne_stoit_u_stseni(self):
+        js = (VAU / 'stsena.js').read_text(encoding='utf-8')
+        self.assertIn('STYLI_UDARU', js)
+        self.assertIn("lerp(-28, 0, E.back(ku))", js)          # слово «падає» на місце, без збільшення (сусіди не налазять)
+
+    def test_stsenarii_ruhaiutsia(self):
+        """Сценарії, де камера в перші 1,5 с майже стояла, — з ключем камери на 1,5 с."""
+        t = (VAU / 'stsenarii138.py').read_text(encoding='utf-8') + (VAU / 'stsenarii129.py').read_text(encoding='utf-8')
+        self.assertGreaterEqual(t.count('# рух з кадру 0'), 5)
+
+
+class Lohotyp(unittest.TestCase):
+    """Топ-10 №8: логотип читається на будь-якому кадрі — на власній плашці кольору теми."""
+
+    def test_plashka(self):
+        css = (VAU / 'stsena.css').read_text(encoding='utf-8')
+        znak = re.search(r'#znak \{[^}]*\}', css).group()
+        self.assertIn('background: rgba(17, 20, 42', znak)
+        self.assertIn('color: #F0F1FA', znak)
+        svitla = re.search(r'\[data-t="svitla"\] #znak \{[^}]*\}', css).group()
+        self.assertIn('background: rgba(255, 255, 255', svitla)
+        self.assertNotIn('var(--ink)', znak)          # раніше — колір теми, тож темний напис на темній картці світлої теми
+
+
+class ZnaidyTochku(unittest.TestCase):
+    """Критик ZVIT-170: «Знайди точку» — точки не видно; гру не можна зіграти."""
+
+    def test_stsenarii(self):
+        t = (VAU / 'stsenarii129.py').read_text(encoding='utf-8')
+        n3 = t[t.index('def n3('):t.index('\ndef ', t.index('def n3(') + 5)]
+        self.assertIn("kolory=['#7C7FB8'] * 8", n3)          # інші — одним приглушеним кольором
+        self.assertIn("'kolory': ['#0B0D1F']", n3)           # темна обвідка цілі
+        self.assertIn("klas='tsil'", n3)                    # «жовту» — жовтим, не м'ятним
+        self.assertIn("R.tekst(0.9, 3.9, 'taimer'", n3)     # рівно 3 с, а не «4 с» на старті
+
+    def test_stsena(self):
+        self.assertIn('sh.kolory || S.kolory', (VAU / 'stsena.js').read_text(encoding='utf-8'))
+        self.assertIn('.t.tsil .w.a', (VAU / 'stsena.css').read_text(encoding='utf-8'))
+
+
+class Chytabelnist(unittest.TestCase):
+    """Топ-10 №8: усе, що глядач має прочитати в кадрі, — не менше 40 px з 1080; джерело — 34 px в один рядок."""
+
+    VYBIR = ['.t.kartka b.zag', '.t.kartka i.dz', '.m ', '.t.baner span', '.t.split .zag', '.t.komentar .khto', '.t.kolony .nz',
+             '.t.kalendar .mis b', '.t.mala ', '#dzherelo span.hp']
+
+    def test_rozmiry(self):
+        css = (VAU / 'stsena.css').read_text(encoding='utf-8')
+        for sel in self.VYBIR:
+            m = re.search(re.escape(sel) + r'[^{]*\{[^}]*?(?:font: \d+ (\d+)px|font-size: (\d+)px)', css)
+            self.assertIsNotNone(m, sel)
+            self.assertGreaterEqual(int(m.group(1) or m.group(2)), 40, sel)
+        dz = re.search(r'#dzherelo span \{[^}]*font: \d+ (\d+)px[^}]*\}', css)
+        self.assertGreaterEqual(int(dz.group(1)), 34)
+        self.assertIn('nowrap', dz.group())
+
+    def test_dzherelo_odyn_riadok(self):
+        self.assertTrue(any('джерела задовгий' in x for x in z(lambda s: s.update(dzherelo='х' * 60))))
+        self.assertEqual(z(lambda s: s.update(dzherelo='Рішення судів (ЄДРСР) · лише те, що дійшло до суду')), [])
+
+    def test_kolony_ne_zlypaiutsia(self):
+        self.assertIn('var gusto = it.riady.length > 12;', (VAU / 'stsena.js').read_text(encoding='utf-8'))
+
+
 if __name__ == '__main__':
     unittest.main()

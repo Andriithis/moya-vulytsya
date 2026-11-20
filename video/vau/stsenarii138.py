@@ -134,7 +134,7 @@ def s02(B):
     R.muzyka('hra', bpm=120)
     tlo = [x for x in B.P if x.id != p.id]
     R.tochky(tlo, [-1] * len(tlo), rozmir=((0, 5),), yaskr=((0, 0.4), (5.8, 0.4), (6.6, 0.0)), glow=0.15, kiltse=False)
-    R.kam(0, KYIV, 10.2, 15, 0).kam(6.0, KYIV, 10.5, 25, 10, e='l').kam(8.0, (c[0], c[1] - 0.0035), 14.6, 50, -20, e='io', luk=0.9)
+    R.kam(0, KYIV, 10.2, 15, -8).kam(1.5, KYIV, 10.36, 21, 0, e='o').kam(6.0, KYIV, 10.5, 25, 10, e='l')   # рух з кадру 0.kam(8.0, (c[0], c[1] - 0.0035), 14.6, 50, -20, e='io', luk=0.9)
     R.kam(12, (c[0], c[1] - 0.003), 14.9, 56, -50, e='l')
     blyzki = [x for x in blyzko(B.P, c, 1300) if x.id != p.id]
     R.adresy(blyzki, khvylia(blyzki, c, 8.3, 9.6, seed=2), styl_adres='kola', prozorist=((0, 0), (8.2, 0), (8.4, 1)), min_n=2, min_chyslo=3)
@@ -484,7 +484,7 @@ def s11(B):
                     'coordinates': [[[[lon, lat] for lat, lon in pl]] for pl, _ in poly]}}]}
     R.muzyka('hra', bpm=118)
     R.soty(pod, 8, styl_sot='plytka', prozorist=((0, 1),), vysota=((0, 0),), min_chastka=0.0, min_n=1)
-    R.kam(0, c, 11.6, 0, -35).kam(6.0, c, 11.8, 0, -25, e='l').kam(8.0, c, 11.4, 40, -10, e='io').kam(11, c, 11.5, 50, 5, e='l')
+    R.kam(0, c, 11.45, 0, -42).kam(1.5, c, 11.62, 0, -34, e='o').kam(6.0, c, 11.8, 0, -25, e='l')   # рух з кадру 0.kam(8.0, c, 11.4, 40, -10, e='io').kam(11, c, 11.5, 50, 5, e='l')
     R.tekst(0, 6.0, 'hook', 'Що це\n*за район?*', y='verkh')
     varianty = [('А', 'Дарницький'), ('Б', rayon), ('В', 'Святошинський')]
     for i, (b, v) in enumerate(varianty):
@@ -521,7 +521,7 @@ def s12(B):
              meta='пояснює карту за 13 с → карта', liniia='Безкоштовна карта', kudy=karta_tut((lon, lat), 14), riven='rayon')
     R.muzyka('lofi', bpm=104)
     R.soty(P, 8, styl_sot='sait', prozorist=((0, 1), (8.6, 1), (9.4, 0.35)), vysota=((0, 0),), **SOTY)
-    R.kam(0, KYIV, 10.6, 0, 0).kam(3.2, KYIV, 10.8, 0, 0, e='l').kam(5.2, (lon, lat - 0.004), 13.4, 35, -10, e='io', luk=0.4)
+    R.kam(0, KYIV, 10.45, 0, -6).kam(1.5, KYIV, 10.65, 0, 0, e='o').kam(3.2, KYIV, 10.8, 0, 0, e='l')   # рух з кадру 0.kam(5.2, (lon, lat - 0.004), 13.4, 35, -10, e='io', luk=0.4)
     R.kam(8.6, (lon, lat - 0.003), 13.6, 40, -20, e='l').kam(10.6, (lon, lat - 0.0025), 15.0, 50, -35, e='io').kam(13, (lon, lat - 0.0024), 15.2, 52, -45, e='l')
     blyzki = blyzko(P, (lon, lat), 900)
     R.adresy(blyzki, khvylia(blyzki, (lon, lat), 9.4, 10.6, seed=5), styl_adres='kola', prozorist=((0, 0), (9.3, 0), (9.5, 1)), min_chyslo=3)

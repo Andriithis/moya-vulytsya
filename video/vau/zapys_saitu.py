@@ -212,6 +212,8 @@ def perevir(Z: dict) -> list[str]:
     S = {'id': Z['id'], 'tryvalist': Z['tryvalist'], 'tema': 'temna', 'tekst': Z['tekst'], 'kamera': [{'t': 0, 'c': list(KYIV), 'z': 11}],
          'zvuk': Z['zvuk'], 'pidpys_publikatsii': Z['pidpys'], 'holos_poznaka': holos_servis.poznaka() if Z['zvuk'].get('holos') else None,
          'ui': [{'t0': 0, 't1': Z['tryvalist'], 'typ': 'sait'}, {'t0': 0, 't1': Z['tryvalist'], 'typ': 'ramka'}],
+         # рух на старті (perevirka.rukh_na_starti): дія на сторінці до 1,5 с або жива карта сайту з кадру 0
+         'zapys_rukh': any(d['t'] <= 1.5 for d in Z['dii']) or any(a <= 0 for a, _ in Z.get('karta', [])),
          'novynky': [d['t'] for d in Z['dii']] + [d['t'] + x * 1.5 for d in Z['dii'] if d.get('tryv')
                                                    for x in range(1, int(d['tryv'] / 1.5) + 1)]}   # наближення/прокрутка — рух сайту
     meta = dict(Z['meta'], pravyla=129, kintsivka=PROFIL, pidpys=' '.join(Z['pidpys']))

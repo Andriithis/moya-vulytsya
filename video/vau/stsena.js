@@ -231,7 +231,7 @@
         gl.uniform1f(loc.u_ring, sh.kiltse === false ? 0 : 1);
         gl.uniform1f(loc.u_alfa, alfa);
         gl.uniform1f(loc.u_glow, sh.glow === undefined ? (K.t === 'temna' ? 0.55 : 0.25) : sh.glow);
-        var kol = []; (S.kolory || []).forEach(function (h) { kol.push.apply(kol, hexRgb(h)); });
+        var kol = []; (sh.kolory || S.kolory || []).forEach(function (h) { kol.push.apply(kol, hexRgb(h)); });   // sh.kolory — свої кольори шару (обвідка цілі, ZAVDANNYA-175)
         while (kol.length < 24) kol.push(1);
         gl.uniform3fv(loc.u_kol, new Float32Array(kol));
         gl.bindBuffer(gl.ARRAY_BUFFER, buf);
@@ -454,8 +454,10 @@
     } else if (it.styl === 'komentar') {     // наклейка-коментар (ролик-відповідь)
       el.innerHTML = '<div class="khto"><span class="av"></span>' + (it.khto || '') + '</div><div class="tx">' + it.tekst + '</div>';
     } else if (it.styl === 'kolony') {       // вертикальні стовпчики (місяці)
-      el.innerHTML = it.riady.map(function (r) { return '<div class="k' + (r.akc ? ' akc' : '') + '"><span class="n">' + (r.pokaz ? '0' : '') +
-        '</span><span class="s"></span><span class="nz">' + r.tekst + '</span></div>'; }).join('');
+      // підписи 40 px (читабельність, ZAVDANNYA-175): понад 12 стовпчиків — кожен третій і виділений, інакше злипаються
+      var gusto = it.riady.length > 12;
+      el.innerHTML = it.riady.map(function (r, i) { return '<div class="k' + (r.akc ? ' akc' : '') + '"><span class="n">' + (r.pokaz ? '0' : '') +
+        '</span><span class="s"></span><span class="nz">' + (!gusto || r.akc || (i % 3 === 0 && !(it.riady[i - 1] || {}).akc && !(it.riady[i + 1] || {}).akc) ? r.tekst : '') + '</span></div>'; }).join('');
     } else if (it.styl === 'shtamp') {       // печатка «МІФ» / «ФАКТ»
       el.innerHTML = '<span>' + it.tekst + '</span>';
     } else if (it.styl === 'kalendar') {     // «Календар року»: місяці → клітинки-дні, рівень 0–4 (ZAVDANNYA-138)
@@ -483,6 +485,7 @@
     it.el = el; it.slova = Array.prototype.slice.call(el.querySelectorAll('.w'));
   }
 
+  var STYLI_UDARU = { hook: 1, velykyi: 1, pytannia: 1, slovo: 1 };
   function odrazu(it) { return it.odrazu || it.t0 <= 0.0001; }   // С2: що стоїть з кадру 0 — видно повністю вже в кадрі 0
   function zaslona(it, t) {   // спільна поява й зникнення елемента
     var vh = it.vkhid === undefined ? 0.25 : it.vkhid, vyh = it.vykhid === undefined ? 0.22 : it.vykhid;
@@ -500,7 +503,18 @@
     if (vykhidK > 0) el.style.opacity = 1 - vykhidK;
     if (it.slova.length && it.styl !== 'pidpys') {
       var krok = it.krok === undefined ? (anim === 'slam' ? 0.09 : 0.06) : it.krok;
+      // С2 + рух (критик ZVIT-170, №4): гачок з кадру 0 читається повністю, але не стоїть — слова по черзі «падають» на
+      // місце (стрибок 28 px → 0, без збільшення: сусідні слова не налазять), а весь блок повільно наближається до 1,5 с.
+      // Петля (it.odrazu) — без удару.
+      var udar = it.t0 <= 0.0001 && !it.odrazu && STYLI_UDARU[it.styl];
+      if (udar) el.style.transform = 'translateY(' + (-40 * vykhidK) + 'px) scale(' + lerp(1, 1.035, E.o(clamp(t / 1.5, 0, 1))) + ')';
+      if (udar) el.style.transformOrigin = it.c ? 'center' : 'left center';
       it.slova.forEach(function (w, i) {
+        if (udar) {
+          var ku = clamp((t - i * 0.12) / 0.3, 0, 1);
+          w.style.transform = 'translateY(' + (t < i * 0.12 ? 0 : lerp(-28, 0, E.back(ku))) + 'px)'; w.style.opacity = 1; w.style.filter = '';
+          return;
+        }
         var k = odrazu(it) ? 1 : clamp((t - it.t0 - i * krok) / (anim === 'slam' ? 0.2 : 0.3), 0, 1);
         if (anim === 'slam') {
           var sc = lerp(1.9, 1, E.oo(k));

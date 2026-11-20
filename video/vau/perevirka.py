@@ -198,6 +198,8 @@ def pereviryty(S: dict, meta: dict | None = None) -> list[str]:
         z += pravyla_138(S, meta)
     if (meta.get('pravyla') or 0) >= 129:
         z += pravda(S, meta) + kudy(meta)
+        if not meta.get('dovhyi'):
+            z += rukh_na_starti(S)
     return z
 
 
@@ -277,6 +279,7 @@ VULYTSIA = re.compile(r'вул\.|просп\.|бульв\.|пров\.|пл\.|у�
 HACHOK_STYLI = {'hook', 'velykyi', 'pytannia', 'slovo', 'split', 'komentar', 'shtamp'}
 HACHOK_DO = 1.5               # гачок — те, що в кадрі до 1,5 с
 VIDSOTOK_BAZA = 50
+DZHERELO_MAKS = 50            # рядок джерела 34 px в один рядок (stsena.css)
 ODNE_I_TE_SAME = re.compile(r'одне й те саме|одне і те саме|те саме\b|однаков\w*|той самий|та сама', re.I)
 V_SUDAKH = re.compile(r'\b(?:в|у) судах\b|\bсуди Києва\b|\bсудів Києва\b', re.I)
 NAI = re.compile(r'найчаст|найбільш|найменш|найрідш|найпоширен', re.I)
@@ -343,6 +346,8 @@ def pravda(S: dict, meta: dict) -> list[str]:
         if VULYTSIA.search(str(m.get('tekst', ''))) and dvoinyk:
             z.append(f"підпис «{m.get('tekst')}{n if isinstance(n, str) else ''}» — число після назви вулиці схоже на номер будинку: "
                      f"n числом (сцена пише «N подій» окремим рядком)")
+    if len(str(S.get('dzherelo') or '')) > DZHERELO_MAKS:
+        z.append(f"рядок джерела задовгий ({len(S['dzherelo'])} > {DZHERELO_MAKS} знаків) — не влазить в один рядок над гачком")
     # одне «усього подій» (топ-10 №6): лічильник з підсумком несе pidsumok і показує саме число з meta['pidsumky']
     pids = meta.get('pidsumky') or {}
     for it in S.get('tekst', []):
@@ -422,3 +427,50 @@ def posylannia(meta: dict, sait) -> list[str]:
     if not storinka_isnuie(k, sait):
         return [f'заклик «{k}»: такої сторінки в зібраному сайті {sait} немає (404)']
     return []
+
+
+# Топ-10 №4 (критик ZVIT-170): у 22 з 29 роликів перші 1,5–2 с — нерухомий текст над нерухомою картою; у TikTok гортають
+# далі приблизно за секунду. Правило: до START_RUKH с щось рухається — камера помітно (зум, поворот, нахил, зсув), точки
+# з'являються, лічильник біжить, лінія малюється, сота розпадається, вигляд 139 анімується або запис сайту вже діє.
+START_RUKH = 1.5
+RUKH_Z, RUKH_KUT, RUKH_ZSUV = 0.12, 5.0, 0.001     # зум, градуси повороту чи нахилу, градуси широти/довготи (≈ 100 м)
+RUKH_STYLI = {'lich', 'godynnyk', 'taimer', 'vidlik', 'kalendar', 'kolony', 'stovpchyky', 'split'}
+
+
+def kamera_u_chasi(S: dict, t: float) -> dict:
+    K = sorted(S.get('kamera', []), key=lambda k: k['t'])
+    if not K:
+        return {}
+    if t <= K[0]['t']:
+        return K[0]
+    for a, b in zip(K, K[1:]):
+        if t <= b['t']:
+            k = (t - a['t']) / max(1e-6, b['t'] - a['t'])
+            return {x: (a.get(x, 0) + (b.get(x, 0) - a.get(x, 0)) * k) for x in ('z', 'p', 'b')} | {
+                'c': [a['c'][i] + (b['c'][i] - a['c'][i]) * k for i in (0, 1)]}
+    return K[-1]
+
+
+def rukh_na_starti(S: dict) -> list[str]:
+    T = START_RUKH
+    a, b = kamera_u_chasi(S, 0.0), kamera_u_chasi(S, T)
+    if a and b and (abs(b['z'] - a['z']) >= RUKH_Z or abs(b.get('b', 0) - a.get('b', 0)) >= RUKH_KUT
+                    or abs(b.get('p', 0) - a.get('p', 0)) >= RUKH_KUT
+                    or max(abs(b['c'][0] - a['c'][0]), abs(b['c'][1] - a['c'][1])) >= RUKH_ZSUV):
+        return []
+    for sh in S.get('tochky', []):
+        if any(0 < t <= T for t in sh['dani'].get('t', [])):
+            return []
+    for sh in S.get('adresy', []):
+        if any(0 < f['properties'].get('t', -1) <= T for f in sh['dani'].get('features', [])):
+            return []
+    for sh in S.get('soty', []):
+        if any(r['t'] <= T for r in sh.get('rozpad', [])):
+            return []
+    if any(it.get('styl') in RUKH_STYLI and it['t0'] <= T for it in S.get('tekst', [])):
+        return []
+    if any(l['t0'] <= T for l in S.get('lini', [])) or any(k['t'] <= T for k in S.get('kiltsia', [])):
+        return []
+    if S.get('styl') or S.get('zapys_rukh'):
+        return []
+    return [f'рух у перші {T} с: камера майже стоїть і нічого не з\'являється — кадр 0…{T} с нерухомий (критик ZVIT-170, №4)']

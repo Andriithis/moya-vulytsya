@@ -535,7 +535,7 @@ def zapysaty(brauzer, port, stan, R, Z, kadry=None, vykhid=VYHID, cpu=False):
         srv_r.shutdown()
     # 2) запис сторінок
     holos = bool(Z['zvuk'].get('holos'))
-    S_ov = {'tekst': Z['tekst'], 'dzherelo': 'Справжній сайт · тестова оплата · дані — рішення судів',
+    S_ov = {'tekst': Z['tekst'], 'dzherelo': 'Справжній сайт · тестова оплата · рішення судів',
             'holos_poznaka': holos_servis.poznaka() if holos else None, 'paltsi': []}
     svitla = Z['tema'] == 'svitla'
     kont = brauzer.new_context(viewport={'width': 540, 'height': 960}, device_scale_factor=2,
