@@ -128,7 +128,7 @@ class StorinkyTests(unittest.TestCase):
     def test_polityka_shablon(self):
         html = (SAIT / 'polityka.html').read_text(encoding='utf-8')
         self.assertIn('<!-- ШАБЛОН — ПЕРЕВІРИТИ ПЕРЕД ПУБЛІКАЦІЄЮ', html)
-        for mistse in ('[ВЛАСНИК]', '[КОНТАКТ]', '[СЕРВІС І КРАЇНА ЗБЕРІГАННЯ]'):
+        for mistse in ('[ВЛАСНИК]', '[КОНТАКТ]', '[СЕРВІС ПОШТИ]'):
             self.assertIn(mistse, html)
         for tekst in ('ст', 'статтею 8', 'стаття 11', '6 місяців', 'Нікому', 'без кукі'):
             self.assertIn(tekst.lower(), html.lower())
@@ -196,7 +196,7 @@ class ZbyrannyaTests(unittest.TestCase):
 
     URL = 'https://abcdefghijklmnopqrst.supabase.co'
     ZAPOVNENNYA = {'НАЗВА ВЛАСНИКА ПРОЄКТУ': 'Умовна назва', 'ВЛАСНИК': 'Умовний власник',
-                   'КОНТАКТ': 'умовний контакт', 'СЕРВІС І КРАЇНА ЗБЕРІГАННЯ': 'Умовний сервіс, ЄС',
+                   'КОНТАКТ': 'умовний контакт', 'СЕРВІС ПОШТИ': 'Умовний сервіс пошти',
                    'ДАТА': '01.01.2027', 'САЙТ': 'умовний-сайт',
                    'КОД': 'умовний код', 'АДРЕСА': 'умовна адреса', 'ПЛАТІЖНИЙ СЕРВІС': 'Умовний сервіс'}
 
@@ -213,7 +213,7 @@ class ZbyrannyaTests(unittest.TestCase):
         self.assertIn('[НАЗВА ВЛАСНИКА ПРОЄКТУ]', str(e.exception))
 
     def test_publikatsiya_padaie_bez_mists_polityky(self):
-        for mistse in ('ВЛАСНИК', 'КОНТАКТ', 'СЕРВІС І КРАЇНА ЗБЕРІГАННЯ'):
+        for mistse in ('ВЛАСНИК', 'КОНТАКТ', 'СЕРВІС ПОШТИ'):
             z = dict(self.ZAPOVNENNYA)
             z[mistse] = '   '
             with self.assertRaises(zibraty.PomylkaZbyrannya, msg=mistse) as e:

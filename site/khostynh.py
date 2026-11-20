@@ -86,6 +86,7 @@ MARSHRUTY_PRODAZHU = ['/oplata/*', '/api/*', '/kabinet/*', '/dovidka/*', '/proda
 R2_DOVIDOK = 'moya-vulytsya-dovidky'
 R2_KARTY = 'moya-vulytsya-karta'     # карта підписника (ZAVDANNYA-133): лише з prodazh['karta'], сховище створює партнер
 SERVISY_OPLATY = ('liqpay', 'mono', 'test')
+OBMEZHENNIA = {'limit': 20, 'period': 60}      # запитів однієї групи з однієї адреси за 60 с (prodazh/index.js, OBMEZHENI)
 # Не секретні змінні, які скрипт викладки може записати у wrangler.jsonc (ключі — лише `wrangler secret put`).
 DODATKOVI_ZMINNI = {'POSHTA_PARTNERA', 'POSHTA_VID', 'POSHTA_URL', 'LIQPAY_SANDBOX', 'LIQPAY_HESH', 'DOVIDKY_DNIV'}
 
@@ -128,6 +129,10 @@ def pidhotuvaty_worker(vykhid: Path, pachok: int, nazva: str = 'moya-vulytsya', 
     konfig['keep_vars'] = True
     if domen:
         konfig['routes'] = [{'pattern': domen, 'custom_domain': True}]
+    if prodazh:
+        # Ліміт запитів з однієї адреси (ZAVDANNYA-156; prodazh/index.js, zabahato): форми, замовлення, вхід, ключі довідок.
+        # Прив'язка Cloudflare Workers Rate Limiting; namespace_id — будь-яке число, однакове між викладками.
+        konfig['ratelimits'] = [{'name': 'OBMEZHENNIA', 'namespace_id': '1561', 'simple': OBMEZHENNIA}]
     if prodazh and oplata == 'skoro':
         if not prodazh.get('d1'):
             raise SystemExit('Режим «скоро» на Workers: потрібен --d1 (база форм; docs/ZAPUSK-SAITU.md)')

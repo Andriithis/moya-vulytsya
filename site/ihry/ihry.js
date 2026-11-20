@@ -1,5 +1,6 @@
 // Ігри в карті (ZAVDANNYA-117; MV-129, MV-130, MV-26): «Детектив тижня», «Вгадай, де це було», «Вулиця дня»,
-// «Кваліфікуй», «Літопис міста» (довга гра, ZAVDANNYA-141; сама гра — site/ihry/litopys/litopys.js), бали. Граються на самій карті: панель — «в повітрі» праворуч (телефон — шторка на половину екрана),
+// «Кваліфікуй», «Літопис міста» (довга гра, ZAVDANNYA-141; сама гра — site/ihry/litopys/litopys.js), «Кваліфікуй: кар'єра»
+// (ZAVDANNYA-152; сама гра — site/ihry/kariera/kariera.js), бали. Граються на самій карті: панель — «в повітрі» праворуч (телефон — шторка на половину екрана),
 // карта під нею живе. Кнопка «Ігри» — у рядку пошуку (людина сама запускає будь-яку гру будь-коли); кожна гра ще й
 // пропонує себе сама — одне тихе запрошення за відвідування (≈ 40 с або 3-й дотик), «×», не поверх відкритого.
 // Усе — на пристрої (localStorage), поки немає кабінету (ZAVDANNYA-99). Нічого не надсилає.
@@ -16,7 +17,8 @@
   var DZH = {
     spravy: panel.getAttribute('data-spravy'), koloda: panel.getAttribute('data-koloda'),
     vulytsia: panel.getAttribute('data-vulytsia'), kvalifikuy: panel.getAttribute('data-kvalifikuy'),
-    nalashtuvannia: panel.getAttribute('data-nalashtuvannia'), litopys: panel.getAttribute('data-litopys')
+    nalashtuvannia: panel.getAttribute('data-nalashtuvannia'), litopys: panel.getAttribute('data-litopys'),
+    kariera: panel.getAttribute('data-kariera')
   };
   var MITKY = { rishennia: 'з рішення суду', vyhadka: 'вигадка', karta: 'з карти', pidkazka: 'підказка гри', dovidnyk: 'з довідника' };
   var NAZVY_DNIV = ['', 'понеділок', 'вівторок', 'середа', 'четвер', "п'ятниця", 'субота', 'неділя'];
@@ -86,14 +88,14 @@
     hovatyZaproshennia(false);
     pokazaty(gra || 'menyu');
   }
-  function zakryty() { panel.hidden = true; knopka.setAttribute('aria-expanded', 'false'); ekran.classList.remove('ihry-vidkryto'); rezhym(null); prybratyMitky(); zupynytyLitopys(); }
+  function zakryty() { panel.hidden = true; knopka.setAttribute('aria-expanded', 'false'); ekran.classList.remove('ihry-vidkryto'); rezhym(null); prybratyMitky(); zupynytyLitopys(); zupynytyKarieru(); }
   knopka.addEventListener('click', function () { if (panel.hidden) vidkryty(); else zakryty(); });
   panel.addEventListener('click', function (e) {
     if (panel.classList.contains('zghornuta') && e.target.closest('.i-shap') && !e.target.closest('[data-i]')) { panel.classList.remove('zghornuta'); return; }
     var t = e.target.closest('[data-i]'); if (!t) return;
     var dia = t.getAttribute('data-i');
     if (dia === 'x') zakryty();
-    else if (dia === 'nazad') { rezhym(null); prybratyMitky(); zupynytyLitopys(); pokazaty('menyu'); }
+    else if (dia === 'nazad') { rezhym(null); prybratyMitky(); zupynytyLitopys(); zupynytyKarieru(); pokazaty('menyu'); }
     else if (DII[dia]) DII[dia](t);
   });
   function ramka(nazva, tilo, bezNazad) {
@@ -105,8 +107,9 @@
   }
   function pokazaty(gra) {
     if (gra !== 'litopys') zupynytyLitopys();
+    if (gra !== 'kariera') zupynytyKarieru();
     ZARAZ = gra;
-    var f = { menyu: menyu, detektyv: detektyv, vgadai: vgadai, vulytsia: vulytsia, kvalifikuy: kvalifikuy, litopys: litopys, bali: baliEkran, nalashtuvannia: nalashtuvannia }[gra] || menyu;
+    var f = { menyu: menyu, detektyv: detektyv, vgadai: vgadai, vulytsia: vulytsia, kvalifikuy: kvalifikuy, litopys: litopys, kariera: kariera, bali: baliEkran, nalashtuvannia: nalashtuvannia }[gra] || menyu;
     Promise.resolve(K || zavantazhyty('nalashtuvannia').then(function (k) { K = k; })).then(f);
   }
 
@@ -127,6 +130,7 @@
         kart('vgadai', 'Вгадай, де це було', 'опис події — ваша точка на карті', DZH.koloda ? (den.podiia ? 'подія дня зіграна' : 'подія дня чекає') : 'скоро', !DZH.koloda) +
         (DZH.vulytsia ? kart('vulytsia', 'Вулиця дня', 'одна вулиця на добу — вгадайте за 7 спроб', den.vulytsia ? 'сьогодні зіграно' : 'сьогодні не зіграно') : '') +
         (DZH.litopys && window.MvLitopys ? kart('litopys', 'Літопис міста', 'читайте справи, відкривайте вулиці й райони — гра без кінця', stanLitopysu()) : '') +
+        (window.MvKariera && (DZH.kariera || r[1]) ? kart('kariera', 'Кваліфікуй: кар’єра', 'кодекс → стаття → частина, як вирішив суд; рівні, справи дня, режим викладача', stanKariery()) : '') +
         kart('kvalifikuy', 'Кваліфікуй', 'фабула → стаття → як вирішують суди; для студентів і курсантів', r[1] ? Y.sproby(s, 'kvalifikuy', K, c.data).bezkoshtovnykh + ' безкоштовні справи сьогодні' : 'скоро', !r[1]) +
         '</div><p class="i-prym">Справи дня однакові для всіх; очки — лише за точність. <button type="button" class="i-lnk" data-i="hra" data-gra="nalashtuvannia">Налаштування</button></p>', true);
     });
@@ -151,6 +155,26 @@
     REZHYM = function (ll) { if (!LITOPYS) return false; LITOPYS.klik(ll); return true; };
   }
   function zupynytyLitopys() { if (LITOPYS) { LITOPYS.zupynyty(); LITOPYS = null; if (ZARAZ === 'litopys') REZHYM = null; } }
+  // ---------- «Кваліфікуй: кар'єра» (ZAVDANNYA-152) ----------
+  // Та сама гра, що на окремій сторінці (модуль MvKariera), у цій панелі. Карта лишається вільною: дотики по ній — карти.
+  // Прогрес — на пристрої (mv-kariera-1), бали — у спільну скарбничку лише за «Справи дня» (K.kariera_ochky).
+  var KARIERA = null;
+  function stanKariery() {
+    var s = chytaty('mv-kariera-1', null);
+    if (!s || !s.trek) return 'обрати доріжку: правник чи курсант';
+    var d = s.dni && s.dni[chas().data], z = d ? Object.keys(d.zrobleno).length : 0;
+    return (z >= 5 ? 'справи дня розібрано' : 'справ дня: ' + z + ' з 5') + ' · серія ' + (s.seriia || 0);
+  }
+  function kariera() {
+    if (!window.MvKariera) { menyu(); return; }
+    zupynytyKarieru();
+    ramka('Кваліфікуй: кар’єра', '<div class="i-kariera"></div>');
+    KARIERA = window.MvKariera.zapustyty({ korin: $('.i-kariera'), dani: DZH.kariera || DZH.kvalifikuy, zapasni: DZH.kvalifikuy,
+      bali: function (ochky) { return narakhuvaty(ochky); }, ochky: K && K.kariera_ochky,
+      tost: function (t, ms) { toastDovgyi(t, ms); }, prokrutka: function () { panel.scrollTop = 0; },
+      posylannia: function (kod, nazva) { return location.origin + location.pathname + '?hra=kariera&nabir=' + kod + (nazva ? '&nazva=' + encodeURIComponent(nazva) : ''); } });
+  }
+  function zupynytyKarieru() { if (KARIERA) { KARIERA.zupynyty(); KARIERA = null; } }
   function toastDovgyi(t, ms) { var p = document.getElementById('pidkazka'); if (!p) return; p.textContent = t; p.classList.add('vyd'); clearTimeout(toast.t); toast.t = setTimeout(function () { p.classList.remove('vyd'); }, ms || 3200); }
 
   // ---------- «Детектив тижня» ----------
@@ -258,7 +282,7 @@
     obmin: function (t) { var r = Y.obminMozhlyvyi(bali(), K.obmin.filter(function (x) { return x.id === t.getAttribute('data-t'); })[0], K, chas().data); toast(r.mozhna ? 'Обмін — через кабінет.' : r.chomu); },
     skynuty: function () {
       if (!window.confirm('Стерти очки, бали й прогрес ігор на цьому пристрої?')) return;
-      Object.keys(localStorage).forEach(function (k) { if (k.indexOf('mv-ihry-') === 0) localStorage.removeItem(k); });
+      Object.keys(localStorage).forEach(function (k) { if (k.indexOf('mv-ihry-') === 0 || k.indexOf('mv-kariera-') === 0) localStorage.removeItem(k); });
       pokazaty('nalashtuvannia');
     }
   };
@@ -554,7 +578,8 @@
   });
   setInterval(sprobuvatyZaproshennia, 1000);
 
-  // Запуск з посилання: /karta/?hra=detektyv|vgadai|vulytsia|kvalifikuy або ?ihry
+  // Запуск з посилання: /karta/?hra=detektyv|vgadai|vulytsia|kvalifikuy|litopys|kariera або ?ihry
+  // (?hra=kariera&nabir=… — заняття за посиланням викладача, ZAVDANNYA-152)
   var hra = q.get('hra');
   if (hra || q.has('ihry')) {
     var pochaty = function () { vidkryty(hra === 'de-tse-bulo' ? 'vgadai' : hra); };
