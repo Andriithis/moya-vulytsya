@@ -5,7 +5,7 @@ import TS from './tsiny.js';
 import { vypadkovyi, sha256 } from './bezpeka.js';
 import { nadislaty } from './poshta.js';
 import { budynok as zPachky } from '../budynky.js';
-import { nahaduvanniaOsbb } from './lysty.js';
+import { nahaduvanniaOsbb, oplatuOtrymano } from './lysty.js';
 
 const dataT = (t) => { const d = new Date(t * 1000); return `${String(d.getUTCDate()).padStart(2, '0')}.${String(d.getUTCMonth() + 1).padStart(2, '0')}.${d.getUTCFullYear()}`; };
 
@@ -264,6 +264,7 @@ export async function obrobytyPodiiu(env, servis, p) {
       // перша змінила статус; друга нічого не видає (раніше — дві довідки або подвійний початок підписки).
       if (!r.meta?.changes) return { ok: true, prychyna: 'vzhe_oplacheno' };
       await vydaty(env, zam, pidpyska, t);
+      await lystOplaty(env, zam, pidpyska ? await odyn(env, 'SELECT diie_do FROM pidpysky WHERE id = ?', pidpyska.id) : null, t, false);
       return { ok: true, prychyna: 'oplacheno' };
     }
     if (pidpyska && zam.status === 'oplacheno' && pidpyska.status !== 'skasovana') { // чергове списання підписки
@@ -282,6 +283,7 @@ export async function obrobytyPodiiu(env, servis, p) {
       const dodo = dodatyMisiatsi(Math.max(pidpyska.diie_do || t, t), period);
       const r = await zrobyty(env, `UPDATE pidpysky SET status = 'aktyvna', pochatok = ?, diie_do = ? WHERE id = ? AND COALESCE(diie_do, 0) = ?`,
         t, dodo, pidpyska.id, pidpyska.diie_do || 0);
+      if (r.meta?.changes) await lystOplaty(env, zam, { diie_do: dodo }, t, true);
       return { ok: true, prychyna: r.meta?.changes ? 'prodovzheno' : 'vzhe_prodovzheno' };
     }
     return { ok: true, prychyna: 'vzhe_oplacheno' };
@@ -300,6 +302,16 @@ export async function obrobytyPodiiu(env, servis, p) {
     return { ok: true, prychyna: 'skasovano' };
   }
   return { ok: true, prychyna: 'ignor' };
+}
+
+/** Лист «Оплату отримано» (ZAVDANNYA-161, п. 3). Не вдалося надіслати — оплату однаково зараховано, видачу не зупиняємо. */
+async function lystOplaty(env, zam, pidpyska, t, prodovzhennia) {
+  const k = zam.korystuvach_id ? await odyn(env, 'SELECT poshta FROM korystuvachi WHERE id = ?', zam.korystuvach_id) : null;
+  if (!k?.poshta) return;
+  try {
+    await nadislaty(env, { komu: k.poshta, ...oplatuOtrymano({ zam, chas: t, diie_do: pidpyska?.diie_do ?? null, prodovzhennia,
+      adresaSaitu: (env.ADRESA_SAITU || '').replace(/\/$/, ''), kontakt: env.POSHTA_KONTAKT || '' }) });
+  } catch (err) { console.log(`лист «Оплату отримано» не пішов: ${err.message}`); }
 }
 
 /** Оплачено → довідка в чергу генератора (і/або підписка активна). «Судова практика»: довідка без будинку — з параметрами. */

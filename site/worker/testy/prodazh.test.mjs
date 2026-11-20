@@ -147,7 +147,7 @@ test('повний шлях: замовлення → тестова оплат�
   assert.deepEqual(Object.keys(ds[0]).sort(), ['adresa', 'budynok', 'id', 'rezhym']);
   assert.equal(ds[0].adresa, 'вулиця Жилянська, 5', 'адреса — із заголовка сторінки будинку');
   assert.equal(ds[0].rezhym, 'dovidka');
-  const lyst = env.__LYSTY.find((l) => l.komu === 'ana@poshta.ua' && /Довідка/.test(l.tema));
+  const lyst = env.__LYSTY.find((l) => l.komu === 'ana@poshta.ua' && /^Довідка/.test(l.tema));
   assert.ok(lyst, 'лист із посиланням');
   const { r: d, text } = await zapyt(env, 'GET', posylannia(lyst));
   assert.equal(d.status, 200);
@@ -166,7 +166,7 @@ test('чужий не відкриє чужу довідку', async () => {
   const id = await zamovyty(env, 'dovidka', '/budynok/zhylianska/5/', 'ana@poshta.ua');
   await oplatyty(env, id);
   await vydavach(env);
-  const prava = posylannia(env.__LYSTY.find((l) => /Довідка/.test(l.tema)));
+  const prava = posylannia(env.__LYSTY.find((l) => /^Довідка/.test(l.tema)));
   const nomer = prava.match(/\/dovidka\/(d[a-z2-7]+)\//)[1];
   // інший покупець зі своєю сесією
   const z = await zamovyty(env, 'dovidka', '/budynok/obolonskyi/16/', 'bohdan@poshta.ua');
@@ -331,7 +331,7 @@ test('«Стежу» й видалення даних на запит: пошт�
   const env = seredovyshche();
   await oplatyty(env, await zamovyty(env, 'dovidka', '/budynok/zhylianska/5/'));
   await vydavach(env);
-  const prava = posylannia(env.__LYSTY.find((l) => /Довідка/.test(l.tema)));
+  const prava = posylannia(env.__LYSTY.find((l) => /^Довідка/.test(l.tema)));
   const kuka = await uviity(env);
   assert.match((await zapyt(env, 'POST', '/kabinet/stezhu', { kuka, forma: { budynok: '/budynok/obolonskyi/16/' } })).text, /Стежите: проспект Оболонський, 16/);
   assert.equal((await zapyt(env, 'POST', '/kabinet/stezhu', { kuka, forma: { budynok: '/budynok/vyhadana/1/' } })).text.includes('Такого будинку'), true);
@@ -440,4 +440,44 @@ test('вхід (ZAVDANNYA-161, п. 1): поштовий сканер відкр�
   assert.doesNotMatch((await zapyt(env, 'GET', `/kabinet/vkhid/?t=${t}`)).text, /Увійти<\/button>/);
   // вигаданий ключ — «застаріло», без кнопки
   assert.match((await zapyt(env, 'GET', '/kabinet/vkhid/?t=<script>')).text, /застаріло/);
+});
+
+test('лист «Оплату отримано» (ZAVDANNYA-161, п. 3): одразу після оплати — що, сума, номер, коли й де, як повернути; один раз', async () => {
+  const env = seredovyshche();
+  const id = await zamovyty(env, 'dovidka', '/budynok/zhylianska/5/');
+  assert.equal(env.__LYSTY.filter((l) => /^Оплату отримано/.test(l.tema)).length, 0, 'до оплати — нічого');
+  await oplatyty(env, id);
+  const lysty = env.__LYSTY.filter((l) => /^Оплату отримано/.test(l.tema));
+  assert.equal(lysty.length, 1);
+  const l = lysty[0];
+  assert.equal(l.komu, 'ana@poshta.ua');
+  assert.match(l.tema, /Довідка про будинок/);
+  assert.match(l.tekst, /вулиця Жилянська, 5/);
+  assert.match(l.tekst, new RegExp(`Сума: ${t.tsiny.dovidka} грн`));
+  assert.match(l.tekst, new RegExp(`Замовлення: ${id}`));
+  assert.match(l.tekst, /не пізніше ніж за 1 робочий день/);
+  assert.match(l.tekst, /Повернення — за офертою/);
+  assert.match(l.tekst, /https:\/\/mv\.test\/zahlushka\/oferta\.html/);
+  // повтор того самого сповіщення й друга подія «оплачено» — другого листа немає
+  await oplatyty(env, id);
+  assert.equal(env.__LYSTY.filter((l) => /^Оплату отримано/.test(l.tema)).length, 1);
+});
+
+test('лист «Оплату отримано»: підписка — до якої дати, як скасувати; чергове списання — «продовжено»; відмова — без листа', async () => {
+  const env = seredovyshche();
+  const id = await zamovyty(env, 'pidpyska', null, 'bo@poshta.ua');
+  await oplatyty(env, id);
+  const l = env.__LYSTY.find((x) => /^Оплату отримано/.test(x.tema));
+  assert.match(l.tekst, /Доступ відкрито до \d\d\.\d\d\.\d{4}/);
+  assert.match(l.tekst, /\/pidpysnyk\//);
+  assert.match(l.tekst, /Скасувати — у кабінеті/);
+  env.krok(29 * 86400);
+  await oplatyty(env, id, 'Списання наступного періоду');
+  const p = env.__LYSTY.filter((x) => /^Оплату отримано/.test(x.tema));
+  assert.equal(p.length, 2);
+  assert.match(p[1].tema, /продовжено/);
+  assert.match(p[1].tekst, /Доступ продовжено до/);
+  const id2 = await zamovyty(env, 'dovidka', '/budynok/zhylianska/5/', 'vira@poshta.ua');
+  await oplatyty(env, id2, 'Відмова');
+  assert.equal(env.__LYSTY.filter((x) => x.komu === 'vira@poshta.ua' && /^Оплату отримано/.test(x.tema)).length, 0);
 });

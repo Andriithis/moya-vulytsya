@@ -65,6 +65,7 @@
    ▼
 POST /api/spovishchennia/<сервіс>: перевірка підпису → подія ще не оброблялась → сума й гривня рівно як у замовленні
    │  оплачено → довідка в черзі (D1);  підписка → активна на місяць / рік
+   │  одразу — лист «Оплату отримано»: що, сума, номер, коли й де отримати, як скасувати й повернути (lysty.js, ZAVDANNYA-161)
    ▼
 Видавач (vydavach.py, де лежать дані): бере з черги → генератор dani-edrsr/src/zvit (--dovidka | --povnyi) → віддає файл
    ▼
@@ -161,7 +162,7 @@ curl -X POST https://<сайт>/api/admin/vydalyty -H "Authorization: Bearer $AD
 **Звичайні змінні** (пише збирач у `wrangler.jsonc`, не секретні): `PRODAZH=tak` (або `skoro`, ZAVDANNYA-132), `PLATIZHNYI_SERVIS` (`liqpay` | `mono` |
 `test`), `ADRESA_SAITU`, `POSHTA_SERVIS` (`zahlushka` | `http-json`), `TESTOVA_OPLATA=tak` (лише для `test`), `PACHOK`.
 Можна додати в панелі: `POSHTA_VID` (адреса відправника), `POSHTA_URL` (адреса сервісу листів), `POSHTA_PARTNERA`
-(куди писати про невдалі довідки, чужі суми й нові звернення), `DOVIDKY_DNIV` (365), `KARTA_NA_DEN` (300, розд. 5б), `LIQPAY_HESH` (`sha1` | `sha3-256`), `MONO_PUBKEY`,
+(куди писати про невдалі довідки, чужі суми й нові звернення), `DOVIDKY_DNIV` (365), `KARTA_NA_DEN` (300, розд. 5б), `POSHTA_KONTAKT` (пошта для покупців у листі «Оплату отримано»; без неї — лише посилання на оферту), `LIQPAY_HESH` (`sha1` | `sha3-256`), `MONO_PUBKEY`,
 `LIQPAY_SANDBOX=tak` (пісочниця LiqPay: поле `sandbox = 1`, ZAVDANNYA-132). Змінні з панелі викладка не стирає (`keep_vars`).
 `OBMIN_BALIV=tak` — обмін балів ігор на довідку / місяць підписки в кабінеті (розд. 5а). **Не вмикати** до висновку юриста.
 
