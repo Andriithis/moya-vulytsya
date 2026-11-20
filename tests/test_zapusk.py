@@ -100,8 +100,9 @@ class Zapusk(unittest.TestCase):
                 self.assertIn('<small class="knopka__skoro">Скоро — залиште пошту</small>', m.group(1), f)
         self.assertGreater(vsogo, 10)
         b = self.budynok(self.skoro, self.zv_skoro)
-        self.assertEqual(b.count('Скоро — залиште пошту'), 3)
-        self.assertIn(f'Довідка — {self.T.tsina("dovidka")}', b)
+        self.assertEqual(b.count('Скоро — залиште пошту'), 1)   # ZAVDANNYA-177: одна головна кнопка, інші товари — посиланнями
+        self.assertIn(f'Довідка про цей будинок — {self.T.tsina("dovidka")}', b)
+        self.assertIn('href="/oplata/?tovar=zvit&amp;budynok=', b)
         self.assertIn('href="/oplata/?tovar=dovidka&amp;budynok=', b)
         self.assertEqual(self.zv_skoro['oplata'], 'skoro')
 
@@ -113,7 +114,7 @@ class Zapusk(unittest.TestCase):
                 tovar = re.search(r'tovar=([a-z]+)', m.group(1)).group(1)
                 self.assertNotIn(tovar, self.T.prodaietsia(), f'{f}: товар у продажу, а кнопка «скоро»')
         b = self.budynok(self.tak, self.zv_tak)
-        self.assertIn(f'>Довідка — {self.T.tsina("dovidka")}</a>', b)
+        self.assertIn(f'>Довідка про цей будинок — {self.T.tsina("dovidka")}</a>', b)
         k = wrangler_konfig(Path(self.zv_tak['teka_workera']))
         self.assertEqual((k['vars']['PRODAZH'], k['vars']['PLATIZHNYI_SERVIS']), ('tak', 'test'))
         self.assertIn('r2_buckets', k)

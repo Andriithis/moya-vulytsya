@@ -393,6 +393,10 @@ body.z-kartoyu .shapka__vnutri { max-width: none; padding: 6px 16px; min-height:
 .tabl th:first-child { text-align: left; }
 .tabl thead th { font-size: 13px; color: var(--muted); font-weight: 600; }
 .tsiny { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+/* ZAVDANNYA-177 (ZVIT-165, п. 7): на сторінці будинку — одна головна кнопка, інші товари посиланнями під нею */
+.tsiny--odna { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.tsiny__inshi { margin: 0; font-size: 15px; line-height: 24px; color: var(--muted); }
+.tsiny__inshi a { display: inline-block; padding: 4px 0; }
 .spysok-bud { columns: 6 90px; }
 .spysok-tekst { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
 

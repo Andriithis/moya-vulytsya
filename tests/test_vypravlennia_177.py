@@ -147,6 +147,28 @@ class Sait(unittest.TestCase):
             self.assertNotRegex(h, r'href="/vulytsi/" aria-current', 'на районі шапка не підсвічує «Вулиці»')
 
 
+    def test_budynok_susidni_i_knopky(self):
+        h = self.html('budynok/khreshchatyk/22/index.html')
+        self.assertNotIn('зазвичай має на тему', h)
+        self.assertIn('У сусідніх будинках у радіусі', h)
+        self.assertEqual(len(re.findall(r'class="knopka knopka--holovna[^"]*" href="/oplata/', h)), 1, 'одна головна кнопка покупки')
+        self.assertIn('class="tsiny__inshi"', h)
+        self.assertNotIn('У довідці: теми звернень', h, 'опис довідки не повторюється')
+        self.assertIn('станом на 8\u00a0листопада 2026', h)
+        self.assertNotRegex(h, r'станом на \d{4}-\d{2}-\d{2}')
+
+    def test_susidni_nul(self):
+        import storinky_mv100 as M
+        self.assertIn('У більшості сусідніх будинків у радіусі 400', M.rechennia_susidiv('вода', 0, 400))
+        self.assertIn('зазвичай 2 звернення на будинок', M.rechennia_susidiv('вода', 2, 400))
+
+    def test_data_slovamy(self):
+        import zibraty_sait as Z
+        self.assertEqual(Z.data_slovamy('2026-11-08'), '8\u00a0листопада 2026')
+        self.assertEqual(Z.data_slovamy('?'), '?')
+        for f in list(self.sait.glob('vulytsia/*/index.html'))[:20] + [self.sait / 'index.html']:
+            self.assertNotRegex(f.read_text(encoding='utf-8'), r'станом на \d{4}-\d{2}-\d{2}', f)
+
     def test_shablon_nemaie_budynku(self):
         h = self.html('_404-budynok.html')
         self.assertRegex(h, r'<!--NEMAIE-BUDYNKU--><span class="mitka">будинок</span><h1>.*?</h1>.*?<!--/NEMAIE-BUDYNKU-->')

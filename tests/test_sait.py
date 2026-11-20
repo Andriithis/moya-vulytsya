@@ -704,8 +704,8 @@ class Sait(unittest.TestCase):
         self.assertIn('href="/rayon/pecherskyi/"', t)               # будинок → район
         self.assertIn('надійшло 7 звернень. Найчастіше — вода (5) і світло (2)', t)
         self.assertLess(t.index('>Вода<'), t.index('>Світло<'))      # теми — від більшої
-        self.assertIn('Сусідній будинок у радіусі 300', t)
-        for k in ('Довідка — 199', '3 довідки — 449', 'Повний звіт — 299'):
+        self.assertIn('У сусідніх будинках у радіусі 300', t)   # ZAVDANNYA-177: людською мовою
+        for k in ('Довідка про цей будинок — 199', '3 довідки для трьох адрес — 449', 'повний звіт перед купівлею — 299'):   # ZAVDANNYA-177
             self.assertIn(k, t)
         self.assertIn('Події за 2016–2023 з адресою будинку теж є — у підписці', t)
         tabl = t.split('Події з рішень')[1].split('</table>')[0]

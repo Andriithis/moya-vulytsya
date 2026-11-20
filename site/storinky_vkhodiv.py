@@ -183,7 +183,7 @@ def urivok(b: dict | None, bud, versiia: str) -> str:
 <div class="por"><div class="por__shapka" aria-hidden="true"><span>Тема</span><span>цей будинок</span><span></span><span>сусідні</span><span></span></div>
 {ryady}</div>
 <p class="vkhid-urivok__z">{podii}</p>
-<p class="prymitka">Ті самі числа, що на відкритій сторінці будинку{f", дані станом на {e(versiia)}" if versiia else ""}. Скарга — звернення людей,
+<p class="prymitka">Ті самі числа, що на відкритій сторінці будинку{f", дані станом на {e(Z.data_slovamy(versiia))}" if versiia else ""}. Скарга — звернення людей,
 не перевірений факт. У довідці — ще місяці, статуси й події поруч з посиланням на кожне рішення.
 <a href="{b["url"]}">Відкрити сторінку цього будинку</a> · {zrazok}.</p></div>'''
 

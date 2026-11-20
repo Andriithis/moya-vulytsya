@@ -313,6 +313,18 @@ def onovleno(versiia: str) -> str:
     return (f'<p class="onovleno"><time datetime="{e(versiia)}">Оновлено: {MISIATSI[int(m.group(2)) - 1]} {m.group(1)}</time></p>')
 
 
+MISIATSI_RODOVYI = ('січня', 'лютого', 'березня', 'квітня', 'травня', 'червня', 'липня', 'серпня', 'вересня', 'жовтня',
+                    'листопада', 'грудня')
+
+
+def data_slovamy(versiia: str) -> str:
+    """«2026-11-08» → «8 листопада 2026» — для видимого тексту (ZVIT-165, п. 10); не дата — як є."""
+    m = re.match(r'^(\d{4})-(\d{2})-(\d{2})', versiia or '')
+    if not m or not 1 <= int(m.group(2)) <= 12:
+        return versiia or ''
+    return f'{int(m.group(3))}{NBSP}{MISIATSI_RODOVYI[int(m.group(2)) - 1]} {m.group(1)}'
+
+
 def og_kartynka(adresa_saitu: str, url: str, alt: str) -> str:
     """Мітки картинки для поширення (Open Graph і X): 1200 × 630 PNG, лише числа (site/kartynky.py)."""
     return (f'<meta property="og:image" content="{e(adresa_saitu + url)}">\n'
@@ -460,7 +472,7 @@ def blok_media(d: dict, slug: str, baza: str | None = None) -> str:
  loading="lazy" alt="{e(d['nazva'])}: {d['podii']} подій з рішень судів у колі {d['radius']} м — картка для медіа"></a>
 <ul class="media-faily">{faily}</ul>
 <p class="prymitka"><b>Умови:</b> {e(d['umovy'])} Числа — станом на
-{e('.'.join(reversed(d['versiia'].split('-'))))}; оновлюються з кожним випуском.</p></section>'''
+{e(data_slovamy(d['versiia']))}; оновлюються з кожним випуском.</p></section>'''
 
 
 def blok_sudova_praktyka(statti_vulytsi: dict, sp_statti: dict | None) -> str:
@@ -617,7 +629,7 @@ def storinka_vulytsi(dn: D.Dani, v: D.Vulytsia, pr: dict, adresa_saitu: str, sus
     chastyny.append('<p class="prymitka">Дані — з рішень судів, які дійшли до реєстру; це не всі події на вулиці. '
                     f'Події без точної адреси сюди не потрапили. Домашнє насильство рахуємо нарівні з іншими подіями — лише числом. Статеві '
                     f'злочини й справи щодо дітей на сторінках вулиць не рахуємо — лише в загальному числі великих сот на карті Києва. '
-                    f'Дані станом на {e(dn.versiia)}.</p>')
+                    f'Дані станом на {e(data_slovamy(dn.versiia))}.</p>')
 
     # schema.org/Place
     tsentr = None
@@ -758,7 +770,7 @@ def holovna(dn: D.Dani, vulytsi: list, rayony: list, adresa_saitu: str, sudova_p
     """Головна — одразу карта Києва з пошуком (AGENTS.md, розд. 3: без вступу), під нею — входи."""
     tilo = f'''<section class="vstup-ryad">
 <div><h2 class="h-mala">Що відбувається під боком</h2>
-<p class="prymitka">{chyslo(len(vulytsi))} вулиць Києва зі своєю сторінкою: скільки подій, коли, яких видів. Дані станом на {e(dn.versiia)};
+<p class="prymitka">{chyslo(len(vulytsi))} вулиць Києва зі своєю сторінкою: скільки подій, коли, яких видів. Дані станом на {e(data_slovamy(dn.versiia))};
 безкоштовно — {PERIOD_VIDKRYTYI}, {PERIOD_ZAMKNENYI} — у підписці.</p></div>
 </section>
 <section class="vkhody" aria-label="Куди далі">
