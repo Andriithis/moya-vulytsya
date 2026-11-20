@@ -1018,6 +1018,25 @@ def storinka_404(adresa_saitu: str) -> str:
                     tilo=tilo, adresa_saitu=adresa_saitu, indeksuvaty=False)
 
 
+# ZVIT-165, п. 2 (ZAVDANNYA-177): «такого будинку немає» — окрема сторінка для /budynok/…, а не 404 про вулиці.
+# Збирач пише шаблон; Worker (site/worker/budynky.js, nemaieBudynku) підставляє назву вулиці з покажчика й номер з адреси.
+MITKA_NEMAIE = ('<!--NEMAIE-BUDYNKU--><span class="mitka">будинок</span><h1>Такого будинку в даних немає</h1>'
+                '<p>Сторінки будинку немає: у даних немає ні звернень до 1551, ні подій з рішень судів з цією адресою.</p>'
+                '<!--/NEMAIE-BUDYNKU-->')
+
+
+def storinka_nemaie_budynku(adresa_saitu: str) -> str:
+    tilo = (f'<section class="zaholovok">{MITKA_NEMAIE}</section>'
+            '<section class="rozdil"><h2>Знайти інший будинок</h2>'
+            '<form class="poshuk" role="search" action="/vulytsi/"><label class="prykhovano" for="poshuk-vulytsi">Вулиця й номер будинку</label>'
+            '<input id="poshuk-vulytsi" type="search" autocomplete="off" placeholder="Вулиця або адреса, наприклад: Хрещатик 22" value="%%ZAPYT%%">'
+            '<ul class="poshuk__spysok" id="poshuk-spysok" hidden></ul></form>'
+            '<p class="rozdil__pidpys">Або відкрийте <a href="/vulytsi/">покажчик вулиць</a> чи <a href="/karta/">карту Києва</a>.</p></section>')
+    return storinka(shlyakh='/404.html', title='Такого будинку в даних немає | Моя вулиця', opys='Такого будинку в даних немає: ні звернень до 1551, ні подій з рішень судів з цією адресою. Знайдіть інший будинок.',
+                    tilo=tilo, adresa_saitu=adresa_saitu, indeksuvaty=False, aktyvne='miy-budynok/',
+                    skrypty=('/sait/poshuk-spilne.js', '/sait/poshuk.js'))
+
+
 def storinka_hra_pereadresatsiia(tsil: str) -> str:
     return f'''<!doctype html>
 <html lang="uk"><head><meta charset="utf-8"><meta name="robots" content="noindex, follow">
@@ -1299,6 +1318,7 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
     zapysaty(vykhid / 'karta' / 'index.html', storinka_karty(dn, adresa_saitu, fayly_zastavky))
     zapysaty(vykhid / 'index.html', holovna(dn, vulytsi, rayony, adresa_saitu, bool(sudova_praktyka), fayly_zastavky))
     zapysaty(vykhid / '404.html', storinka_404(adresa_saitu))
+    zapysaty(vykhid / '_404-budynok.html', storinka_nemaie_budynku(adresa_saitu))
 
     # Будинки, райони, вітрини, оплата-заглушка, видалення, про дані (ZAVDANNYA-85).
     pachky = KH.Pachky(len(bud.spysok)) if (bud and khostynh == 'workers') else None

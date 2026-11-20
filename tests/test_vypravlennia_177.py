@@ -147,6 +147,14 @@ class Sait(unittest.TestCase):
             self.assertNotRegex(h, r'href="/vulytsi/" aria-current', 'на районі шапка не підсвічує «Вулиці»')
 
 
+    def test_shablon_nemaie_budynku(self):
+        h = self.html('_404-budynok.html')
+        self.assertRegex(h, r'<!--NEMAIE-BUDYNKU--><span class="mitka">будинок</span><h1>.*?</h1>.*?<!--/NEMAIE-BUDYNKU-->')
+        self.assertIn('value="%%ZAPYT%%"', h)
+        self.assertIn('/sait/poshuk.js', h)
+        self.assertIn('noindex', h)
+        self.assertNotIn('вулицю перейменовано', h, 'текст про вулиці — лише в загальній 404')
+
     def test_mistsevosti_v_danykh(self):
         m = json.loads(self.html('karta/mistsevosti.json'))
         self.assertEqual(m, [['Шулявка', [], [["Солом'янський", '/rayon/solomianskyi/']]]])
