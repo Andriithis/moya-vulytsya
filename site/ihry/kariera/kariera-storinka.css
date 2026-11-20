@@ -1,0 +1,106 @@
+/* «Кваліфікуй: кар'єра» — окрема сторінка (ZAVDANNYA-146; ZAVDANNYA-152: сама гра — kariera.css). Вигляд — docs/STYL.md: «Індиго й м'ята», кнопки-клавіші (межа 1,5 px і бортик
+   знизу), кути 12/16 px, без червоного й помаранчевого: «неправильно» — фіолетовий акцент, не червоний. Змінні — ті самі, що в
+   site/hra/hra.css (копія блоку :root, звіряє tests/test_kariera.py). */
+:root {
+  --ground: #F4F5FB;
+  --surface: #FFFFFF;
+  --surface-tint: #EDEFFE;
+  --ink: #1C1E2D;
+  --ink-2: #3E4155;
+  --muted: #5F6275;
+  --line: #DFE1E9;
+  --line-strong: #B5B7C4;
+  --mezha: #76798C;
+  --bort: #585B69;
+  --vyd: #3C3CA1;
+  --pk-1: #5DD0A9;
+  --pk-2: #31B88D;
+  --accent: #4447A6;
+  --accent-strong: #33357C;
+  --accent-soft: #DFE3FC;
+  --on-accent: #FFFFFF;
+  --attention: #3C3CA1;
+  --attention-soft: #E8E8F4;
+  --error: #3C3CA1;
+  --data-1: #9CA1E3;
+  --data-2: #7E84CE;
+  --data-3: #6066C1;
+  --data-4: #464AA9;
+  --data-5: #303482;
+  --data-city: #9B9EAC;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --space-9: 56px;
+  --space-10: 72px;
+  --radius-s: 6px;
+  --radius-m: 12px;
+  --radius-l: 16px;
+  --radius-pill: 999px;
+  /* Підкладка карти — похідні тихі кольори (вода, парки, вулиці) для світлої теми. */
+  --karta-voda: #CADDF6;
+  --karta-zelen: #E4F2DE;
+  --karta-zabudova: #E3E4EB;
+  --karta-vulytsia: #FFFFFF;
+  --karta-vulytsia-ramka: #DFE1E9;
+  --karta-za-mezhamy: #E0E2E9;
+  --pole: 20px;
+  --shapka: 56px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ground: #11142A;
+    --surface: #1B1F39;
+    --surface-tint: #232849;
+    --ink: #F0F1FA;
+    --ink-2: #D1D3E2;
+    --muted: #A6A9C1;
+    --line: #2A2E47;
+    --line-strong: #4B506F;
+    --mezha: #7D83AB;
+    --bort: #080913;
+    --vyd: #B37BFF;
+    --pk-1: #33BB92;
+    --pk-2: #4DCB9E;
+    --accent: #66E6BA;
+    --accent-strong: #8CECCB;
+    --accent-soft: #30335C;
+    --on-accent: #11142A;
+    --attention: #B37BFF;
+    --attention-soft: #36305D;
+    --error: #B37BFF;
+    --data-1: #444885;
+    --data-2: #5357A3;
+    --data-3: #6466BB;
+    --data-4: #7678CF;
+    --data-5: #8A8BDD;
+    --data-city: #666B88;
+    --karta-voda: #122343;
+    --karta-zelen: #002528;
+    --karta-zabudova: #1C2035;
+    --karta-vulytsia: #3E4360;
+    --karta-vulytsia-ramka: #1B1F39;
+    --karta-za-mezhamy: #0C0E1D;
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; background: var(--ground); color: var(--ink);
+  font: 16px/1.5 Plex, "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+button { font: inherit; color: inherit; }
+a { color: var(--accent); }
+.ekran { max-width: 760px; margin: 0 auto; padding: 0 var(--space-4) var(--space-8); }
+.storinka-shapka { display: flex; gap: 8px; align-items: center; padding: 14px 0 0; }
+.znak { font-weight: 700; font-size: 18px; }
+.znak-2 { color: var(--accent); }
+.mitka { font-size: 11px; font-weight: 600; color: var(--muted); border: 1px solid var(--line-strong); border-radius: 999px;
+  padding: 1px 7px; vertical-align: 2px; }
+.kar { --kar-tlo: var(--ground); }
+@media (max-width: 600px) { .ekran { padding: 0 12px 32px; } .znak { font-size: 16px; } }

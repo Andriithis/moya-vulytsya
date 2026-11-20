@@ -15,6 +15,11 @@
 5. Поза грою (MV-69, MV-165): статеві, щодо дітей, домашнє насильство (`dani-edrsr/src/chutlyvi.py`) і будь-яка фабула,
    де згадано неповнолітніх чи малолітніх.
 6. Складність — за частотою статті у випуску (часті — на перших рівнях), частина, рідша за 15 % у своїй статті, — +1.
+7. Скасоване чи змінене в апеляції або касації (MV-17, ZAVDANNYA-152) — поза грою: гра показує, як кваліфікував суд, а
+   кваліфікація такого рішення вже не діє. Позначка — таблиця `skasuvannia` випуску (S-Т.6, `dani-edrsr/src/skasuvannia.py`):
+   поза грою наслідки з `SKASOVANO_NASLIDKY` («без змін» і «не розпізнано» — лишаються: саме подання апеляції подію не
+   скасовує). Видалене за зверненням (`withdrawal`) — теж поза грою. Немає таблиці у випуску (пробний 08.11 — стара
+   схема) — відсіву немає, і збирач каже про це вголос.
 
 Фабули — з випуску, тож файл даних у git не кладемо (`.gitignore`), як `litopys.json`.
 """
@@ -61,6 +66,9 @@ VULYTSIA = re.compile(
 # Номер будинку, який не зміг прибрати VULYTSIA (назва з цифрою: «вул. 21-ша Садова, 49») — така справа не йде.
 ZALYSHOK_NOMERA = re.compile(r'(?:вул|просп|бул|пров|пл)\.?\s[^,.;]{0,35},\s*\d')
 BUKVY = 'АБВГДЕЄЖЗИКЛМНОПРСТУФХЦЧШЩ'
+# Наслідки апеляції чи касації (dani-edrsr/src/skasuvannia.py, NASLIDKY), з якими рішення в гру не йде: скасовано (закрито,
+# виправдано, новий розгляд, апеляційний вирок) чи змінено — покарання або кваліфікацію; з тексту наслідку не видно, що саме.
+SKASOVANO_NASLIDKY = ('zakryto', 'vypravdano', 'novyi_rozghliad', 'apeliatsiinyi_vyrok', 'zmina')
 
 
 def kod_kodeksu(s: str) -> str:
@@ -170,9 +178,28 @@ def znejosobyty(t: str, prykhovaty_statti: bool = True) -> str:
     return t
 
 
-def zibraty(baza: Path, teksty: list[Path], na_chastynu: int = 60) -> dict:
+def poza_skasovani(con) -> tuple[set, str]:
+    """-> (doc_id, які не йдуть у гру; пояснення для журналу). Скасовані/змінені вищим судом і видалені за зверненням."""
+    tabl = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+    poza, slova = set(), []
+    if 'skasuvannia' in tabl:
+        q = ','.join('?' * len(SKASOVANO_NASLIDKY))
+        poza |= {d for (d,) in con.execute(f'SELECT doc_id FROM skasuvannia WHERE naslidok IN ({q})', SKASOVANO_NASLIDKY)}
+        slova.append(f'скасованих чи змінених вищим судом: {len(poza)}')
+    else:
+        slova.append('у випуску немає таблиці skasuvannia — скасовані в апеляції не відсіяно')
+    if 'withdrawal' in tabl:
+        vz = {d for (d,) in con.execute('SELECT doc_id FROM withdrawal')}
+        slova.append(f'видалених за зверненням: {len(vz)}')
+        poza |= vz
+    return poza, '; '.join(slova)
+
+
+def zibraty(baza: Path, teksty: list[Path], na_chastynu: int = 60, log=print) -> dict:
     con = sqlite3.connect(f'file:{baza}?mode=ro', uri=True)
     vypusk = con.execute('SELECT versiia FROM release').fetchone()[0]
+    poza, pro_poza = poza_skasovani(con)
+    log(pro_poza)
     epizodiv = Counter(d for (d,) in con.execute('SELECT doc_id FROM event'))
     nazvy: dict[str, str] = {}
     chastota: Counter = Counter()
@@ -186,7 +213,7 @@ def zibraty(baza: Path, teksty: list[Path], na_chastynu: int = 60) -> dict:
         k = f'{m.group(2)} {m.group(1)}'
         chastota[k] += 1
         nazvy.setdefault(k, m.group(3) or '')
-        if epizodiv[doc] == 1 and not DITY.search(fab):
+        if epizodiv[doc] == 1 and not DITY.search(fab) and doc not in poza:
             podii[doc] = (k, fab, vyd, data, url)
     zibrano = defaultdict(list)
     for f in teksty:
@@ -247,7 +274,7 @@ def zibraty(baza: Path, teksty: list[Path], na_chastynu: int = 60) -> dict:
         ridka = s['chastyna'] and chastyny[s['stattia']][s['chastyna']] / vsogo < 0.15
         vykhid.append([s['doc'], s['stattia'], s['chastyna'], s['fabula'], s['chomu'], s['url'], s['data'],
                        min(5, st['riven'] + (1 if ridka else 0)), s['vyd']])
-    return {'versiia': 1, 'vypusk': vypusk, 'zibrano': datetime.date.today().isoformat(),
+    return {'versiia': 1, 'vypusk': vypusk, 'skasovani': pro_poza, 'zibrano': datetime.date.today().isoformat(),
             'pole': ['doc', 'stattia', 'chastyna', 'fabula', 'chomu', 'url', 'data', 'skladnist', 'vyd'],
             'statti': statti, 'spravy': vykhid}
 
