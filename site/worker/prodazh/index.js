@@ -156,6 +156,8 @@ async function testovaOplata(env, id) {
 async function spovishchennia(request, env, servis) {
   const p = perekhidnyk(env, servis);
   if (!p) return new Response('ні', { status: 404 });
+  // ZAVDANNYA-156: тестові сповіщення — лише коли весь сервер у тестовому режимі, а не поруч із живою оплатою
+  if (servis === 'test' && env.PLATIZHNYI_SERVIS !== 'test') return new Response('ні', { status: 404 });
   let v;
   try {
     v = await p.perevirka(request, env);

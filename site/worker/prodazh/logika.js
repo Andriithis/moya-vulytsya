@@ -221,6 +221,9 @@ export async function vzyatyDovidku(env, korystuvach_id, budynok, adresa) {
 
 // ---------------------------------------------------------------- сповіщення про оплату
 
+// Чергове списання раніше, ніж за стільки до кінця оплаченого періоду, — підозра на повтор першої оплати (ZAVDANNYA-156).
+export const ZARANO_MIS_S = 10 * 86400, ZARANO_RIK_S = 30 * 86400;
+
 /**
  * Одна подія від перехідника. Перевірки: подія ще не оброблялась; замовлення є; сума й валюта — рівно ті, що в замовленні.
  * Повертає { ok, prychyna }.
@@ -241,15 +244,31 @@ export async function obrobytyPodiiu(env, servis, p) {
 
   if (p.podiia === 'oplata') {
     if (zam.status === 'stvoreno') {
-      await zrobyty(env, `UPDATE zamovlennia SET status = 'oplacheno', oplacheno = ?, zalyshok = ? WHERE id = ? AND status = 'stvoreno'`,
+      const r = await zrobyty(env, `UPDATE zamovlennia SET status = 'oplacheno', oplacheno = ?, zalyshok = ? WHERE id = ? AND status = 'stvoreno'`,
         t, zam.tovar === 'try' ? TS.dovidok.try - 1 : 0, zam.id);
+      // ZAVDANNYA-156: дві різні події «оплачено» одночасно (LiqPay: «subscribed» і «success») — видає лише та, що
+      // перша змінила статус; друга нічого не видає (раніше — дві довідки або подвійний початок підписки).
+      if (!r.meta?.changes) return { ok: true, prychyna: 'vzhe_oplacheno' };
       await vydaty(env, zam, pidpyska, t);
       return { ok: true, prychyna: 'oplacheno' };
     }
     if (pidpyska && zam.status === 'oplacheno' && pidpyska.status !== 'skasovana') { // чергове списання підписки
-      const dodo = dodatyMisiatsi(Math.max(pidpyska.diie_do || t, t), TS.period_misiatsiv[pidpyska.tovar]);
-      await zrobyty(env, `UPDATE pidpysky SET status = 'aktyvna', pochatok = ?, diie_do = ? WHERE id = ?`, t, dodo, pidpyska.id);
-      return { ok: true, prychyna: 'prodovzheno' };
+      // ZAVDANNYA-156: списання задовго до кінця оплаченого періоду — не продовження, а повтор першої оплати (LiqPay шле
+      // «subscribed» і «success» на ту саму першу оплату). Не продовжуємо; партнер отримує лист і вирішує сам.
+      const period = TS.period_misiatsiv[pidpyska.tovar];
+      if (pidpyska.diie_do && t < pidpyska.diie_do - (period >= 12 ? ZARANO_RIK_S : ZARANO_MIS_S)) {
+        await zrobyty(env, 'UPDATE spovishchennia SET status = ? WHERE servis = ? AND kliuch = ?', 'zarano', servis, String(p.kliuch));
+        if (env.POSHTA_PARTNERA) {
+          await nadislaty(env, { komu: env.POSHTA_PARTNERA, tema: 'Списання підписки раніше строку',
+            tekst: `Замовлення ${zam.id}: сервіс повідомив оплату ${p.suma} UAH, а оплачений період триває до ${dataT(pidpyska.diie_do)}. ` +
+              'Підписку не продовжено. Перевірте в кабінеті сервісу: це повтор першої оплати чи справжнє списання.' });
+        }
+        return { ok: true, prychyna: 'zarano' };
+      }
+      const dodo = dodatyMisiatsi(Math.max(pidpyska.diie_do || t, t), period);
+      const r = await zrobyty(env, `UPDATE pidpysky SET status = 'aktyvna', pochatok = ?, diie_do = ? WHERE id = ? AND COALESCE(diie_do, 0) = ?`,
+        t, dodo, pidpyska.id, pidpyska.diie_do || 0);
+      return { ok: true, prychyna: r.meta?.changes ? 'prodovzheno' : 'vzhe_prodovzheno' };
     }
     return { ok: true, prychyna: 'vzhe_oplacheno' };
   }
