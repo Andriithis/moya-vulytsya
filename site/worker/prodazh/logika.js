@@ -462,9 +462,9 @@ export async function dovidkaHotova(env, id, html, adresaSaitu) {
       komu: d.poshta, tema: misiats ? `${d.adresa}. ${misiats}` : `Щомісячна довідка для ОСББ: ${d.adresa}`,
       tekst: `Готово: щомісячна довідка про будинок ${d.adresa} — звернення мешканців до 1551 за останній місяць і за рік, ` +
         `порівняння з сусідніми будинками, події з рішень судів.\n\n` + (misiats ? `Цього місяця: ${misiats}\n\n` : '') +
-        `Відкрити: ${adresaSaitu}/dovidka/${d.id}/?k=${kliuch}\n\n` + kartka +
+        `Відкрити: ${adresaSaitu}/dovidka/${d.id}/?k=${kliuch}\n\n` +
         `Наступна прийде сама через місяць. Усі довідки — у кабінеті: ${adresaSaitu}/kabinet/\n` +
-        'Посилання особисте — не пересилайте його. Це не оцінка безпеки: лише скарги мешканців і події з рішень судів, як їх записано.',
+        (kartka ? 'Посилання на довідку особисте — не пересилайте його.\n\n' + kartka : 'Посилання особисте — не пересилайте його. ') + 'Це не оцінка безпеки: лише скарги мешканців і події з рішень судів, як їх записано.',
     });
   } else if (d.poshta) {
     const r = d.pidpyska_id ? (await stanPidpysok(env, d.korystuvach_id)).find((p) => p.id === d.pidpyska_id && p.tovar === 'rieltor') : null;
@@ -482,8 +482,9 @@ export async function dovidkaHotova(env, id, html, adresaSaitu) {
       komu: d.poshta, tema: `${d.rezhym === 'povnyi' ? 'Повний звіт' : 'Довідка'}: ${d.adresa}`,
       tekst: `Готово: ${d.rezhym === 'povnyi' ? 'повний звіт' : 'довідка'} про будинок ${d.adresa}.\n\n` +
         (holovne ? `Головне: ${holovne}\n\n` : '') +
-        `Відкрити: ${adresaSaitu}/dovidka/${d.id}/?k=${kliuch}\n\n` + kartka +
-        `Посилання особисте — не пересилайте його. Усі довідки — також у кабінеті: ${adresaSaitu}/kabinet/\n` + zalyshok +
+        `Відкрити: ${adresaSaitu}/dovidka/${d.id}/?k=${kliuch}\n\n` +
+        `Посилання${kartka ? ' на довідку' : ''} особисте — не пересилайте його. Усі довідки — також у кабінеті: ${adresaSaitu}/kabinet/\n` + zalyshok +
+        (kartka ? `\n${kartka}` : '') +
         'Це не оцінка безпеки: лише скарги мешканців і події з рішень судів, як їх записано.',
     });
   }

@@ -77,6 +77,8 @@ test('картка: видавач кладе до довідки, лист «г
   assert.deepEqual(statusy, [204]);
   const l = lyst(env, 'ana@poshta.ua');
   assert.match(l.tekst, new RegExp(`${NAPYS.replace(/[()]/g, '\\$&')} — її можна переслати`));
+  assert.ok(l.tekst.indexOf('Посилання на довідку особисте — не пересилайте') < l.tekst.indexOf(NAPYS),
+    '«не пересилайте» — про довідку і раніше за картку, яку пересилати можна');
   const kartka = shliakh(l.tekst, /https:\/\/mv\.test(\/dovidka\/d[a-z2-7]+\/kartka\/\?k=[a-z2-7]+)/);
   const dovidka = shliakh(l.tekst, /https:\/\/mv\.test(\/dovidka\/d[a-z2-7]+\/\?k=[a-z2-7]+)/);
   assert.ok(kartka && dovidka);
