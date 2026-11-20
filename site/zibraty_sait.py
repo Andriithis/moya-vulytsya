@@ -528,7 +528,7 @@ def storinka_vulytsi(dn: D.Dani, v: D.Vulytsia, pr: dict, adresa_saitu: str, sus
          'geometry': {'type': 'Polygon', 'coordinates': [kontur_soty(k)]}} for k, n in pr['soty']]}
     chastyny.append(f'''<section class="rozdil"><h2>Де на вулиці</h2>
 <p class="rozdil__pidpys">Шестикутник — близько 0,1 км²; темніше — більше подій у даних. Окремих будинків і описів подій тут немає.</p>
-<div class="dva-stovptsi"><div class="karta-ramka"><div id="karta-vulytsi" class="karta" aria-label="Карта вулиці {e(v.nazva)}"></div>
+<div class="dva-stovptsi"><div class="karta-ramka"><div id="karta-vulytsi" class="karta" role="region" aria-label="Карта вулиці {e(v.nazva)}"></div>
 <p class="karta__zboi" hidden>Підкладка карти не завантажилася — видно межу Києва й шестикутники.</p>
 <noscript><p class="karta-bez-js">Щоб побачити карту, увімкніть JavaScript.</p></noscript></div>
 <div class="kartka zamok" aria-disabled="true"><p class="zamok__nazva">Що саме сталося біля кожного будинку — у довідці й підписці</p>
