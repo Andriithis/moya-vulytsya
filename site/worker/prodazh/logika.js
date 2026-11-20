@@ -406,6 +406,8 @@ export async function vydalytyDani(env, korystuvach_id) {
   await zrobyty(env, 'DELETE FROM stezhu WHERE korystuvach_id = ?', korystuvach_id);
   await zrobyty(env, 'DELETE FROM lysty_stezhu WHERE korystuvach_id = ?', korystuvach_id);   // щомісячний лист «Стежу» (ZAVDANNYA-150)
   await zrobyty(env, 'DELETE FROM bali_rukh WHERE korystuvach_id = ?', korystuvach_id);   // бали ігор (ZAVDANNYA-123)
+  await zrobyty(env, 'DELETE FROM karta_zavantazhennia WHERE korystuvach_id = ?', korystuvach_id);   // ліміт карти (ZAVDANNYA-161)
+  await zrobyty(env, 'DELETE FROM sp_vyvantazhennia WHERE korystuvach_id = ?', korystuvach_id);
   await zrobyty(env, 'DELETE FROM sesii WHERE korystuvach_id = ?', korystuvach_id);
   await zrobyty(env, 'DELETE FROM vkhody WHERE korystuvach_id = ?', korystuvach_id);
   await zrobyty(env, 'DELETE FROM korystuvachi WHERE id = ?', korystuvach_id);
@@ -416,6 +418,9 @@ export async function prybraty(env) {
   const t = teper(env);
   await zrobyty(env, 'DELETE FROM sesii WHERE do_ < ?', t);
   await zrobyty(env, 'DELETE FROM vkhody WHERE do_ < ?', t - 86400);
+  const tyzhdenTomu = new Date((t - 7 * 86400) * 1000).toISOString().slice(0, 10);   // лічильники лімітів — лише свіжі
+  await zrobyty(env, 'DELETE FROM karta_zavantazhennia WHERE den < ?', tyzhdenTomu);
+  await zrobyty(env, 'DELETE FROM sp_vyvantazhennia WHERE den < ?', tyzhdenTomu);
   const dniv = parseInt(env.DOVIDKY_DNIV || '365', 10);
   const stari = await vsi(env, 'SELECT id, fail FROM dovidky WHERE fail IS NOT NULL AND hotovo < ?', t - dniv * 86400);
   for (const d of stari) {

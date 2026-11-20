@@ -185,3 +185,12 @@ CREATE TABLE IF NOT EXISTS lysty_stezhu (
   nadislano      INTEGER NOT NULL,
   PRIMARY KEY (korystuvach_id, period)
 );
+
+-- ZAVDANNYA-161, п. 2 (MV-173): скільки описів карти підписника (клітинки spravy/ і «події адреси») людина відкрила за добу.
+-- Ліміт — prodazh/karta.js, OPYSIV_NA_DEN (змінна KARTA_NA_DEN). Старші за тиждень рядки стирає щоденне прибирання.
+CREATE TABLE IF NOT EXISTS karta_zavantazhennia (
+  korystuvach_id INTEGER NOT NULL,
+  den            TEXT NOT NULL,              -- РРРР-ММ-ДД (UTC)
+  n              INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (korystuvach_id, den)
+);
