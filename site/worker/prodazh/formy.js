@@ -14,7 +14,8 @@ const SHCHO_NE_TAK = ['mistse', 'opys', 'vydalyty', 'inshe'];
 // Що можна «замовити наперед» у режимі «скоро»: усе, що продаватиметься, і «Судова практика» (повідомити про запуск).
 export const TOVARY_SKORO = [...new Set([...TS.na_prodazh, 'spdovidka', 'spyurist', 'sudova'])];
 export const NAZVA_SUDOVA = 'Судова практика — повідомити про запуск';
-const ZAPYSIV_NA_POSHTU = 20;            // більше рядків «скоро» з однієї пошти не пишемо (захист від засмічення)
+const ZAPYSIV_NA_POSHTU = 20;
+export const LYSTIV_ZVERNEN = 10;        // листів партнеру про нові звернення — не більше на годину (ZAVDANNYA-156)            // більше рядків «скоро» з однієї пошти не пишемо (захист від засмічення)
 export const TABLYTSI = { skoro: 'id, poshta, tovar, budynok, adresa, kanal, stvoreno, napysano',
   zayavka: 'id, shcho, misto, adresa, kontakt, kanal, stvoreno', zvernennya: 'id, posylannya, shcho_ne_tak, poyasnennya, kontakt, stvoreno, zakryto',
   podiya: 'den, nazva, kanal, n' };
@@ -77,7 +78,10 @@ export async function forma(request, env, tablytsia) {
     await L.zrobyty(env, 'INSERT INTO zvernennya (posylannya, shcho_ne_tak, poyasnennya, kontakt, stvoreno) VALUES (?, ?, ?, ?, ?)',
       posylannya, d.shcho_ne_tak, tekst(d.poyasnennya, 2000), kontakt, t);
     // Строк — 10 робочих днів (AGENTS.md, розд. 7): партнер має дізнатися одразу, а не з вивантаження.
-    if (env.POSHTA_PARTNERA) {
+    // Не більше LYSTIV_ZVERNEN листів на годину (ZAVDANNYA-156): потік підроблених звернень не завалить пошту партнера
+    // й не вичерпає ліміт сервісу листів; самі звернення однаково записано — партнер побачить їх у вивантаженні.
+    const zaHodynu = (await L.odyn(env, 'SELECT COUNT(*) AS n FROM zvernennya WHERE stvoreno > ?', t - 3600)).n;
+    if (env.POSHTA_PARTNERA && zaHodynu <= LYSTIV_ZVERNEN) {
       try {
         await nadislaty(env, { komu: env.POSHTA_PARTNERA, tema: 'Нове звернення: виправити або прибрати подію',
           tekst: `Надійшло звернення (${d.shcho_ne_tak}). Відповісти — протягом 10 робочих днів.\n` +

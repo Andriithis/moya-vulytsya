@@ -333,3 +333,63 @@ test('карта підписника: без підписки — 403, без �
   const kuka2 = await uviity(env);
   assert.equal((await zapyt(env, 'GET', '/pidpysnyk/spravy/1_1.json', { kuka: kuka2 })).r.status, 403);
 });
+
+// ---------------------------------------------------------------- 4. перебір і ліміти запитів
+
+/** Підміна прив'язки Cloudflare Rate Limiting: межа запитів на ключ (без вікна часу — для тесту досить). */
+function obmezhennia(mezha) {
+  const n = new Map();
+  return { kliuchi: n, async limit({ key }) { n.set(key, (n.get(key) || 0) + 1); return { success: n.get(key) <= mezha }; } };
+}
+
+test('ліміт запитів: замовлення, вхід, форми, ключі довідок — 429 після межі з однієї адреси; інша адреса працює', async () => {
+  const env = seredovyshche({ OBMEZHENNIA: obmezhennia(3) });
+  const ip = (a) => ({ 'cf-connecting-ip': a });
+  const forma = { tovar: 'dovidka', budynok: '/budynok/zhylianska/5/', poshta: 'a@poshta.ua', zghoda: 'tak', odrazu: 'tak' };
+  const st = [];
+  for (let i = 0; i < 5; i++) st.push((await zapyt(env, 'POST', '/api/zamovlennia', { forma, zaholovky: ip('1.1.1.1') })).r.status);
+  assert.deepEqual(st, [303, 303, 303, 429, 429]);
+  assert.equal((await zapyt(env, 'POST', '/api/zamovlennia', { forma, zaholovky: ip('2.2.2.2') })).r.status, 303, 'інша адреса');
+  for (let i = 0; i < 3; i++) await zapyt(env, 'POST', '/kabinet/vkhid', { forma: { poshta: 'a@poshta.ua' }, zaholovky: ip('1.1.1.1') });
+  assert.equal((await zapyt(env, 'POST', '/kabinet/vkhid', { forma: { poshta: 'a@poshta.ua' }, zaholovky: ip('1.1.1.1') })).r.status, 429);
+  for (let i = 0; i < 3; i++) await zapyt(env, 'GET', `/dovidka/dzzzzzz${'a'.repeat(i)}/?k=x`, { zaholovky: ip('1.1.1.1') });
+  assert.equal((await zapyt(env, 'GET', '/dovidka/dzzzzzzz/?k=y', { zaholovky: ip('1.1.1.1') })).r.status, 429, 'вгадування ключів довідок');
+  const f = { tilo: JSON.stringify({ nazva: 'pryishly' }), zaholovky: { ...ip('1.1.1.1'), 'content-type': 'application/json' } };
+  for (let i = 0; i < 3; i++) await zapyt(env, 'POST', '/api/forma/podiya', f);
+  assert.equal((await zapyt(env, 'POST', '/api/forma/podiya', f)).r.status, 429);
+});
+
+test('ліміт запитів не чіпає сповіщень платіжного сервісу й видавача', async () => {
+  const env = seredovyshche({ OBMEZHENNIA: obmezhennia(0) });
+  const zam = sql(env, 'SELECT * FROM zamovlennia WHERE id = ?', await (async () => {
+    env.OBMEZHENNIA = obmezhennia(100);
+    const id = await zamovyty(env, 'dovidka', '/budynok/zhylianska/5/');
+    env.OBMEZHENNIA = obmezhennia(0);
+    return id;
+  })())[0];
+  const v = await spovistyty(env, podiiaTestu(env, zam, 'oplata', 'x'));
+  assert.equal(v.r.status, 303);
+  assert.equal(sql(env, 'SELECT status FROM zamovlennia')[0].status, 'oplacheno');
+  const { r } = await zapyt(env, 'GET', '/api/vnutr/cherha?n=1', { zaholovky: { authorization: 'Bearer vydacha-kliuch' } });
+  assert.equal(r.status, 200);
+  assert.equal(env.OBMEZHENNIA.kliuchi.size, 0, 'ліміт навіть не питали');
+});
+
+test('ліміт запитів: прив\'язка впала — продаж працює далі', async () => {
+  const env = seredovyshche({ OBMEZHENNIA: { async limit() { throw new Error('недоступно'); } } });
+  assert.equal(typeof await zamovyty(env, 'dovidka', '/budynok/zhylianska/5/'), 'string');
+});
+
+test('звернення: потік підроблених — записано всі, а листів партнеру не більше 10 на годину', async () => {
+  const env = seredovyshche();
+  const tilo = JSON.stringify({ zghoda: true, kontakt: 'x', posylannya: '/budynok/zhylianska/5/', shcho_ne_tak: 'vydalyty' });
+  for (let i = 0; i < 30; i++) {
+    const { r } = await zapyt(env, 'POST', '/api/forma/zvernennya', { tilo, zaholovky: { 'content-type': 'application/json' } });
+    assert.equal(r.status, 201);
+  }
+  assert.equal(sql(env, 'SELECT COUNT(*) n FROM zvernennya')[0].n, 30);
+  assert.ok(env.__LYSTY.length <= 11, `листів: ${env.__LYSTY.length}`);
+  env.krok(3601);
+  await zapyt(env, 'POST', '/api/forma/zvernennya', { tilo, zaholovky: { 'content-type': 'application/json' } });
+  assert.match(env.__LYSTY.at(-1).tema, /звернення/, 'за годину — знову лист');
+});

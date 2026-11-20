@@ -56,6 +56,23 @@ async function sesiia(request, env) {
   return L.odyn(env, `SELECT k.* FROM sesii s JOIN korystuvachi k ON k.id = s.korystuvach_id WHERE s.hash = ? AND s.do_ > ?`, sha256(s), L.teper(env));
 }
 
+/**
+ * Ліміт запитів з однієї адреси (ZAVDANNYA-156): прив'язка Cloudflare Rate Limiting OBMEZHENNIA (wrangler.jsonc, «ratelimits»,
+ * пише site/khostynh.py). true — забагато, відповісти 429. Без прив'язки (місцевий запуск, тести) — без ліміту.
+ * Лише для того, що пишуть люди: форми, замовлення, вхід. Сповіщення платіжного сервісу й видавача — ніколи не обмежуємо.
+ */
+async function zabahato(request, env, hrupa) {
+  if (!env.OBMEZHENNIA?.limit) return false;
+  const ip = request.headers.get('cf-connecting-ip') || 'bez-adresy';
+  try {
+    return !(await env.OBMEZHENNIA.limit({ key: `${hrupa}:${ip}` })).success;
+  } catch (err) {
+    console.log(`ліміт запитів: ${err.message}`);
+    return false;      // ліміт не відповів — не зупиняємо продаж
+  }
+}
+const ZABAHATO = () => S.povidomlennia('Забагато спроб', 'Забагато запитів з вашої мережі. Зачекайте хвилину й спробуйте ще раз.', 429);
+
 /** Форми кабінету й замовлення — лише з нашого сайту (захист від підробки запиту з чужої сторінки). */
 function zNashohoSaitu(request, env) {
   const o = request.headers.get('origin');
@@ -455,6 +472,7 @@ async function spilne(request, env, url) {
   const r = s.match(/^\/api\/forma\/([a-z]+)$/);
   if (r && request.method === 'POST') {
     if (!zNashohoSaitu(request, env)) return new Response('ні', { status: 403 });
+    if (await zabahato(request, env, 'forma')) return new Response('zabahato', { status: 429 });
     return F.forma(request, env, r[1]);
   }
   const a = s.match(/^\/api\/admin\/(.+)$/);
@@ -463,11 +481,17 @@ async function spilne(request, env, url) {
 }
 
 /** Відповідь сервера продажу або null (тоді — звичайний сайт). */
+// Що обмежуємо (ZAVDANNYA-156): усе, що пише в базу чи шле листи з дії незнайомця, і вгадування ключів.
+const OBMEZHENI = [['POST', /^\/api\/(skoro|zamovlennia)$/, 'zapys'], ['POST', /^\/kabinet\/vkhid$/, 'vkhid'],
+  ['GET', /^\/kabinet\/(vkhid|google)\/$/, 'vkhid'], ['GET', /^\/dovidka\//, 'dovidka'], ['GET', /^\/pidpysnyk\/api\//, 'karta']];
+
 export async function prodazh(request, env) {
   if (env.PRODAZH !== 'tak' && env.PRODAZH !== 'skoro') return null;
   const url = new URL(request.url);
   const s = url.pathname;
   const m = request.method;
+  const o = OBMEZHENI.find(([metod, shliakh]) => metod === m && shliakh.test(s));
+  if (o && await zabahato(request, env, o[2])) return ZABAHATO();
   const sp = await spilne(request, env, url);
   if (sp) return sp;
   if (env.PRODAZH === 'skoro') {
