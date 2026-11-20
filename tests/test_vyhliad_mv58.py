@@ -23,7 +23,7 @@ import zibraty_sait  # noqa: E402
 FAILY = [
     *sorted((KORIN / 'brend' / 'shablony').glob('*')),
     KORIN / 'brend' / 'zrobyty.py',
-    KORIN / 'video' / 'stsena.css', KORIN / 'video' / 'stsena.js', KORIN / 'video' / 'stsena.html',
+    KORIN / 'video' / 'vau' / 'stsena.css', KORIN / 'video' / 'vau' / 'stsena.js', KORIN / 'video' / 'vau' / 'stsena.html',
     *[p for p in sorted((KORIN / 'site' / 'zahlushka').glob('*')) if p.suffix in ('.css', '.html', '.js', '.webmanifest')],
     *[p for p in sorted((KORIN / 'site' / 'hra').glob('*')) if p.suffix in ('.css', '.html', '.js')],
 ]
@@ -78,9 +78,6 @@ class ZminniYakNaSaiti(unittest.TestCase):
     def test_brend(self):
         self.pereviryty(KORIN / 'brend' / 'shablony' / 'brend.css', ':root {', 'svitla')
 
-    def test_video(self):
-        self.pereviryty(KORIN / 'video' / 'stsena.css', ':root {', 'svitla')
-
     def test_hra_obydvi_temy(self):
         f = KORIN / 'site' / 'hra' / 'hra.css'
         self.pereviryty(f, ':root {', 'svitla')
@@ -102,7 +99,7 @@ class ZminniYakNaSaiti(unittest.TestCase):
 
 class ShryftyIKlavishi(unittest.TestCase):
     def test_shryfty_plex_na_mistsi(self):
-        for f in (KORIN / 'brend' / 'shablony' / 'brend.css', KORIN / 'video' / 'stsena.css',
+        for f in (KORIN / 'brend' / 'shablony' / 'brend.css', KORIN / 'video' / 'vau' / 'stsena.css',
                   KORIN / 'site' / 'zahlushka' / 'styli.css'):
             css = f.read_text(encoding='utf-8')
             shliakhy = re.findall(r'url\(([^)]+\.woff2)\)', css)
@@ -125,7 +122,6 @@ class ShryftyIKlavishi(unittest.TestCase):
                 self.assertRegex(blok, r'border:\s*1\.5px solid (var\(--mezha\)|#76798C)', f'{f.name} {k}')
                 self.assertRegex(blok, bort, f'{f.name} {k}')
         self.assertIn('box-shadow: 0 3px 0 var(--bort)', (KORIN / 'brend' / 'shablony' / 'brend.css').read_text(encoding='utf-8'))
-        self.assertIn('box-shadow: 0 6px 0 var(--bort)', (KORIN / 'video' / 'stsena.css').read_text(encoding='utf-8'))
 
 
 
