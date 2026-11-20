@@ -966,6 +966,44 @@ console.log(JSON.stringify(out));
             self.zs.zibraty_sait(self.baza, Path(self.tmp.name) / 'sait-mezha', self.pereim, KORIN / 'data' / 'borders.json',
                                  budynky=self.budynky, mezha_failiv=50)
 
+    def test_google_154(self):
+        """ZAVDANNYA-154: зібраний сайт «очима Google» — без помилок (site/perevirka_google.py): канонічні адреси, один
+        заголовок і опис потрібної довжини, карта сайту ↔ noindex, без сиріт, битих посилань і дублікатів, розмітка
+        schema.org; у заголовках і описах — ні оцінки безпечності, ні «відгуків»."""
+        import perevirka_google as G
+        import zaholovky as ZH
+        z = G.perevirka(self.sait, self.zs.ADRESA_SAITU)
+        self.assertEqual(z['pomylky'], {})
+        self.assertGreater(z['jsonld'].get('BreadcrumbList', 0), 0)
+        for p in self.nashi_storinky():
+            t = p.read_text(encoding='utf-8')
+            for m in (G.TITLE.search(t), G.OPYS.search(t)):
+                if m:
+                    self.assertIsNone(ZH.ZABORONENO.search(m.group(1)), (p, m.group(1)))
+        if self.spravzhnii:
+            return
+        b = self.budynok('khreshchatyk/22')
+        self.assertIn('<title>вул. Хрещатик, 22, Київ — скарги мешканців і події з рішень судів</title>', b)
+        import storinky_mv100 as M          # сусіди інших вулиць у радіусі 400 м, найближчі першими
+        bb = [{'slug': s, 'vulytsia': v, 'lat': lat, 'lon': 30.5} for s, v, lat in
+              (('a/1', 'A', 50.4500), ('a/2', 'A', 50.4501), ('b/1', 'B', 50.4520), ('c/1', 'C', 50.4510), ('d/1', 'D', 50.4600))]
+        self.assertEqual([x['slug'] for x in M.budynky_poruch(bb)['a/1']], ['c/1', 'b/1'])
+        self.assertIn('/budynok/nevidoma/1/', (self.sait / 'rayony' / 'index.html').read_text(encoding='utf-8'))
+        red = (self.sait / '_redirects').read_text(encoding='utf-8')
+        self.assertIn('/vulytsia/chervonoarmiiska/ /vulytsia/velyka-vasylkivska/ 301', red)
+
+    def test_zaholovky_vmishchuiutsia(self):
+        """ZAVDANNYA-154: довгі адреси — коротший хвіст, а не обрізаний Google заголовок."""
+        import zaholovky as ZH
+        for v in ('a', 'b', 'c'):
+            for vul, nom in (('вулиця Хрещатик', '22'), ('проспект Академіка Глушкова', '40/2'),
+                             ('вулиця Генерала Генерального Дуже-Довгоназвенка', '148-В корп. 2')):
+                self.assertLessEqual(len(ZH.title_budynku(vul, nom, v)), 70, (v, vul))
+        self.assertEqual(ZH.korotka_nazva('Йорданська вулиця'), 'вул. Йорданська')
+        self.assertEqual(ZH.korotka_nazva('Харківське шосе'), 'Харківське шосе')
+        self.assertLessEqual(len(ZH.opys_budynku('проспект Академіка Глушкова', '40/2', 'Голосіївський район',
+                                                 '1 125 звернень', 'опалення й гаряча вода', '112 подій', '2024–2026')), 160)
+
     def test_sitemap_dilytsia_na_chastyny(self):
         if self.spravzhnii:
             self.skipTest('лише для штучної бази')
@@ -978,7 +1016,14 @@ console.log(JSON.stringify(out));
             self.zs.MEZHA_SITEMAP = stara
         indeks = (teka / 'sitemap.xml').read_text(encoding='utf-8')
         self.assertIn('<sitemapindex', indeks)
-        self.assertTrue((teka / 'sitemap-2.xml').is_file())
+        # ZAVDANNYA-154: частини за видом сторінок, кожна до MEZHA_SITEMAP адрес
+        chastyny = sorted(p.name for p in teka.glob('sitemap-*.xml'))
+        self.assertIn('sitemap-vulytsi-2.xml', chastyny)
+        self.assertIn('sitemap-budynky.xml', chastyny)
+        self.assertIn('sitemap-inshe-2.xml', chastyny)
+        for n in chastyny:
+            self.assertIn(f'/{n}</loc>', indeks)
+            self.assertLessEqual((teka / n).read_text(encoding='utf-8').count('<loc>'), 5)
 
 
 def brauzer_dlya_karty() -> str | None:

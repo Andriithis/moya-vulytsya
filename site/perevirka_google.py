@@ -133,8 +133,12 @@ def perevirka(teka: Path, adresa_saitu: str) -> dict:
     posylannia: dict[str, set] = {}
     typy_ld = Counter()
     dovzhyny = {'title': [], 'opys': []}
+    zaboroneni = zaboroneni_robots(teka)
     for a, t in storinky(teka):
         vsi.add(a)
+        if a == '/404.html' or any(a.startswith(z) for z in zaboroneni):
+            posylannia[a] = set()          # службові: Google їх не бачить
+            continue
         if REFRESH.search(t):              # переадресації: лише канонічна адреса на ціль
             zakryti.add(a)
             posylannia[a] = set()
@@ -186,7 +190,6 @@ def perevirka(teka: Path, adresa_saitu: str) -> dict:
     for a, t in storinky_shapky(teka):
         vkhidni[a] += 1
 
-    zaboroneni = zaboroneni_robots(teka)
     smap = adresy_sitemap(teka, adresa_saitu)
     smap_set = set(smap)
     for a, n in Counter(smap).items():
