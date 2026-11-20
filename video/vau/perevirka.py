@@ -348,6 +348,9 @@ def pravda(S: dict, meta: dict) -> list[str]:
                      f"n числом (сцена пише «N подій» окремим рядком)")
     if len(str(S.get('dzherelo') or '')) > DZHERELO_MAKS:
         z.append(f"рядок джерела задовгий ({len(S['dzherelo'])} > {DZHERELO_MAKS} знаків) — не влазить в один рядок над гачком")
+    # ролик-відповідь — лише на справжній коментар (критик ZVIT-170, n6; реєстр ROLYKY-TYPY): посилання на нього в meta
+    if any(it.get('styl') == 'komentar' for it in S.get('tekst', [])) and not meta.get('komentar_dzherelo'):
+        z.append('відповідь на коментар — лише на справжній: meta komentar_dzherelo (посилання на коментар; MV_KOMENTAR)')
     # одне «усього подій» (топ-10 №6): лічильник з підсумком несе pidsumok і показує саме число з meta['pidsumky']
     pids = meta.get('pidsumky') or {}
     for it in S.get('tekst', []):

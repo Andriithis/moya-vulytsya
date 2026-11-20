@@ -279,7 +279,9 @@ def _dyvna(B, id_, nomer, pod, hook, kartka, slovo_, slovo_pid, kudy, nazva, pid
     for i in range(len(pod)):
         R.kiltse(3.65 + 0.5 * i, c, '#B8E07A', 260)
         R.efekt(3.6 + 0.5 * i, 'pop', h=1.2 + 0.2 * i)
-    R.slovo(6.5, 8.0, slovo_, pid=slovo_pid, klas='fiolet')
+    # критик ZVIT-170: фіолетова заставка на весь кадр посередині — пауза; тепер напис поверх карти (ZAVDANNYA-175)
+    R.tekst(6.5, 8.0, 'velykyi', f'*{slovo_}* —\n{slovo_pid}', y='verkh', anim='slam')
+    R.kiltse(6.5, c, '#B8E07A', 320)
     R.efekt(6.5, 'udar', v=0.7)
     R.mitka(8.1, 12, c, D.vulytsia(pod[0].adresa), styl='velyka')
     R.tekst(8.3, 10.8, 'velykyi', 'А що дивного\n*на твоїй вулиці?*', y='verkh', anim='slam')
@@ -432,6 +434,11 @@ def n6(B):
     R.tochky(tlo, [-1] * len(tlo), rozmir=((0, 6),), yaskr=((0, 0.5),), glow=0.2, kiltse=False)
     R.kam(0, (c[0], c[1] - 0.02), 11.8, 30, 2).kam(2.0, (c[0], c[1] - 0.02), 12.1, 35, 10, e='o')   # рух з кадру 0
     R.kam(4.6, (c[0], c[1] - 0.006), 14.6, 55, -20, e='io', luk=0.5).kam(15, (c[0], c[1] - 0.005), 14.9, 58, -60, e='l')
+    # критик ZVIT-170: коментар вигаданий — за реєстром лише справжній. Без посилання на справжній коментар
+    # (MV_KOMENTAR) перевірка не пускає ролик (perevirka.pravda, ZAVDANNYA-175)
+    import os
+    if os.environ.get('MV_KOMENTAR'):
+        R.meta['komentar_dzherelo'] = os.environ['MV_KOMENTAR']
     R.tekst(0, 2.2, 'komentar', 'а що на Кадетському Гаю?', khto='питання з коментарів', y='verkh')
     R.efekt(0.02, 'klik', h=1.1)
     R.holos(0.3, 'Відповідаємо.', 'tetiana')

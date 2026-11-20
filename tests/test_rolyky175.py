@@ -421,5 +421,18 @@ class Chytabelnist(unittest.TestCase):
         self.assertIn('var gusto = it.riady.length > 12;', (VAU / 'stsena.js').read_text(encoding='utf-8'))
 
 
+class Ramka(unittest.TestCase):
+    """Топ-10 №9–10: відповідь лише на справжній коментар; без фіолетової заставки-паузи посередині."""
+
+    def test_komentar(self):
+        f = lambda s: s['tekst'].__setitem__(0, {'t0': 0, 't1': 2, 'styl': 'komentar', 'tekst': 'а що на Проби?', 'khto': 'з коментарів'})
+        self.assertTrue(any('справжній' in x for x in z(f)))
+        self.assertEqual(z(f, {'komentar_dzherelo': 'https://www.tiktok.com/@moia.vulytsia/video/1#komentar'}), [])
+
+    def test_bez_zastavky(self):
+        for f in ('stsenarii129.py', 'stsenarii138.py'):
+            self.assertNotIn("klas='fiolet'", (VAU / f).read_text(encoding='utf-8'), f)
+
+
 if __name__ == '__main__':
     unittest.main()
