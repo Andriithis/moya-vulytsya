@@ -13,7 +13,8 @@
 //   POST /api/zamovlennia                  створити замовлення → платіжний сервіс
 //   GET  /oplata/test/<id>/                тестова оплата (лише PLATIZHNYI_SERVIS=test і TESTOVA_OPLATA=tak)
 //   POST /api/spovishchennia/<сервіс>      підписане сповіщення про оплату → перевірка підпису й суми → видача
-//   GET  /oplata/dyakuiemo/                «дякуємо»
+//   GET  /oplata/dyakuiemo/?z=…            «дякуємо» — текст за товаром замовлення (ZAVDANNYA-172)
+//   GET  /oplata/zapysaly/                 «Записали» після «скоро — залиште пошту» (обидва режими)
 //   GET  /dovidka/<id>/?k=<ключ>           довідка: ключ із листа або вхід у кабінет власника
 //   /kabinet/…                             вхід за посиланням на пошту (посилання → сторінка з кнопкою «Увійти» → POST /kabinet/vkhid/uviity), мої довідки, «Стежу», підписка, видалення даних
 //   GET  /kabinet/google/…                 вхід через Google — лише з GOOGLE_KLIIENT_ID і GOOGLE_SEKRET (google.js, ZAVDANNYA-142)
@@ -532,11 +533,20 @@ async function skoroForma(env, url) {
                    kanal: F.kanal(url.searchParams.get('dzherelo')), kabinet: env.PRODAZH === 'tak' });
 }
 
+/** «Дякуємо» після оплати: текст за товаром замовлення (?z=…; номер замовлення — випадковий, лише товар, без пошти). */
+async function dyakuiemo(env, url) {
+  const z = url.searchParams.get('z') || '';
+  const zam = /^z[a-z2-7]+$/.test(z) ? await L.odyn(env, 'SELECT tovar FROM zamovlennia WHERE id = ?', z) : null;
+  return S.dyakuiemo(zam?.tovar || '');
+}
+
 async function skoroZapys(request, env, url) {
   if (!zNashohoSaitu(request, env)) return S.povidomlennia('Не вдалося', 'Залиште пошту на нашому сайті.', 403);
   const f = await forma(request);
   const v = await F.zapysatySkoro(env, url, f);
-  if (v.ok) return pereity(url, '/oplata/dyakuiemo/');
+  // ZAVDANNYA-172 (ZVIT-169, п. 1): окрема адреса подяки — і з увімкненою оплатою людина, що лише лишила пошту, бачить
+  // «Записали», а не «щойно сервіс підтвердить оплату».
+  if (v.ok) return pereity(url, '/oplata/zapysaly/');
   const tovar = F.TOVARY_SKORO.includes(String(f.tovar)) ? String(f.tovar) : null;
   if (!tovar) return S.povidomlennia('Не вдалося', v.pomylka, 400);
   const adresa = f.budynok ? await L.perevirytyBudynok(env, String(f.budynok), url) : null;
@@ -580,7 +590,7 @@ export async function prodazh(request, env) {
   if (env.PRODAZH === 'skoro') {
     if (s === '/oplata/' && m === 'GET') return skoroForma(env, url);
     if (s === '/api/skoro' && m === 'POST') return skoroZapys(request, env, url);
-    if (s === '/oplata/dyakuiemo/' && m === 'GET') return S.skoroDyakuiemo();
+    if ((s === '/oplata/dyakuiemo/' || s === '/oplata/zapysaly/') && m === 'GET') return S.skoroDyakuiemo();
     if (s.startsWith('/api/')) return new Response('ні', { status: 404 });
     return null;     // кабінет, довідки, тестова оплата — у режимі «скоро» їх немає (звичайний сайт, 404)
   }
@@ -589,7 +599,8 @@ export async function prodazh(request, env) {
   if (s === '/oplata/' && m === 'GET' && F.TOVARY_SKORO.includes(tovar) && !TS.prodaietsia.includes(tovar)) return skoroForma(env, url);
   if (s === '/api/skoro' && m === 'POST') return skoroZapys(request, env, url);
   if (s === '/oplata/' && m === 'GET') return formaZamovlennia(request, env, url);
-  if (s === '/oplata/dyakuiemo/' && m === 'GET') return S.dyakuiemo();
+  if (s === '/oplata/zapysaly/' && m === 'GET') return S.skoroDyakuiemo();
+  if (s === '/oplata/dyakuiemo/' && m === 'GET') return dyakuiemo(env, url);
   let r = s.match(/^\/oplata\/test\/(z[a-z2-7]+)\/$/);
   if (r && m === 'GET') return testovaOplata(env, r[1]);
   if (s === '/api/zamovlennia' && m === 'POST') return stvorytyZamovlennia(request, env, url);

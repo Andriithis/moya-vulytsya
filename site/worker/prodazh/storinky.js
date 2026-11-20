@@ -92,6 +92,7 @@ export function poleBudynku({ id = 'budynok', napys = 'Будинок — вул
 
 export function formaZamovlennia({ tovar, budynok, adresa, pomylka = '', poshtaSesii = '', google = false, zalyshok = 0, vvedeno = '' }) {
   const nazva = TS.nazvy[tovar];
+  const shcho = tovar === 'zvit' ? 'звіт' : 'довідку';      // ZVIT-167, п. 9: форма повного звіту — «звіт», не «довідку»
   const potribenBudynok = !['pidpyska', 'rieltor', ...TS.sudova].includes(tovar);
   const proYurysta = tovar === 'spyurist'
     ? `<div class="kartka"><p><b>Що дає підписка:</b> усі статті й суди міста — таблиці по судах і роках, фільтри (суд, частина
@@ -112,8 +113,8 @@ export function formaZamovlennia({ tovar, budynok, adresa, pomylka = '', poshtaS
   const knopka = `<form class="forma" method="post" action="/api/zamovlennia">
 <input type="hidden" name="tovar" value="${e(tovar)}">${budynok ? `<input type="hidden" name="budynok" value="${e(budynok)}">` : ''}${pole}
 ${google ? `<div class="vkhid-google">${knopkaGoogle(`/oplata/?tovar=${tovar}${budynok ? `&budynok=${budynok}` : ''}`)}
-<p class="prymitka">Пошта підставиться сама, і довідка буде у вашому кабінеті. Або впишіть пошту нижче.</p></div>` : ''}
-<label for="poshta">Пошта — на неї прийде посилання на довідку і вхід у кабінет</label>
+<p class="prymitka">Пошта підставиться сама, і все куплене буде у вашому кабінеті. Або впишіть пошту нижче.</p></div>` : ''}
+<label for="poshta">Пошта — на неї прийде ${TS.period_misiatsiv[tovar] ? 'вхід у кабінет' : `посилання на ${shcho} і вхід у кабінет`}</label>
 <input id="poshta" name="poshta" type="email" autocomplete="email" required maxlength="254" placeholder="name@poshta.ua"${poshtaSesii ? ` value="${e(poshtaSesii)}"` : ''}>
 ${pomylka ? `<p class="pomylka" role="alert">${e(pomylka)}</p>` : ''}
 <label class="pravyla"><input type="checkbox" name="zghoda" value="tak" required> Погоджуюсь з <a href="/zahlushka/oferta.html">офертою</a> і <a href="/zahlushka/polityka.html">політикою конфіденційності</a></label>
@@ -122,7 +123,7 @@ ${GALOCHKA_ODRAZU}
 </form>`;
   return storinka(`${nazva} — оплата`, `<section class="zaholovok"><h1>${e(nazva)}</h1>${pro}<p class="tsina">${tsina(tovar)}</p></section>
 <section class="rozdil">${zZalyshku}${proYurysta}${SHCHO_DAIE[tovar] || ''}${knopka}
-<p class="prymitka">${TS.period_misiatsiv[tovar] ? 'Доступ відкривається одразу після оплати.' : 'Посилання на довідку прийде на пошту за кілька хвилин після оплати.'} Номер картки ми не бачимо й не зберігаємо — оплату приймає платіжний сервіс партнера.</p></section>`,
+<p class="prymitka">${TS.period_misiatsiv[tovar] ? 'Доступ відкривається одразу після оплати.' : `Посилання на ${shcho} прийде на пошту за кілька хвилин після оплати.`} Номер картки ми не бачимо й не зберігаємо — оплату приймає платіжний сервіс партнера.</p></section>`,
   { skrypty: pole ? [SKRYPT_POLIA] : [] });
 }
 
@@ -160,9 +161,23 @@ export function testovaOplata(zam, polia) {
 <p>Грошей не списуємо. Замовлення: ${e(TS.nazvy[zam.tovar])}, ${tsina(zam.tovar)}.</p><div class="diyi">${knopky}</div></section>`);
 }
 
-export const dyakuiemo = () => povidomlennia('Дякуємо!',
-  'Щойно платіжний сервіс підтвердить оплату, довідку почнемо готувати. Коли буде готова — надішлемо посилання на пошту (зазвичай кілька хвилин). Усі довідки — також у кабінеті.',
-  200, '<div class="diyi"><a class="knopka knopka--holovna" href="/kabinet/">Кабінет</a></div>');
+// ZAVDANNYA-172 (ZVIT-166, З-8; ZVIT-167, п. 9): «Дякуємо» — за тим, що купили. Підписка не «готує довідку», а відкриває карту.
+const DYAKUIEMO = {
+  pidpyska: ['Щойно платіжний сервіс підтвердить оплату (зазвичай кілька хвилин), відкриється карта підписника. На пошту прийде лист із входом у кабінет; кнопка «Відкрити карту» — і там.', 'karta'],
+  rieltor: ['Щойно платіжний сервіс підтвердить оплату (зазвичай кілька хвилин), відкриються карта підписника й «Мої об\'єкти» в кабінеті — там і довідки на ваші адреси. На пошту прийде лист із входом.', 'karta'],
+  osbb: ['Щойно платіжний сервіс підтвердить оплату, почнемо готувати першу щомісячну довідку про ваш будинок. Коли буде готова — надішлемо посилання на пошту; далі довідка приходить сама раз на місяць.', ''],
+  zvit: ['Щойно платіжний сервіс підтвердить оплату, звіт почнемо готувати. Коли буде готовий — надішлемо посилання на пошту (зазвичай кілька хвилин). Звіт — також у кабінеті.', ''],
+  try: ['Щойно платіжний сервіс підтвердить оплату, першу довідку почнемо готувати. Дві інші візьмете в кабінеті на будь-які будинки — кнопкою «Довідка».', ''],
+};
+const DYAKUIEMO_DOVIDKA = 'Щойно платіжний сервіс підтвердить оплату, довідку почнемо готувати. Коли буде готова — надішлемо посилання на пошту (зазвичай кілька хвилин). Усі довідки — також у кабінеті.';
+
+export function dyakuiemo(tovar = '') {
+  const [tekst, dod] = DYAKUIEMO[tovar] || [DYAKUIEMO_DOVIDKA, ''];
+  const dii = dod === 'karta'
+    ? '<div class="diyi"><a class="knopka knopka--holovna" href="/pidpysnyk/">Відкрити карту</a><a class="knopka" href="/kabinet/">Кабінет</a></div>'
+    : '<div class="diyi"><a class="knopka knopka--holovna" href="/kabinet/">Кабінет</a></div>';
+  return povidomlennia('Дякуємо!', tekst, 200, dii);
+}
 
 /** Додаткова довідка підписника з кабінету (оплата 99): та сама галочка П6, що й у звичайному замовленні. */
 export function pidtverdytyDodatkovu({ budynok, adresa, pomylka = '' }) {
