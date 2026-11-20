@@ -163,11 +163,16 @@ class Yadro(unittest.TestCase):
 
     def test_sprava_tyzhnia(self):
         r = js(f'''const s = [require({json.dumps(str(SPRAVY[0]))}), require({json.dumps(str(SPRAVY[1]))})];
-                  return [Y.spravaTyzhnia(s, '2026-11-18'), Y.spravaTyzhnia(s, '2026-11-25'), Y.spravaTyzhnia(s, '2027-03-03').demo];''')
+                  return [Y.spravaTyzhnia(s, '2026-11-18'), Y.spravaTyzhnia(s, '2026-11-25'), Y.spravaTyzhnia(s, '2027-03-03'),
+                          Y.spravaTyzhnia(s, '2026-11-04'), Y.spravaTyzhnia(s, '2026-12-11'), Y.kliuchSpravy(s[0])];''')
         self.assertEqual(r[0]['sprava']['tyzhden'], '2026-11-16')
         self.assertFalse(r[0]['demo'])
         self.assertEqual(r[1]['sprava']['tyzhden'], '2026-11-23')
-        self.assertTrue(r[2])
+        # ZAVDANNYA-176: після останньої справи — нічого (не коло зразків), до першої — перша як зразок
+        self.assertIsNone(r[2])
+        self.assertIsNone(r[4], '11.12 — не «Справа сірого кота» вдруге, вже розв’язана')
+        self.assertTrue(r[3]['demo'])
+        self.assertEqual(r[5], 'mv-ihry-detektyv-zrazok-1-sirvi-kit@2026-11-16', 'прогрес — за справою й тижнем')
 
     def test_vidhuk_bez_pereboru(self):
         """Відгук лише про поля, чий розкривальний слід уже відкрито: у понеділок про «поле справи» — нічого."""
@@ -412,3 +417,30 @@ class VulytsiaVKarti(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class Vypravlennia176(unittest.TestCase):
+    """ZAVDANNYA-176 (ZVIT-168): без цін спроб і «Докупити», без «Мій район», один шлях до покупки, одна картка «Кваліфікуй»."""
+    JS = (KORIN / 'site' / 'ihry' / 'ihry.js').read_text(encoding='utf-8')
+    LIT = (KORIN / 'site' / 'ihry' / 'litopys' / 'litopys.js').read_text(encoding='utf-8')
+    VD = (KORIN / 'site' / 'hra' / 'vulytsia.html').read_text(encoding='utf-8')
+
+    def test_bez_tsin_sprob(self):
+        for zaboroneno in ('Докупити', 'K.pakety', 'oplata_chomu_ni', 'куплених', "'Обміняти'", 'data-i="obmin"', 'data-i="paket"'):
+            self.assertNotIn(zaboroneno, self.JS, zaboroneno)
+        self.assertIn('лише в цьому браузері', self.JS)
+
+    def test_bez_mii_raion(self):
+        for f in (self.JS, self.LIT, self.VD):
+            self.assertNotIn('Мій район', f)
+            self.assertNotIn('за 10 років', f)
+
+    def test_odyn_shliakh_do_pokupky(self):
+        for dz in ('hra-vgadai', 'hra-detektyv'):
+            self.assertIn(f"shliakhDoVulytsi('{dz}')", self.JS)
+        self.assertIn('/oplata/?tovar=pidpyska&amp;dzherelo=hra-litopys', self.LIT)
+
+    def test_odna_kartka_kvalifikuy(self):
+        self.assertEqual(self.JS.count("'Кваліфікуй: кар’єра', 'кодекс"), 0)
+        self.assertEqual(len(re.findall(r"kart\('kariera', 'Кваліфікуй'", self.JS)), 1)
+

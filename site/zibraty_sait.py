@@ -29,6 +29,7 @@
 from __future__ import annotations
 
 import argparse
+import datetime
 import functools
 import html
 import json
@@ -1021,6 +1022,9 @@ def zibraty_ihry(dn: D.Dani, vykhid: Path, koloda: Path | None, baza: Path | Non
             raise SystemExit(f'Справа детектива не проходить перевірку: {pomylka}') from pomylka
         spravy.append(DT.dlia_saitu(s))
     zapysaty(tsil / 'detektyv.json', json.dumps({'spravy': spravy}, ensure_ascii=False, separators=(',', ':')))
+    if spravy:   # ZAVDANNYA-176: після останнього тижня картки «Детектива» немає — кажемо вголос, до якого дня є справи
+        ost = max(datetime.date.fromisoformat(x['tyzhden']) for x in spravy) + datetime.timedelta(days=6)
+        print(f'Детектив тижня: справ {len(spravy)}, остання — до {ost.isoformat()}; далі картку гри сховано, доки не буде нової справи')
     IHRY_DANI['spravy'] = '/ihry/detektyv.json'
     kv = json.loads((DZHERELO / 'ihry' / 'kvalifikuy.json').read_text(encoding='utf-8'))
     for s in kv['spravy']:
@@ -1031,6 +1035,7 @@ def zibraty_ihry(dn: D.Dani, vykhid: Path, koloda: Path | None, baza: Path | Non
     # «Кваліфікуй: кар'єра» (ZAVDANNYA-152): справи з випуску й текстів (kariera.py, поза git); немає — гра на зачатку kvalifikuy.json
     kar = DZHERELO / 'ihry' / 'kariera' / 'kariera.json'
     if kar.exists():
+        _kar_perevirka(kar)   # ZAVDANNYA-176: ім'я, «кв. N», номер протоколу, обірване речення — сайт не збирається
         shutil.copyfile(kar, tsil / 'kariera.json')
         IHRY_DANI['kariera'] = '/ihry/kariera.json'
     shutil.copyfile(DZHERELO / 'ihry' / 'nalashtuvannia.json', tsil / 'nalashtuvannia.json')
@@ -1461,6 +1466,18 @@ def main(argv=None) -> int:
         print(f'{k}: {v}')
     return 0
 
+
+
+def _kar_perevirka(kar: Path) -> None:
+    """Справи «кар'єри» перед публікацією — тією самою перевіркою, що й збирач (site/ihry/kariera/kariera.py, ZAVDANNYA-176)."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('kariera_perevirka', DZHERELO / 'ihry' / 'kariera' / 'kariera.py')
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    bidy = mod.perevirka(json.loads(kar.read_text(encoding='utf-8')))
+    if bidy:
+        raise SystemExit(f"kariera.json: справи не годяться для показу ({len(bidy)}): " +
+                         '; '.join(f'{d} {p}: «{u}»' for d, p, u in bidy[:10]) + ' — перезберіть kariera.py')
 
 if __name__ == '__main__':
     sys.exit(main())

@@ -416,7 +416,9 @@
         h += '<div class="lit-podiia' + (pov ? ' lit-podiia--povazhna' : '') + (nova ? ' lit-poiava lit-poiava--' + (i + 1) : '') + '"><div class="lit-podiia__vyd">' + esc(nazvaVydu(p[0])) + ', ' + p[1] + '</div><div class="lit-podiia__opys">' + (p[2] ? esc(p[2]) : POVAZHNO) + '</div>' +
           '<div class="lit-podiia__adresa">' + esc(p[3]) + ' · <a href="' + esc(p[6]) + '" target="_blank" rel="noopener nofollow">рішення суду</a></div></div>';
       });
-      h += '<p class="lit-tykho lit-vidstup">Числа — з відкритих даних сайту; події — з колоди гри. Усі події вулиці за 10 років з описами — у підписці «Мій район».</p>';
+      // ZAVDANNYA-176 (ZVIT-168, №6): без обіцянки підписки з ігровими перевагами, якої немає в продажу; один шлях — як у «Вулиці дня».
+      h += '<p class="lit-tykho lit-vidstup">Числа — з відкритих даних сайту; події — з колоди гри.</p>' +
+        '<p class="lit-tykho"><a href="/vulytsia/' + encodeURIComponent(v.slug) + '/?dzherelo=hra-litopys">Сторінка вулиці</a> · А що на вашій вулиці? <a href="/vulytsi/?dzherelo=hra-litopys">Знайти свою</a> — числа безкоштовно; <a href="/oplata/?tovar=pidpyska&amp;dzherelo=hra-litopys">підписка</a> показує події з адресами й нове біля дому.</p>';
       return h + '</div>';
     }
 
@@ -492,7 +494,6 @@
       var poshta = Y.skilkyNaVulytsi(S, Y.N.poshta_vulyts);
       h += '<div class="lit-zavtra"><b>Завтра</b> (через ' + hod + ' год ' + khv + ' хв): нова справа дня й ще три задачі' + (Y.vseZrobleno(S, t) ? '; серія — ' + S.seriia.dniv + ' ' + slovo(S.seriia.dniv, ['день', 'дні', 'днів']) + ', завтра стане ' + (S.seriia.dniv + 1) : '; зробіть сьогоднішні, щоб почати серію') +
         '. Пошта архіву принесе ≈ ' + ch(poshta) + ' ' + slovo(poshta, STOR) + ' — на ' + Y.N.poshta_vulyts + ' вулиці. За ніч помічники прочитають ≈ ' + ch(zv.za_nich) + ' (до ' + Y.N.offlain_hodyn + ' год і повільніше, ніж при вас).</div>';
-      h += '<div class="lit-pidpyska"><b>З підпискою «Мій район»</b> (зараз вимкнено): усі події кожної відкритої вулиці за 10 років з описами, друга справа дня, помічники читають без вас до 24 годин. Гра без підписки — повна: нічого не закрито назавжди.</div>';
       return h;
     }
 
