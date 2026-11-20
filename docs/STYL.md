@@ -75,7 +75,7 @@ ZAVDANNYA-45), а в ZAVDANNYA-47 — у бренд (`brend/`), ролики (`v
 
 ## Поза картою: бренд, ролики, заглушка, гра (ZAVDANNYA-47)
 
-- Значення змінних — рівно ті, що дає збирач сайту (вписані в `brend/shablony/brend.css`, `video/stsena.css`,
+- Значення змінних — рівно ті, що дає збирач сайту (вписані в `brend/shablony/brend.css`,
   `site/hra/hra.css`, `site/hra/hra-kartka.js`; заглушка — числами в `site/zahlushka/styli.css` і `zrazok.html`).
   Змінили `site/sait/kolory.json` — онови й ці файли (тест підкаже, де розійшлося).
 - `--data-1…5` = `--sc-1…5`. `--attention` (колишній помаранчевий) = `--vyd` «приціл»: «мимо» в грі, стрічка «МАКЕТ»,
