@@ -567,7 +567,7 @@ def vitryna_miy_budynok(adresa_saitu: str, prykl: list, kartynka: tuple | None =
         + '<section class="zaholovok"><span class="mitka">Мій будинок · для мешканців, орендарів і покупців</span>'
           f'<h1>{HASLO_BUDYNKU}</h1><p class="zaholovok__opys">{OPYS_BUDYNKU}.</p>'
           f'<p>{MESEDZH["miy-budynok"]} На що скаржаться мешканці в 1551 і які події з рішень судів були з цією адресою.</p></section>' + tilo,
-        adresa_saitu=adresa_saitu, aktyvne='miy-budynok/', skrypty=('/sait/poshuk.js',), kartynka=kartynka,
+        adresa_saitu=adresa_saitu, aktyvne='miy-budynok/', skrypty=('/sait/poshuk-spilne.js', '/sait/poshuk.js'), kartynka=kartynka,
         dodatkovo_head=ld_skrypt(kryhty_ld([('/', 'Головна'), ('', 'Мій будинок')], adresa_saitu)))
 
 

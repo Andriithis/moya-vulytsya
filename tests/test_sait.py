@@ -571,7 +571,8 @@ class Sait(unittest.TestCase):
         описів подій і посилань на рішення."""
         faily = sorted((self.sait / 'karta').glob('*.json')) + [self.sait / 'vulytsi' / 'pokazhchyk.json']
         self.assertEqual({f.name for f in faily}, {'soty-7.json', 'soty-8.json', 'soty-9.json', 'soty-8-m.json', 'soty-9-m.json',   # місяці — окремо (ZAVDANNYA-125)
-                                                      'poshuk.json', 'pokazhchyk.json'})
+                                                      'poshuk.json', 'pokazhchyk.json',
+                                                      'mistsevosti.json'})   # народні назви місцевостей (ZAVDANNYA-177)
         opys = re.compile(r'керуючи|зіткнення|порушив|визнав|reyestr\.court\.gov\.ua/Review|doc_url|fabula', re.I)
         for f in faily:
             tekst = f.read_text(encoding='utf-8')

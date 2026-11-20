@@ -41,6 +41,11 @@ def dodaty_odrukivku(baza: Path) -> None:
     con.close()
 
 
+# словник народних назв — як dani-edrsr/config/mistsevosti-kyiv.csv (у штучному місті є лише три райони)
+MISTSEVOSTI = ('nazva,inshi_nazvy,rayony,prymitka\n'
+               "Шулявка,,Шевченківський;Солом'янський,тест\n"
+               'Троєщина,Троя,Деснянський,району в штучному місті немає — не показуємо\n')
+
 VYPRAVLENNIA = ('typ,pomylka,typ_pravylnyi,pravylno,prymitka\n'
                 'проспект,Вололодимира Лобановського,проспект,Валерія Лобановського,тест\n')
 
@@ -110,6 +115,7 @@ class Sait(unittest.TestCase):
         t = Path(cls.tmp.name)
         TS.stvoryty_bazu(t / 'events.db')
         TS.stvoryty_pereimenuvannya(t / 'pereimenuvannia-kyiv.csv')
+        (t / 'mistsevosti-kyiv.csv').write_text(MISTSEVOSTI, encoding='utf-8')
         (t / 'budynky.json').write_text(json.dumps(TS.BUDYNKY, ensure_ascii=False), encoding='utf-8')
         cls.sait = t / 'sait'
         Z.zibraty_sait(t / 'events.db', cls.sait, t / 'pereimenuvannia-kyiv.csv', KORIN / 'data' / 'borders.json',
@@ -139,6 +145,66 @@ class Sait(unittest.TestCase):
             self.assertNotRegex(h, r'[УВ] \S+ський районі', f.parent.name)
             self.assertRegex(h, r'<p>[УВ] \S+(ському|цькому) районі за ', f.parent.name)
             self.assertNotRegex(h, r'href="/vulytsi/" aria-current', 'на районі шапка не підсвічує «Вулиці»')
+
+
+    def test_mistsevosti_v_danykh(self):
+        m = json.loads(self.html('karta/mistsevosti.json'))
+        self.assertEqual(m, [['Шулявка', [], [["Солом'янський", '/rayon/solomianskyi/']]]])
+
+    def test_poshuk_u_brauzeri(self):
+        try:
+            from test_sait import BRAUZER
+        except Exception:   # noqa: BLE001
+            BRAUZER = None
+        if not BRAUZER:
+            self.skipTest('немає Playwright і Chromium')
+        import functools
+        import http.server
+        import threading
+        from playwright.sync_api import sync_playwright
+        http.server.SimpleHTTPRequestHandler.log_message = lambda *a: None
+        srv = http.server.ThreadingHTTPServer(('127.0.0.1', 0), functools.partial(http.server.SimpleHTTPRequestHandler,
+                                                                                  directory=str(self.sait)))
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        self.addCleanup(srv.shutdown)
+        url = f'http://127.0.0.1:{srv.server_address[1]}'
+        pw = sync_playwright().start()
+        self.addCleanup(pw.stop)
+        b = pw.chromium.launch(executable_path=BRAUZER, args=['--no-sandbox'])
+        self.addCleanup(b.close)
+        k = b.new_context(viewport={'width': 390, 'height': 844}, is_mobile=True, has_touch=True, reduced_motion='reduce')
+        k.route('https://tiles.openfreemap.org/**', lambda r: r.abort())
+        s = k.new_page()
+        pomylky = []
+        s.on('pageerror', lambda e: pomylky.append(str(e)))
+
+        def pidkazky(pole, z, selektor):
+            s.click(pole)
+            s.fill(pole, z)
+            s.wait_for_timeout(900)
+            return s.eval_on_selector_all(selektor, 'xs => xs.map(x => x.textContent)')
+
+        s.goto(url + '/')
+        self.assertEqual(s.get_attribute('#poshuk-karty', 'placeholder'), 'Адреса, вулиця або район')
+        t = pidkazky('#poshuk-karty', 'хрещятик 22', '#pidkazky li')
+        self.assertIn('Можливо, ви мали на увазі:', t)
+        self.assertTrue(any('Хрещатик, 22' in x for x in t), t)
+        t = pidkazky('#poshuk-karty', 'Шулявка', '#pidkazky li')
+        self.assertTrue(any("Шулявка — Солом'янський район" in x for x in t), t)
+        s.keyboard.press('Enter')
+        s.wait_for_url('**/rayon/solomianskyi/')
+        s.goto(url + '/')
+        t = pidkazky('#poshuk-karty', 'Хрещатик', '#pidkazky li')
+        self.assertFalse([x for x in t if 'Можливо' in x], 'точний збіг — без «можливо»')
+        s.goto(url + '/miy-budynok/')
+        t = pidkazky('#poshuk-vulytsi', 'хрещятик', '#poshuk-spysok li')
+        self.assertIn('Можливо, ви мали на увазі:', t)
+        self.assertTrue(any('вулиця Хрещатик' in x for x in t), t)
+        t = pidkazky('#poshuk-vulytsi', 'шулявка', '#poshuk-spysok li')
+        self.assertTrue(any("Шулявка — Солом'янський район" in x for x in t), t)
+        t = pidkazky('#poshuk-vulytsi', 'зззззз', '#poshuk-spysok li')
+        self.assertEqual(t, ['Такої вулиці в даних немає. Перевірте назву або подивіться покажчик.'])
+        self.assertEqual(pomylky, [])
 
 
 if __name__ == '__main__':

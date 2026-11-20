@@ -275,7 +275,7 @@ def storinka_vkhodu(slug: str, adresa_saitu: str, ur: str, period_podii: str = '
         tilo += ('<section class="rozdil"><h2>Звідки дані</h2><p class="rozdil__pidpys">Скарги 1551 — відкриті дані міста (КМДА). '
                  'Події — з рішень судів у Єдиному державному реєстрі судових рішень: лише те, що дійшло до суду, а не всі події. '
                  'Колір і числа показують кількість, а не оцінку будинку. <a href="/pro-dani/">Як ми працюємо з даними</a>.</p></section>')
-    skrypty = ('/sait/sp.js',) if slug == 'yurysta' else ('/sait/poshuk.js',)
+    skrypty = ('/sait/sp.js',) if slug == 'yurysta' else ('/sait/poshuk-spilne.js', '/sait/poshuk.js')
     return Z.storinka(shlyakh=f'/dlia/{slug}/', title=v['title'], opys=v['opys'].format(**ts), tilo=tilo,
                       adresa_saitu=adresa_saitu, aktyvne='', skrypty=skrypty, indeksuvaty=False,
                       dodatkovo_head='<link rel="stylesheet" href="/sait/vkhid.css">\n')

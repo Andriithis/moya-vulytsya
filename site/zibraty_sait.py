@@ -750,7 +750,7 @@ def storinka_pokazhchyka(vulytsi: list, rayony: list, adresa_saitu: str, rayon: 
     opys = (f'Покажчик вулиць Києва ({rayon} район) з кількістю подій у даних судів.' if rayon
             else 'Покажчик вулиць Києва за абеткою й районами: скільки подій із судових рішень на кожній вулиці.')
     return storinka(shlyakh=shlyakh, title=f'{nazva} — події в даних судів | Моя вулиця', opys=opys, tilo=tilo,
-                    adresa_saitu=adresa_saitu, aktyvne='vulytsi/', skrypty=('/sait/poshuk.js',))
+                    adresa_saitu=adresa_saitu, aktyvne='vulytsi/', skrypty=('/sait/poshuk-spilne.js', '/sait/poshuk.js'))
 
 
 def holovna(dn: D.Dani, vulytsi: list, rayony: list, adresa_saitu: str, sudova_praktyka: bool = False,
@@ -781,7 +781,7 @@ def holovna(dn: D.Dani, vulytsi: list, rayony: list, adresa_saitu: str, sudova_p
     return storinka(shlyakh='/', title='Моя вулиця — що відбувається під боком: вулиці й будинки Києва', dodatkovo_head=ld + predzavantazhennia(zastavka),
                     opys='Що відбувається під боком: скарги мешканців і події з рішень судів — на кожній вулиці й по кожному будинку Києва. Карта, покажчик вулиць, гра.',
                     tilo=tilo, adresa_saitu=adresa_saitu, pered_main=ekran_karty(dn, holovna=True),
-                    skrypty=('/sait/karta.js',))
+                    skrypty=('/sait/karta.js', '/sait/poshuk-spilne.js', '/sait/poshuk-holovna.js'))
 
 
 def soty_geojson(dn: D.Dani, riven: int) -> dict:
@@ -968,6 +968,26 @@ def poshuk_karty(dn: D.Dani, vulytsi: list, tsentry: dict) -> dict:
     return {'versiia': dn.versiia, 'vulytsi': vs, 'rayony': rayony}
 
 
+def mistsevosti(pereimenuvannya: Path | None, rayony: list) -> list:
+    """Народні назви місцевостей («Оболонь», «Троєщина», «Борщагівка») → райони (ZVIT-165, п. 3; ZAVDANNYA-177).
+    Словник — у даних, не в коді: dani-edrsr/config/mistsevosti-<місто>.csv поруч із таблицею перейменувань.
+    Вихід для пошуку: [назва, [інші назви], [[район, адреса сторінки району], …]] — лише райони, що мають сторінку."""
+    if not pereimenuvannya:
+        return []
+    p = Path(pereimenuvannya)
+    f = p.with_name(p.name.replace('pereimenuvannia-', 'mistsevosti-', 1))
+    if f == p or not f.is_file():
+        return []
+    import csv
+    vykhid = []
+    with open(f, encoding='utf-8') as fl:
+        for r in csv.DictReader(fl):
+            rr = [[x, f'/rayon/{slug_rayonu(x)}/'] for x in (r.get('rayony') or '').split(';') if x.strip() in rayony]
+            if r.get('nazva') and rr:
+                vykhid.append([r['nazva'].strip(), [x.strip() for x in (r.get('inshi_nazvy') or '').split(';') if x.strip()], rr])
+    return vykhid
+
+
 def predzavantazhennia(zastavka: dict | None) -> str:
     """Картинку першого екрана браузер бере одразу з заголовка, а не після стилів (ZAVDANNYA-164). Тему людина могла
     обрати сама (вона в пам'яті браузера) — тут угадуємо за темою системи; не вгадали — завантажиться ще й друга."""
@@ -988,7 +1008,7 @@ def storinka_karty(dn: D.Dani, adresa_saitu: str, zastavka: dict | None = None) 
     return storinka(shlyakh='/karta/', title='Карта Києва — події з судових рішень | Моя вулиця', dodatkovo_head=predzavantazhennia(zastavka),
                     opys='Карта Києва шестикутниками: скільки подій із судових рішень у кожній частині міста, яких видів і коли.',
                     tilo=tilo, adresa_saitu=adresa_saitu, aktyvne='karta/', pered_main=ekran_karty(dn),
-                    skrypty=('/sait/karta.js',))
+                    skrypty=('/sait/karta.js', '/sait/poshuk-spilne.js', '/sait/poshuk-holovna.js'))
 
 
 def storinka_404(adresa_saitu: str) -> str:
@@ -1077,7 +1097,7 @@ def zapysaty(shlyakh: Path, tekst: str) -> None:
 def kopiyuvaty_spilne(vykhid: Path) -> None:
     sait = vykhid / 'sait'
     (sait / 'shryfty').mkdir(parents=True, exist_ok=True)
-    for f in ('karta.js', 'poshuk.js', 'tema.js', 'oplata.js', 'sp.js', 'sp.css', 'budynok-pole.js', 'vkhid.js', 'vkhid.css',
+    for f in ('karta.js', 'poshuk.js', 'poshuk-spilne.js', 'poshuk-holovna.js', 'tema.js', 'oplata.js', 'sp.js', 'sp.css', 'budynok-pole.js', 'vkhid.js', 'vkhid.css',
               'biznes.js', 'biznes.css'):
         shutil.copyfile(DZHERELO / 'sait' / f, sait / f)
     for f in ('hra-yadro.js', 'vulytsia-yadro.js'):          # спільне ядро ігор (ZAVDANNYA-117)
@@ -1274,6 +1294,8 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
         f.write('\n' + css_zastavky)
     zapysaty(vykhid / 'karta' / 'poshuk.json', json.dumps(poshuk_karty(dn, vulytsi, tsentry_vulyts), ensure_ascii=False,
                                                           separators=(',', ':')))
+    zapysaty(vykhid / 'karta' / 'mistsevosti.json', json.dumps(mistsevosti(pereimenuvannya, rayony), ensure_ascii=False,
+                                                                separators=(',', ':')))
     zapysaty(vykhid / 'karta' / 'index.html', storinka_karty(dn, adresa_saitu, fayly_zastavky))
     zapysaty(vykhid / 'index.html', holovna(dn, vulytsi, rayony, adresa_saitu, bool(sudova_praktyka), fayly_zastavky))
     zapysaty(vykhid / '404.html', storinka_404(adresa_saitu))

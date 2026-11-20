@@ -10,11 +10,8 @@
   var vulytsi = null;
   var budynky = null;
 
-  function norm(t) {
-    return (t || '').toLowerCase().replace(/[ʼ’'`]/g, '').replace(/ґ/g, 'г').replace(/[-.,]/g, ' ').replace(/\s+/g, ' ').trim();
-  }
-  // «2а», «2-А», «2 а» — один номер; «15/5» лишається з рискою.
-  function normNomer(t) { return (t || '').toLowerCase().replace(/[\s-]/g, '').replace(/\\/g, '/'); }
+  var P = window.MVPoshuk;   // спільне ядро — sait/poshuk-spilne.js (ZAVDANNYA-177): помилка в літері, народні назви
+  var norm = P.norm;
   function chyslo(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
 
   function zavantazhyty() {
@@ -28,12 +25,6 @@
       .then(function (v) { return v.ok ? v.json() : []; })
       .catch(function () { return []; })
       .then(function (d) { budynky = d.map(function (v) { return { n: v[0], p: norm(v[0] + ' ' + (v[2] || '')), b: v[3] }; }); return budynky; });
-  }
-
-  // «Гоголівська 2а», «Хрещатик, буд. 22», «вул. Лесі Українки 28/2» → назва й номер.
-  function rozibraty(z) {
-    var m = /^(.*?)[\s,]+(?:буд(?:инок)?\.?\s*)?(?:№\s*)?(\d+[^\s,]*(?:\s?[а-яіїєa-z])?)$/i.exec(z.trim());
-    return m && m[1].trim() ? { nazva: m[1], nomer: m[2] } : null;
   }
 
   function punkt(href, tekst, dribno) {
@@ -50,34 +41,34 @@
     li0.textContent = tekst;
     spysok.appendChild(li0);
   }
-  function zbih(slova, p) { return slova.every(function (s) { return p.indexOf(s) !== -1; }); }
-
   function pokazaty() {
     var syryi = pole.value;
     var z = norm(syryi);
     spysok.textContent = '';
     if (z.length < 2) { spysok.hidden = true; return; }
-    var adr = /\d/.test(syryi) ? rozibraty(syryi) : null;
-    var obitsianka = adr ? Promise.all([zavantazhyty(), zavantazhytyBudynky()]) : zavantazhyty().then(function (vs) { return [vs, []]; });
-    obitsianka.then(function (r) {
+    var adr = /\d/.test(syryi) ? P.rozibraty(syryi) : null;
+    Promise.all([zavantazhyty(), adr ? zavantazhytyBudynky() : [], P.mistsevosti()]).then(function (r) {
       if (norm(pole.value) !== z) return;
-      var vs = r[0], bs = r[1];
+      var vs = r[0], bs = r[1], ms = adr ? [] : P.znaityMistsevosti(syryi, r[2]);
       spysok.textContent = '';
       var slova = norm(adr ? adr.nazva : syryi).split(' ').filter(Boolean);
-      var znaideni = vs.filter(function (v) { return zbih(slova, v.p); }).sort(function (a, b) { return b.k - a.k; });
+      var tochni = [], shozhi = [];
+      vs.forEach(function (v) { var k = P.zbih(slova, v.p); if (k === 0) tochni.push(v); else if (k === 1) shozhi.push(v); });
+      var vuh = function (a, b) { return b.k - a.k; };
+      tochni.sort(vuh); shozhi.sort(vuh);
       var pokazano = 0;
-      if (adr) {
-        var nn = normNomer(adr.nomer);
-        bs.filter(function (v) { return zbih(slova, v.p); }).forEach(function (v) {
-          v.b.forEach(function (x) {
-            if (pokazano < 8 && normNomer(x[0]) === nn) { punkt(x[1], v.n + ', ' + x[0], 'будинок'); pokazano++; }
-          });
-        });
-        if (!pokazano && znaideni.length) {
-          nemaye('Будинку ' + adr.nomer + ' в даних немає: без скарг 1551 і подій сторінки будинку немає. Ось вулиця:');
-        }
+      ms.slice(0, 3).forEach(function (m) {   // «Троєщина» → район (народна назва з даних)
+        m.rayony.forEach(function (rr) { if (pokazano < 8) { punkt(rr[1], m.nazva + ' — ' + rr[0] + ' район', 'місцевість'); pokazano++; } });
+      });
+      var znaideni = tochni.length ? tochni : shozhi;
+      var budynky = adr ? P.budynky(adr, bs, 8) : { tochni: [], shozhi: [] };
+      var bud = budynky.tochni.length ? budynky.tochni : budynky.shozhi;
+      if (!tochni.length && !budynky.tochni.length && (shozhi.length || bud.length)) nemaye('Можливо, ви мали на увазі:');
+      bud.forEach(function (x) { if (pokazano < 8) { punkt(x.url, x.nazva, 'будинок'); pokazano++; } });
+      if (adr && !bud.length && znaideni.length) {
+        nemaye('Будинку ' + adr.nomer + ' в даних немає: без скарг 1551 і подій сторінки будинку немає. Ось вулиця:');
       }
-      znaideni.slice(0, 8 - pokazano).forEach(function (v) {
+      znaideni.slice(0, Math.max(0, 8 - pokazano)).forEach(function (v) {
         punkt(KOREN + 'vulytsia/' + v.s + '/', v.n, (v.r ? v.r + ' · ' : '') + chyslo(v.k) + ' под.');
       });
       if (!pokazano && !znaideni.length) {
