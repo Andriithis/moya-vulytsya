@@ -757,7 +757,7 @@ def holovna(dn: D.Dani, vulytsi: list, rayony: list, adresa_saitu: str, sudova_p
             zastavka: dict | None = None) -> str:
     """Головна — одразу карта Києва з пошуком (AGENTS.md, розд. 3: без вступу), під нею — входи."""
     tilo = f'''<section class="vstup-ryad">
-<div><h1 class="h-mala">Що відбувається під боком</h1>
+<div><h2 class="h-mala">Що відбувається під боком</h2>
 <p class="prymitka">{chyslo(len(vulytsi))} вулиць Києва зі своєю сторінкою: скільки подій, коли, яких видів. Дані станом на {e(dn.versiia)};
 безкоштовно — {PERIOD_VIDKRYTYI}, {PERIOD_ZAMKNENYI} — у підписці.</p></div>
 </section>
@@ -780,7 +780,7 @@ def holovna(dn: D.Dani, vulytsi: list, rayony: list, adresa_saitu: str, sudova_p
                       'logo': adresa_saitu + '/zahlushka/ikony/ikona-192.png'})
     return storinka(shlyakh='/', title='Моя вулиця — що відбувається під боком: вулиці й будинки Києва', dodatkovo_head=ld + predzavantazhennia(zastavka),
                     opys='Що відбувається під боком: скарги мешканців і події з рішень судів — на кожній вулиці й по кожному будинку Києва. Карта, покажчик вулиць, гра.',
-                    tilo=tilo, adresa_saitu=adresa_saitu, pered_main=ekran_karty(dn),
+                    tilo=tilo, adresa_saitu=adresa_saitu, pered_main=ekran_karty(dn, holovna=True),
                     skrypty=('/sait/karta.js',))
 
 
@@ -866,7 +866,12 @@ def dani_ihor() -> str:
     return ''.join(f' data-{k}="{e(v)}"' for k, v in sorted(IHRY_DANI.items()))
 
 
-def ekran_karty(dn: D.Dani) -> str:
+# ZVIT-165, п. 1 (ZAVDANNYA-177): перший екран головної — одне речення, що це, і одна дія, як на /dlia/meshkantsia/.
+# Без ціни першим словом і без бігучого лічильника місяців (на головній його не видно; на /karta/ лишається).
+REChENNIA_HOLOVNOI = 'Скарги мешканців до 1551 і події з рішень судів — по кожній вулиці й кожному будинку Києва.'
+
+
+def ekran_karty(dn: D.Dani, holovna: bool = False) -> str:
     """Карта на весь екран у вигляді макета М7 (MV-58): угорі ліворуч — рядок пошуку зі значками 3D/2D, день/ніч і «ⓘ»,
     під ним — фільтр «Усі події ▾»; картка соти — «в повітрі» праворуч (телефон — шторка); джерела — правий нижній кут
     (телефон — у «ⓘ»). Легенди й «+/−» немає. Поведінка зуму — як у карті Києва (S-К.4, S-К.6, S-К.13, S-К.18, S-К.21)."""
@@ -881,7 +886,10 @@ def ekran_karty(dn: D.Dani) -> str:
     kub = svg_html('<path d="M12 3 20 7.5V16.5L12 21 4 16.5V7.5Z"/><path d="M4 7.5 12 12 20 7.5M12 12V21"/>', 20)
     # Ігри на карті (≈ 215 КБ скриптів) першому екрану не потрібні: karta.js вантажить їх після завантаження сторінки,
     # з живою картою або з першим натиском «Ігри» (ZAVDANNYA-164).
-    return f'''<section class="ekran-karty" aria-label="Карта Києва" data-ihry="{' '.join(SKRYPTY_IHOR)}">
+    VSTUP_HOLOVNOI = (f'<div class="vstup-holovnoi plashka"><h1 class="vstup-holovnoi__rech">{REChENNIA_HOLOVNOI}</h1>'
+                      '<a class="knopka knopka--holovna klav" href="/miy-budynok/?dzherelo=holovna">Перевірити свій будинок</a></div>')
+    klas = ' ekran-karty--holovna' if holovna else ''
+    return f'''<section class="ekran-karty{klas}" aria-label="Карта Києва" data-ihry="{' '.join(SKRYPTY_IHOR)}">
 <div id="karta-mista" class="karta-povna" data-soty-7="/karta/soty-7.json" data-soty-8="/karta/soty-8.json" data-soty-9="/karta/soty-9.json" data-soty-8-m="/karta/soty-8-m.json" data-soty-9-m="/karta/soty-9-m.json" data-poshuk="/karta/poshuk.json" data-versiia="{e(dn.versiia)}"></div>
 <div class="zastavka" aria-hidden="true"></div>
 <noscript><p class="karta-bez-js">Щоб побачити карту, увімкніть JavaScript. Без нього — <a href="/vulytsi/">покажчик вулиць</a>.</p></noscript>
@@ -897,7 +905,7 @@ def ekran_karty(dn: D.Dani) -> str:
 <button id="finfo" class="znachok klav" type="button" aria-label="Як читати карту" title="Як читати карту" aria-expanded="false" aria-controls="info">{info_ik}</button>
 </div>
 <ul id="pidkazky" class="plashka" role="listbox" aria-label="Знайдені місця" hidden></ul>
-<a class="haslo-karty plashka klav" href="/miy-budynok/?dzherelo=holovna"><b>Що болить вашому будинку?</b><span>Довідка — {T.tsina("dovidka")}</span></a>
+{VSTUP_HOLOVNOI if holovna else f'<a class="haslo-karty plashka klav" href="/miy-budynok/?dzherelo=holovna"><b>Що болить вашому будинку?</b><span>Довідка — {T.tsina("dovidka")}</span></a>'}
 <div id="filtr" class="filtr">
 <button type="button" class="f-knopka klav" aria-expanded="false" aria-controls="f-spysok">{filtr_ik}<span id="f-pidpys">Усі події</span><span aria-hidden="true">▾</span></button>
 <div id="f-spysok" class="f-spysok plashka" hidden>

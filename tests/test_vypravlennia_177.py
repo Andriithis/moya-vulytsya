@@ -98,5 +98,48 @@ class Rayony(unittest.TestCase):
         self.assertEqual(Z.rayony_tekst([], False), '')
 
 
+@unittest.skipUnless(YE_H3, 'потрібна бібліотека h3')
+class Sait(unittest.TestCase):
+    """Зібраний штучний сайт: перший екран головної, район, «немає будинку», будинок, вхід."""
+
+    @classmethod
+    def setUpClass(cls):
+        import test_sait as TS
+        import zibraty_sait as Z
+        cls.tmp = tempfile.TemporaryDirectory()
+        t = Path(cls.tmp.name)
+        TS.stvoryty_bazu(t / 'events.db')
+        TS.stvoryty_pereimenuvannya(t / 'pereimenuvannia-kyiv.csv')
+        (t / 'budynky.json').write_text(json.dumps(TS.BUDYNKY, ensure_ascii=False), encoding='utf-8')
+        cls.sait = t / 'sait'
+        Z.zibraty_sait(t / 'events.db', cls.sait, t / 'pereimenuvannia-kyiv.csv', KORIN / 'data' / 'borders.json',
+                       budynky=t / 'budynky.json')
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tmp.cleanup()
+
+    def html(self, shlyakh):
+        return (self.sait / shlyakh).read_text(encoding='utf-8')
+
+    def test_pershyi_ekran_holovnoi(self):
+        h = self.html('index.html')
+        h1 = re.findall(r'<h1[^>]*>(.*?)</h1>', h, re.S)
+        self.assertEqual(len(h1), 1)
+        self.assertIn('кожній вулиці й кожному будинку Києва', h1[0])
+        blok = re.search(r'<div class="vstup-holovnoi.*?</div>', h, re.S).group(0)
+        self.assertIn('>Перевірити свій будинок</a>', blok)
+        self.assertNotRegex(blok, r'\d{3}\s*грн|199', 'першим словом не ціна')
+        self.assertIn('.ekran-karty--holovna .vau-lich { display: none; }', (self.sait / 'sait' / 'sait.css').read_text(encoding='utf-8'))
+        self.assertNotIn('vstup-holovnoi', self.html('karta/index.html'), 'на /karta/ — як було (там працює ZAVDANNYA-174)')
+
+    def test_rayon_vidminok(self):
+        for f in (self.sait / 'rayon').glob('*/index.html'):
+            h = f.read_text(encoding='utf-8')
+            self.assertNotRegex(h, r'[УВ] \S+ський районі', f.parent.name)
+            self.assertRegex(h, r'<p>[УВ] \S+(ському|цькому) районі за ', f.parent.name)
+            self.assertNotRegex(h, r'href="/vulytsi/" aria-current', 'на районі шапка не підсвічує «Вулиці»')
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -463,7 +463,15 @@ html[data-dodatok="hotuiu"] body { visibility: hidden; }
 .haslo-karty b { font: 700 15px/20px var(--sans); }
 .haslo-karty span { color: var(--accent); font-weight: 600; }
 .ekran-karty.shukayu .haslo-karty { display: none; }
+/* ZAVDANNYA-177 (ZVIT-165, п. 1): перший екран головної — одне речення й одна кнопка; бігучого лічильника місяців тут не видно */
+.vstup-holovnoi { position: absolute; z-index: 4; left: 16px; top: 128px; max-width: 360px; padding: 14px 16px; display: flex;
+  flex-direction: column; gap: 12px; }
+.vstup-holovnoi__rech { margin: 0; font: 700 19px/25px var(--sans); color: var(--ink); }
+.vstup-holovnoi .knopka { align-self: flex-start; }
+.ekran-karty.shukayu .vstup-holovnoi, .ekran-karty--holovna .vau-lich { display: none; }
 @media (max-width: 700px) {
   .haslo-karty { left: 8px; top: 116px; padding: 6px 12px; }
+  .vstup-holovnoi { left: 8px; right: 8px; top: 116px; max-width: none; padding: 12px 14px; gap: 10px; }
+  .vstup-holovnoi__rech { font-size: 17px; line-height: 23px; }
   .vau-lich { top: 176px; }
 }

@@ -1222,7 +1222,7 @@ class KartaUBrauzeri(unittest.TestCase):
     def test_vau_za_zamovchuvanniam(self):
         """MV-120: без параметра — «Роки оживають» (лічильник місяців), сторінка без помилок."""
         s, pomylky = self.storinka(vau=None)
-        s.wait_for_selector('.vau-lich', timeout=15000)
+        s.wait_for_selector('.vau-lich', state='attached', timeout=15000)   # ZAVDANNYA-177: на головній лічильник прихований
         self.assertEqual(pomylky, [])
 
     def test_poshuk_vulytsi_z_danykh(self):
