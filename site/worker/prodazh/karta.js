@@ -129,7 +129,8 @@ export async function zarakhuvatyOpys(env, ja) {
 }
 
 const LIMIT_VYCHERPANO = (env) => Response.json({ pomylka: 'limit',
-  tekst: `За добу можна відкрити до ${limitOpysiv(env)} адрес і клітинок з описами. Завтра — знову.` },
+  // текст показує сама карта (dani-edrsr site_src/core.js, docsFor; ZAVDANNYA-172) — тож людськими словами
+  tekst: `Сьогодні ви вже відкрили ${limitOpysiv(env)} адрес з описами — це межа на добу. Завтра — знову.` },
 { status: 429, headers: { ...PRYVATNO, 'cache-control': 'private, no-store' } });
 
 const MAKS_STEZHU = 50;                 // адрес «Стежу» на людину — запобіжник від скрипта, не обмеження для людини

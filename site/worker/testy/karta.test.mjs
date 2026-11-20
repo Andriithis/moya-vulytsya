@@ -146,6 +146,8 @@ test('ліміт описів на добу (ZAVDANNYA-161, п. 2): клітин
   assert.doesNotMatch(env.__LYSTY.at(-1).tekst, /ana@poshta/, 'без пошти людини');
   const zabahato = await zapyt(env, `/pidpysnyk/spravy/${kl}.json`, kuka);
   assert.equal(zabahato.r.status, 429);
+  // текст для людини — його показує карта (ZAVDANNYA-172; dani-edrsr site_src/core.js, docsFor)
+  assert.match(JSON.parse(zabahato.text).tekst, /^Сьогодні ви вже відкрили \d+ адрес з описами/);
   assert.doesNotMatch(zabahato.text, /вигаданий опис/);
   assert.equal((await zapyt(env, `/pidpysnyk/api/podii?la=${A[0]}&lo=${A[1]}`, kuka)).r.status, 429);
   // сама карта й інші файли — без ліміту
