@@ -2,13 +2,14 @@
 // база — SQLite у пам'яті, файли — у пам'яті, оплата — тестова, листи — у журнал і на /__lysty (лише тут).
 //   node site/worker/testy/mistsevyi.mjs [порт] [тека зібраного сайту]
 // PRODAZH=skoro node … — режим «Скоро — залиште пошту» (ZAVDANNYA-132); ADMIN_KLIUCH — для вивантаження форм.
+// BIZNES_TEKA=<тека> — «сховище» копій для компаній на диску (site/prodazh/biznes_r2.py --do-teky, ZAVDANNYA-157).
 // Без теки сайту будинки — два вигадані (/budynok/zhylianska/5/, /budynok/obolonskyi/16/).
 // Для справжньої перевірки на Cloudflare — `npx wrangler dev` у теці <сайт>-worker (docs/PRODAZH-SERVER.md).
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import worker from '../index.js';
-import { d1, r2 } from './pidminy.mjs';
+import { d1, r2, r2ZTeky } from './pidminy.mjs';
 
 const port = parseInt(process.argv[2] || '8799', 10);
 const sait = process.argv[3];
@@ -19,6 +20,7 @@ const env = {
   PRODAZH: process.env.PRODAZH || 'tak', ADMIN_KLIUCH: process.env.ADMIN_KLIUCH || 'mistsevyi-admin', PLATIZHNYI_SERVIS: 'test', TESTOVA_OPLATA: 'tak', ADRESA_SAITU: ADRESA,
   TEST_KLIUCH: process.env.TEST_KLIUCH || 'mistsevyi-test', VYDACHA_KLIUCH: process.env.VYDACHA_KLIUCH || 'mistsevyi-vydavach',
   BAZA: d1(), DOVIDKY: r2(), __LYSTY: [],
+  BIZNES: process.env.BIZNES_TEKA ? r2ZTeky(process.env.BIZNES_TEKA) : r2(),
   // Вхід через Google (ZAVDANNYA-142): з цими змінними видно кнопку; справжній вхід — лише з клієнтом Google на домені
   GOOGLE_KLIIENT_ID: process.env.GOOGLE_KLIIENT_ID || '', GOOGLE_SEKRET: process.env.GOOGLE_SEKRET || '',
   ASSETS: {

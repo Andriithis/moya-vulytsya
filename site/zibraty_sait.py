@@ -979,7 +979,8 @@ def zapysaty(shlyakh: Path, tekst: str) -> None:
 def kopiyuvaty_spilne(vykhid: Path) -> None:
     sait = vykhid / 'sait'
     (sait / 'shryfty').mkdir(parents=True, exist_ok=True)
-    for f in ('karta.js', 'poshuk.js', 'tema.js', 'oplata.js', 'sp.js', 'sp.css', 'budynok-pole.js', 'vkhid.js', 'vkhid.css'):
+    for f in ('karta.js', 'poshuk.js', 'tema.js', 'oplata.js', 'sp.js', 'sp.css', 'budynok-pole.js', 'vkhid.js', 'vkhid.css',
+              'biznes.js', 'biznes.css'):
         shutil.copyfile(DZHERELO / 'sait' / f, sait / f)
     for f in ('hra-yadro.js', 'vulytsia-yadro.js'):          # спільне ядро ігор (ZAVDANNYA-117)
         shutil.copyfile(DZHERELO / 'hra' / f, sait / f)
@@ -1307,13 +1308,15 @@ def main(argv=None) -> int:
     p.add_argument('--poshta-servis', choices=('zahlushka', 'http-json'), default='zahlushka', help='сервіс листів')
     p.add_argument('--karta-r2', action='store_true', help='карта підписника зі сховища R2 moya-vulytsya-karta (лише з --oplata tak; '
                    'docs/PLATNA-CHASTYNA.md, розд. 2)')
+    p.add_argument('--biznes-r2', action='store_true', help='«Для бізнесу»: копії бази для компаній зі сховища R2 '
+                   'moya-vulytsya-biznes (docs/BIZNES-DOSTUP.md)')
     a = p.parse_args(argv)
     prodazh = None
     if a.prodazh_d1 or a.platizhnyi_servis:
         if a.khostynh != 'workers':
             p.error('база D1 і продаж працюють лише з --khostynh workers')
         prodazh = {'d1': a.prodazh_d1, 'servis': a.platizhnyi_servis if a.oplata == 'tak' else None,
-                   'adresa': a.adresa_saitu, 'poshta': a.poshta_servis, 'karta': a.karta_r2}
+                   'adresa': a.adresa_saitu, 'poshta': a.poshta_servis, 'karta': a.karta_r2, 'biznes': a.biznes_r2}
     zapovnennya = json.loads(a.zapovnennya.read_text(encoding='utf-8')) if a.zapovnennya else None
     zvit = zibraty_sait(a.baza, a.vykhid, a.pereimenuvannya, a.mezhi_rayoniv, a.adresa_saitu, a.koloda,
                         a.zvit_zvedennia, a.budynky, a.mezha_failiv, a.khostynh, a.perekazy, a.kandydaty_istorii,

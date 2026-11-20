@@ -93,7 +93,7 @@ export async function forma(request, env, tablytsia) {
   return new Response('ні', { status: 404 });
 }
 
-function csvKlityna(v) {
+export function csvKlityna(v) {
   if (v === null || v === undefined) return '';
   let s = String(v);
   if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;       // щоб таблиця не виконала вміст клітинки як формулу

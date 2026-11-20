@@ -82,9 +82,10 @@ def teka_workera(vykhid: Path) -> Path:
 
 
 # Адреси, для яких Cloudflare спершу запускає скрипт (решту віддає сам). Продаж — site/worker/prodazh/index.js, MARSHRUTY.
-MARSHRUTY_PRODAZHU = ['/oplata/*', '/api/*', '/kabinet/*', '/dovidka/*', '/prodazh/*', '/pidpysnyk/*']
+MARSHRUTY_PRODAZHU = ['/oplata/*', '/api/*', '/kabinet/*', '/dovidka/*', '/prodazh/*', '/pidpysnyk/*', '/kopiia/*']
 R2_DOVIDOK = 'moya-vulytsya-dovidky'
 R2_KARTY = 'moya-vulytsya-karta'     # карта підписника (ZAVDANNYA-133): лише з prodazh['karta'], сховище створює партнер
+R2_BIZNES = 'moya-vulytsya-biznes'   # копії бази для компаній (ZAVDANNYA-157): лише з prodazh['biznes'], сховище створює партнер
 SERVISY_OPLATY = ('liqpay', 'mono', 'test')
 OBMEZHENNIA = {'limit': 20, 'period': 60}      # запитів однієї групи з однієї адреси за 60 с (prodazh/index.js, OBMEZHENI)
 # Не секретні змінні, які скрипт викладки може записати у wrangler.jsonc (ключі — лише `wrangler secret put`).
@@ -139,6 +140,9 @@ def pidhotuvaty_worker(vykhid: Path, pachok: int, nazva: str = 'moya-vulytsya', 
         konfig['vars'].update({'PRODAZH': 'skoro', 'ADRESA_SAITU': prodazh.get('adresa', ''),
                                'POSHTA_SERVIS': prodazh.get('poshta', 'zahlushka')})
         konfig['d1_databases'] = [{'binding': 'BAZA', 'database_name': f'{nazva}-prodazh', 'database_id': prodazh['d1']}]
+        if prodazh.get('biznes'):
+            # «Для бізнесу» працює й до оплати на сайті: договір і рахунок — у партнера (prodazh/biznes.js)
+            konfig['r2_buckets'] = [{'binding': 'BIZNES', 'bucket_name': R2_BIZNES}]
     elif prodazh:
         if prodazh.get('servis') not in SERVISY_OPLATY or not prodazh.get('d1'):
             raise SystemExit(f'Продаж: потрібні --d1 і --platizhnyi-servis ({", ".join(SERVISY_OPLATY)})')
@@ -151,6 +155,9 @@ def pidhotuvaty_worker(vykhid: Path, pachok: int, nazva: str = 'moya-vulytsya', 
         if prodazh.get('karta'):
             # Карта підписника — приватне сховище R2, віддає лише скрипт після перевірки підписки (prodazh/karta.js)
             konfig['r2_buckets'].append({'binding': 'KARTA', 'bucket_name': R2_KARTY})
+        if prodazh.get('biznes'):
+            # Копії бази для компаній — приватне сховище R2, віддає лише скрипт за особистим посиланням (prodazh/biznes.js)
+            konfig['r2_buckets'].append({'binding': 'BIZNES', 'bucket_name': R2_BIZNES})
         # щодня: прибирання й лист ОСББ за 3 дні (logika.js); кожні 10 хв — черга видавача (prodazh/vydavach.js, ZAVDANNYA-133)
         konfig['triggers'] = {'crons': ['17 2 * * *', '*/10 * * * *']}
     (t / 'wrangler.jsonc').write_text('// Зібрано site/zibraty_sait.py --khostynh workers (ZAVDANNYA-88, -99). Не редагувати руками.\n'
