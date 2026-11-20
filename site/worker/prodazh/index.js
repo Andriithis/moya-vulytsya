@@ -16,6 +16,8 @@
 //   GET  /oplata/dyakuiemo/?z=…            «дякуємо» — текст за товаром замовлення (ZAVDANNYA-172)
 //   GET  /oplata/zapysaly/                 «Записали» після «скоро — залиште пошту» (обидва режими)
 //   GET  /dovidka/<id>/?k=<ключ>           довідка: ключ із листа або вхід у кабінет власника
+//   GET  /dovidka/<id>/kartka/?k=<ключ>    «картка для мешканців» (лише числа, ZAVDANNYA-178): свій ключ (можна переслати), або вхід
+//                                          власника; POST /kabinet/kartka/<nove|zakryty> — нове посилання (старе закривається) чи закрити
 //   /kabinet/…                             вхід за посиланням на пошту (посилання → сторінка з кнопкою «Увійти» → POST /kabinet/vkhid/uviity), мої довідки, «Стежу», підписка, видалення даних
 //   GET  /kabinet/google/…                 вхід через Google — лише з GOOGLE_KLIIENT_ID і GOOGLE_SEKRET (google.js, ZAVDANNYA-142)
 //   /api/vnutr/…                           для видавача (site/prodazh/vydavach.py), заголовок Authorization: Bearer VYDACHA_KLIUCH
@@ -212,12 +214,14 @@ async function spovishchennia(request, env, servis) {
 
 // ---------------------------------------------------------------- довідка
 
-async function vidkrytyDovidku(request, env, url, id) {
+async function vidkrytyDovidku(request, env, url, id, kartka = false) {
   const d = await L.odyn(env, 'SELECT * FROM dovidky WHERE id = ?', id);
   const k = url.searchParams.get('k');
+  // картка (ZAVDANNYA-178) — свій файл і свій ключ: ключ довідки картку не відкриває, ключ картки — довідку теж
+  const hash = kartka ? d?.kartka_hash : d?.kliuch_hash;
   let svoia = false;
   if (d) {
-    if (k && d.kliuch_hash && rivni(sha256(k), d.kliuch_hash)) svoia = true;
+    if (k && hash && rivni(sha256(k), hash)) svoia = true;
     else {
       const ja = await sesiia(request, env);
       svoia = !!ja && d.korystuvach_id === ja.id;
@@ -225,7 +229,8 @@ async function vidkrytyDovidku(request, env, url, id) {
   }
   if (!svoia) return S.nemaie();     // і «немає», і «чужа» — однаково, щоб не вгадувати номери
   if (d.status !== 'hotova' || !d.fail) return S.povidomlennia('Готується', 'Довідка ще готується — посилання прийде на пошту.');
-  const o = await env.DOVIDKY.get(d.fail);
+  const fail = kartka ? d.kartka_fail : d.fail;
+  const o = fail ? await env.DOVIDKY.get(fail) : null;
   if (!o) return S.nemaie();
   return new Response(o.body, {
     headers: {
@@ -318,6 +323,10 @@ async function google(request, env, url) {
 
 async function kabinet(env, ja, povidomlennia = '') {
   const dovidky = await L.vsi(env, 'SELECT id, budynok, adresa, rezhym, status, pidpyska_id, stvoreno FROM dovidky WHERE korystuvach_id = ? ORDER BY stvoreno DESC', ja.id);
+  // «картка для мешканців» (ZAVDANNYA-178): у старій базі без стовпців картки — просто без неї
+  const kartky = await L.zKartkoiu(env, () => L.vsi(env, 'SELECT id, kartka_hash FROM dovidky WHERE korystuvach_id = ? AND kartka_fail IS NOT NULL', ja.id));
+  const zKartkoiu = new Map((kartky || []).map((x) => [x.id, !!x.kartka_hash]));
+  for (const x of dovidky) if (zKartkoiu.has(x.id)) { x.kartka = true; x.kartka_vidkryta = zKartkoiu.get(x.id); }
   const stezhu = await L.vsi(env, 'SELECT budynok, adresa FROM stezhu WHERE korystuvach_id = ? ORDER BY stvoreno', ja.id);
   const d = await L.dostupno(env, ja.id);
   const pidpysky = (await L.stanPidpysok(env, ja.id)).filter((p) => p.diie);
@@ -390,6 +399,16 @@ async function diiaKabinetu(request, env, url, ja, dia) {
     if (!ok) return kabinet(env, ja, 'Платіжний сервіс не підтвердив скасування. Спробуйте ще раз або напишіть партнеру — скасуємо вручну.');
     await L.zrobyty(env, `UPDATE pidpysky SET status = 'skasovana', skasovano = ? WHERE id = ?`, L.teper(env), p.id);
     return kabinet(env, ja, `Підписку скасовано. Нових списань не буде; доступ — до ${S.data(p.diie_do)}.`);
+  }
+  // ZAVDANNYA-178: посилання на «картку для мешканців» — нове (старе більше не відкривається) або закрити зовсім
+  if (dia === 'kartka/nove' || dia === 'kartka/zakryty') {
+    const id = /^d[a-z2-7]+$/.test(f.dovidka || '') ? f.dovidka : '';
+    if (dia === 'kartka/zakryty') {
+      return kabinet(env, ja, id && await L.zakrytyKartku(env, id, ja.id)
+        ? 'Посилання на картку закрито: хто його мав, більше картку не відкриє. Вам вона відкривається тут, у кабінеті.' : 'Такої картки немає.');
+    }
+    const k = id ? await L.novyiKliuchKartky(env, id, ja.id) : null;
+    return kabinet(env, ja, k ? `Нове посилання на картку (старе більше не відкривається): ${L.kartkaUrl(adresaSaitu(env, url), id, k)}` : 'Такої картки немає.');
   }
   if (dia === 'vyhid') {
     await L.zrobyty(env, 'DELETE FROM sesii WHERE hash = ?', sha256(kuky(request).mv_sesiia || ''));
@@ -470,6 +489,13 @@ async function vnutr(request, env, url, shliakh) {
     const html = await request.text();
     if (!html.startsWith('<!') || html.length > 30 * 1024 * 1024) return new Response('ne html', { status: 400 });
     return new Response(null, { status: (await L.dovidkaHotova(env, m[1], html, adresaSaitu(env, url))) ? 204 : 409 });
+  }
+  // ZAVDANNYA-178: «картка для мешканців» — видавач кладе її ДО довідки (лист «готово» вже має посилання на картку)
+  m = shliakh.match(/^kartka\/(d[a-z2-7]+)$/);
+  if (m && request.method === 'PUT') {
+    const html = await request.text();
+    if (!html.startsWith('<!') || html.length > 2 * 1024 * 1024) return new Response('ne html', { status: 400 });
+    return new Response(null, { status: (await L.kartkaHotova(env, m[1], html)) ? 204 : 409 });
   }
   // ZAVDANNYA-150, п. 4: щомісячний лист «Стежу» — черга й надсилання (скрипт site/prodazh/lyst_stezhu.py)
   if (shliakh === 'stezhu' && request.method === 'GET') {
@@ -638,6 +664,8 @@ export async function prodazh(request, env) {
   if (r) return vnutr(request, env, url, r[1]);
   r = s.match(/^\/dovidka\/(d[a-z2-7]+)\/?$/);
   if (r && m === 'GET') return vidkrytyDovidku(request, env, url, r[1]);
+  r = s.match(/^\/dovidka\/(d[a-z2-7]+)\/kartka\/?$/);
+  if (r && m === 'GET') return vidkrytyDovidku(request, env, url, r[1], true);
   if (s === '/kabinet/vkhid' && m === 'POST') return nadislatyVkhid(request, env, url);
   if (s === '/kabinet/vkhid/' && m === 'GET') return storinkaVkhodu(env, url);
   if (s === '/kabinet/vkhid/uviity' && m === 'POST') return uviity(request, env, url);

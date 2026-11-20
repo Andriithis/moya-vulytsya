@@ -265,7 +265,8 @@ curl -X POST https://<сайт>/api/admin/vydalyty -H "Authorization: Bearer $AD
    (`skhema.sql` — з репозиторію `moya-vulytsya`, тека `site/worker/prodazh/`).
    База, створена до ZAVDANNYA-135 («Судова практика»), — ще раз `--file=…/skhema-135.sql` (нові поля `parametry` і таблиця
    `sp_vyvantazhennia`); база, створена до ZAVDANNYA-172, — `--file=…/skhema-172.sql` (лічильник «скоро» для «Судової
-   практики» `skoro_sp`; без нього сервер працює, лічильник просто не пишеться); таблиці практики для юриста — `python site/prodazh/praktyka_r2.py sudova-praktyka.json --zavantazhyty`.
+   практики» `skoro_sp`; без нього сервер працює, лічильник просто не пишеться); база, створена до ZAVDANNYA-178, —
+   `--file=…/skhema-178.sql` (стовпці «картки для мешканців»; без них сервер працює, лише без картки); таблиці практики для юриста — `python site/prodazh/praktyka_r2.py sudova-praktyka.json --zavantazhyty`.
 5. Секрети (розд. 5): `npx wrangler secret put TEST_KLIUCH`, `VYDACHA_KLIUCH`, `ADMIN_KLIUCH`, `POSHTA_KLIUCH`, …;
    змінні `POSHTA_VID`, `POSHTA_URL`, `POSHTA_PARTNERA` — у панелі Workers.
 6. `npx wrangler deploy` у `_site-worker`. Запустити видавача на машині з даними:

@@ -17,7 +17,9 @@ sys.path.insert(0, str(KORIN / 'site' / 'prodazh'))
 import vydavach  # noqa: E402
 
 GENERATOR = ('import sys, json\na = sys.argv[1:]\nv = a[a.index("--vyhid") + 1]\n'
-             'open(v, "w", encoding="utf-8").write("<!doctype html>" + json.dumps(a, ensure_ascii=False))\n')
+             'r = "povnyi" if "--povnyi" in a else "dovidka"\n'
+             'open(v.replace("<режим>", r), "w", encoding="utf-8").write("<!doctype html>" + json.dumps(a, ensure_ascii=False))\n'
+             'if "--kartka" in a: open(v.replace("<режим>", "kartka"), "w", encoding="utf-8").write("<!doctype html>картка")\n')
 
 
 class Vydavach(unittest.TestCase):
@@ -25,14 +27,17 @@ class Vydavach(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             g = Path(t) / 'zibraty.py'
             g.write_text(GENERATOR, encoding='utf-8')
-            f = vydavach.zibraty(g, {'id': 'dabc', 'rezhym': rezhym, 'adresa': 'проспект Оболонський, 16'}, Path(t), shi=False)
+            f, kartka = vydavach.zibraty(g, {'id': 'dabc', 'rezhym': rezhym, 'adresa': 'проспект Оболонський, 16'}, Path(t), shi=False)
             self.assertIsNotNone(f)
+            # ZAVDANNYA-178: поруч — «картка для мешканців» (генератор --kartka)
+            self.assertIsNotNone(kartka)
+            self.assertEqual(kartka.read_text(encoding='utf-8'), '<!doctype html>картка')
             return json.loads(f.read_text(encoding='utf-8')[len('<!doctype html>'):])
 
     def test_rezhymy(self):
         self.assertIn('--osbb', self.prapory('osbb'), 'щомісячна довідка ОСББ — генератор --osbb (dani-edrsr S-Зв.5)')
         self.assertNotIn('--povnyi', self.prapory('osbb'))
-        self.assertEqual([x for x in self.prapory('dovidka') if x.startswith('--') and x != '--vyhid'], ['--dovidka', '--chysto'])
+        self.assertEqual([x for x in self.prapory('dovidka') if x.startswith('--') and x != '--vyhid'], ['--dovidka', '--kartka', '--chysto'])
         self.assertIn('--povnyi', self.prapory('povnyi'))
         self.assertEqual(self.prapory('osbb')[0], 'проспект Оболонський, 16')
 

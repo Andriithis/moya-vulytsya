@@ -16,6 +16,18 @@ export const odyn = (env, sql, ...p) => q(env, sql, ...p).first();
 export const vsi = async (env, sql, ...p) => (await q(env, sql, ...p).all()).results;
 export const zrobyty = (env, sql, ...p) => q(env, sql, ...p).run();
 /** Те саме, але таблиці, якої ще немає в старій базі (оновлення skhema-<N>.sql не виконано), не зупиняє дію. */
+/**
+ * Стовпці «картки для мешканців» (kartka_fail, kartka_hash — ZAVDANNYA-178, skhema-178.sql). У старій базі їх немає:
+ * тоді картки просто немає (нічого не ламається), а сервер пише в журнал, що базу треба оновити.
+ */
+export async function zKartkoiu(env, fn) {
+  try { return await fn(); } catch (err) {
+    if (!/no such column/i.test(err.message)) throw err;
+    console.log(`стара база без стовпців картки (skhema-178.sql): ${err.message}`);
+    return null;
+  }
+}
+
 export async function zrobytyNovu(env, sql, ...p) {
   try { return await zrobyty(env, sql, ...p); } catch (err) {
     if (!/no such table/i.test(err.message)) throw err;
@@ -373,6 +385,59 @@ export function holovneZDovidky(html) {
   return t.length > 300 ? `${t.slice(0, t.lastIndexOf(' ', 297))}…` : t;
 }
 
+/**
+ * ZAVDANNYA-178 (ZVIT-173, п. 5): одне речення головного з <meta name="pidsumok" content="…"> генератора (ОСББ — речення
+ * місяця: «Жовтень: 19 звернень до 1551 (у вересні — 29); світло — 7, у сусідніх типово 1.»). Для теми листа — один рядок.
+ */
+export function pidsumokZDovidky(html) {
+  const m = String(html || '').slice(0, 20000).match(/<meta name="pidsumok" content="([^"]*)"/);
+  if (!m) return '';
+  const t = m[1].replace(/&quot;/g, '"').replace(/&#x27;|&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
+    .replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
+  return t.length > 160 ? `${t.slice(0, t.lastIndexOf(' ', 157))}…` : t;
+}
+
+export const kartkaUrl = (adresaSaitu, id, kliuch) => `${adresaSaitu}/dovidka/${id}/kartka/${kliuch ? `?k=${kliuch}` : ''}`;
+const NAPYS_KARTKY = 'Коротка картка для мешканців (лише числа)';
+
+/**
+ * ZAVDANNYA-178 (MV-183): «картка для мешканців / клієнта» від видавача (генератор --kartka) — до самої довідки, поки
+ * довідка «готується». Кладемо поруч у сховище; ключ посилання дає dovidkaHotova (лист «готово»). false — не та довідка
+ * або стара база без стовпців картки.
+ */
+export async function kartkaHotova(env, id, html) {
+  const d = await odyn(env, 'SELECT id, status, rezhym FROM dovidky WHERE id = ?', id);
+  if (!d || d.status !== 'hotuietsia' || d.rezhym === 'sp') return false;
+  const fail = `dovidky/${d.id}-${vypadkovyi(10)}-kartka.html`;
+  const r = await zKartkoiu(env, () => zrobyty(env, 'UPDATE dovidky SET kartka_fail = ? WHERE id = ?', fail, id));
+  if (!r) return false;
+  await env.DOVIDKY.put(fail, html, { httpMetadata: { contentType: 'text/html; charset=utf-8' } });
+  return true;
+}
+
+/** Новий ключ посилання на картку: старе посилання (з листа чи попереднє) більше не відкривається. -> ключ або null. */
+export async function novyiKliuchKartky(env, id, korystuvach_id = null) {
+  const d = await zKartkoiu(env, () => odyn(env, 'SELECT id, korystuvach_id, kartka_fail FROM dovidky WHERE id = ?', id));
+  if (!d || !d.kartka_fail || (korystuvach_id !== null && d.korystuvach_id !== korystuvach_id)) return null;
+  const kliuch = vypadkovyi(24);
+  await zrobyty(env, 'UPDATE dovidky SET kartka_hash = ? WHERE id = ?', sha256(kliuch), id);
+  return kliuch;
+}
+
+/** Закрити посилання на картку: ключа немає — ніхто, крім власника в кабінеті, її не відкриє. */
+export async function zakrytyKartku(env, id, korystuvach_id) {
+  const r = await zKartkoiu(env, () => zrobyty(env, 'UPDATE dovidky SET kartka_hash = NULL WHERE id = ? AND korystuvach_id = ?', id, korystuvach_id));
+  return !!r?.meta?.changes;
+}
+
+/** Рядок листа «готово» з посиланням на картку (порожньо, якщо картки немає). */
+async function ryadokKartky(env, d, adresaSaitu) {
+  if (!d.kartka_fail) return '';
+  const k = await novyiKliuchKartky(env, d.id);
+  return k ? `${NAPYS_KARTKY} — її можна переслати сусідам чи клієнту або роздрукувати; описів справ у ній немає: ` +
+    `${kartkaUrl(adresaSaitu, d.id, k)}\nПосилання на картку можна закрити в кабінеті.\n\n` : '';
+}
+
 export async function dovidkaHotova(env, id, html, adresaSaitu) {
   const d = await odyn(env, `SELECT d.*, k.poshta FROM dovidky d LEFT JOIN korystuvachi k ON k.id = d.korystuvach_id WHERE d.id = ?`, id);
   if (!d || d.status !== 'hotuietsia') return false;
@@ -380,6 +445,7 @@ export async function dovidkaHotova(env, id, html, adresaSaitu) {
   const fail = `dovidky/${d.id}-${vypadkovyi(10)}.html`;
   await env.DOVIDKY.put(fail, html, { httpMetadata: { contentType: 'text/html; charset=utf-8' } });
   await zrobyty(env, `UPDATE dovidky SET status = 'hotova', fail = ?, kliuch_hash = ?, hotovo = ? WHERE id = ?`, fail, sha256(kliuch), teper(env), id);
+  const kartka = d.poshta && d.rezhym !== 'sp' ? await ryadokKartky(env, d, adresaSaitu) : '';
   if (d.poshta && d.rezhym === 'sp') {
     await nadislaty(env, {
       komu: d.poshta, tema: `Судова практика: ${d.adresa}`,
@@ -390,13 +456,15 @@ export async function dovidkaHotova(env, id, html, adresaSaitu) {
     });
   } else if (d.poshta && d.rezhym === 'osbb') {
     // ZAVDANNYA-143: щомісячна довідка ОСББ (генератор --osbb) — приходить сама щомісяця
+    // ZAVDANNYA-178 (ZVIT-173, п. 5): тема — готове речення місяця з довідки («Жовтень: 19 звернень до 1551…»); без нього — як було
+    const misiats = pidsumokZDovidky(html);
     await nadislaty(env, {
-      komu: d.poshta, tema: `Щомісячна довідка для ОСББ: ${d.adresa}`,
+      komu: d.poshta, tema: misiats ? `${d.adresa}. ${misiats}` : `Щомісячна довідка для ОСББ: ${d.adresa}`,
       tekst: `Готово: щомісячна довідка про будинок ${d.adresa} — звернення мешканців до 1551 за останній місяць і за рік, ` +
-        `порівняння з сусідніми будинками, події з рішень судів.\n\n` +
+        `порівняння з сусідніми будинками, події з рішень судів.\n\n` + (misiats ? `Цього місяця: ${misiats}\n\n` : '') +
         `Відкрити: ${adresaSaitu}/dovidka/${d.id}/?k=${kliuch}\n\n` +
         `Наступна прийде сама через місяць. Усі довідки — у кабінеті: ${adresaSaitu}/kabinet/\n` +
-        'Посилання особисте — не пересилайте його. Це не оцінка безпеки: лише скарги мешканців і події з рішень судів, як їх записано.',
+        (kartka ? 'Посилання на довідку особисте — не пересилайте його.\n\n' + kartka : 'Посилання особисте — не пересилайте його. ') + 'Це не оцінка безпеки: лише скарги мешканців і події з рішень судів, як їх записано.',
     });
   } else if (d.poshta) {
     const r = d.pidpyska_id ? (await stanPidpysok(env, d.korystuvach_id)).find((p) => p.id === d.pidpyska_id && p.tovar === 'rieltor') : null;
@@ -415,7 +483,8 @@ export async function dovidkaHotova(env, id, html, adresaSaitu) {
       tekst: `Готово: ${d.rezhym === 'povnyi' ? 'повний звіт' : 'довідка'} про будинок ${d.adresa}.\n\n` +
         (holovne ? `Головне: ${holovne}\n\n` : '') +
         `Відкрити: ${adresaSaitu}/dovidka/${d.id}/?k=${kliuch}\n\n` +
-        `Посилання особисте — не пересилайте його. Усі довідки — також у кабінеті: ${adresaSaitu}/kabinet/\n` + zalyshok +
+        `Посилання${kartka ? ' на довідку' : ''} особисте — не пересилайте його. Усі довідки — також у кабінеті: ${adresaSaitu}/kabinet/\n` + zalyshok +
+        (kartka ? `\n${kartka}` : '') +
         'Це не оцінка безпеки: лише скарги мешканців і події з рішень судів, як їх записано.',
     });
   }
@@ -442,6 +511,7 @@ export async function dovidkaPomylka(env, id) {
 export async function vydalytyDani(env, korystuvach_id) {
   const faily = await vsi(env, 'SELECT fail FROM dovidky WHERE korystuvach_id = ? AND fail IS NOT NULL', korystuvach_id);
   for (const f of faily) await env.DOVIDKY.delete(f.fail);
+  await prybratyKartky(env, 'korystuvach_id = ?', korystuvach_id);     // картки для мешканців (ZAVDANNYA-178)
   // ZAVDANNYA-172 (ZVIT-167): довідки в черзі знімаються — без адреси видавач падав на них тричі, а партнер отримував лист про невдачу
   await zrobyty(env, `UPDATE dovidky SET status = 'vydaleno' WHERE korystuvach_id = ? AND status IN ('v_cherzi', 'hotuietsia')`, korystuvach_id);
   await zrobyty(env, `UPDATE dovidky SET korystuvach_id = NULL, fail = NULL, kliuch_hash = NULL, adresa = '', budynok = '' WHERE korystuvach_id = ?`, korystuvach_id);
@@ -455,6 +525,15 @@ export async function vydalytyDani(env, korystuvach_id) {
   await zrobyty(env, 'DELETE FROM sesii WHERE korystuvach_id = ?', korystuvach_id);
   await zrobyty(env, 'DELETE FROM vkhody WHERE korystuvach_id = ?', korystuvach_id);
   await zrobyty(env, 'DELETE FROM korystuvachi WHERE id = ?', korystuvach_id);
+}
+
+/** Файли карток для мешканців і їхні ключі — геть (разом із довідкою: видалення даних, строк зберігання). */
+async function prybratyKartky(env, umova, ...p) {
+  const k = await zKartkoiu(env, () => vsi(env, `SELECT id, kartka_fail FROM dovidky WHERE kartka_fail IS NOT NULL AND ${umova}`, ...p));
+  for (const x of k || []) {
+    await env.DOVIDKY.delete(x.kartka_fail);
+    await zrobyty(env, 'UPDATE dovidky SET kartka_fail = NULL, kartka_hash = NULL WHERE id = ?', x.id);
+  }
 }
 
 /** Що зникне, якщо людина видалить дані (ZAVDANNYA-172, ZVIT-167 п. 1): для сторінки підтвердження. */
@@ -481,6 +560,7 @@ export async function prybraty(env) {
   for (const d of stari) {
     await env.DOVIDKY.delete(d.fail);
     await zrobyty(env, `UPDATE dovidky SET fail = NULL, kliuch_hash = NULL, status = 'vydaleno' WHERE id = ?`, d.id);
+    await prybratyKartky(env, 'id = ?', d.id);
   }
   return stari.length;
 }

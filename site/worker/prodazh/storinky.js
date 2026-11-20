@@ -254,8 +254,16 @@ const NAZVA_PIDPYSKY = { pidpyska: 'Підписка', rieltor: 'Підписк�
 const VYD_DOVIDKY = { povnyi: 'повний звіт', dovidka: 'довідка', sp: 'судова практика', osbb: 'щомісячна довідка ОСББ' };
 
 // «готується» сама не оновлюється (сторінка без скриптів) — поруч посилання «оновити» (ZVIT-167)
-const posylannia = (d) => (d.status === 'hotova' ? `<a href="/dovidka/${e(d.id)}/">відкрити</a>`
+const posylannia = (d) => (d.status === 'hotova' ? `<a href="/dovidka/${e(d.id)}/">відкрити</a>${d.kartka ? kartka(d) : ''}`
   : ['v_cherzi', 'hotuietsia'].includes(d.status) ? `${e(STATUS_DOVIDKY[d.status])} (<a href="/kabinet/">оновити</a>)` : e(STATUS_DOVIDKY[d.status]));
+
+/**
+ * ZAVDANNYA-178 (MV-183): «картка для мешканців / клієнта» поруч із довідкою, звітом, ОСББ — лише числа, без описів справ.
+ * Власнику відкривається з кабінету; щоб поділитися — нове посилання (старе закривається) або закрити посилання зовсім.
+ */
+const kartka = (d) => ` · <a href="/dovidka/${e(d.id)}/kartka/">Коротка картка для мешканців (лише числа)</a>
+<form class="v-riadok" method="post" action="/kabinet/kartka/nove"><input type="hidden" name="dovidka" value="${e(d.id)}"><button class="knopka" type="submit">Посилання, щоб поділитися</button></form>${
+  d.kartka_vidkryta ? `<form class="v-riadok" method="post" action="/kabinet/kartka/zakryty"><input type="hidden" name="dovidka" value="${e(d.id)}"><button class="knopka" type="submit">Закрити посилання на картку</button></form>` : ''}`;
 
 /** ZAVDANNYA-143: правлінню ОСББ — свій будинок, довідки приходять самі щомісяця; лист за 3 дні до річного списання. */
 function rozdilOsbb(p, dovidky) {
