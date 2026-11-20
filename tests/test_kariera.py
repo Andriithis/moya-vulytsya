@@ -229,6 +229,46 @@ class Henerator(unittest.TestCase):
         self.assertIn('тобто', s['chomu'])
         self.assertEqual(d['statti']['КУпАП 130']['riven'], 1)
 
+    def test_skasovani_v_apeliatsii_poza_hroiu(self):
+        """MV-17, ZAVDANNYA-152: скасоване чи змінене вищим судом і видалене за зверненням — не йде; «без змін» — йде."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            con = sqlite3.connect(tmp / 'events.db')
+            con.executescript(
+                'CREATE TABLE release(versiia TEXT, podii INT, khesh_vkhodu TEXT);'
+                "INSERT INTO release VALUES('events-2026-12-01',5,'x');"
+                'CREATE TABLE document(doc_id TEXT, data_rishennia TEXT, url TEXT);'
+                'CREATE TABLE event(event_id TEXT, doc_id TEXT, stattia TEXT, fabula TEXT, vyd TEXT, chutlyva INT);'
+                'CREATE TABLE skasuvannia(doc_id TEXT, rishennia_vyshchoho TEXT, data TEXT, naslidok TEXT, kintsevyi_stan TEXT, pro_tse TEXT);'
+                'CREATE TABLE withdrawal(doc_id TEXT, data_zvernennia TEXT, prychyna TEXT);'
+                "INSERT INTO skasuvannia VALUES('2','a2',NULL,'novyi_rozghliad','',NULL),('3','a3',NULL,'zmina','',NULL),"
+                "('4','a4',NULL,'bez_zmin','',NULL);"
+                "INSERT INTO withdrawal VALUES('5','2026-11-01','звернення');")
+            fab = ('Особа ОСОБА_1 керувала автомобілем у стані алкогольного сп`яніння по вул. Хрещатик, 22 у м. Києві, '
+                   'повторно протягом року, від огляду не відмовлялась, результат огляду — 1,2 проміле.')
+            for doc in '12345':
+                con.execute('INSERT INTO document VALUES(?,?,?)', (doc, '2025-05-01', f'https://reyestr.court.gov.ua/Review/{doc}'))
+                con.execute('INSERT INTO event VALUES(?,?,?,?,?,?)',
+                            (doc + '-1', doc, "ст.130 КУпАП · керування у стані сп'яніння", fab, 'ДОР', 0))
+            con.commit()
+            con.close()
+            (tmp / 't').mkdir()
+            with lzma.open(tmp / 't' / '2025-05.jsonl.xz', 'wt', encoding='utf-8') as fh:
+                for doc in '12345':
+                    fh.write(json.dumps({'doc_id': doc, 'tekst': TEKST_130}, ensure_ascii=False) + '\n')
+            zhurnal = []
+            d = K.zibraty(tmp / 'events.db', [tmp / 't' / '2025-05.jsonl.xz'], log=zhurnal.append)
+        self.assertEqual(sorted(s[0] for s in d['spravy']), ['1', '4'])
+        self.assertIn('скасованих чи змінених вищим судом: 2', d['skasovani'])
+        self.assertIn('видалених за зверненням: 1', zhurnal[0])
+
+    def test_bez_tablytsi_skasuvan_kazhe_vholos(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            con = sqlite3.connect(Path(tmp) / 'e.db')
+            con.execute('CREATE TABLE event(doc_id TEXT)')
+            self.assertEqual(K.poza_skasovani(con)[0], set())
+            self.assertIn('не відсіяно', K.poza_skasovani(con)[1])
+
 
 class Mezhi(unittest.TestCase):
     FAILY = ('index.html', 'kariera.js', 'kariera-yadro.js')
