@@ -58,7 +58,8 @@
       keepalive: !!dovho
     }).then(function (v) {
       if (!v.ok) throw new Error('Сховище відповіло ' + v.status);
-      return true;
+      // сервер сайту на звернення відповідає { nomer } (ZAVDANNYA-172); порожня відповідь — просто «прийнято»
+      return v.json ? v.json().then(function (j) { return j || true; }, function () { return true; }) : true;
     });
   }
 
@@ -96,9 +97,14 @@
     dani = dani || {};
     if (dani.zghoda !== true) return Promise.reject(new Error('Немає згоди'));
     var posylannya = String(dani.posylannya || '').trim();
+    var adresa = String(dani.adresa || '').trim().slice(0, 200);
     var kontakt = String(dani.kontakt || '').trim();
     var poyasnennya = String(dani.poyasnennya || '').trim();
-    if (!posylannya) return Promise.reject(new Error('Немає посилання чи номера рішення'));
+    if (!posylannya && !adresa) return Promise.reject(new Error('Немає ні адреси, ні посилання'));
+    // ZAVDANNYA-172: адреса — у тих самих полях сховища (без нової колонки): без посилання вона і є «що»,
+    // з посиланням — перший рядок пояснення.
+    if (adresa && !posylannya) posylannya = 'Адреса: ' + adresa;
+    else if (adresa) poyasnennya = 'Адреса: ' + adresa + (poyasnennya ? '\n' + poyasnennya : '');
     if (SHCHO_NE_TAK.indexOf(dani.shchoNeTak) === -1) return Promise.reject(new Error('Не вибрано, що не так'));
     if (!kontakt) return Promise.reject(new Error('Немає контакту'));
     return vidpravyty('zvernennya', {

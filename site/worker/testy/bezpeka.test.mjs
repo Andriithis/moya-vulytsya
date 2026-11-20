@@ -240,7 +240,7 @@ test('CSRF: дія кабінету з чужого сайту або без Ori
   await zamovyty(env, 'dovidka', '/budynok/zhylianska/5/');
   const kuka = await uviity(env);
   for (const origin of ['https://zlyi.example', null, 'null', 'https://mv.test.zlyi.example']) {
-    const { r } = await zapyt(env, 'POST', '/kabinet/vydalyty', { kuka, origin, forma: { pidtverdzhuiu: 'tak' } });
+    const { r } = await zapyt(env, 'POST', '/kabinet/vydalyty', { kuka, origin, forma: { pidtverdzhuiu: 'tak', rozumiiu: 'tak' } });
     assert.equal(r.status, 403, String(origin));
     const z = await zapyt(env, 'POST', '/api/zamovlennia', { origin, forma: { tovar: 'dovidka', poshta: 'x@poshta.ua', zghoda: 'tak', odrazu: 'tak' } });
     assert.equal(z.r.status, 403);

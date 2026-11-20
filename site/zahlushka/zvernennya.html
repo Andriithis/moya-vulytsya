@@ -33,9 +33,17 @@
 <p class="vstup vstup--dribno">Подію знімаємо, якщо рішення суду скасоване чи змінене. Якщо вас можна впізнати за сукупністю деталей, прибираємо деталі (наприклад, номер будинку) або саму подію. Якщо подія сталася понад 10 років тому — номер будинку прибираємо за першим проханням, без пояснень. Відповідаємо, що перевірили і що зробили.</p>
 
 <form class="forma forma--storinka" id="zvernennya" novalidate aria-describedby="zvernennya-stan">
+<!-- ZAVDANNYA-172 (ZVIT-169, п. 10): головне — адреса. На відкритих сторінках будинків лише числа, тож посилання на подію
+     чи номера рішення в людини може не бути; без підписки вона однаково має дійти до звернення (ст. 302 ЦК, 10 днів). -->
 <div class="pole">
-<label for="posylannya">Посилання на подію або номер рішення</label>
-<input id="posylannya" name="posylannya" type="text" maxlength="300" placeholder="посилання або № рішення в реєстрі" autocomplete="off">
+<label for="adresa">Адреса або вулиця, де показано подію</label>
+<input id="adresa" name="adresa" type="text" maxlength="200" placeholder="Наприклад: вулиця Жилянська, 5" autocomplete="off">
+</div>
+
+<div class="pole">
+<label for="posylannya">Посилання на подію або номер рішення — якщо є</label>
+<p class="pole__pidkazka" id="posylannya-pidkazka">Не обов'язково: досить адреси й кількох слів, що сталося і коли приблизно.</p>
+<input id="posylannya" name="posylannya" type="text" maxlength="300" placeholder="посилання або № рішення в реєстрі" autocomplete="off" aria-describedby="posylannya-pidkazka">
 </div>
 
 <fieldset class="vybir">
@@ -48,7 +56,7 @@
 
 <div class="pole">
 <label for="poyasnennya">Пояснення (необов'язково)</label>
-<textarea id="poyasnennya" name="poyasnennya" rows="5" maxlength="2000" placeholder="Що саме не так і як має бути"></textarea>
+<textarea id="poyasnennya" name="poyasnennya" rows="5" maxlength="2000" placeholder="Що сталося, приблизна дата, що саме не так і як має бути"></textarea>
 </div>
 
 <div class="pole">
@@ -70,6 +78,7 @@
 <div class="forma forma--storinka povidomlennya" id="vdacha" tabindex="-1" hidden>
 <span class="povidomlennya__holovne">Отримали.</span>
 <p>Відповімо протягом 10 робочих днів.</p>
+<p id="vdacha-nomer" hidden>Номер звернення: <b id="vdacha-nomer-chyslo"></b>. Назвіть його, якщо писатимете ще.</p>
 </div>
 
 <div class="forma forma--storinka povidomlennya" id="zboi" tabindex="-1" hidden>

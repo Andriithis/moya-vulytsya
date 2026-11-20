@@ -37,6 +37,10 @@ export function oplatuOtrymano({ zam, chas, diie_do = null, adresaSaitu, prodovz
       `Ще ${TS.dovidok.try - 1} довідки беріть у кабінеті на будь-які будинки, коли потрібно, без строку: ${adresaSaitu}/kabinet/`;
   } else if (zam.tovar === 'osbb') {
     koly = `Доступ відкрито до ${data(diie_do)}. Щомісячна довідка про будинок приходить сама на цю пошту; перша — протягом доби. Усе — у кабінеті: ${adresaSaitu}/kabinet/`;
+  } else if (zam.tovar === 'rieltor') {
+    // ZAVDANNYA-172 (ZVIT-167, п. 9): рієлтору — головне: 5 довідок на місяць і «Мої об'єкти»
+    koly = `Доступ відкрито до ${data(diie_do)}: ${TS.dovidok.rieltor} довідок про будинки на місяць — у кабінеті, «Мої об'єкти»: ` +
+      `${adresaSaitu}/kabinet/#obiekty (увійдіть цією поштою). Там же — карта підписника (${adresaSaitu}/pidpysnyk/) і «Стежу».`;
   } else if (zam.tovar === 'spyurist') {
     koly = `Доступ відкрито до ${data(diie_do)}: таблиці практики — ${adresaSaitu}/pidpysnyk/praktyka/ (увійдіть у кабінет цією поштою).`;
   } else if (pidpyska) {

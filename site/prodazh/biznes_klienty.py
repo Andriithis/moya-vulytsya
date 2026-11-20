@@ -89,6 +89,13 @@ def main(argv=None, env=os.environ) -> int:
         print(b.decode('utf-8', 'replace')[:500])
     if k == 201 and a.dia == 'posylannia':
         print('Посилання показано один раз: надішліть його контакту клієнта з договору. Загубили — видайте нове.')
+        try:      # ZAVDANNYA-172 (ZVIT-169): строк — датою, а не секундами з 1970 року
+            import datetime
+            do_ = json.loads(b).get('do_')
+            if do_:
+                print(f'Діє до: {datetime.datetime.fromtimestamp(do_, datetime.timezone.utc):%d.%m.%Y} включно (за Гринвічем)')
+        except (ValueError, TypeError, AttributeError):
+            pass
     return 0 if k < 400 else 1
 
 

@@ -116,9 +116,10 @@ def stvoryty_bazu(shlyakh: Path) -> None:
         con.execute('INSERT INTO location VALUES (?,?,?,?,?,?)', (n, 'вул. Васильківська, 2', 'house', 50.3960, 30.5100, 'osm'))
         con.execute('INSERT INTO event VALUES (?,?,?,?,?,?,?,?,?,?,?)',
                     (f'{n}-1', str(n), 1, '2025-05-05', None, 'НАС', st, 'ОСОБА_8 вдома', chut, '11200:4357', n))
-    # Старші роки (MV-32): 7 подій 2019 року і 1 без дати на Хрещатику, 6 подій 2018 року на вулиці, де нових немає.
-    # На сайті — лише прапорець «у підписці», жодного числа (ZAVDANNYA-46).
-    for vul, lat, lon, data in ([('вул. Хрещатик', 50.4476, 30.5231, f'2019-05-0{1 + j}') for j in range(7)]
+    # Старші роки (MV-32): 7 подій 2023 року і 1 без дати на Хрещатику, 6 подій 2018 року на вулиці, де нових немає.
+    # На сайті — лише прапорець «у підписці», жодного числа (ZAVDANNYA-46); «у підписці» — лише роки карти підписника
+    # (від 2023, ZAVDANNYA-174): події 2018 року замка не дають.
+    for vul, lat, lon, data in ([('вул. Хрещатик', 50.4476, 30.5231, f'2023-05-0{1 + j}') for j in range(7)]
                                 + [('вул. Хрещатик', 50.4476, 30.5231, None)]
                                 + [('вул. Інститутська', 50.4460, 30.5300, f'2018-06-0{1 + j}') for j in range(6)]):
         n += 1
@@ -127,7 +128,7 @@ def stvoryty_bazu(shlyakh: Path) -> None:
         con.execute('INSERT INTO location VALUES (?,?,?,?,?,?)', (n, f'{vul}, 7', 'house', lat, lon, 'osm'))
         con.execute('INSERT INTO event VALUES (?,?,?,?,?,?,?,?,?,?,?)',
                     (f'{n}-1', str(n), 1, data, '12:30', 'ДТП', 'ст.124 КУпАП · ДТП з пошкодженням майна',
-                     FABULA_CHYSTA.format(d='01.05.2019', b='7', v=vul), 0, '11216:4344', n))
+                     FABULA_CHYSTA.format(d='01.05.2023', b='7', v=vul), 0, '11216:4344', n))
     con.execute("INSERT INTO release VALUES ('2026-11-08', ?, 'x')", (n,))
     con.commit()
     con.close()
@@ -139,7 +140,7 @@ BUDYNKY = {   # зведення будинків, як його дає dani-edr
     'budynky': [
         {'k': 'хрещатик|22', 'vulytsia': 'вулиця Хрещатик', 'nomer': '22', 'lat': 50.4475, 'lon': 30.523, 'rayon': 'Печерський',
          'skarhy': {'світло': 2, 'вода': 5}, 'susidiv': 6, 'susidy': {'вода': 1, 'світло': 0},
-         'podii': {'2019': {'kra': 1}, '2025': {'dtp': 3}}},
+         'podii': {'2023': {'kra': 1}, '2025': {'dtp': 3}}},
         {'k': 'хрещатик|24А', 'vulytsia': 'вулиця Хрещатик', 'nomer': '24-А', 'lat': 50.4477, 'lon': 30.5232, 'rayon': 'Печерський',
          'skarhy': {'ліфт': 1}},
         {'k': 'хрещатик|43', 'vulytsia': 'вулиця Хрещатик', 'nomer': '43 кв32', 'lat': 50.4479, 'lon': 30.5233,
@@ -571,7 +572,7 @@ class Sait(unittest.TestCase):
         описів подій і посилань на рішення."""
         faily = sorted((self.sait / 'karta').glob('*.json')) + [self.sait / 'vulytsi' / 'pokazhchyk.json']
         self.assertEqual({f.name for f in faily}, {'soty-7.json', 'soty-8.json', 'soty-9.json', 'soty-8-m.json', 'soty-9-m.json',   # місяці — окремо (ZAVDANNYA-125)
-                                                      'poshuk.json', 'pokazhchyk.json'})
+                                                      'poshuk.json', 'pokazhchyk.json', 'rayony.json'})   # rayony — лише межі районів (ZAVDANNYA-174)
         opys = re.compile(r'керуючи|зіткнення|порушив|визнав|reyestr\.court\.gov\.ua/Review|doc_url|fabula', re.I)
         for f in faily:
             tekst = f.read_text(encoding='utf-8')
@@ -665,11 +666,13 @@ class Sait(unittest.TestCase):
             self.assertNotIn('data-period="A"', t)
         if self.spravzhnii:
             return
-        # Хрещатик: 8 подій за 2025 + 390-1 (MV-102) + 7 за 2019 + 1 без дати — на сайті лише 9 і замок на 2016–2023.
+        # Хрещатик: 8 подій за 2025 + 390-1 (MV-102) + 7 за 2023 + 1 без дати — на сайті лише 9 і замок на 2023
+        # (у підписці — лише роки карти підписника, ZAVDANNYA-174).
         khr = (self.sait / 'vulytsia' / 'khreshchatyk' / 'index.html').read_text(encoding='utf-8')
         self.assertIn('Вулиця Хрещатик: за 2024–2026 у даних судів — 9 подій', khr)
         self.assertIn('rik--zamok', khr)
-        self.assertIn('<th scope="row">2016–2023</th><td>у підписці</td>', khr)
+        self.assertIn('<th scope="row">2023</th><td>у підписці</td>', khr)
+        self.assertNotIn('2016–2023', khr)
         for zayve in ('17 подій', '16 подій', '>17<', '>16<', '>7<'):
             self.assertNotIn(zayve, khr)
         # Покажчик і пошук — теж лише за останні 3 роки.
@@ -693,6 +696,27 @@ class Sait(unittest.TestCase):
     def budynok(self, shl):
         return (self.sait / 'budynok' / shl / 'index.html').read_text(encoding='utf-8')
 
+    def test_roky_lyshe_z_karty_pidpysnyka(self):
+        """ZAVDANNYA-174 (ZVIT-166, №4): «у підписці» — лише роки, які є в карті підписника (dani-edrsr S-Д.8: від 2023);
+        не обіцяти «усі роки» чи 2016–2022, яких там немає."""
+        import tsiny as T
+        self.assertEqual(D.PIDPYSKA_VID, T.PIDPYSKA_VID)
+        self.assertTrue(all(r >= D.PIDPYSKA_VID for r in D.STARI_ROKY))
+        self.assertFalse(D.u_pidpystsi(2018))
+        self.assertFalse(D.u_pidpystsi(D.VIDKRYTI_ROKY[0]))
+        daie = ' '.join(T.pidpyska_daie())
+        self.assertIn(f'з {T.PIDPYSKA_VID} року', daie)
+        self.assertNotIn('усі роки', daie)
+        oferta = (KORIN / 'site' / 'zahlushka' / 'oferta.html').read_text(encoding='utf-8')
+        self.assertIn(f'з {T.PIDPYSKA_VID} року', oferta)
+        self.assertNotIn('усі роки даних', oferta)
+        d = json.loads((self.sait / 'karta' / 'soty-9.json').read_text(encoding='utf-8'))
+        self.assertEqual(d['roky'], D.STARI_ROKY + D.VIDKRYTI_ROKY)
+        for f in self.nashi_storinky():
+            tekst = f.read_text(encoding='utf-8')
+            for m in re.finditer(r'(\d{4})(?:–\d{4})?(?:</th><td>|[^<\d]{0,30})у підписці', tekst):
+                self.assertGreaterEqual(int(m.group(1)), D.PIDPYSKA_VID, f'{f.relative_to(self.sait)}: «{m.group(0)}» — такого року в підписці немає')
+
     def test_storinka_budynku_lyshe_chysla(self):
         """MV-99, MV-100: скарги 1551 відкрито, події з рішень — лише числом за роками й групами; без описів і посилань."""
         if self.spravzhnii:
@@ -706,10 +730,10 @@ class Sait(unittest.TestCase):
         self.assertIn('Сусідній будинок у радіусі 300', t)
         for k in ('Довідка — 199', '3 довідки — 449', 'Повний звіт — 299'):
             self.assertIn(k, t)
-        self.assertIn('Події за 2016–2023 з адресою будинку теж є — у підписці', t)
+        self.assertIn('Події за 2023 з адресою будинку теж є — у підписці', t)
         tabl = t.split('Події з рішень')[1].split('</table>')[0]
         self.assertIn('<th scope="row">ДТП</th><td>—</td><td>3</td><td>—</td>', tabl)
-        self.assertNotIn('2019', tabl)                                # старші роки — без чисел (MV-32)
+        self.assertNotIn('>2023<', tabl)                              # старші роки — без чисел (MV-32)
         self.assertIn('"@type": "BreadcrumbList"', t)
         self.assertIn('/oplata/?tovar=dovidka', t)
 
@@ -998,6 +1022,10 @@ console.log(JSON.stringify(out));
         self.assertIn('/budynok/nevidoma/1/', (self.sait / 'rayony' / 'index.html').read_text(encoding='utf-8'))
         red = (self.sait / '_redirects').read_text(encoding='utf-8')
         self.assertIn('/vulytsia/chervonoarmiiska/ /vulytsia/velyka-vasylkivska/ 301', red)
+        self.assertIn('/oferta.html /zahlushka/oferta.html 301', red)      # ZAVDANNYA-172: коротка адреса оферти не 404
+        oferta = (self.sait / 'zahlushka' / 'oferta.html').read_text(encoding='utf-8')
+        self.assertIn('href="/dostupnist/">Доступність', oferta)          # правові сторінки — у вигляді сайту
+        self.assertNotIn('Передзамовлення', oferta)
 
     def test_zaholovky_vmishchuiutsia(self):
         """ZAVDANNYA-154: довгі адреси — коротший хвіст, а не обрізаний Google заголовок."""
@@ -1204,15 +1232,26 @@ class KartaUBrauzeri(unittest.TestCase):
             s.evaluate('([id, k]) => MvKarta.vidkryty(id, k)', k)
             s.wait_for_timeout(400)
             self.assertFalse(s.evaluate('document.getElementById("kartka").hidden'))
-            # MV-60: тихий шлях до платного — дві кнопки на сторінки заглушки
+            # ZAVDANNYA-174 (ZVIT-166, №2): кнопки — на покупку цього місця, не на заглушку
             dali = s.evaluate("() => [...document.querySelectorAll('#kartka .k-dali a')].map(a => [a.textContent, a.getAttribute('href')])")
-            self.assertEqual(dali[:2], [['Що саме тут було → підписка', '/zahlushka/?dzherelo=sota-pidpyska#tsiny'],
-                                        ['Аналіз адреси', '/zahlushka/?dzherelo=sota-analiz#tsiny']])
+            self.assertTrue(dali[0][0].startswith('Що саме тут було — адреси й описи · підписка 399'), dali)
+            self.assertIn('Скоро — залиште пошту', dali[0][0])                # збірка тесту — без оплати («скоро»)
+            self.assertEqual(dali[0][1], '/oplata/?tovar=pidpyska&dzherelo=sota')
+            self.assertEqual(dali[1], ['Довідка про свій будинок — 199\xa0грн', '/miy-budynok/?dzherelo=sota'])
+            self.assertFalse([h for _, h in dali if 'zahlushka' in h], dali)
             # ZAVDANNYA-135: третя — «Як суди вирішують такі справи» (покажчик «Судової практики»), якщо найчастіша група має статтю
             for napys, href in dali[2:]:
                 self.assertEqual(napys, 'Як суди вирішують такі справи')
                 self.assertRegex(href, r'^/sudova-praktyka/\?q=(124|130|185|309|173)&dzherelo=sota#poshuk$')
             self.assertEqual(s.evaluate(ZNIMOK), do, f'{shyryna}: щось зсунулося при відкритті картки')
+            # Підписник (карта підписника відкривалась у цьому браузері) — одразу це місце в його карті
+            s.evaluate("([id, k]) => { localStorage.setItem('mv-pidpysnyk', String(Date.now())); MvKarta.vidkryty(id, k); }", k)
+            pk = s.evaluate("() => [...document.querySelectorAll('#kartka .k-dali a')].map(a => [a.textContent, a.getAttribute('href')])")
+            self.assertEqual(pk[0][0], 'Відкрити це місце в моїй карті')
+            self.assertRegex(pk[0][1], r'^/pidpysnyk/#z=1[2-5](\.\d)?/50\.\d{5}/30\.\d{5}$')
+            self.assertNotIn('/oplata/', ' '.join(h for _, h in pk))
+            s.evaluate("([id, k]) => { localStorage.removeItem('mv-pidpysnyk'); MvKarta.vidkryty(id, k); }", k)
+            s.wait_for_timeout(300)
             s.click('.k-x')
             s.wait_for_timeout(300)
             self.assertTrue(s.evaluate('document.getElementById("kartka").hidden'))
@@ -1220,9 +1259,12 @@ class KartaUBrauzeri(unittest.TestCase):
             self.assertEqual(pomylky, [])
 
     def test_vau_za_zamovchuvanniam(self):
-        """MV-120: без параметра — «Роки оживають» (лічильник місяців), сторінка без помилок."""
+        """MV-120: без параметра — «вау», сторінка без помилок. Тут «менше руху» в системі — тому одразу кінцевий вигляд і
+        «Де ви живете?», без лічильника місяців (ZAVDANNYA-174, ZVIT-171 №5); «Роки оживають» без «менше руху» —
+        tests/test_holovna_lehka.py і tests/test_karta_174.py."""
         s, pomylky = self.storinka(vau=None)
-        s.wait_for_selector('.vau-lich', timeout=15000)
+        s.wait_for_selector('.vau-rayony', timeout=15000)
+        self.assertFalse(s.evaluate("() => !!document.querySelector('.vau-lich')"))
         self.assertEqual(pomylky, [])
 
     def test_poshuk_vulytsi_z_danykh(self):

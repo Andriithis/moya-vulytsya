@@ -278,11 +278,11 @@ test('рієлтор — 5 довідок на місяць; ОСББ — рік
   await oplatyty(env, await zamovyty(env, 'rieltor', null, 'rieltor@poshta.ua'));
   const kr = await uviity(env, 'rieltor@poshta.ua');
   for (let i = 0; i < 5; i++) {
-    const { text } = await zapyt(env, 'POST', '/kabinet/dovidka', { kuka: kr, forma: { budynok: '/budynok/zhylianska/5/' } });
+    const { text } = await zapyt(env, 'POST', '/kabinet/dovidka', { kuka: kr, forma: { budynok: '/budynok/zhylianska/5/', shche: 'tak' } });
     assert.match(text, /готуємо/, `довідка ${i + 1}`);
   }
-  assert.match((await zapyt(env, 'POST', '/kabinet/dovidka', { kuka: kr, forma: { budynok: '/budynok/zhylianska/5/' } })).text, /Додаткова довідка/);
-  assert.equal((await zapyt(env, 'POST', '/kabinet/dovidka', { kuka: kr, forma: { budynok: '/budynok/zhylianska/5/', odrazu: 'tak' } })).r.status, 303);
+  assert.match((await zapyt(env, 'POST', '/kabinet/dovidka', { kuka: kr, forma: { budynok: '/budynok/zhylianska/5/', shche: 'tak' } })).text, /Додаткова довідка/);
+  assert.equal((await zapyt(env, 'POST', '/kabinet/dovidka', { kuka: kr, forma: { budynok: '/budynok/zhylianska/5/', odrazu: 'tak', shche: 'tak' } })).r.status, 303);
 
   await oplatyty(env, await zamovyty(env, 'osbb', '/budynok/obolonskyi/16/', 'osbb@poshta.ua'));
   const o = sql(env, `SELECT * FROM pidpysky WHERE tovar = 'osbb'`)[0];
@@ -300,8 +300,8 @@ test('рієлтор — 5 довідок на місяць; ОСББ — рік
   await oplatyty(env, await zamovyty(env, 'try', '/budynok/zhylianska/5/', 'try@poshta.ua'));
   const kt = await uviity(env, 'try@poshta.ua');
   assert.match((await zapyt(env, 'GET', '/kabinet/', { kuka: kt })).text, /2 з пакета/);
-  for (let i = 0; i < 2; i++) assert.match((await zapyt(env, 'POST', '/kabinet/dovidka', { kuka: kt, forma: { budynok: '/budynok/obolonskyi/16/' } })).text, /готуємо/);
-  assert.equal((await zapyt(env, 'POST', '/kabinet/dovidka', { kuka: kt, forma: { budynok: '/budynok/obolonskyi/16/' } })).r.status, 303);
+  for (let i = 0; i < 2; i++) assert.match((await zapyt(env, 'POST', '/kabinet/dovidka', { kuka: kt, forma: { budynok: '/budynok/obolonskyi/16/', shche: 'tak' } })).text, /готуємо/);
+  assert.equal((await zapyt(env, 'POST', '/kabinet/dovidka', { kuka: kt, forma: { budynok: '/budynok/obolonskyi/16/', shche: 'tak' } })).r.status, 303);
 });
 
 test('кабінет: посилання входу одноразове й на 30 хвилин; не більше 5 листів на годину; чужа пошта не розкривається', async () => {
@@ -337,7 +337,7 @@ test('«Стежу» й видалення даних на запит: пошт�
   assert.equal((await zapyt(env, 'POST', '/kabinet/stezhu', { kuka, forma: { budynok: '/budynok/vyhadana/1/' } })).text.includes('Такого будинку'), true);
   assert.equal((await zapyt(env, 'POST', '/kabinet/stezhu', { kuka, forma: { budynok: '/budynok/obolonskyi/16/' }, origin: 'https://zlyi.test' })).r.status, 403);
   assert.equal(env.DOVIDKY.m.size, 1);
-  const { r } = await zapyt(env, 'POST', '/kabinet/vydalyty', { kuka, forma: { pidtverdzhuiu: 'tak' } });
+  const { r } = await zapyt(env, 'POST', '/kabinet/vydalyty', { kuka, forma: { pidtverdzhuiu: 'tak', rozumiiu: 'tak' } });
   assert.match(r.headers.get('set-cookie'), /Max-Age=0/);
   assert.equal(env.DOVIDKY.m.size, 0, 'файл довідки видалено');
   for (const t of ['korystuvachi', 'stezhu', 'sesii', 'vkhody']) assert.equal(sql(env, `SELECT COUNT(*) n FROM ${t}`)[0].n, 0, t);
@@ -526,7 +526,7 @@ test('стирання за строками: звернення — рік пі
   // до запуску продажу (жодної справжньої оплати) — заявки не стираються
   env.krok(200 * 86400);
   let v = await styratyZaStrokom(env);
-  assert.deepEqual(v, { korystuvachi: 0, zvernennya: 0, skoro: 1, zayavka: 0 }, 'лише «скоро», кому вже написали про запуск');
+  assert.deepEqual(v, { korystuvachi: 0, zvernennya: 0, skoro: 1, zayavka: 0, biznes: 0 }, 'лише «скоро», кому вже написали про запуск');
   // запуск — DATA_ZAPUSKU; минуло пів року — Київ і товари в продажу стерто; інше місто й «Судова» — ні
   env.DATA_ZAPUSKU = new Date((t0 + 10 * 86400) * 1000).toISOString().slice(0, 10);
   env.krok(170 * 86400);

@@ -136,6 +136,6 @@ test('видалення даних прибирає й бали', async () => {
   const env = seredovyshche();
   const a = await liudyna(env, 'ana@poshta.ua');
   dodatyBali(env, a.id, 2000);
-  await zapyt(env, 'POST', '/kabinet/vydalyty', { kuka: a.kuka, forma: { pidtverdzhuiu: 'tak' } });
+  await zapyt(env, 'POST', '/kabinet/vydalyty', { kuka: a.kuka, forma: { pidtverdzhuiu: 'tak', rozumiiu: 'tak' } });
   assert.equal(sql(env, 'SELECT COUNT(*) n FROM bali_rukh')[0].n, 0);
 });
