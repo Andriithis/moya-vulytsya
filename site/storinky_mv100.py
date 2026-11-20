@@ -623,20 +623,79 @@ POLIA_BIZNES = [
 PRYKLAD_BIZNES = [('data', '2025-03-14'), ('hodyna', '22'), ('hrupa', HRUPY_PODII['vod']), ('stattia', 'ст.130 КУпАП'),
                   ('opys', '‹опис події з рішення›'), ('adresa', '‹вулиця, номер будинку›'), ('tochnist', 'будинок'),
                   ('shyrota', '50.4…'), ('dovhota', '30.5…'), ('sud', '‹районний суд міста Києва›'),
-                  ('posylannia', 'https://reyestr.court.gov.ua/…')]
+                  ('posylannia', 'https://od.reyestr.court.gov.ua/‹файл рішення›')]
+# ZAVDANNYA-172 (ZVIT-169, п. 2): зразок CSV — лише формат. Стовпці — ті самі й у тому самому порядку, що в таблиці podii копії
+# для компанії (dani-edrsr/src/kopiia_biznesu.py, POLIA['podii']); значення в кутових дужках — замість справжніх: окремі події
+# з адресою й описом — платна частина (MV-99), у публічних файлах сайту їх немає.
+STOVPTSI_KOPII = ['id', 'data', 'data_z_rishennia', 'hodyna', 'vyd', 'hrupa', 'stattia', 'opys', 'perekaz', 'rezultat',
+                  'chutlyva', 'domashnie', 'adresa', 'tochnist', 'shyrota', 'dovhota', 'sota', 'sud', 'data_rishennia',
+                  'nomer_spravy', 'posylannia']
+ZRAZOK_CSV = [
+    {'id': 'p‹16 знаків›', 'data': '2025-03-14', 'data_z_rishennia': '0', 'hodyna': '22', 'vyd': '‹код виду›', 'hrupa': HRUPY_PODII['vod'],
+     'stattia': 'ст.130 КУпАП', 'opys': '‹опис події з рішення›', 'chutlyva': '0', 'domashnie': '0', 'adresa': '‹вулиця, номер будинку›',
+     'tochnist': 'будинок', 'shyrota': '50.4…', 'dovhota': '30.5…', 'sud': '‹районний суд міста Києва›', 'data_rishennia': '2025-05-02',
+     'nomer_spravy': '‹номер справи›', 'posylannia': 'https://od.reyestr.court.gov.ua/‹файл рішення›'},
+    {'id': 'p‹16 знаків›', 'data': '2024-11-02', 'data_z_rishennia': '0', 'hodyna': '', 'vyd': '‹код виду›', 'hrupa': '‹група›',
+     'stattia': 'ст.185 ч.1 КК', 'opys': '‹опис події з рішення›', 'chutlyva': '0', 'domashnie': '0', 'adresa': '‹перехрестя›',
+     'tochnist': 'перехрестя', 'shyrota': '50.4…', 'dovhota': '30.6…', 'sud': '‹районний суд міста Києва›', 'data_rishennia': '2025-01-20',
+     'nomer_spravy': '‹номер справи›', 'posylannia': 'https://od.reyestr.court.gov.ua/‹файл рішення›'},
+    {'id': 'p‹16 знаків›', 'data': '2025-06-30', 'data_z_rishennia': '1', 'hodyna': '', 'vyd': '‹код виду›', 'hrupa': '‹група›',
+     'stattia': '‹стаття›', 'opys': '', 'chutlyva': '0', 'domashnie': '0', 'adresa': '', 'tochnist': '', 'shyrota': '', 'dovhota': '',
+     'sota': '‹рядок:стовпчик›', 'sud': '‹районний суд міста Києва›', 'data_rishennia': '2025-06-30', 'nomer_spravy': '‹номер справи›',
+     'posylannia': 'https://od.reyestr.court.gov.ua/‹файл рішення›'},
+]
+
+
+def zrazok_csv() -> str:
+    """Зразок формату таблиці podii (UTF-8 з BOM, як CSV копії відкривається в Excel)."""
+    import csv
+    import io
+    b = io.StringIO()
+    w = csv.writer(b, lineterminator='\r\n')
+    w.writerow(['# Зразок формату «Моя вулиця» для компаній: стовпці як у копії; значення в ‹кутових дужках› — замість справжніх'])
+    w.writerow(STOVPTSI_KOPII)
+    for r in ZRAZOK_CSV:
+        w.writerow([r.get(k, '') for k in STOVPTSI_KOPII])
+    return '\ufeff' + b.getvalue()
+
+
+def chysla_kopii(dn) -> dict:
+    """ZAVDANNYA-172 (ZVIT-169, п. 3): числа «Для бізнесу» = числа копії (dani-edrsr/src/kopiia_biznesu.py): усі події випуску,
+    крім «поза» й видалених за зверненнями (сайт уже читає без них), з чутливими — як у копії; точне місце — з координатами."""
+    p = [x for x in dn.podii if x.vyd != 'ПОЗА']
+    roky = sorted(x.rik for x in p if x.rik)
+    vidkryti = sum(1 for x in p if x.rik in D.VIDKRYTI_ROKY)
+    return {'vsi': len(p), 'z_mistsem': sum(1 for x in p if x.lat is not None), 'rik_vid': roky[0] if roky else None,
+            'rik_do': roky[-1] if roky else None, 'vidkryti': vidkryti}
 META_BIZNES = [('nerukhomist', 'нерухомість (забудова, агенція, оцінка)'), ('strakhuvannia', 'страхування чи банк'),
                ('doslidzhennia', 'дослідження чи медіа'), ('mista', 'громада, міська служба'), ('inshe', 'інше')]
 
 
-def vitryna_biznes(adresa_saitu: str, kartynka: tuple | None = None, period_podii: str = '', chysla: list | None = None) -> str:
+def vitryna_biznes(adresa_saitu: str, kartynka: tuple | None = None, period_podii: str = '', chysla: list | None = None,
+                   kopiia: dict | None = None) -> str:
     kyiv = f'Київ{", " + period_podii if period_podii else ""}'
+    roky_t = ''
+    if kopiia and kopiia['vsi']:
+        # ZAVDANNYA-172 (ZVIT-169, п. 3): ті самі числа, що компанія побачить у файлі
+        v, m = kopiia['vsi'], kopiia['z_mistsem']
+        roky_t = f"{kopiia['rik_vid']}–{kopiia['rik_do']}" if kopiia['rik_vid'] else ''
+        r0, r1 = D.VIDKRYTI_ROKY[0], D.VIDKRYTI_ROKY[-1]
+        chysla = [(chyslo(v), f'{vidminok(v, ("подія", "події", "подій"))} з рішень судів у копії' + (f', роки подій {roky_t}' if roky_t else '')),
+                  (chyslo(m), f'з них — з точною адресою й точкою; решта — клітинка ≈ 500 м'),
+                  (chyslo(kopiia['vidkryti']), f'{vidminok(kopiia["vidkryti"], ("подія", "події", "подій"))} за {r0}–{r1}; старші роки в даних неповні')]
+        kyiv = f'Київ{", " + roky_t if roky_t else ""}'
     ch = ''.join(f'<div class="kartka chyslo-blok"><b class="chyslo-velyke">{e(n)}</b><span>{e(t)}</span></div>' for n, t in (chysla or []))
     polia = ''.join(f'<tr><th scope="row"><code>{e(k)}</code></th><td>{e(v)}</td></tr>' for k, v in POLIA_BIZNES)
     pryklad = ''.join(f'<tr><th scope="row"><code>{e(k)}</code></th><td>{e(v)}</td></tr>' for k, v in PRYKLAD_BIZNES)
     meta = ''.join(f'<option value="{k}">{e(v)}</option>' for k, v in META_BIZNES)
-    tilo = f'''{f'<section class="rozdil"><div class="chysla">{ch}</div></section>' if ch else ''}
+    tilo = f'''<section class="rozdil"><div class="diyi"><a class="knopka knopka--holovna" href="#zapyt">Запит на доступ</a>
+<a class="knopka" href="/biznes/zrazok-podii.csv" download>Зразок файла CSV</a></div>
+<p class="prymitka">Зразок — стовпці й вигляд рядків, як у копії; справжні значення — лише за договором.
+Ціну називаємо після запиту: вона залежить від строку й території.</p></section>
+{f'<section class="rozdil"><div class="chysla">{ch}</div></section>' if ch else ''}
 <section class="rozdil"><h2>Що в базі</h2><div class="kartka"><ul class="spysok-tekst">
-<li>Події з рішень судів з адресою й точкою на карті ({e(kyiv)}): що сталося, коли, де, за якою статтею — і посилання на оригінал рішення.</li>
+<li>Події з рішень судів ({e(kyiv)}): що сталося, коли, де, за якою статтею — і посилання на оригінал рішення. Де точного місця
+немає — клітинка ≈ 500 м.</li>
 <li>Місця, де однотипні події повторюються, — окремою таблицею.</li>
 <li>Звернення до 1551 по будинках — числом за темами.</li>
 <li>Оновлення щомісяця: нова копія з усіма змінами, події, видалені за зверненнями людей, з неї прибрано.</li>
@@ -650,7 +709,8 @@ def vitryna_biznes(adresa_saitu: str, kartynka: tuple | None = None, period_podi
 <caption>Лише формат: у кутових дужках — що стоїть у справжньому рядку</caption><tbody>{pryklad}</tbody></table></div></section>
 <section class="rozdil"><h2>Як ви отримуєте базу</h2><ol class="spysok-tekst">
 <li>Залишаєте запит нижче — партнер проєкту відповідає протягом 2 робочих днів.</li>
-<li>Підписуєте договір користування на місяць або рік; {tsina('biznes')} — залежить від строку й території.</li>
+<li>Підписуєте договір користування на місяць або рік; {tsina('biznes')}: ціну називаємо після запиту — вона залежить від
+строку й території. Договір укладає партнер проєкту (<a href="/zahlushka/pro-nas.html">хто ми</a>).</li>
 <li>Щомісяця отримуєте особисте посилання на свіжу копію: база SQLite і таблиці CSV (відкриваються в Excel і Google Таблицях).
 Посилання діє кілька днів, потім — нове з новою копією.</li>
 <li>Доступ для програм за адресою — пізніше, за запитом.</li></ol></section>
@@ -673,7 +733,7 @@ def vitryna_biznes(adresa_saitu: str, kartynka: tuple | None = None, period_podi
 <label class="vybir-riadok"><input type="radio" name="strok" value="misiats"> місяць</label>
 <label class="vybir-riadok"><input type="radio" name="strok" value="rik"> рік</label>
 <label class="vybir-riadok"><input type="radio" name="strok" value="ne_znaiu" checked> ще не знаю</label></fieldset>
-<label>Що ще важливо<textarea name="komentar" maxlength="2000" rows="4"></textarea></label>
+<label>Що ще важливо<textarea name="komentar" maxlength="2000" rows="4" placeholder="Які роки, скільки приблизно записів, у якому вигляді"></textarea></label>
 <label class="vybir-riadok"><input type="checkbox" name="zghoda" required> Погоджуюся з <a href="/zahlushka/polityka.html">політикою конфіденційності</a></label>
 <button class="knopka knopka--holovna" type="submit">Надіслати запит</button>
 <p class="biznes-forma__stan" role="status" aria-live="polite"></p>
@@ -736,7 +796,7 @@ def storinka_pro_dani(adresa_saitu: str, versiia: str, period: str) -> str:
 <p>Звідки числа на сайті, що вони означають і чого не означають.</p></section>
 <section class="rozdil"><h2>Звідки дані</h2><div class="kartka"><ul class="spysok-tekst">
 <li><b>Події</b> — з рішень судів у Єдиному державному реєстрі судових рішень (річні архіви на data.gov.ua). Подія — випадок, описаний
-у рішенні, з місцем, де він стався. Кілька рішень в одній справі — одна подія. Дані станом на {e(versiia)}.</li>
+у рішенні, з місцем, де він стався. Кілька рішень в одній справі — одна подія. Дані станом на {e(Z.data_slovamy(versiia))}.</li>
 <li><b>Скарги 1551</b> — відкриті дані гарячої лінії міста (КМДА, data.gov.ua, ліцензія CC BY){f", {e(period)}" if period else ""}.
 Персональних даних у наборі немає; ми показуємо лише теми й кількість.</li>
 <li><b>Адреси й карта</b> — OpenStreetMap (ODbL), підкладка — OpenFreeMap.</li></ul></div></section>
@@ -865,10 +925,11 @@ def zibraty_vse(dn: D.Dani, rayony: list, za_rayonom: dict, bud: Budynky | None,
     for shl, html_ in (('miy-budynok', vitryna_miy_budynok(adresa_saitu, prykl, kv['miy-budynok'], D.period_podii(dn))),
                        ('osbb', vitryna_osbb(adresa_saitu, kv['osbb'])),
                        ('sudova-praktyka', vitryna_sudova(adresa_saitu, kv['sudova-praktyka'])),
-                       ('biznes', vitryna_biznes(adresa_saitu, kv['biznes'], D.period_podii(dn), cv['biznes'][2])),
+                       ('biznes', vitryna_biznes(adresa_saitu, kv['biznes'], D.period_podii(dn), cv['biznes'][2], chysla_kopii(dn))),
                        ('vydalyty', storinka_vydalyty(adresa_saitu)),
                        ('pro-dani', storinka_pro_dani(adresa_saitu, dn.versiia, period_1551(bud.misiatsi) if bud else ''))):
         Z.zapysaty(vykhid / shl / 'index.html', html_)
         adresy.append(f'/{shl}/')
+    Z.zapysaty(vykhid / 'biznes' / 'zrazok-podii.csv', zrazok_csv())      # ZAVDANNYA-172: зразок формату для компаній
     Z.zapysaty(vykhid / 'oplata' / 'index.html', storinka_oplaty(adresa_saitu))
     return adresy

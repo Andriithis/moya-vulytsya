@@ -120,7 +120,7 @@ test('п. 3: з пакетом «3 довідки» кнопка «Довідк�
   ({ text } = await zapyt(env, 'POST', '/kabinet/dovidka', { kuka: k, forma: { budynok: '/budynok/obolonskyi/16/' } }));
   assert.match(text, /готуємо/);
   assert.equal(sql(env, `SELECT COUNT(*) n FROM zamovlennia WHERE tovar = 'dovidka'`)[0].n, 0, 'другої оплати немає');
-  await zapyt(env, 'POST', '/kabinet/dovidka', { kuka: k, forma: { budynok: '/budynok/obolonskyi/16/' } });
+  await zapyt(env, 'POST', '/kabinet/dovidka', { kuka: k, forma: { budynok: '/budynok/obolonskyi/16/', shche: 'tak' } });
   ({ text } = await zapyt(env, 'GET', '/oplata/?tovar=dovidka&budynok=/budynok/obolonskyi/16/', { kuka: k }));
   assert.doesNotMatch(text, /Використати залишок/, 'залишку немає — лише оплата');
   // без входу — як раніше

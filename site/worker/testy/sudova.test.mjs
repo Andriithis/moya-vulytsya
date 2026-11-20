@@ -132,7 +132,7 @@ test('довідка людині: стаття → суд і частина з 
   const kuka = await uviity(env);
   const { text: kab } = await zapyt(env, 'GET', '/kabinet/', { kuka });
   assert.match(kab, /судова практика/);
-  assert.match(kab, /Можна взяти ще: немає/, 'довідка «Судової практики» не дає довідок про будинки');
+  assert.doesNotMatch(kab, /Можна взяти без оплати/, 'довідка «Судової практики» не дає довідок про будинки');
 });
 
 test('підписка юриста: таблиці по судах і роках, CSV з лімітом, 3 довідки на місяць; карти подій не дає', async () => {
@@ -197,4 +197,22 @@ test('підписка на будинки не відкриває практи�
   const kuka = await uviity(env);
   const { r } = await zapyt(env, 'GET', '/pidpysnyk/praktyka/', { kuka });
   assert.equal(r.status, 403);
+});
+
+test('кабінет юриста (ZAVDANNYA-172): за замовчуванням — роки відкритої сторінки статті; «усі» — лише вибором; дата людською мовою', async () => {
+  uvimknutySp();
+  const env = seredovyshche();
+  const id = await zamovyty(env, 'spyurist');
+  const kuka = await uviity(env);
+  await oplatyty(env, id);
+  let { text } = await zapyt(env, 'GET', '/pidpysnyk/praktyka/?stattia=kupap-130', { kuka });
+  assert.match(text, /<option value="2024" selected>/);
+  assert.match(text, /Роки: 2024–2025 — як на відкритій сторінці статті/);
+  assert.match(text, /tabindex="0" role="region" aria-label="Таблиця по судах"/);
+  assert.match(text, /Таблицю можна гортати вбік/);
+  assert.doesNotMatch(text, /докачуються/);
+  assert.doesNotMatch(text, /Дані на \d{4}-\d\d-\d\d/);
+  ({ text } = await zapyt(env, 'GET', '/pidpysnyk/praktyka/?stattia=kupap-130&z=&do=', { kuka }));
+  assert.doesNotMatch(text, /<option value="2024" selected>/, 'людина обрала «усі»');
+  uvimknutySp(false);
 });

@@ -53,7 +53,7 @@ test('«скоро»: сторінка показує товар, ціну й б
   const f = { tovar: 'dovidka', budynok: '/budynok/zhylianska/5/', poshta: ' Ana@Poshta.UA ', zghoda: 'tak', dzherelo: 'budynok' };
   let v = await zapyt(env, 'POST', '/api/skoro', { forma: f });
   assert.equal(v.r.status, 303);
-  assert.match(v.kudy, /\/oplata\/dyakuiemo\/$/);
+  assert.match(v.kudy, /\/oplata\/zapysaly\/$/);
   await zapyt(env, 'POST', '/api/skoro', { forma: f });                                   // повтор — не дублюється
   const rr = sql(env, 'SELECT poshta, tovar, budynok, adresa, kanal FROM skoro');
   assert.deepEqual(rr.map((x) => ({ ...x })), [{ poshta: 'ana@poshta.ua', tovar: 'dovidka', budynok: '/budynok/zhylianska/5/', adresa: 'вулиця Жилянська, 5', kanal: 'budynok' }]);

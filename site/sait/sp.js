@@ -48,7 +48,8 @@
     });
     document.querySelectorAll('.sp-kodeks').forEach(function (s) { s.hidden = !s.querySelector('.sp-stattia:not([hidden])'); });
     rez.textContent = znaideno ? 'Знайдено статей: ' + znaideno + '.' :
-      'Не знайшли. Спробуйте номер статті з протоколу чи обвинувального акта або інші слова. Поки що тут 11 найчастіших статей.';
+      'Не знайшли. Спробуйте номер статті з протоколу чи обвинувального акта або інші слова. Поки що тут статей: ' +
+        document.querySelectorAll('.sp-stattia').length + ' — найчастіші.';     // число — з самої сторінки (ZAVDANNYA-172)
   }
   pole.addEventListener('input', shukaty);
   var q = new URLSearchParams(location.search).get('q');

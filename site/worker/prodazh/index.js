@@ -13,7 +13,8 @@
 //   POST /api/zamovlennia                  створити замовлення → платіжний сервіс
 //   GET  /oplata/test/<id>/                тестова оплата (лише PLATIZHNYI_SERVIS=test і TESTOVA_OPLATA=tak)
 //   POST /api/spovishchennia/<сервіс>      підписане сповіщення про оплату → перевірка підпису й суми → видача
-//   GET  /oplata/dyakuiemo/                «дякуємо»
+//   GET  /oplata/dyakuiemo/?z=…            «дякуємо» — текст за товаром замовлення (ZAVDANNYA-172)
+//   GET  /oplata/zapysaly/                 «Записали» після «скоро — залиште пошту» (обидва режими)
 //   GET  /dovidka/<id>/?k=<ключ>           довідка: ключ із листа або вхід у кабінет власника
 //   /kabinet/…                             вхід за посиланням на пошту (посилання → сторінка з кнопкою «Увійти» → POST /kabinet/vkhid/uviity), мої довідки, «Стежу», підписка, видалення даних
 //   GET  /kabinet/google/…                 вхід через Google — лише з GOOGLE_KLIIENT_ID і GOOGLE_SEKRET (google.js, ZAVDANNYA-142)
@@ -321,7 +322,9 @@ async function kabinet(env, ja, povidomlennia = '') {
   for (const p of pidpysky) p.zaBali = (await L.odyn(env, 'SELECT servis FROM zamovlennia WHERE id = ?', p.zamovlennia_id))?.servis === 'bali';
   const bali = B.uvimkneno(env) ? { balans: await B.balans(env, ja.id), kurs: B.KURS, zapyt: vypadkovyi(16) } : null;
   const lyst = { pidpyska: pidpysky.some((p) => ['pidpyska', 'rieltor'].includes(p.tovar)), vymkneno: await ST.vymknenyi(env, ja.id) };
-  return S.kabinet({ poshta: ja.poshta, dovidky, stezhu, pidpysky, dostupno: d, povidomlennia, bali, lyst, partner: jePartner(env, ja) });
+  // «Відкрити карту» — коли карту викладено (KARTA) і є підписка, що її відкриває (як K.maieDostup: усе, крім юриста)
+  const karta = !!env.KARTA && pidpysky.some((p) => !TS.sudova.includes(p.tovar));
+  return S.kabinet({ poshta: ja.poshta, dovidky, stezhu, pidpysky, dostupno: d, povidomlennia, bali, lyst, partner: jePartner(env, ja), karta });
 }
 
 async function diiaKabinetu(request, env, url, ja, dia) {
@@ -340,6 +343,12 @@ async function diiaKabinetu(request, env, url, ja, dia) {
         return kabinet(env, ja, `У «Стежу» — до ${STEZHU_MAKS} адрес. Приберіть якусь, щоб додати нову.`);
       }
       return kabinet(env, ja, `Стежите: ${adresa}.`);
+    }
+    // ZAVDANNYA-172 (ZVIT-167): той самий будинок за останню добу — спершу спитати (shche=tak — людина підтвердила)
+    if (f.shche !== 'tak') {
+      const bula = await L.odyn(env, `SELECT id, status, stvoreno FROM dovidky WHERE korystuvach_id = ? AND budynok = ? AND rezhym != 'sp'
+        AND status != 'pomylka' AND stvoreno > ? ORDER BY stvoreno DESC LIMIT 1`, ja.id, f.budynok, L.teper(env) - 86400);
+      if (bula) return S.povtorDovidky({ budynok: f.budynok, adresa, dovidka: bula });
     }
     const v = await L.vzyatyDovidku(env, ja.id, f.budynok, adresa);
     if (v.dovidka) return kabinet(env, ja, `Довідку на ${adresa} готуємо — посилання прийде на пошту.`);
@@ -384,7 +393,9 @@ async function diiaKabinetu(request, env, url, ja, dia) {
     await L.zrobyty(env, 'DELETE FROM sesii WHERE hash = ?', sha256(kuky(request).mv_sesiia || ''));
     return pereity(url, '/kabinet/', { 'set-cookie': 'mv_sesiia=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax' });
   }
-  if (dia === 'vydalyty' && f.pidtverdzhuiu === 'tak') {
+  // ZAVDANNYA-172 (ZVIT-167, п. 1): без підтвердження зі сторінки «Що зникне» нічого не видаляємо
+  if (dia === 'vydalyty' && (f.pidtverdzhuiu !== 'tak' || f.rozumiiu !== 'tak')) return pereity(url, '/kabinet/vydalyty/');
+  if (dia === 'vydalyty') {
     if (!(await skasuvatyVsi(env, ja.id))) return kabinet(env, ja, 'Спершу треба скасувати підписку, а сервіс не відповів. Спробуйте ще раз.');
     await L.vydalytyDani(env, ja.id);
     return S.storinka('Дані видалено', `<section class="zaholovok"><h1>Дані видалено</h1>
@@ -528,20 +539,45 @@ async function skoroForma(env, url) {
   if (!F.TOVARY_SKORO.includes(tovar)) return pereity(url, '/miy-budynok/');
   const budynok = url.searchParams.get('budynok');
   const adresa = budynok ? await L.perevirytyBudynok(env, budynok, url) : null;
+  const sp = await vybirSp(env, url, tovar, Object.fromEntries(url.searchParams));
   return S.skoro({ tovar, nazva: tovar === 'sudova' ? F.NAZVA_SUDOVA : TS.nazvy[tovar], budynok: adresa ? budynok : null, adresa,
-                   kanal: F.kanal(url.searchParams.get('dzherelo')), kabinet: env.PRODAZH === 'tak' });
+                   kanal: F.kanal(url.searchParams.get('dzherelo')), kabinet: env.PRODAZH === 'tak', sp });
+}
+
+/** Довідка «Судової практики» в «скоро»: стаття, суд і частина — лише якщо є в довіднику (інакше null, сторінка без них). */
+async function vybirSp(env, url, tovar, p) {
+  if (tovar !== 'spdovidka' || !p.stattia) return null;
+  return SP.perevirytyParametry(env, url, { stattia: p.stattia, sud: p.sud, chastyna: p.chastyna });
+}
+
+/** «Дякуємо» після оплати: текст за товаром замовлення (?z=…; номер замовлення — випадковий, лише товар, без пошти). */
+async function dyakuiemo(env, url) {
+  const z = url.searchParams.get('z') || '';
+  const zam = /^z[a-z2-7]+$/.test(z) ? await L.odyn(env, 'SELECT tovar FROM zamovlennia WHERE id = ?', z) : null;
+  return S.dyakuiemo(zam?.tovar || '');
 }
 
 async function skoroZapys(request, env, url) {
   if (!zNashohoSaitu(request, env)) return S.povidomlennia('Не вдалося', 'Залиште пошту на нашому сайті.', 403);
   const f = await forma(request);
   const v = await F.zapysatySkoro(env, url, f);
-  if (v.ok) return pereity(url, '/oplata/dyakuiemo/');
+  if (v.ok) {
+    // ZAVDANNYA-172 (ZVIT-169, п. 9): які статті й суди хочуть — знеособлений лічильник за день (skoro_sp, без пошти)
+    const sp = await vybirSp(env, url, String(f.tovar || ''), f);
+    if (sp) {
+      await L.zrobytyNovu(env, `INSERT INTO skoro_sp (den, stattia, sud, chastyna, n) VALUES (?, ?, ?, ?, 1)
+        ON CONFLICT (den, stattia, sud, chastyna) DO UPDATE SET n = n + 1`, new Date(L.teper(env) * 1000).toISOString().slice(0, 10),
+      sp.parametry.stattia, sp.parametry.sud, sp.parametry.chastyna);
+    }
+  }
+  // ZAVDANNYA-172 (ZVIT-169, п. 1): окрема адреса подяки — і з увімкненою оплатою людина, що лише лишила пошту, бачить
+  // «Записали», а не «щойно сервіс підтвердить оплату».
+  if (v.ok) return pereity(url, '/oplata/zapysaly/');
   const tovar = F.TOVARY_SKORO.includes(String(f.tovar)) ? String(f.tovar) : null;
   if (!tovar) return S.povidomlennia('Не вдалося', v.pomylka, 400);
   const adresa = f.budynok ? await L.perevirytyBudynok(env, String(f.budynok), url) : null;
   return S.skoro({ tovar, nazva: tovar === 'sudova' ? F.NAZVA_SUDOVA : TS.nazvy[tovar], budynok: adresa ? String(f.budynok) : null,
-                   adresa, kanal: F.kanal(f.dzherelo), pomylka: v.pomylka, kabinet: env.PRODAZH === 'tak' });
+                   adresa, kanal: F.kanal(f.dzherelo), pomylka: v.pomylka, kabinet: env.PRODAZH === 'tak', sp: await vybirSp(env, url, tovar, f) });
 }
 
 /** Спільне для 'skoro' і 'tak': стилі сторінок, форми сайту, вивантаження для партнера. Null — не наша адреса. */
@@ -580,7 +616,7 @@ export async function prodazh(request, env) {
   if (env.PRODAZH === 'skoro') {
     if (s === '/oplata/' && m === 'GET') return skoroForma(env, url);
     if (s === '/api/skoro' && m === 'POST') return skoroZapys(request, env, url);
-    if (s === '/oplata/dyakuiemo/' && m === 'GET') return S.skoroDyakuiemo();
+    if ((s === '/oplata/dyakuiemo/' || s === '/oplata/zapysaly/') && m === 'GET') return S.skoroDyakuiemo();
     if (s.startsWith('/api/')) return new Response('ні', { status: 404 });
     return null;     // кабінет, довідки, тестова оплата — у режимі «скоро» їх немає (звичайний сайт, 404)
   }
@@ -589,7 +625,8 @@ export async function prodazh(request, env) {
   if (s === '/oplata/' && m === 'GET' && F.TOVARY_SKORO.includes(tovar) && !TS.prodaietsia.includes(tovar)) return skoroForma(env, url);
   if (s === '/api/skoro' && m === 'POST') return skoroZapys(request, env, url);
   if (s === '/oplata/' && m === 'GET') return formaZamovlennia(request, env, url);
-  if (s === '/oplata/dyakuiemo/' && m === 'GET') return S.dyakuiemo();
+  if (s === '/oplata/zapysaly/' && m === 'GET') return S.skoroDyakuiemo();
+  if (s === '/oplata/dyakuiemo/' && m === 'GET') return dyakuiemo(env, url);
   let r = s.match(/^\/oplata\/test\/(z[a-z2-7]+)\/$/);
   if (r && m === 'GET') return testovaOplata(env, r[1]);
   if (s === '/api/zamovlennia' && m === 'POST') return stvorytyZamovlennia(request, env, url);
@@ -607,6 +644,7 @@ export async function prodazh(request, env) {
   if (s.startsWith('/kabinet/')) {
     const ja = await sesiia(request, env);
     if (s === '/kabinet/' && m === 'GET') return ja ? kabinet(env, ja) : S.vkhid('', G.uvimkneno(env));
+    if (s === '/kabinet/vydalyty/' && m === 'GET') return ja ? S.pidtverdytyVydalennia(await L.shchoZnykne(env, ja.id)) : pereity(url, '/kabinet/');
     if (m === 'POST') {
       if (!ja) return pereity(url, '/kabinet/');
       if (!zNashohoSaitu(request, env)) return S.povidomlennia('Не вдалося', 'Дію можна зробити лише з нашого сайту.', 403);

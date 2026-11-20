@@ -38,3 +38,10 @@
   border-radius: var(--radius-m); box-shadow: 0 3px 0 var(--bort); padding: 10px 14px; }
 .sp-stattia[hidden], .sp-kodeks[hidden] { display: none; }
 .sp-filtry label, .sp-filtry select { max-width: 100%; }
+/* ZAVDANNYA-172 (ZVIT-169): на телефоні — знак, що таблицю гортають; рамка таблиці з видимим фокусом */
+.sp-gortaite { display: none; margin: 4px 0; color: var(--muted); font-size: 13px; }
+@media (max-width: 700px) { .sp-gortaite { display: block; } }
+.sp-tablytsia-ramka:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* ZAVDANNYA-172 (ZVIT-169, п. 10): фільтри платної частини — помітно вимкнені, з замком і підписом */
+.sp-filtry__zamok { display: flex; gap: 6px; align-items: center; color: var(--muted); font-size: 14px; margin: 8px 0 4px; }
+.sp-filtry--zamk select:disabled { opacity: .55; cursor: not-allowed; border-style: dashed; background: var(--ground); }

@@ -38,7 +38,10 @@
     zboi.hidden = false;
     zboi.focus();
   }
-  function pokazatyVdachu() {
+  function pokazatyVdachu(vidpovid) {
+    // номер звернення — коли форма пише на сервер сайту (він повертає { nomer }); у Supabase номера немає
+    var nomer = vidpovid && vidpovid.nomer;
+    if (nomer) { $('vdacha-nomer-chyslo').textContent = String(nomer); $('vdacha-nomer').hidden = false; }
     forma.hidden = true;
     zboi.hidden = true;
     vdacha.hidden = false;
@@ -49,20 +52,21 @@
     skynutyPomylky();
     var vybrano = forma.querySelector('input[name="shcho_ne_tak"]:checked');
     var dani = {
+      adresa: $('adresa').value.trim(),
       posylannya: $('posylannya').value.trim(),
       shchoNeTak: vybrano ? vybrano.value : '',
       poyasnennya: $('poyasnennya').value.trim(),
       kontakt: $('kontakt').value.trim(),
       zghoda: $('zghoda').checked
     };
-    if (!dani.posylannya) return pokazatyPomylku('Вкажіть посилання на подію або номер рішення.', $('posylannya'));
+    if (!dani.adresa && !dani.posylannya) return pokazatyPomylku('Вкажіть адресу або вулицю, де показано подію (або посилання на рішення, якщо воно є).', $('adresa'));
     if (!dani.shchoNeTak) return pokazatyPomylku('Виберіть, що не так.', forma.querySelector('input[name="shcho_ne_tak"]'));
     if (dani.shchoNeTak === 'inshe' && !dani.poyasnennya) return pokazatyPomylku('Напишіть коротко, що саме не так.', $('poyasnennya'));
     if (!dani.kontakt) return pokazatyPomylku('Вкажіть пошту або нік у Телеграмі — куди відповісти.', $('kontakt'));
     if (!kontaktDobryi(dani.kontakt)) return pokazatyPomylku('Перевірте контакт: потрібна пошта (name@poshta.ua) або нік у Телеграмі (@nik).', $('kontakt'));
     if (!dani.zghoda) return pokazatyPomylku('Без згоди ми не можемо прийняти звернення. Поставте позначку, якщо згодні.', $('zghoda'));
 
-    if ($('sait').value) { pokazatyVdachu(); return; }   // пастка для ботів
+    if ($('sait').value) { pokazatyVdachu(null); return; }   // пастка для ботів
     if (navigator.onLine === false) { pokazatyZbii(); return; }
 
     knopka.disabled = true;
