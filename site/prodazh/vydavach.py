@@ -23,6 +23,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -38,11 +39,14 @@ def zapyt(server: str, kliuch: str, metod: str, shliakh: str, tilo: bytes | None
         return v.status, v.read()
 
 
-def zibraty(generator: Path, d: dict, teka: Path, shi: bool) -> Path | None:
-    """Один запуск генератора. Повертає файл або None (генератор упав чи не знайшов будинок).
+def zibraty(generator: Path, d: dict, teka: Path, shi: bool) -> tuple[Path | None, Path | None]:
+    """Один запуск генератора. Повертає (файл довідки або None — генератор упав чи не знайшов будинок; «картку для
+    мешканців» або None). Картка (ZAVDANNYA-178, MV-183; генератор --kartka) — поруч із довідкою, звітом, ОСББ: лише числа,
+    без описів справ; не вийшла — довідка йде без неї.
     Режим sp («Судова практика», ZAVDANNYA-135) — інший генератор (dani-edrsr/src/sp_dovidka.py, поруч зі zvit/) з
     параметрами {stattia, sud, chastyna}; дані — змінна SP_DANI (dovidka.json з Release dani-edrsr). ШІ там немає."""
     vyhid = teka / f'{d["id"]}.html'
+    kartka = None
     if d['rezhym'] == 'sp':
         sp = generator.parent.parent / 'sp_dovidka.py'
         komanda = [sys.executable, str(sp), '--parametry', json.dumps(d.get('parametry') or {}, ensure_ascii=False),
@@ -50,14 +54,17 @@ def zibraty(generator: Path, d: dict, teka: Path, shi: bool) -> Path | None:
     else:
         # osbb — щомісячна довідка ОСББ (ZAVDANNYA-143; dani-edrsr S-Зв.5): довідка + зверху останній місяць скарг 1551
         prapor = {'dovidka': ['--dovidka'], 'osbb': ['--osbb'], 'povnyi': ['--povnyi']}.get(d['rezhym'], ['--povnyi'])
-        komanda = [sys.executable, str(generator), d['adresa'], *prapor, '--vyhid', str(vyhid), '--chysto']
+        # два режими (довідка + картка) — генератор пише <id>-<режим>.html
+        osnovnyi = 'povnyi' if prapor == ['--povnyi'] else 'dovidka'
+        vyhid, kartka = teka / f'{d["id"]}-{osnovnyi}.html', teka / f'{d["id"]}-kartka.html'
+        komanda = [sys.executable, str(generator), d['adresa'], *prapor, '--kartka', '--vyhid', str(teka / f'{d["id"]}-<режим>.html'), '--chysto']
     if shi and d['rezhym'] != 'sp':
         komanda.append('--shi')
     p = subprocess.run(komanda, capture_output=True, text=True, timeout=30 * 60)
     if p.returncode != 0 or not vyhid.exists():
         print(f'  генератор: код {p.returncode}; {(p.stderr or p.stdout).strip()[-400:]}', flush=True)
-        return None
-    return vyhid
+        return None, None
+    return vyhid, (kartka if kartka is not None and kartka.exists() else None)
 
 
 def odyn_obkhid(server: str, kliuch: str, generator: Path, shi: bool, n: int = 1) -> int:
@@ -68,11 +75,17 @@ def odyn_obkhid(server: str, kliuch: str, generator: Path, shi: bool, n: int = 1
         for d in dovidky:
             pochatok = time.time()
             print(f'{d["id"]}: {d["rezhym"]} — {d["adresa"]}', flush=True)
-            f = zibraty(generator, d, Path(t), shi)
+            f, kartka = zibraty(generator, d, Path(t), shi)
             if f is None:
                 zapyt(server, kliuch, 'POST', f'/api/vnutr/pomylka/{d["id"]}')
                 print('  не вдалося — сервер поверне в чергу (до 3 спроб)', flush=True)
                 continue
+            if kartka is not None:
+                # картка — до довідки: лист «готово» вже несе посилання на неї. Не прийняв сервер — довідка йде без картки
+                try:
+                    zapyt(server, kliuch, 'PUT', f'/api/vnutr/kartka/{d["id"]}', kartka.read_bytes(), 'text/html; charset=utf-8')
+                except urllib.error.HTTPError as e:
+                    print(f'  картку сервер не взяв ({e.code}) — довідка без неї', flush=True)
             status, _ = zapyt(server, kliuch, 'PUT', f'/api/vnutr/dovidka/{d["id"]}', f.read_bytes(), 'text/html; charset=utf-8')
             print(f'  готово за {time.time() - pochatok:.0f} с, сервер: {status}', flush=True)
     return len(dovidky)

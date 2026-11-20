@@ -58,7 +58,9 @@ CREATE TABLE IF NOT EXISTS dovidky (
   sprob          INTEGER NOT NULL DEFAULT 0,
   vziato         INTEGER,                    -- коли видавач узяв у роботу
   stvoreno       INTEGER NOT NULL,
-  hotovo         INTEGER
+  hotovo         INTEGER,
+  kartka_fail    TEXT,                       -- «картка для мешканців» (лише числа) у сховищі, ZAVDANNYA-178; NULL — немає
+  kartka_hash    TEXT                        -- SHA-256 ключа посилання на картку; NULL — посилання закрито (власник бачить у кабінеті)
 );
 CREATE INDEX IF NOT EXISTS dovidky_k ON dovidky(korystuvach_id);
 CREATE INDEX IF NOT EXISTS dovidky_s ON dovidky(status);

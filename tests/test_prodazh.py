@@ -111,9 +111,11 @@ class Vydavach(unittest.TestCase):
             'import sys, pathlib\n'
             'a = sys.argv[1:]\n'
             'if "Неіснуюча" in a[0]: sys.exit(2)\n'
-            'v = pathlib.Path(a[a.index("--vyhid") + 1])\n'
+            'v = a[a.index("--vyhid") + 1]\n'
             'rezhym = "dovidka" if "--dovidka" in a else "povnyi"\n'
-            'v.write_text(f"<!doctype html><title>{rezhym}</title><h1>{a[0]}</h1><p>Опис події — лише платно</p>", encoding="utf-8")\n',
+            'pathlib.Path(v.replace("<режим>", rezhym)).write_text(f"<!doctype html><title>{rezhym}</title><h1>{a[0]}</h1><p>Опис події — лише платно</p>", encoding="utf-8")\n'
+            # ZAVDANNYA-178: «картка для мешканців» — лише числа
+            'if "--kartka" in a: pathlib.Path(v.replace("<режим>", "kartka")).write_text(f"<!doctype html><title>kartka</title><h1>{a[0]}</h1><p>Скарг 1551: 12</p>", encoding="utf-8")\n',
             encoding='utf-8')
 
     @classmethod
@@ -179,6 +181,13 @@ class Vydavach(unittest.TestCase):
         st, _, html = self.vidkryty(shliakh.split('?')[0])
         self.assertEqual(st, 404, 'без ключа з листа — ні')
         self.assertNotIn('Опис події', html)
+        # ZAVDANNYA-178: у листі — і посилання на картку для мешканців; відкривається своїм ключем, без описів справ
+        kartka = re.search(r'https?://[^/]+(/dovidka/\S+/kartka/\?k=\S+)', lyst['tekst']).group(1)
+        st, _, html = self.vidkryty(kartka)
+        self.assertEqual(st, 200)
+        self.assertIn('<title>kartka</title>', html)
+        self.assertNotIn('Опис події', html)
+        self.assertEqual(self.vidkryty(kartka.split('?')[0] + '?' + shliakh.split('?')[1])[0], 404, 'ключ довідки картку не відкриває')
         self.assertEqual(vydavach.odyn_obkhid(self.adresa, 'kliuch-vydavacha', self.generator, shi=False), 0, 'черга порожня')
 
 
@@ -384,8 +393,9 @@ class SudovaPraktyka135(unittest.TestCase):
                 'open(v, "w", encoding="utf-8").write("<!doctype html>" + json.dumps(a, ensure_ascii=False))\n', encoding='utf-8')
             d = {'id': 'dabc', 'rezhym': 'sp', 'adresa': 'ст. 130 КУпАП — усі суди міста',
                  'parametry': {'stattia': 'ст.130 КУпАП', 'sud': 'Голосіївський', 'chastyna': '1'}}
-            f = vydavach.zibraty(src / 'zvit' / 'zibraty.py', d, Path(t), shi=True)
+            f, kartka = vydavach.zibraty(src / 'zvit' / 'zibraty.py', d, Path(t), shi=True)
             self.assertIsNotNone(f)
+            self.assertIsNone(kartka, 'у «Судової практики» картки для мешканців немає')
             a = json.loads(f.read_text(encoding='utf-8')[len('<!doctype html>'):])
             self.assertEqual(json.loads(a[a.index('--parametry') + 1]), d['parametry'])
             self.assertNotIn('--shi', a, 'у довідці «Судової практики» ШІ немає')
