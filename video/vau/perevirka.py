@@ -412,7 +412,7 @@ def kudy(meta: dict) -> list[str]:
             f'гри або /karta/#зум/широта/довгота; карта загалом — лише для ролика про все місто (meta pro_misto)']
 
 
-def storinka_isnuie(kudy_: str, sait: Path | str) -> bool:
+def storinka_isnuie(kudy_: str, sait) -> bool:
     """Чи є сторінка заклику в зібраному сайті (site/zibraty_sait.py): /vulytsia/x/ → <сайт>/vulytsia/x/index.html."""
     from pathlib import Path as _P
     shliakh = kudy_.split('#')[0].split('?')[0].strip('/')

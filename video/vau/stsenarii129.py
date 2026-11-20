@@ -103,7 +103,6 @@ def t1(B):
 def t5(B):
     """Топ-5 «Усе місто за 9 секунд» (чернетка 01 → К-01): петля, точки вискакують з кадру 0, рік — великий."""
     P = sorted(B.P, key=lambda p: p.data or '9')
-    n = len(P)
     R = R129('t5-misto-za-9-sekund', 9, nazva='Усе місто за 9 секунд', hrupa='Місто згори',
              hachok='«Кожна точка — справжня подія з рішення суду»', meta='охоплення, повтори → карта', liniia='Безкоштовна карта',
              kudy='/karta/', pro_misto=True)
@@ -425,7 +424,6 @@ def n6(B):
     vtekly = sum(1 for p in pod if p.mitka == 'поїхав з місця ДТП')
     dtp = sum(1 for p in pod if p.vyd == 'ДТП')
     P24 = [p for p in B.P if (p.rik or 0) >= 2024]
-    misto = sum(1 for p in P24 if p.mitka == 'поїхав з місця ДТП') / len(P24)
     R = R129('n6-vidpovid-na-komentar', 15, nazva='Відповідь на коментар: Кадетський Гай', hrupa='Відповіді на коментарі',
              hachok='наклейка-коментар «а що на Кадетському Гаю?»', meta='серія, що живиться коментарями → сторінка вулиці',
              liniia='Мій будинок', kudy='/vulytsia/kadetskyi-hai/', shablon='підставити справжній коментар перед публікацією')
