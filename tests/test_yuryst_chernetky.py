@@ -28,7 +28,8 @@ class Chernetky(unittest.TestCase):
 
     def test_polityka_vsia_posluha(self):
         t = tekst('polityka.html')
-        for slovo in ('Телеграм', 'застосунок', 'Стежу', 'Сповіщення', 'Уповноваженому', 'Геолокацію'):
+        for slovo in ('Телеграм', 'застосунок', 'Стежу', 'сповіщень браузера чи телефона ми не надсилаємо', 'Уповноваженому',
+                      'Геолокацію'):
             self.assertIn(slovo.lower(), t.lower(), slovo)
 
     def test_oferta_dani_i_onovlennia(self):
@@ -61,7 +62,7 @@ class Chernetky(unittest.TestCase):
 
     def test_polityka_kuky_i_stroky(self):
         t = tekst('polityka.html')
-        for slovo in ('Єдиний кукі', '3 роки', 'пункт 44.3', 'стаття 29', 'відповідальна особа', '[ПЛАТІЖНИЙ СЕРВІС]'):
+        for slovo in ('Кукі — лише два', '30 днів', '10 хвилин', '3 роки', 'пункт 44.3', 'стаття 29', 'відповідальна особа', '[ПЛАТІЖНИЙ СЕРВІС]'):
             self.assertIn(slovo, t)
 
     def test_umovy_u_zbyranni_i_vnyzu(self):
@@ -79,9 +80,47 @@ class Chernetky(unittest.TestCase):
         for n in range(1, 18):
             self.assertRegex(d, rf'\*\*{n}\. ', f'питання {n}')
         for mistse in ('[ВЛАСНИК]', '[КОД]', '[АДРЕСА]', '[КОНТАКТ]', '[САЙТ]', '[ДАТА]', '[НАЗВА ВЛАСНИКА ПРОЄКТУ]',
-                       '[ПЛАТІЖНИЙ СЕРВІС]', '[СЕРВІС І КРАЇНА ЗБЕРІГАННЯ]'):
+                       '[ПЛАТІЖНИЙ СЕРВІС]', '[СЕРВІС ПОШТИ]'):
             self.assertIn(mistse, d, 'місце є в списку для партнера')
 
+
+    # ---------------------------------------------------------------- ZAVDANNYA-160: звірка з продуктом після 19–20.11
+
+    def test_160_desiat_rokiv_p5_skriz(self):
+        """MV-155, П5: подія старша за 10 років — номер будинку за першим проханням: оферта, звернення, «Хто ми», «Видалити»."""
+        for f in ('oferta.html', 'zvernennya.html', 'pro-nas.html'):
+            self.assertIn('понад 10 років тому', tekst(f), f)
+        kod = (ZAHLUSHKA.parent / 'storinky_mv100.py').read_text(encoding='utf-8')
+        vydalyty = kod.split('def storinka_vydalyty', 1)[1].split('def storinka_pro_dani', 1)[0]
+        self.assertIn('понад 10 років тому', vydalyty)
+        self.assertNotIn('після найближчого оновлення', vydalyty, '10 робочих днів, а не «до оновлення» (AGENTS, розд. 7)')
+
+    def test_160_polityka_obrobnyky_poimenno(self):
+        t = tekst('polityka.html')
+        for slovo in ('Cloudflare', 'GitHub', 'Anthropic', 'Google', 'без вашої пошти', 'ваших даних не отримує',
+                      '[СЕРВІС ПОШТИ]', 'Cloudflare Web Analytics', '1 рік від дня складання', 'стираємо одразу'):
+            self.assertIn(slovo, t)
+        self.assertNotIn('без сторонніх систем аналітики', t)
+        self.assertNotIn('стирається, коли ви виходите', t, 'кукі входу живе 30 днів (prodazh/index.js, SESIIA_S)')
+
+    def test_160_strok_kuky_iak_u_kodi(self):
+        kod = (ZAHLUSHKA.parent / 'worker' / 'prodazh' / 'index.js').read_text(encoding='utf-8')
+        self.assertIn('SESIIA_S = 30 * 86400', kod, 'змінили строк сесії — виправте політику, розд. 8')
+        logika = (ZAHLUSHKA.parent / 'worker' / 'prodazh' / 'logika.js').read_text(encoding='utf-8')
+        self.assertIn("env.DOVIDKY_DNIV || '365'", logika, 'змінили строк довідок — виправте оферту, розд. 4, і політику, розд. 5')
+
+    def test_160_oferta_zalyshok_osbb_zastosunok(self):
+        t = tekst('oferta.html')
+        for slovo in ('лежить у кабінеті 1 рік', 'Пакет «3 довідки» — без строку', 'не переходять',
+                      'за 3 дні до річного списання', 'купити в ньому нічого не можна', 'через Google'):
+            self.assertIn(slovo, t)
+
+    def test_160_ihry_tochne_pravylo(self):
+        t = tekst('umovy.html')
+        self.assertNotIn('без найважчих справ', t, 'у «Літописі» є й вбивства (MV-165, MV-169)')
+        for slovo in ('статеві злочини', 'щодо дітей', 'домашнє насильство', 'без подробиць про потерпілих',
+                      'Купити бали чи спроби не можна'):
+            self.assertIn(slovo, t)
 
 if __name__ == '__main__':
     unittest.main()

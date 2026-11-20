@@ -40,6 +40,7 @@ import * as BZ from './biznes.js';
 
 export const MARSHRUTY = ['/oplata/*', '/api/*', '/kabinet/*', '/dovidka/*', '/prodazh/*', '/pidpysnyk/*', '/kopiia/*'];
 const SESIIA_S = 30 * 86400, VKHID_S = 30 * 60, LYSTIV_NA_HODYNU = 5;
+export const STEZHU_MAKS = 100;
 
 const adresaSaitu = (env, url) => (env.ADRESA_SAITU || new URL(url).origin).replace(/\/$/, '');
 const pereity = (url, kudy, zaholovky = {}) => new Response(null, { status: 303, headers: { location: new URL(kudy, url).toString(), ...zaholovky } });
@@ -58,6 +59,23 @@ async function sesiia(request, env) {
   if (!s) return null;
   return L.odyn(env, `SELECT k.* FROM sesii s JOIN korystuvachi k ON k.id = s.korystuvach_id WHERE s.hash = ? AND s.do_ > ?`, sha256(s), L.teper(env));
 }
+
+/**
+ * Ліміт запитів з однієї адреси (ZAVDANNYA-156): прив'язка Cloudflare Rate Limiting OBMEZHENNIA (wrangler.jsonc, «ratelimits»,
+ * пише site/khostynh.py). true — забагато, відповісти 429. Без прив'язки (місцевий запуск, тести) — без ліміту.
+ * Лише для того, що пишуть люди: форми, замовлення, вхід. Сповіщення платіжного сервісу й видавача — ніколи не обмежуємо.
+ */
+async function zabahato(request, env, hrupa) {
+  if (!env.OBMEZHENNIA?.limit) return false;
+  const ip = request.headers.get('cf-connecting-ip') || 'bez-adresy';
+  try {
+    return !(await env.OBMEZHENNIA.limit({ key: `${hrupa}:${ip}` })).success;
+  } catch (err) {
+    console.log(`ліміт запитів: ${err.message}`);
+    return false;      // ліміт не відповів — не зупиняємо продаж
+  }
+}
+const ZABAHATO = () => S.povidomlennia('Забагато спроб', 'Забагато запитів з вашої мережі. Зачекайте хвилину й спробуйте ще раз.', 429);
 
 /** Форми кабінету й замовлення — лише з нашого сайту (захист від підробки запиту з чужої сторінки). */
 function zNashohoSaitu(request, env) {
@@ -160,6 +178,8 @@ async function testovaOplata(env, id) {
 async function spovishchennia(request, env, servis) {
   const p = perekhidnyk(env, servis);
   if (!p) return new Response('ні', { status: 404 });
+  // ZAVDANNYA-156: тестові сповіщення — лише коли весь сервер у тестовому режимі, а не поруч із живою оплатою
+  if (servis === 'test' && env.PLATIZHNYI_SERVIS !== 'test') return new Response('ні', { status: 404 });
   let v;
   try {
     v = await p.perevirka(request, env);
@@ -198,7 +218,10 @@ async function vidkrytyDovidku(request, env, url, id) {
       'content-type': 'text/html; charset=utf-8', 'cache-control': 'private, no-store', 'x-robots-tag': 'noindex, nofollow',
       'referrer-policy': 'no-referrer', 'x-content-type-options': 'nosniff', 'x-frame-options': 'DENY',
       // Довідка — один файл із вбудованими стилями, скриптом і картинками (генератор dani-edrsr/src/zvit), без зовнішніх ресурсів.
-      'content-security-policy': "default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; font-src data:; frame-ancestors 'none'; form-action 'none'",
+      // sandbox (ZAVDANNYA-156): скрипт довідки працює як «чужий» сайт — без кук і без доступу до кабінету на нашому домені,
+      // навіть якщо в довідку колись потрапить чужий текст зі скриптом. Дозволено: скрипт, друк (кнопка PDF), посилання на рішення в новій вкладці.
+      'content-security-policy': "default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; font-src data:; frame-ancestors 'none'; form-action 'none'; base-uri 'none'; " +
+        'sandbox allow-scripts allow-modals allow-popups allow-popups-to-escape-sandbox',
     },
   });
 }
@@ -280,7 +303,12 @@ async function diiaKabinetu(request, env, url, ja, dia) {
     f.budynok = z.budynok;
     const adresa = z.adresa;
     if (dia === 'stezhu') {
-      await L.zrobyty(env, 'INSERT OR IGNORE INTO stezhu (korystuvach_id, budynok, adresa, stvoreno) VALUES (?, ?, ?, ?)', ja.id, f.budynok, adresa, L.teper(env));
+      // ZAVDANNYA-156: межа адрес на людину — щоб один вхід не засмічував базу й щомісячний лист тисячами адрес
+      const r = await L.zrobyty(env, `INSERT OR IGNORE INTO stezhu (korystuvach_id, budynok, adresa, stvoreno) SELECT ?, ?, ?, ?
+        WHERE (SELECT COUNT(*) FROM stezhu WHERE korystuvach_id = ?) < ?`, ja.id, f.budynok, adresa, L.teper(env), ja.id, STEZHU_MAKS);
+      if (!r.meta?.changes && !(await L.odyn(env, 'SELECT 1 AS t FROM stezhu WHERE korystuvach_id = ? AND budynok = ?', ja.id, f.budynok))) {
+        return kabinet(env, ja, `У «Стежу» — до ${STEZHU_MAKS} адрес. Приберіть якусь, щоб додати нову.`);
+      }
       return kabinet(env, ja, `Стежите: ${adresa}.`);
     }
     const v = await L.vzyatyDovidku(env, ja.id, f.budynok, adresa);
@@ -450,20 +478,30 @@ async function spilne(request, env, url) {
   const r = s.match(/^\/api\/forma\/([a-z]+)$/);
   if (r && request.method === 'POST') {
     if (!zNashohoSaitu(request, env)) return new Response('ні', { status: 403 });
+    if (await zabahato(request, env, 'forma')) return new Response('zabahato', { status: 429 });
     return r[1] === 'biznes' ? BZ.zapyt(request, env) : F.forma(request, env, r[1]);
   }
-  if (s === BZ.KOREN.slice(0, -1) || s.startsWith(BZ.KOREN)) return BZ.kopiia(request, env, url);
+  if (s === BZ.KOREN.slice(0, -1) || s.startsWith(BZ.KOREN)) {
+    if (await zabahato(request, env, 'kopiia')) return ZABAHATO();
+    return BZ.kopiia(request, env, url);
+  }
   const a = s.match(/^\/api\/admin\/(.+)$/);
   if (a) return admin(request, env, a[1]);
   return null;
 }
 
 /** Відповідь сервера продажу або null (тоді — звичайний сайт). */
+// Що обмежуємо (ZAVDANNYA-156): усе, що пише в базу чи шле листи з дії незнайомця, і вгадування ключів.
+const OBMEZHENI = [['POST', /^\/api\/(skoro|zamovlennia)$/, 'zapys'], ['POST', /^\/kabinet\/vkhid$/, 'vkhid'],
+  ['GET', /^\/kabinet\/(vkhid|google)\/$/, 'vkhid'], ['GET', /^\/dovidka\//, 'dovidka'], ['GET', /^\/pidpysnyk\/api\//, 'karta']];
+
 export async function prodazh(request, env) {
   if (env.PRODAZH !== 'tak' && env.PRODAZH !== 'skoro') return null;
   const url = new URL(request.url);
   const s = url.pathname;
   const m = request.method;
+  const o = OBMEZHENI.find(([metod, shliakh]) => metod === m && shliakh.test(s));
+  if (o && await zabahato(request, env, o[2])) return ZABAHATO();
   const sp = await spilne(request, env, url);
   if (sp) return sp;
   if (env.PRODAZH === 'skoro') {
