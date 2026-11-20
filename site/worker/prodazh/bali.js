@@ -45,7 +45,7 @@ export async function narakhuvaty(env, korystuvach_id, ochky, kliuch, prychyna) 
  */
 export async function obminiaty(env, korystuvach_id, { tovar, budynok = null, adresa = null, zapyt }) {
   if (!uvimkneno(env)) return { ok: false, chomu: 'Обмін балів ще не ввімкнено.' };
-  const o = KURS.obmin[tovar];
+  const o = Object.hasOwn(KURS.obmin, String(tovar)) ? KURS.obmin[tovar] : null;     // «constructor» тощо — ні (ZAVDANNYA-156)
   if (!o) return { ok: false, chomu: 'Такого обміну немає.' };
   if (o.tovar === 'dovidka' && !budynok) return { ok: false, chomu: 'Оберіть будинок для довідки.' };
   if (!/^[a-z0-9]{8,40}$/.test(String(zapyt || ''))) return { ok: false, chomu: 'Оновіть сторінку кабінету й спробуйте ще раз.' };
