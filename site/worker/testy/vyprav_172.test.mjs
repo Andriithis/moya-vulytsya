@@ -237,3 +237,31 @@ test('сторінки сервера: логотип зі значком і н�
   const { text } = await zapyt(env, 'GET', '/kabinet/');
   assert.ok(text.includes(d), 'значок сервера = значок сайту');
 });
+
+// ---------------------------------------------------------------- «скоро» для «Судової практики» (ZVIT-169, п. 9)
+
+test('«скоро» довідки СП: стаття, суд і частина видно на сторінці й ідуть з формою; у базу — лише лічильник без пошти', async () => {
+  const DOVIDNYK = { statti: { 'kupap-130': { stattia: 'ст.130 КУпАП', nazva: 'Керування', sudy: ['Голосіївський'], chastyny: ['1', '2'] } } };
+  for (const PRODAZH of ['tak', 'skoro']) {
+    const env = seredovyshche({ PRODAZH, ADMIN_KLIUCH: 'admin', ASSETS: { async fetch(req) {
+      return new URL(req.url).pathname === '/sudova-praktyka/dovidnyk.json' ? Response.json(DOVIDNYK) : new Response('немає', { status: 404 });
+    } } });
+    const { text } = await zapyt(env, 'GET', '/oplata/?tovar=spdovidka&stattia=kupap-130&sud=Голосіївський&chastyna=1');
+    assert.match(text, /Скоро — залиште пошту/);
+    assert.match(text, /Стаття й суд: <b>ст.\s130 ч.\s1 КУпАП — Голосіївський районний суд<\/b>/);
+    assert.match(text, /name="stattia" value="kupap-130"/);
+    // вигаданий суд — без вибору, але сторінка працює
+    const { text: t2 } = await zapyt(env, 'GET', '/oplata/?tovar=spdovidka&stattia=kupap-130&sud=Вигаданий');
+    assert.doesNotMatch(t2, /Стаття й суд/);
+    for (const poshta of ['a@b.ua', 'c@b.ua']) {
+      const v = await zapyt(env, 'POST', '/api/skoro', { forma: { tovar: 'spdovidka', poshta, zghoda: 'tak', stattia: 'kupap-130', sud: 'Голосіївський', chastyna: '1' } });
+      assert.equal(v.r.status, 303);
+    }
+    const r = sql(env, 'SELECT stattia, sud, chastyna, n FROM skoro_sp').map((x) => ({ ...x }));
+    assert.deepEqual(r, [{ stattia: 'ст.130 КУпАП', sud: 'Голосіївський', chastyna: '1', n: 2 }], PRODAZH);
+    const { text: csv } = await zapyt(env, 'GET', '/api/admin/vyvantazhennia/skoro_sp', { zaholovky: { authorization: 'Bearer admin' } });
+    assert.match(csv, /den,stattia,sud,chastyna,n/);
+    assert.match(csv, /ст.130 КУпАП,Голосіївський,1,2/);
+    assert.doesNotMatch(csv, /@/, 'без пошти');
+  }
+});

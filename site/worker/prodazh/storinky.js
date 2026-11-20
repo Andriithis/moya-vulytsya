@@ -200,15 +200,18 @@ ${pomylka ? `<p class="pomylka" role="alert">${e(pomylka)}</p>` : ''}${GALOCHKA_
 // ---------------------------------------------------------------- «скоро» (PRODAZH = 'skoro', ZAVDANNYA-132)
 
 /** Сторінка «Скоро — залиште пошту»: що обрали (товар, будинок) + пошта. Оплати ще немає — лише заявка. */
-export function skoro({ tovar, nazva, budynok, adresa, kanal, pomylka = '', kabinet = false }) {
+export function skoro({ tovar, nazva, budynok, adresa, kanal, pomylka = '', kabinet = false, sp = null }) {
   const tsinaT = TS.tsiny[tovar] ? `<p class="prymitka">Ціна після запуску: ${tsina(tovar)}.</p>` : '';
-  const pro = budynok ? `<p>Будинок: <b>${e(adresa)}</b> (<a href="${e(budynok)}">сторінка будинку</a>).</p>` : '';
+  // ZAVDANNYA-172 (ZVIT-169, п. 9): обрані стаття, суд і частина не губляться — видно, що саме чекає людина
+  const pro = budynok ? `<p>Будинок: <b>${e(adresa)}</b> (<a href="${e(budynok)}">сторінка будинку</a>).</p>`
+    : sp ? `<p>Стаття й суд: <b>${e(sp.opys)}</b>.</p>` : '';
+  const spPolia = sp ? ['stattia', 'sud', 'chastyna'].map((k) => `<input type="hidden" name="${k}" value="${e(k === 'stattia' ? sp.slug : sp.parametry[k])}">`).join('') : '';
   return storinka('Скоро — залиште пошту', `<section class="zaholovok"><span class="mitka">Скоро</span><h1>Скоро — залиште пошту</h1>
 <p>Оплату ще не підключено. Залиште пошту — напишемо <b>один раз</b>, коли це можна буде замовити.</p>
 <div class="kartka vybir"><p>Ви обрали: <b>${e(nazva)}</b></p>${pro}${tsinaT}</div></section>
 <section class="rozdil"><form class="forma" method="post" action="/api/skoro">
 <input type="hidden" name="tovar" value="${e(tovar)}">${budynok ? `<input type="hidden" name="budynok" value="${e(budynok)}">` : ''}
-<input type="hidden" name="dzherelo" value="${e(kanal)}">
+<input type="hidden" name="dzherelo" value="${e(kanal)}">${spPolia}
 <label for="poshta">Пошта</label>
 <input id="poshta" name="poshta" type="email" autocomplete="email" required maxlength="254" placeholder="name@poshta.ua">
 ${pomylka ? `<p class="pomylka" role="alert">${e(pomylka)}</p>` : ''}

@@ -539,8 +539,15 @@ async function skoroForma(env, url) {
   if (!F.TOVARY_SKORO.includes(tovar)) return pereity(url, '/miy-budynok/');
   const budynok = url.searchParams.get('budynok');
   const adresa = budynok ? await L.perevirytyBudynok(env, budynok, url) : null;
+  const sp = await vybirSp(env, url, tovar, Object.fromEntries(url.searchParams));
   return S.skoro({ tovar, nazva: tovar === 'sudova' ? F.NAZVA_SUDOVA : TS.nazvy[tovar], budynok: adresa ? budynok : null, adresa,
-                   kanal: F.kanal(url.searchParams.get('dzherelo')), kabinet: env.PRODAZH === 'tak' });
+                   kanal: F.kanal(url.searchParams.get('dzherelo')), kabinet: env.PRODAZH === 'tak', sp });
+}
+
+/** Довідка «Судової практики» в «скоро»: стаття, суд і частина — лише якщо є в довіднику (інакше null, сторінка без них). */
+async function vybirSp(env, url, tovar, p) {
+  if (tovar !== 'spdovidka' || !p.stattia) return null;
+  return SP.perevirytyParametry(env, url, { stattia: p.stattia, sud: p.sud, chastyna: p.chastyna });
 }
 
 /** «Дякуємо» після оплати: текст за товаром замовлення (?z=…; номер замовлення — випадковий, лише товар, без пошти). */
@@ -554,6 +561,15 @@ async function skoroZapys(request, env, url) {
   if (!zNashohoSaitu(request, env)) return S.povidomlennia('Не вдалося', 'Залиште пошту на нашому сайті.', 403);
   const f = await forma(request);
   const v = await F.zapysatySkoro(env, url, f);
+  if (v.ok) {
+    // ZAVDANNYA-172 (ZVIT-169, п. 9): які статті й суди хочуть — знеособлений лічильник за день (skoro_sp, без пошти)
+    const sp = await vybirSp(env, url, String(f.tovar || ''), f);
+    if (sp) {
+      await L.zrobytyNovu(env, `INSERT INTO skoro_sp (den, stattia, sud, chastyna, n) VALUES (?, ?, ?, ?, 1)
+        ON CONFLICT (den, stattia, sud, chastyna) DO UPDATE SET n = n + 1`, new Date(L.teper(env) * 1000).toISOString().slice(0, 10),
+      sp.parametry.stattia, sp.parametry.sud, sp.parametry.chastyna);
+    }
+  }
   // ZAVDANNYA-172 (ZVIT-169, п. 1): окрема адреса подяки — і з увімкненою оплатою людина, що лише лишила пошту, бачить
   // «Записали», а не «щойно сервіс підтвердить оплату».
   if (v.ok) return pereity(url, '/oplata/zapysaly/');
@@ -561,7 +577,7 @@ async function skoroZapys(request, env, url) {
   if (!tovar) return S.povidomlennia('Не вдалося', v.pomylka, 400);
   const adresa = f.budynok ? await L.perevirytyBudynok(env, String(f.budynok), url) : null;
   return S.skoro({ tovar, nazva: tovar === 'sudova' ? F.NAZVA_SUDOVA : TS.nazvy[tovar], budynok: adresa ? String(f.budynok) : null,
-                   adresa, kanal: F.kanal(f.dzherelo), pomylka: v.pomylka, kabinet: env.PRODAZH === 'tak' });
+                   adresa, kanal: F.kanal(f.dzherelo), pomylka: v.pomylka, kabinet: env.PRODAZH === 'tak', sp: await vybirSp(env, url, tovar, f) });
 }
 
 /** Спільне для 'skoro' і 'tak': стилі сторінок, форми сайту, вивантаження для партнера. Null — не наша адреса. */

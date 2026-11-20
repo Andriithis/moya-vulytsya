@@ -18,7 +18,7 @@ const ZAPYSIV_NA_POSHTU = 20;
 export const LYSTIV_ZVERNEN = 10;        // листів партнеру про нові звернення — не більше на годину (ZAVDANNYA-156)            // більше рядків «скоро» з однієї пошти не пишемо (захист від засмічення)
 export const TABLYTSI = { skoro: 'id, poshta, tovar, budynok, adresa, kanal, stvoreno, napysano',
   zayavka: 'id, shcho, misto, adresa, kontakt, kanal, stvoreno', zvernennya: 'id, posylannya, shcho_ne_tak, poyasnennya, kontakt, stvoreno, zakryto',
-  podiya: 'den, nazva, kanal, n',
+  podiya: 'den, nazva, kanal, n', skoro_sp: 'den, stattia, sud, chastyna, n',
   prybrani_podii: 'id, kliuch, posylannia, zvernennya_id, prychyna, khto, prybrano, povernuto' };   // журнал прибраних (ZAVDANNYA-161)
 
 export function kanal(d) {
