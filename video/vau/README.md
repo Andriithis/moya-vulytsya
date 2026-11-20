@@ -123,3 +123,28 @@ python video/vau/galereia139.py                                         # → vi
 ```
 
 Що з цього радимо для тесту — `ZVIT-139.md`.
+
+## ZAVDANNYA-155: продуктові ролики «потреба → продукт» (`zapys155.py`, `stan155.py`)
+
+Ролик = **потреба** (3,5 с рушієм, вигляд 139: тепло, хвилі, шпилі, бульбашки, світні точки, календар) → **продукт** (запис
+справжньої сторінки з місцевого сервера продажу: довідка, повний звіт, кабінети рієлтора й ОСББ, лист «Стежу», «Судова
+практика»). Звук — один на весь ролик; перевірки — `perevirka.py` (правила 138) на склеєний сценарій; пачка — В2.
+
+```bash
+python ../dani-edrsr/src/budynky_sait.py <events.db> <тека 1551> budynky.json
+python site/zibraty_sait.py <events.db> <сайт> --budynky budynky.json --khostynh workers --oplata tak --platizhnyi-servis test --d1 mistsevyi
+node site/worker/testy/mistsevyi.mjs 8799 <сайт>                                   # сервер продажу, тестова оплата
+ZVIT_DB=<events.db> ZVIT_SKARGY=<тека 1551> ZVIT_OSM=<kiev.osm.pbf> python video/vau/stan155.py   # 5 покупців, довідки
+python ../dani-edrsr/src/nove_tyzhnia.py <events.db> <тека 1551> nove.json --do 2026-11-01 --dniv 30
+python bot/indeks.py <events.db> budynky.json indeks.json
+python video/vau/stan155.py --lyst nove.json indeks.json 2026-10                    # лист «Стежу» в HTML (нікому не йде)
+python video/vau/zapys155.py <events.db> --indeks indeks.json --pachka              # перевірки й В2
+python video/vau/zapys155.py <events.db> --indeks indeks.json [--lyshe p1] [--kadry 4,8] --cpu   # → video/vyhid/155/
+```
+
+- **Номери будинків (MV-25):** у записі кожна «назва, номер» на сторінці — номер під розмиттям (скрипт у браузері, вираз
+  `RX`, тест `tests/test_rolyky155.py`); карти будинку в довідці й звіті розмиті цілком. Камера вступу — не ближче рівня вулиці
+  й не на самому будинку.
+- **Проксі запису** віддає рамку рушія й пересилає решту на сервер продажу; лише в записі знімає заборону вбудовування й
+  політику сторінки (інакше кабінет не пускає стиль розмиття). Сервер і дані — ті самі.
+- Лист «Стежу» (платні дані) пишеться лише в `video/vyhid/155/` (не в git).
