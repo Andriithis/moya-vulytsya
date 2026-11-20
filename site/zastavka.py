@@ -40,7 +40,7 @@ VARIANTY = {
 }
 TELEFON_DO = 700          # telefon() у karta.js: window.innerWidth <= 700
 NADVYBIRKA = 2            # соти малюємо вдвічі більшими й зменшуємо — рівні краї без драбинки
-YAKIST = 80
+YAKIST = 68           # на око як 80, а важить на чверть менше (ZVIT-164)
 
 
 def merc(lon: float, lat: float, z: float) -> tuple[float, float]:
@@ -171,8 +171,8 @@ def css(fayly: dict[tuple[str, str], str]) -> str:
             '@supports (width:1cqw){.ekran-karty{container-type:size}' + ''.join(pravyla) + '}\n')
 
 
-def zibraty(soty_rivniv: dict[int, dict], kolory_tem: dict, teka_karty: Path) -> str:
-    """Картинки першого екрана в теку karta/ сайту; повертає стилі для sait.css. Ім'я файла — з відбитком вмісту:
+def zibraty(soty_rivniv: dict[int, dict], kolory_tem: dict, teka_karty: Path) -> tuple[str, dict]:
+    """Картинки першого екрана в теку karta/ сайту; повертає стилі для sait.css і адреси картинок {(варіант, тема): url}. Ім'я файла — з відбитком вмісту:
     новий випуск — нова назва, і старий кеш браузера не покаже старих сот під новою живою картою."""
     fayly = {}
     for variant, v in VARIANTY.items():
@@ -183,4 +183,4 @@ def zibraty(soty_rivniv: dict[int, dict], kolory_tem: dict, teka_karty: Path) ->
             teka_karty.mkdir(parents=True, exist_ok=True)
             (teka_karty / nazva).write_bytes(dani)
             fayly[(variant, tema)] = f'/karta/{nazva}'
-    return css(fayly)
+    return css(fayly), fayly

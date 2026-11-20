@@ -306,7 +306,9 @@ def storinka(*, shlyakh: str, title: str, opys: str, tilo: str, adresa_saitu: st
     if len(opys) > 170:
         opys = opys[:169].rsplit(' ', 1)[0].rstrip(',;:—–-') + '…'
     css_mapy = '<link rel="stylesheet" href="/sait/biblioteka/maplibre-gl.css">\n' if mapa else ''
-    js = ''.join(f'<script src="{s}"></script>\n' for s in skrypty + ('/sait/vkhid.js',))   # мітка входу з реклами (ZAVDANNYA-153)
+    # Екран карти (головна, /karta/): скрипти з defer — не тримають малювання першого екрана (ZAVDANNYA-164); порядок той самий.
+    defer = ' defer' if pered_main else ''
+    js = ''.join(f'<script src="{s}"{defer}></script>\n' for s in skrypty + ('/sait/vkhid.js',))   # мітка входу з реклами (ZAVDANNYA-153)
     robots = '' if indeksuvaty else '<meta name="robots" content="noindex, follow">\n'
     return f'''<!doctype html>
 <html lang="uk" data-koren="/">
@@ -712,7 +714,8 @@ def storinka_pokazhchyka(vulytsi: list, rayony: list, adresa_saitu: str, rayon: 
                     adresa_saitu=adresa_saitu, aktyvne='vulytsi/', skrypty=('/sait/poshuk.js',))
 
 
-def holovna(dn: D.Dani, vulytsi: list, rayony: list, adresa_saitu: str, sudova_praktyka: bool = False) -> str:
+def holovna(dn: D.Dani, vulytsi: list, rayony: list, adresa_saitu: str, sudova_praktyka: bool = False,
+            zastavka: dict | None = None) -> str:
     """Головна — одразу карта Києва з пошуком (AGENTS.md, розд. 3: без вступу), під нею — входи."""
     tilo = f'''<section class="vstup-ryad">
 <div><h1 class="h-mala">Що відбувається під боком</h1>
@@ -736,10 +739,10 @@ def holovna(dn: D.Dani, vulytsi: list, rayony: list, adresa_saitu: str, sudova_p
                       'inLanguage': 'uk'},
                      {'@context': 'https://schema.org', '@type': 'Organization', 'name': 'Моя вулиця', 'url': adresa_saitu + '/',
                       'logo': adresa_saitu + '/zahlushka/ikony/ikona-192.png'})
-    return storinka(shlyakh='/', title='Моя вулиця — що відбувається під боком: вулиці й будинки Києва', dodatkovo_head=ld,
+    return storinka(shlyakh='/', title='Моя вулиця — що відбувається під боком: вулиці й будинки Києва', dodatkovo_head=ld + predzavantazhennia(zastavka),
                     opys='Що відбувається під боком: скарги мешканців і події з рішень судів — на кожній вулиці й по кожному будинку Києва. Карта, покажчик вулиць, гра.',
                     tilo=tilo, adresa_saitu=adresa_saitu, pered_main=ekran_karty(dn),
-                    skrypty=('/sait/karta.js',) + SKRYPTY_IHOR)
+                    skrypty=('/sait/karta.js',))
 
 
 def soty_geojson(dn: D.Dani, riven: int) -> dict:
@@ -837,7 +840,9 @@ def ekran_karty(dn: D.Dani) -> str:
     filtr_ik = svg_html('<path d="M4 6h16M7 12h10M10 18h4"/>', 18, 2)
     info_ik = svg_html('<circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><circle cx="12" cy="7.6" r=".6" fill="currentColor"/>', 22)
     kub = svg_html('<path d="M12 3 20 7.5V16.5L12 21 4 16.5V7.5Z"/><path d="M4 7.5 12 12 20 7.5M12 12V21"/>', 20)
-    return f'''<section class="ekran-karty" aria-label="Карта Києва">
+    # Ігри на карті (≈ 215 КБ скриптів) першому екрану не потрібні: karta.js вантажить їх після завантаження сторінки,
+    # з живою картою або з першим натиском «Ігри» (ZAVDANNYA-164).
+    return f'''<section class="ekran-karty" aria-label="Карта Києва" data-ihry="{' '.join(SKRYPTY_IHOR)}">
 <div id="karta-mista" class="karta-povna" data-soty-7="/karta/soty-7.json" data-soty-8="/karta/soty-8.json" data-soty-9="/karta/soty-9.json" data-soty-8-m="/karta/soty-8-m.json" data-soty-9-m="/karta/soty-9-m.json" data-poshuk="/karta/poshuk.json" data-versiia="{e(dn.versiia)}"></div>
 <div class="zastavka" aria-hidden="true"></div>
 <noscript><p class="karta-bez-js">Щоб побачити карту, увімкніть JavaScript. Без нього — <a href="/vulytsi/">покажчик вулиць</a>.</p></noscript>
@@ -916,15 +921,27 @@ def poshuk_karty(dn: D.Dani, vulytsi: list, tsentry: dict) -> dict:
     return {'versiia': dn.versiia, 'vulytsi': vs, 'rayony': rayony}
 
 
-def storinka_karty(dn: D.Dani, adresa_saitu: str) -> str:
+def predzavantazhennia(zastavka: dict | None) -> str:
+    """Картинку першого екрана браузер бере одразу з заголовка, а не після стилів (ZAVDANNYA-164). Тему людина могла
+    обрати сама (вона в пам'яті браузера) — тут угадуємо за темою системи; не вгадали — завантажиться ще й друга."""
+    if not zastavka:
+        return ''
+    import zastavka as Z
+    umovy = {'telefon': f'(max-width:{Z.TELEFON_DO}px)', 'komp': f'(min-width:{Z.TELEFON_DO + 0.02}px)'}
+    sys_tema = {'svitla': '(prefers-color-scheme:light)', 'temna': '(prefers-color-scheme:dark)'}
+    return ''.join(f'<link rel="preload" as="image" href="{e(url)}" media="{umovy[v]} and {sys_tema[t]}" fetchpriority="high">\n'
+                   for (v, t), url in sorted(zastavka.items()))
+
+
+def storinka_karty(dn: D.Dani, adresa_saitu: str, zastavka: dict | None = None) -> str:
     tilo = '''<section class="rozdil vuzko"><h1 class="h-mala">Карта Києва: події з судових рішень</h1>
 <p class="prymitka">Великі соти — близько 5 і 0,7 км², при наближенні — близько 0,1 км². Безкоштовно — лише числа по сотах, без адрес і описів.
 Домашнє насильство — нарівні з іншими подіями; статеві злочини й справи щодо дітей входять лише в число великих сот у групі «''' + D.HR.NAZVA['nas'] + '''».
 ''' + D.HR.NAZVA['nas'] + ''' показуємо лише числом. Дані — це те, що дійшло до суду, а не всі події.</p></section>'''
-    return storinka(shlyakh='/karta/', title='Карта Києва — події з судових рішень | Моя вулиця',
+    return storinka(shlyakh='/karta/', title='Карта Києва — події з судових рішень | Моя вулиця', dodatkovo_head=predzavantazhennia(zastavka),
                     opys='Карта Києва шестикутниками: скільки подій із судових рішень у кожній частині міста, яких видів і коли.',
                     tilo=tilo, adresa_saitu=adresa_saitu, aktyvne='karta/', pered_main=ekran_karty(dn),
-                    skrypty=('/sait/karta.js',) + SKRYPTY_IHOR)
+                    skrypty=('/sait/karta.js',))
 
 
 def storinka_404(adresa_saitu: str) -> str:
@@ -1205,13 +1222,13 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
                             ensure_ascii=False, separators=(',', ':'), sort_keys=True))
     # Перший екран головної й /karta/ — картинка карти з сотами цього випуску (ZAVDANNYA-164, MV-176); її стилі — у sait.css.
     import zastavka as Z
-    css_zastavky = Z.zibraty(soty_rivniv, kolory_tem(), vykhid / 'karta')
+    css_zastavky, fayly_zastavky = Z.zibraty(soty_rivniv, kolory_tem(), vykhid / 'karta')
     with open(vykhid / 'sait' / 'sait.css', 'a', encoding='utf-8') as f:
         f.write('\n' + css_zastavky)
     zapysaty(vykhid / 'karta' / 'poshuk.json', json.dumps(poshuk_karty(dn, vulytsi, tsentry_vulyts), ensure_ascii=False,
                                                           separators=(',', ':')))
-    zapysaty(vykhid / 'karta' / 'index.html', storinka_karty(dn, adresa_saitu))
-    zapysaty(vykhid / 'index.html', holovna(dn, vulytsi, rayony, adresa_saitu, bool(sudova_praktyka)))
+    zapysaty(vykhid / 'karta' / 'index.html', storinka_karty(dn, adresa_saitu, fayly_zastavky))
+    zapysaty(vykhid / 'index.html', holovna(dn, vulytsi, rayony, adresa_saitu, bool(sudova_praktyka), fayly_zastavky))
     zapysaty(vykhid / '404.html', storinka_404(adresa_saitu))
 
     # Будинки, райони, вітрини, оплата-заглушка, видалення, про дані (ZAVDANNYA-85).

@@ -338,10 +338,24 @@
       if (ZAPUSK) return ZAPUSK;
       PRYCHYNA = prychyna; MV.stan.zapusk = prychyna;
       if (ZASTAVKA) ZASTAVKA.style.pointerEvents = 'none';   // далі дотики — живій карті
+      ihry();
       ZAPUSK = bibliotekaKarty().then(pobuduvaty, function () { pokazatyZbii(konteiner, false); });
       return ZAPUSK;
     }
     MV.zapustyty = zapustyty;
+    // Ігри на карті — окремі скрипти (data-ihry): після завантаження сторінки, з живою картою або з натиском «Ігри».
+    var IHRY_SKR = (ekran.getAttribute('data-ihry') || '').split(' ').filter(Boolean), IHRY = false, IHRY_KLIK = false;
+    function ihry() {
+      if (IHRY || !IHRY_SKR.length) return; IHRY = true;
+      IHRY_SKR.forEach(function (src, i) {
+        var s = document.createElement('script'); s.src = src; s.async = false;   // порядок виконання — як у списку
+        if (i === IHRY_SKR.length - 1) s.onload = function () { if (IHRY_KLIK && window.MvIhry) window.MvIhry.vidkryty(); };
+        document.body.appendChild(s);
+      });
+    }
+    var knIhry = $('#fihry');
+    if (knIhry) knIhry.addEventListener('click', function () { if (!window.MvIhry) { IHRY_KLIK = true; ihry(); } });
+    if (document.readyState === 'complete') ihry(); else window.addEventListener('load', ihry, { once: true });
     if (ODRAZU) zapustyty('odrazu');
     else {
       var dotyk = function (e) { if (!(e.target.closest && e.target.closest('form.verkh, #pidkazky'))) zapustyty('dotyk'); };
