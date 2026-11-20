@@ -39,7 +39,7 @@
 
 - Тести: `tests/test_vypravlennia_177.py` (13, з браузером: «хрещятик 22», «Шулявка» → район і Enter, «Мій будинок»,
   вхід орендаря → кнопка ціни з будинком), `site/worker/testy/nemaie_budynku.test.mjs` (5), `dani-edrsr`:
-  `check_build` → `vypravlennia_nazv`. Повний набір `python -m unittest discover -s tests` — результат у PR. Змінено
+  `check_build` → `vypravlennia_nazv`. Повний набір `python -m unittest discover -s tests` — 635 тестів, усі зелені (1 пропущено, як і раніше); тести Workers у Node — 128 з 128. Змінено
   під нову поведінку 4 старі перевірки (лічильник на головній — «є в сторінці», а не «видно»; кнопки будинку; речення сусідів).
 - Справжній пробний випуск `vypusk-2026-11-08` (SHA-256 збігся з Release): сайт зібрано за 49 с без зведення будинків
   (скарг 1551 у хмарі немає). Перевірено очима: 10 сторінок районів — правильні відмінки; Хрещатик — «Печерський і
@@ -61,7 +61,7 @@
 ## PR
 
 - `moya-vulytsya`: гілка `claude/jolly-tesla-ocxlep`.
-- `dani-edrsr`: гілка `claude/jolly-tesla-ocxlep` — таблиця виправлень назв, словник місцевостей, S-М.21.
+- `dani-edrsr`: [Andriithis/dani-edrsr#98](https://github.com/Andriithis/dani-edrsr/pull/98) — таблиця виправлень назв, словник місцевостей, S-М.21.
 
 ## Прибрано
 
