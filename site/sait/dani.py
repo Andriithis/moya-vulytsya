@@ -39,7 +39,16 @@ OSTANNI_ROKY = 3
 # MV-32: безкоштовно — лише останні 3 роки. Числа за старші роки (і за події без року) не потрапляють
 # у публічні файли сайту взагалі: лише прапорець «є дані — у підписці» (ZAVDANNYA-46).
 VIDKRYTI_ROKY = ROKY[-OSTANNI_ROKY:]
-STARI_ROKY = ROKY[:-OSTANNI_ROKY]
+# ZAVDANNYA-174 (ZVIT-166, №4): «у підписці» обіцяємо лише ті старші роки, які справді є в карті підписника —
+# dani-edrsr, S-Д.8: «від 2023 року». Події, старші за PIDPYSKA_VID, не дають ні замка, ні слів «у підписці».
+# Змінить dani-edrsr межу — змінити тут (тест tests/test_sait.py звіряє з tsiny.PIDPYSKA_VID).
+PIDPYSKA_VID = 2023
+STARI_ROKY = [r for r in ROKY[:-OSTANNI_ROKY] if r >= PIDPYSKA_VID]
+
+
+def u_pidpystsi(rik) -> bool:
+    """Старший рік, який є в карті підписника (замок «у підписці»), — не відкритий і не старший за PIDPYSKA_VID."""
+    return bool(rik) and bool(STARI_ROKY) and STARI_ROKY[0] <= int(rik) <= STARI_ROKY[-1]
 
 
 def vidkryta(p) -> bool:
@@ -758,7 +767,8 @@ def soty_rivnia(podii: list, vulytsi_podii: list, varianty_slug: dict, problemy:
             lat, lon = p.lat, p.lon
         k = h3.latlng_to_cell(lat, lon, riven)
         if not vidkryta(p):
-            stari_k.add(k)
+            if u_pidpystsi(p.rik):
+                stari_k.add(k)
             continue
         s = soty.setdefault(k, {'chysla': Counter(), 'roky': Counter(), 'misiatsi': defaultdict(Counter), 'hodyny': Counter(), 'stari': False,
                                 'tsili': defaultdict(Counter), 'vulytsi': Counter(), 'z_adresoyu': 0, 'problemy': []})
@@ -810,7 +820,7 @@ def profil_vulytsi(dani: Dani, v: Vulytsia) -> dict:
     podii = [dani.podii[i] for i in v.nedavni]
     vidkryti = [p for p in podii if not p.chutlyva]
     roky = Counter(p.rik for p in podii)
-    stari = len(v.podii) > len(v.nedavni)
+    stari = any(u_pidpystsi(dani.podii[i].rik) for i in v.podii)
 
     # Що вирізняє вулицю: коефіцієнт локалізації = частка виду на вулиці / частка по місту.
     vydy = Counter(vyd_lyudskoyu(p.stattia, p.vyd) for p in vidkryti)

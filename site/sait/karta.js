@@ -817,6 +817,32 @@
           (v ? '' : ' class="nul"') + '></u><span>’' + String(r).slice(2) + '</span></div>';
       }).join('') + '</div><p class="pidpys-sir">' + (stari.length ? stari[0] + '–' + stari[stari.length - 1] + ' — у підписці · ' : '') + ost + ' — неповний рік</p>';
     }
+    // ---------- дорога до покупки з картки соти (ZAVDANNYA-174) ----------
+    // Підписник — той, хто за останні 40 днів відкривав свою карту в цьому браузері: карта підписника (вона віддається
+    // лише з дійсною підпискою) ставить мітку «mv-pidpysnyk» з часом відкриття. Це лише вибір кнопки, не доступ: доступ
+    // перевіряє сервер; підписка скінчилась — /pidpysnyk/ сам покаже «Оформити підписку».
+    var PIDPYSNYK_DNIV = 40;
+    function pidpysnyk() {
+      try { var t = +localStorage.getItem('mv-pidpysnyk'); return t > 0 && Date.now() - t < PIDPYSNYK_DNIV * 864e5; } catch (e) { return false; }
+    }
+    // Мітка входу з реклами (sait/vkhid.js) — і на кнопках картки, яку малюємо вже після завантаження сторінки.
+    function dzherelo(typove) {
+      var m = ''; try { m = sessionStorage.getItem('mv-vkhid') || ''; } catch (e) { m = ''; }
+      return /^[a-z0-9-]{1,25}$/.test(m) ? m : typove;
+    }
+    var ZUM_PIDPYSNYKA = { XL: 12, L: 13.6, S: 15.2 };
+    function knopkyPokupky(G, b) {
+      var oplata = konteiner.getAttribute('data-oplata') || 'skoro';
+      var skoro = oplata === 'tak' ? '' : '<small>Скоро — залиште пошту</small>';
+      if (pidpysnyk()) {
+        return '<a class="klav k-dali__holovna" href="' + KOREN + 'pidpysnyk/#z=' + ZUM_PIDPYSNYKA[G.id] + '/' + b.cy.toFixed(5) + '/' + b.cx.toFixed(5) +
+          '">Відкрити це місце в моїй карті</a>';
+      }
+      var tp = konteiner.getAttribute('data-tsina-pidpysky') || '', td = konteiner.getAttribute('data-tsina-dovidky') || '';
+      return '<a class="klav k-dali__holovna" href="' + KOREN + 'oplata/?tovar=pidpyska&amp;dzherelo=' + dzherelo('sota') + '">' +
+          '<span>Що саме тут було — адреси й описи' + (tp ? ' · підписка ' + esc(tp) : '') + '</span>' + skoro + '</a>' +
+        '<a class="klav" href="' + KOREN + 'miy-budynok/?dzherelo=' + dzherelo('sota') + '">Довідка про свій будинок' + (td ? ' — ' + esc(td) : '') + '</a>';
+    }
     // ZAVDANNYA-135: група подій → стаття «Судової практики» (насильство — ні: там різні статті й чутливі справи)
     var SP_HRUPY = { dtp: '124', vod: '130', kra: '185', nar: '309', por: '173' }, SP_TUT = null;
     function namalyuvatyKartku() {
@@ -853,10 +879,9 @@
         tilo += '<p class="zamok" aria-disabled="true"><span>' + ZAMOK + ' ' + chyslo(Number(p.a)) + ' ' + slovo(Number(p.a), ['подія', 'події', 'подій']) +
           ' з адресами й описами — у підписці</span></p>';
       }
-      // MV-60: тихий шлях до платного — на сторінки заглушки, що вже є
-      tilo += '<nav class="k-dali" aria-label="Більше про це місце">' +
-        '<a class="klav" href="' + KOREN + 'zahlushka/?dzherelo=sota-pidpyska#tsiny">Що саме тут було → підписка</a>' +
-        '<a class="klav" href="' + KOREN + 'zahlushka/?dzherelo=sota-analiz#tsiny">Аналіз адреси</a>' +
+      // ZAVDANNYA-174 (ZVIT-166, №2): кнопки ведуть на покупку саме цього місця, а не на заглушку. Підписнику — одразу
+      // це місце в його карті (/pidpysnyk/#z=зум/широта/довгота); не підписнику — оплата підписки й довідка про будинок.
+      tilo += '<nav class="k-dali" aria-label="Більше про це місце">' + knopkyPokupky(G, b) +
         // ZAVDANNYA-135: найчастіший вид тут → як суди Києва вирішують такі справи (покажчик «Судової практики» з пошуком)
         (SP_TUT ? '<a class="klav" href="' + KOREN + 'sudova-praktyka/?q=' + SP_TUT + '&amp;dzherelo=sota#poshuk">Як суди вирішують такі справи</a>' : '') + '</nav>';
       var mezha = 'Лише те, що дійшло до суду' + (G.id === 'S' ? ' · статеві злочини й справи щодо дітей — лише у великих сотах' : '') +

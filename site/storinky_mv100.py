@@ -181,7 +181,7 @@ class Budynky:
                 'adresa': f'{nazva_v}, {b["nomer"]}', 'lat': b['lat'], 'lon': b['lon'],
                 'skarhy': skarhy, 'skarh': sum(skarhy.values()), 'susidy': b.get('susidy'), 'susidiv': b.get('susidiv', 0),
                 'vidkryti': vidkryti, 'podii_vidkr': sum(sum(g.values()) for g in vidkryti.values()),
-                'stari': any(r_ < D.VIDKRYTI_ROKY[0] for r_ in podii),
+                'stari': any(D.u_pidpystsi(r_) for r_ in podii),   # лише роки карти підписника (ZAVDANNYA-174)
             })
         self.spysok.sort(key=lambda x: x['slug'])
         self.za_vulytseyu = defaultdict(list)

@@ -62,7 +62,10 @@ MIN_PODII_DLYA_POSHUKU = 3
 RIVNI_MISIATSI_OKREMO = (8, 9)   # Т-12: місяці цих рівнів — у soty-<рівень>-m.json (ZAVDANNYA-125)
 # MV-32: безкоштовно — останні 3 роки; старші — у підписці (сірі стовпчики з замком, без чисел).
 PERIOD_VIDKRYTYI = f'{D.VIDKRYTI_ROKY[0]}–{D.VIDKRYTI_ROKY[-1]}'
-PERIOD_ZAMKNENYI = f'{D.STARI_ROKY[0]}–{D.STARI_ROKY[-1]}'
+# Роки «у підписці» — лише ті, що є в карті підписника (D.PIDPYSKA_VID, ZAVDANNYA-174): один рік — без тире.
+PERIOD_ZAMKNENYI = (str(D.STARI_ROKY[0]) if len(D.STARI_ROKY) == 1 else f'{D.STARI_ROKY[0]}–{D.STARI_ROKY[-1]}')
+# Усі роки підписки (замкнені + відкриті) — підпис замкненої кнопки фільтра карти.
+PERIOD_PIDPYSKY = f'{(D.STARI_ROKY or D.VIDKRYTI_ROKY)[0]}–{D.VIDKRYTI_ROKY[-1]}'
 VYSOTA_ZAMKNENOHO = 36
 ZAMOK_SVG = ('<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" '
              'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect>'
@@ -843,7 +846,7 @@ def ekran_karty(dn: D.Dani) -> str:
     # Ігри на карті (≈ 215 КБ скриптів) першому екрану не потрібні: karta.js вантажить їх після завантаження сторінки,
     # з живою картою або з першим натиском «Ігри» (ZAVDANNYA-164).
     return f'''<section class="ekran-karty" aria-label="Карта Києва" data-ihry="{' '.join(SKRYPTY_IHOR)}">
-<div id="karta-mista" class="karta-povna" data-soty-7="/karta/soty-7.json" data-soty-8="/karta/soty-8.json" data-soty-9="/karta/soty-9.json" data-soty-8-m="/karta/soty-8-m.json" data-soty-9-m="/karta/soty-9-m.json" data-poshuk="/karta/poshuk.json" data-versiia="{e(dn.versiia)}"></div>
+<div id="karta-mista" class="karta-povna" data-soty-7="/karta/soty-7.json" data-soty-8="/karta/soty-8.json" data-soty-9="/karta/soty-9.json" data-soty-8-m="/karta/soty-8-m.json" data-soty-9-m="/karta/soty-9-m.json" data-poshuk="/karta/poshuk.json" data-versiia="{e(dn.versiia)}" data-oplata="{e(T.OPLATA['rezhym'])}" data-tsina-pidpysky="{e(T.tsina('pidpyska'))}" data-tsina-dovidky="{e(T.tsina('dovidka'))}"></div>
 <div class="zastavka" aria-hidden="true"></div>
 <noscript><p class="karta-bez-js">Щоб побачити карту, увімкніть JavaScript. Без нього — <a href="/vulytsi/">покажчик вулиць</a>.</p></noscript>
 <p class="karta__zboi" hidden>Підкладка карти не завантажилася — видно соти й межу Києва.</p>
@@ -867,7 +870,7 @@ def ekran_karty(dn: D.Dani) -> str:
 {hrupy}
 </ul>
 <div class="f-period" role="group" aria-label="Період">
-<button type="button" class="seg" data-period="3" aria-pressed="true">{PERIOD_VIDKRYTYI}</button><button type="button" class="seg seg--zamok" disabled title="Усі роки — у підписці">{ZAMOK_SVG} Усі роки</button>
+<button type="button" class="seg" data-period="3" aria-pressed="true">{PERIOD_VIDKRYTYI}</button><button type="button" class="seg seg--zamok" disabled title="{PERIOD_PIDPYSKY} — у підписці">{ZAMOK_SVG} {PERIOD_PIDPYSKY}</button>
 </div>
 </div>
 </div>
@@ -1218,7 +1221,7 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
                      json.dumps({'versiia': dn.versiia, 'riven': riven, 'm': misiatsi}, ensure_ascii=False,
                                 separators=(',', ':'), sort_keys=True))
         zapysaty(vykhid / 'karta' / f'soty-{riven}.json',
-                 json.dumps({'versiia': dn.versiia, 'riven': riven, 'roky': D.ROKY, 'soty': soty},
+                 json.dumps({'versiia': dn.versiia, 'riven': riven, 'roky': D.STARI_ROKY + D.VIDKRYTI_ROKY, 'soty': soty},
                             ensure_ascii=False, separators=(',', ':'), sort_keys=True))
     # Перший екран головної й /karta/ — картинка карти з сотами цього випуску (ZAVDANNYA-164, MV-176); її стилі — у sait.css.
     import zastavka as Z
