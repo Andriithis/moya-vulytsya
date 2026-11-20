@@ -393,3 +393,18 @@ test('звернення: потік підроблених — записано
   await zapyt(env, 'POST', '/api/forma/zvernennya', { tilo, zaholovky: { 'content-type': 'application/json' } });
   assert.match(env.__LYSTY.at(-1).tema, /звернення/, 'за годину — знову лист');
 });
+
+// ---------------------------------------------------------------- 5. ціна й товар з форми
+
+test('ціна лише з таблиці: сума з форми ігнорується; «додаткову» по 99 без підписки не купити', async () => {
+  const env = seredovyshche();
+  const id = await zapyt(env, 'POST', '/api/zamovlennia', { forma: { tovar: 'dovidka', budynok: '/budynok/zhylianska/5/', poshta: 'a@poshta.ua',
+    zghoda: 'tak', odrazu: 'tak', suma: '1', tsina: '1', amount: '1' } });
+  assert.equal(id.r.status, 303);
+  assert.equal(sql(env, 'SELECT suma FROM zamovlennia')[0].suma, TS.tsiny.dovidka);
+  for (const tovar of ['dodatkova', 'biznes', 'constructor', '__proto__', '']) {
+    const { r } = await zapyt(env, 'POST', '/api/zamovlennia', { forma: { tovar, budynok: '/budynok/zhylianska/5/', poshta: 'a@poshta.ua', zghoda: 'tak', odrazu: 'tak' } });
+    assert.equal(r.status, 400, tovar || 'порожньо');
+  }
+  assert.equal(sql(env, 'SELECT COUNT(*) n FROM zamovlennia')[0].n, 1);
+});
