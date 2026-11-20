@@ -118,7 +118,7 @@
 ## Перевірка
 
 - `dani-edrsr`: `python src/check_build.py` — усе гаразд.
-- Продукт: `python -m unittest discover -s tests` — 712 тестів, OK (4 пропущено — як і раніше); `node --test
+- Продукт: `python -m unittest discover -s tests` — 715 тестів, OK (4 пропущено — як і раніше); `node --test
   site/worker/testy/*.test.mjs` — 147 з 147.
 - Нові файли в гілці (перевірено `git ls-tree`): `skhema-178.sql`, `kartka_178.test.mjs`, `tests/test_vyprav_178.py`, знімок.
 
