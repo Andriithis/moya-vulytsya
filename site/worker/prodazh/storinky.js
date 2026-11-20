@@ -22,6 +22,14 @@ export function data(t) {
 export const CSP = "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; " +
   "form-action 'self' https://www.liqpay.ua; frame-ancestors 'none'; base-uri 'none'";
 
+// ZAVDANNYA-172 (ZVIT-171, п. 2; ZVIT-169): логотип — значок-сота й назва для читалки, як на сайті (site/zibraty_sait.py, ZNAK і
+// KNOPKA_TEMY). Раніше на телефоні (≤ 430 px, назва схована) посилання на головну було порожнім і невидимим.
+const ZNAK = '<svg aria-hidden="true" width="26" height="28" viewBox="0 0 26 28"><path class="lohotyp__soty" d="M13 1 L25 8 L25 20 L13 27 L1 20 L1 8 Z"></path>' +
+  '<path class="lohotyp__vnutr" d="M13 9 L18 12 L18 17 L13 20 L8 17 L8 12 Z"></path></svg>';
+const KNOPKA_TEMY = '<button type="button" class="znachok klav" data-tema-perem aria-label="Нічна тема">' +
+  '<svg class="ik-misyats" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"></path></svg>' +
+  '<svg class="ik-sontse" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg></button>';
+
 export function storinka(title, tilo, { status = 200, zaholovky = {}, kabinet = true, css = [], skrypty = [] } = {}) {
   const html = `<!doctype html>
 <html lang="uk" data-koren="/">
@@ -38,13 +46,13 @@ ${css.map((c) => `<link rel="stylesheet" href="${e(c)}">`).join('')}
 ${skrypty.map((c) => `<script src="${e(c)}" defer></script>`).join('')}
 </head>
 <body>
-<header class="shapka"><div class="shapka__vnutri"><a class="lohotyp" href="/"><span class="lohotyp__nazva">Моя вулиця</span></a>
-<nav class="menyu" aria-label="Розділи"><a href="/miy-budynok/">Мій будинок</a>${kabinet ? '<a href="/kabinet/">Кабінет</a>' : '<a href="/karta/">Карта</a>'}</nav></div></header>
+<header class="shapka"><div class="shapka__vnutri"><a class="lohotyp" href="/" aria-label="Моя вулиця — на головну">${ZNAK}<span class="lohotyp__nazva">Моя вулиця</span></a>
+<nav class="menyu" aria-label="Розділи"><a href="/miy-budynok/">Мій будинок</a>${kabinet ? '<a href="/kabinet/">Кабінет</a>' : '<a href="/karta/">Карта</a>'}</nav>${KNOPKA_TEMY}</div></header>
 <main class="storinka">
 ${tilo}
 </main>
 <footer class="pidval"><div class="pidval__vnutri">
-<p>Платежі, договори й підтримку оформлює партнер проєкту. <a href="/zahlushka/oferta.html">Оферта</a> · <a href="/zahlushka/polityka.html">Політика конфіденційності</a></p>
+<p>Платежі, договори й підтримку оформлює партнер проєкту. <a href="/zahlushka/oferta.html">Оферта</a> · <a href="/zahlushka/polityka.html">Політика конфіденційності</a> · <a href="/zahlushka/pro-nas.html">Хто ми й як написати</a> · <a href="/dostupnist/">Доступність</a></p>
 </div></footer>
 </body>
 </html>

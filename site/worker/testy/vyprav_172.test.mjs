@@ -218,3 +218,22 @@ test('листи: у листі довідки — перший висновок
   assert.match(lysty[0].tekst, /Головне: 226 скарг до 1551 — найчастіше вода \(21; у сусідніх — 15\)\./);
   assert.doesNotMatch(lysty[0].tekst, /<b>|друге/);
 });
+
+// ---------------------------------------------------------------- логотип і підвал (ZVIT-171, п. 2 і 10)
+
+test('сторінки сервера: логотип зі значком і назвою для читалки, як на сайті; кнопка теми; у підвалі — «Доступність» і «Хто ми»', async () => {
+  const { readFileSync } = await import('node:fs');
+  const env = seredovyshche();
+  for (const s of ['/kabinet/', '/oplata/?tovar=pidpyska', '/oplata/zapysaly/']) {
+    const { text } = await zapyt(env, 'GET', s);
+    assert.match(text, /<a class="lohotyp" href="\/" aria-label="Моя вулиця — на головну"><svg aria-hidden="true"/, s);
+    assert.match(text, /data-tema-perem/, s);
+    assert.match(text, /href="\/dostupnist\/">Доступність</, s);
+    assert.match(text, /href="\/zahlushka\/pro-nas.html">Хто ми/, s);
+  }
+  // значок той самий, що на сайті (site/zibraty_sait.py, ZNAK)
+  const py = readFileSync(new URL('../../zibraty_sait.py', import.meta.url), 'utf8');
+  const d = py.match(/'d="(M13 1 L25 8[^"]+)"/)[1];
+  const { text } = await zapyt(env, 'GET', '/kabinet/');
+  assert.ok(text.includes(d), 'значок сервера = значок сайту');
+});
