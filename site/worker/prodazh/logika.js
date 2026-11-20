@@ -154,11 +154,23 @@ export function potribenBudynok(tovar) {
 
 // ---------------------------------------------------------------- довідки й лічильник
 
-export async function postavytyDovidku(env, { korystuvach_id, zamovlennia_id, pidpyska_id = null, budynok, adresa, rezhym, parametry = null, poshtovkh = true }) {
+/**
+ * Поставити довідку в чергу. mezha — з ліміту підписки ({ vid, dovidok }): довідка пишеться, лише якщо цього місяця підписки
+ * взято менше за dovidok, — перевірка й запис одним реченням SQL (ZAVDANNYA-156: два одночасні запити не візьмуть 2 з 1).
+ * Повертає номер довідки або null (ліміт уже вичерпано).
+ */
+export async function postavytyDovidku(env, { korystuvach_id, zamovlennia_id, pidpyska_id = null, budynok, adresa, rezhym, parametry = null, poshtovkh = true, mezha = null }) {
   const id = 'd' + vypadkovyi(15);
-  await zrobyty(env, `INSERT INTO dovidky (id, korystuvach_id, zamovlennia_id, pidpyska_id, budynok, adresa, rezhym, parametry, stvoreno)
-                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, id, korystuvach_id, zamovlennia_id, pidpyska_id, budynok || '', adresa, rezhym,
-  parametry ? (typeof parametry === 'string' ? parametry : JSON.stringify(parametry)) : null, teper(env));
+  const znach = [id, korystuvach_id, zamovlennia_id, pidpyska_id, budynok || '', adresa, rezhym,
+    parametry ? (typeof parametry === 'string' ? parametry : JSON.stringify(parametry)) : null, teper(env)];
+  const r = mezha
+    ? await zrobyty(env, `INSERT INTO dovidky (id, korystuvach_id, zamovlennia_id, pidpyska_id, budynok, adresa, rezhym, parametry, stvoreno)
+        SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?
+        WHERE (SELECT COUNT(*) FROM dovidky WHERE pidpyska_id = ? AND stvoreno >= ? AND status != 'pomylka') < ?`,
+      ...znach, pidpyska_id, mezha.vid, mezha.dovidok)
+    : await zrobyty(env, `INSERT INTO dovidky (id, korystuvach_id, zamovlennia_id, pidpyska_id, budynok, adresa, rezhym, parametry, stvoreno)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, ...znach);
+  if (mezha && !r.meta?.changes) return null;
   if (poshtovkh) await shturhnuty(env, 'dovidka');      // видавач у GitHub Actions (ZAVDANNYA-133): довідку ставлять лише після оплати
   return id;
 }
@@ -206,7 +218,9 @@ export async function vzyatyDovidku(env, korystuvach_id, budynok, adresa) {
   for (const p of ps) {
     if (p.zalyshok > 0 && (p.tovar !== 'osbb' || p.budynok === budynok)) {
       const rezhym = p.tovar === 'osbb' ? 'osbb' : 'dovidka';
-      return { dovidka: await postavytyDovidku(env, { korystuvach_id, zamovlennia_id: p.zamovlennia_id, pidpyska_id: p.id, budynok, adresa, rezhym }) };
+      const id = await postavytyDovidku(env, { korystuvach_id, zamovlennia_id: p.zamovlennia_id, pidpyska_id: p.id, budynok, adresa, rezhym,
+        mezha: { vid: p.misiats_vid, dovidok: p.dovidok } });
+      if (id) return { dovidka: id };      // null — паралельний запит щойно взяв останню: пробуємо далі (пакет, докупити)
     }
   }
   for (const z of pakety) {
@@ -447,7 +461,9 @@ export async function vzyatySpDovidku(env, korystuvach_id, { parametry, opys }) 
   const p = (await stanPidpysok(env, korystuvach_id)).find((x) => x.diie && x.tovar === 'spyurist');
   if (!p) return { nemaie: true };
   if (p.zalyshok <= 0) return { vycherpano: true };
-  return { dovidka: await postavytyDovidku(env, { korystuvach_id, zamovlennia_id: p.zamovlennia_id, pidpyska_id: p.id, budynok: '', adresa: opys, rezhym: 'sp', parametry }) };
+  const id = await postavytyDovidku(env, { korystuvach_id, zamovlennia_id: p.zamovlennia_id, pidpyska_id: p.id, budynok: '', adresa: opys, rezhym: 'sp', parametry,
+    mezha: { vid: p.misiats_vid, dovidok: p.dovidok } });
+  return id ? { dovidka: id } : { vycherpano: true };
 }
 
 // ---------------------------------------------------------------- щомісячна довідка ОСББ (ZAVDANNYA-143; MV-140, S-Зв.5 dani-edrsr)

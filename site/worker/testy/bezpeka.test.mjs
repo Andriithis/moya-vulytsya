@@ -143,3 +143,37 @@ test('підписка LiqPay: «subscribed» і «success» на першу о�
   await liqpay(env, { ...spilne, status: 'success', payment_id: 3, end_date: env.__CHAS() });
   assert.ok(sql(env, 'SELECT diie_do FROM pidpysky')[0].diie_do > pershyi, 'чергове списання продовжує');
 });
+
+// ---------------------------------------------------------------- 2. залишок: подвійне списання (гонка)
+
+test('гонка: два одночасні «Використати залишок» з підписки (1 на місяць) — одна довідка, друга — до оплати', async () => {
+  const env = seredovyshche();
+  const id = await zamovyty(env, 'pidpyska', null);
+  const zam = sql(env, 'SELECT * FROM zamovlennia WHERE id = ?', id)[0];
+  await spovistyty(env, podiiaTestu(env, zam, 'oplata', 'x'));
+  const kuka = await uviity(env);
+  const forma = { budynok: '/budynok/zhylianska/5/' };
+  await Promise.all([1, 2, 3].map(() => zapyt(env, 'POST', '/kabinet/dovidka', { kuka, forma })));
+  assert.equal(sql(env, 'SELECT COUNT(*) n FROM dovidky')[0].n, 1, 'з підписки — лише одна довідка на місяць');
+});
+
+test('гонка: пакет «3 довідки» — п\'ять одночасних запитів дають рівно 3', async () => {
+  const env = seredovyshche();
+  const zam = sql(env, 'SELECT * FROM zamovlennia WHERE id = ?', await zamovyty(env, 'try', '/budynok/zhylianska/5/'))[0];
+  await spovistyty(env, podiiaTestu(env, zam, 'oplata', 'x'));
+  const kuka = await uviity(env);
+  await Promise.all([1, 2, 3, 4, 5].map(() => zapyt(env, 'POST', '/kabinet/dovidka', { kuka, forma: { budynok: '/budynok/obolonskyi/16/' } })));
+  assert.equal(sql(env, 'SELECT COUNT(*) n FROM dovidky')[0].n, 3);
+  assert.equal(sql(env, 'SELECT zalyshok FROM zamovlennia')[0].zalyshok, 0);
+});
+
+test('гонка: ліміт юриста (3 на місяць) — шість одночасних запитів дають рівно 3', async () => {
+  const env = seredovyshche();
+  const k = await L.korystuvach(env, 'yurist@poshta.ua');
+  const { zam } = await L.stvorytyZamovlennia(env, { tovar: 'spyurist', korystuvach_id: k.id, servis: 'test' });
+  await spovistyty(env, podiiaTestu(env, zam, 'oplata', 'x'));
+  const v = { parametry: { stattia: 'ст. 130 КУпАП', sud: '', chastyna: '' }, opys: 'ст. 130' };
+  const r = await Promise.all([1, 2, 3, 4, 5, 6].map(() => L.vzyatySpDovidku(env, k.id, v)));
+  assert.equal(r.filter((x) => x.dovidka).length, TS.dovidok.spyurist);
+  assert.equal(r.filter((x) => x.vycherpano).length, 6 - TS.dovidok.spyurist);
+});
