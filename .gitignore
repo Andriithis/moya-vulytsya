@@ -87,6 +87,8 @@ site/hra/vulytsia-dnia.json
 !site/storinky_sp.py
 !site/storinky_mistsia.py
 !site/storinky_vkhodiv.py
+!site/storinka_doslidnykam.py
+!site/doslidnykam.json
 !site/tsiny.py
 !site/khostynh.py
 !site/kartynky.py
@@ -111,3 +113,4 @@ site/prodazh/__pycache__/
 video/vyhid/
 *.mp4
 _vykladka/
+avtorstvo/znimky/

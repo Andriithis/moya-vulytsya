@@ -11,19 +11,20 @@ name: Автопостинг
 
 on:
   schedule:
-    # Щогодини о :23 з 06 до 17 за UTC = з 08–09 до 19–20 за Києвом (взимку UTC+2, влітку UTC+3):
-    # дописи Telegram о 09:00, ролики о 12:00, 13:00 і 18:00 (avtopostynh/rozklad.py), повтори через 1–4 год.
+    # Щогодини о :23 з 06 до 19 за UTC = з 08–09 до 21–22 за Києвом (взимку UTC+2, влітку UTC+3):
+    # дописи Telegram о 09:00, ролики о 12:00, 13:00 і 18:00 (avtopostynh/rozklad.py), повтори через 1–4 год;
+    # ролики з черги cherha/ — о слотах MV_ROLYKY_SLOTY (типово 18:00 за Києвом, ZAVDANNYA-159).
     # Не :00 — у цю хвилину GitHub найбільше затримує запуски за розкладом.
-    - cron: '23 6-17 * * *'
+    - cron: '23 6-19 * * *'
   workflow_dispatch:
     inputs:
       komanda:
         description: 'Що зробити'
         type: choice
-        options: [hodyna, prybraty, vidnovyty, zhurnal]
+        options: [hodyna, prybraty, vidnovyty, zhurnal, tiktok]
         default: hodyna
       id:
-        description: 'prybraty: ID з таблиці PEREHLIAD.md'
+        description: 'prybraty: ID з таблиці PEREHLIAD.md; tiktok: id ролика з TikTok.md (напр. 129-t5)'
         required: false
       prychyna:
         description: 'prybraty: чому (напр. «видно номер будинку»)'
@@ -36,6 +37,9 @@ on:
         description: 'prybraty: той самий ролик з усіх мереж'
         type: boolean
         default: false
+      posylannia:
+        description: 'tiktok: посилання на поставлений ролик (https://www.tiktok.com/@…/video/…)'
+        required: false
       merezha:
         description: 'vidnovyty: яку мережу відновити'
         type: choice
@@ -67,6 +71,8 @@ jobs:
       MISTSE: ${{ inputs.mistse }}
       USI_MEREZHI: ${{ inputs.usi_merezhi }}
       MEREZHA: ${{ inputs.merezha }}
+      POSYLANNIA: ${{ inputs.posylannia }}
+      MV_ROLYKY_SLOTY: ${{ vars.MV_ROLYKY_SLOTY || '18:00' }}
     steps:
       - name: Код «Моєї вулиці» (публічний репозиторій, гілка main)
         uses: actions/checkout@v4
@@ -74,6 +80,13 @@ jobs:
           repository: Andriithis/moya-vulytsya
           ref: main
           path: kod
+          persist-credentials: false
+
+      - name: Черга роликів (тека cherha/ цього приватного репозиторію, ZAVDANNYA-159)
+        uses: actions/checkout@v4
+        with:
+          path: repo
+          sparse-checkout: cherha
           persist-credentials: false
 
       - uses: actions/setup-python@v5
@@ -128,6 +141,12 @@ jobs:
             echo "::error::Немає входу з Release, а режим не пробний — зупиняюсь, щоб не публікувати заглушку"; exit 1
           fi
 
+      - name: Черга роликів — до входу
+        run: |
+          mkdir -p vkhid/media
+          rm -rf vkhid/media/cherha
+          if [ -d repo/cherha ]; then cp -a repo/cherha vkhid/media/cherha; fi
+
       - name: Запуск
         env:
           MV_TELEGRAM_TOKEN: ${{ secrets.MV_TELEGRAM_TOKEN }}
@@ -139,17 +158,28 @@ jobs:
           MV_INSTAGRAM_ID: ${{ secrets.MV_INSTAGRAM_ID }}
         run: |
           [ -n "$MV_ADRESA_SAITU" ] || unset MV_ADRESA_SAITU
+          zag=(--stan stan --vkhid vkhid --tiktok-teka tiktok-dnia)
           case "$KOMANDA" in
             prybraty)
               dod=()
               [ "$MISTSE" = "true" ] && dod+=(--mistse)
               [ "$USI_MEREZHI" = "true" ] && dod+=(--usi-merezhi)
-              python kod/avtopostynh/khmara.py --stan stan --vkhid vkhid prybraty "$ID_" --prychyna "$PRYCHYNA" "${dod[@]}" ;;
+              python kod/avtopostynh/khmara.py "${zag[@]}" prybraty "$ID_" --prychyna "$PRYCHYNA" "${dod[@]}" ;;
             vidnovyty)
-              python kod/avtopostynh/khmara.py --stan stan --vkhid vkhid vidnovyty --merezha "$MEREZHA" ;;
+              python kod/avtopostynh/khmara.py "${zag[@]}" vidnovyty --merezha "$MEREZHA" ;;
+            tiktok)
+              python kod/avtopostynh/khmara.py "${zag[@]}" tiktok "$ID_" --posylannia "$POSYLANNIA" ;;
             *)
-              python kod/avtopostynh/khmara.py --stan stan --vkhid vkhid "$KOMANDA" ;;
+              python kod/avtopostynh/khmara.py "${zag[@]}" "$KOMANDA" ;;
           esac
+
+      - name: Файли TikTok на найближчі дні — у вкладення запуску (чекліст — TikTok.md у гілці стану)
+        if: always() && hashFiles('tiktok-dnia/**') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: tiktok-${{ github.run_number }}
+          path: tiktok-dnia/
+          retention-days: 7
 
       - name: Записати стан у гілку avtopostynh-stan (одним комітом, без історії)
         if: always()
@@ -158,7 +188,7 @@ jobs:
         run: |
           [ -f stan/cherha.db ] || { echo "стану немає — нічого записувати"; exit 0; }
           mkdir zberehty
-          for f in cherha.db PEREHLIAD.md pachky; do [ -e "stan/$f" ] && cp -a "stan/$f" zberehty/; done
+          for f in cherha.db PEREHLIAD.md TikTok.md pachky; do [ -e "stan/$f" ] && cp -a "stan/$f" zberehty/; done
           cd zberehty
           git init -q -b avtopostynh-stan
           git -c user.name="avtopostynh" -c user.email="avtopostynh@users.noreply.github.com" add -A
