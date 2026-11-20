@@ -301,7 +301,7 @@ def storinka(*, shlyakh: str, title: str, opys: str, tilo: str, adresa_saitu: st
     if len(opys) > 170:
         opys = opys[:169].rsplit(' ', 1)[0].rstrip(',;:—–-') + '…'
     css_mapy = '<link rel="stylesheet" href="/sait/biblioteka/maplibre-gl.css">\n' if mapa else ''
-    js = ''.join(f'<script src="{s}"></script>\n' for s in skrypty)
+    js = ''.join(f'<script src="{s}"></script>\n' for s in skrypty + ('/sait/vkhid.js',))  # мітки джерела (ZAVDANNYA-153)
     robots = '' if indeksuvaty else '<meta name="robots" content="noindex, follow">\n'
     return f'''<!doctype html>
 <html lang="uk" data-koren="/">
@@ -972,7 +972,7 @@ def zapysaty(shlyakh: Path, tekst: str) -> None:
 def kopiyuvaty_spilne(vykhid: Path) -> None:
     sait = vykhid / 'sait'
     (sait / 'shryfty').mkdir(parents=True, exist_ok=True)
-    for f in ('karta.js', 'poshuk.js', 'tema.js', 'oplata.js', 'sp.js', 'sp.css', 'budynok-pole.js'):
+    for f in ('karta.js', 'poshuk.js', 'tema.js', 'oplata.js', 'sp.js', 'sp.css', 'budynok-pole.js', 'vkhid.js', 'vkhid.css'):
         shutil.copyfile(DZHERELO / 'sait' / f, sait / f)
     for f in ('hra-yadro.js', 'vulytsia-yadro.js'):          # спільне ядро ігор (ZAVDANNYA-117)
         shutil.copyfile(DZHERELO / 'hra' / f, sait / f)
@@ -1159,6 +1159,7 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
     # Будинки, райони, вітрини, оплата-заглушка, видалення, про дані (ZAVDANNYA-85).
     pachky = KH.Pachky(len(bud.spysok)) if (bud and khostynh == 'workers') else None
     adresy += M.zibraty_vse(dn, rayony, za_rayonom, bud, vykhid, adresa_saitu, pachky, len(vulytsi), mistsia_rayonu)
+    import storinky_vkhody as VK; adresy += VK.zibraty(dn, bud, vykhid, adresa_saitu)   # входи під рекламу (ZAVDANNYA-153)
     a_mists, media_mists_m, _ = SM.zibraty(dn, vykhid, adresa_saitu, bud, media, mistsia)
     adresy += a_mists
     media_mists += media_mists_m

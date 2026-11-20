@@ -1,0 +1,41 @@
+/* Сторінки-входи під рекламу (ZAVDANNYA-153): спершу потреба й пошук на першому екрані, потім уривок довідки й ціна.
+   Лише змінні системи дизайну (docs/STYL.md): індиго й м'ята, кнопки-клавіші, жодного червоного. */
+
+.vkhid { display: flex; flex-direction: column; gap: 40px; }
+.vkhid__ekran { display: flex; flex-direction: column; gap: 14px; max-width: 680px; }
+.vkhid__ekran h1 { margin: 0; font-size: 40px; line-height: 1.12; font-weight: 700; letter-spacing: -0.5px; }
+.vkhid__potreba { margin: 0; font-size: 18px; color: var(--ink-2); max-width: 620px; }
+.vkhid__poshuk { margin-top: 6px; }
+.vkhid__poshuk input { font-size: 18px; padding: 15px 16px; border-color: var(--accent); }
+.vkhid__pole { display: block; margin: 0 0 6px; font-size: 14px; font-weight: 600; color: var(--ink-2); }
+.vkhid__tsiny { margin: 0; font-size: 14px; color: var(--muted); }
+
+/* Уривок довідки — як верх справжньої довідки: адреса, три висновки */
+.vkhid__urivok { margin: 0; display: flex; flex-direction: column; gap: 10px; max-width: 680px; padding: 18px 20px;
+  background: var(--surface); border: 1.5px solid var(--mezha); border-radius: var(--radius-l); box-shadow: 0 3px 0 var(--bort); }
+.vkhid__adresa { margin: 0; font-size: 20px; line-height: 26px; font-weight: 700; color: var(--ink); }
+.vkhid__urivok ol { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; font-size: 16px; color: var(--ink); }
+.vkhid__urivok ol li::marker { color: var(--accent); font-weight: 700; }
+.vkhid__zastereh { margin-top: 4px; }
+
+/* Варіант B: пошук і уривок поруч */
+.vkhid__dvi { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 32px; align-items: start; }
+.vkhid__dvi .vkhid__ekran h1 { font-size: 36px; }
+
+/* Варіант C: три питання */
+.vkhid__pytannia { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; font-size: 17px; color: var(--ink-2); }
+.vkhid__pytannia li { padding-left: 26px; position: relative; }
+.vkhid__pytannia li::before { content: ''; position: absolute; left: 0; top: 6px; width: 14px; height: 14px; background: var(--accent);
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
+
+@media (max-width: 760px) {
+  .vkhid { gap: 32px; }
+  .vkhid__ekran { gap: 10px; }
+  .vkhid__ekran h1, .vkhid__dvi .vkhid__ekran h1 { font-size: 28px; line-height: 1.15; letter-spacing: -0.3px; }
+  .vkhid__potreba { font-size: 16px; }
+  .vkhid__pytannia { font-size: 15px; }
+  .vkhid__dvi { grid-template-columns: 1fr; gap: 20px; }
+  .vkhid__urivok { padding: 14px 16px; }
+  .vkhid__urivok ol { font-size: 15px; }
+  .vkhid__adresa { font-size: 18px; }
+}
