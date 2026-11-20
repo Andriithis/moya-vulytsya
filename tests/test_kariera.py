@@ -140,9 +140,43 @@ class Yadro(unittest.TestCase):
                  "return [n.map(x=>x.doc),z,n.map(x=>x.stattia),c,Y.kodRezultatu(k,[true,true,true,false]),Y.rozibratyKod(D,'zzz.!!').length]")
         self.assertEqual(r[0], r[1], 'посилання відкриває той самий набір у тому самому порядку')
         self.assertEqual(sorted(r[2]), ['КК 309', 'КК 309', 'КУпАП 130', 'КУпАП 130'], 'рівно між статтями')
-        self.assertRegex(r[3], r'^3/4-[0-9a-z]+$')
+        self.assertRegex(r[3], r'^3/4-[0-9a-z]{2}-[0-9a-z]{3}$')
         self.assertNotEqual(r[3], r[4], 'код залежить від того, які саме відповіді правильні')
         self.assertEqual(r[5], 0)
+
+    def test_kod_rezultatu_z_krokamy(self):
+        """ZAVDANNYA-152: код несе крок помилки по кожній справі; чужий чи переписаний з помилкою — не дійсний."""
+        r = node("const n=Y.nabir(D,{kilkist:7,zerno:'z'});const k=Y.kodNaboru(n);const v=[0,1,0,2,3,0,0];"
+                 "const c=Y.kodRezultatu(k,v);const x=Y.rozibratyRezultat(k,c);"
+                 "const chuzhyi=Y.rozibratyRezultat(Y.kodNaboru(n.slice(1)),c).dijsnyi;"
+                 "const zipsovanyi=Y.rozibratyRezultat(k,c.replace(/^4/,'5')).dijsnyi;"
+                 "return [c,x,chuzhyi,zipsovanyi,Y.rozibratyRezultat(k,'привіт'),Y.krokPomylky({vse:false,kodeks:true,stattia:false})]")
+        self.assertRegex(r[0], r'^4/7-[0-9a-z]{4}-[0-9a-z]{3}$')
+        self.assertEqual(r[1], {'pravylno': 4, 'n': 7, 'kroky': [0, 1, 0, 2, 3, 0, 0], 'dijsnyi': True})
+        self.assertFalse(r[2], 'код з іншого набору')
+        self.assertFalse(r[3], 'бал переписано вручну')
+        self.assertIsNone(r[4])
+        self.assertEqual(r[5], 2)
+
+    def test_tablytsia_hrupy(self):
+        r = node("const n=Y.nabir(D,{statti:['КУпАП 130','КК 309'],kilkist:4,zerno:'h'});const k=Y.kodNaboru(n);"
+                 "const t=Y.tablytsiaHrupy(D,k,'Іваненко Оля '+Y.kodRezultatu(k,[0,0,2,0])+'\\nПетренко: '+Y.kodRezultatu(k,[1,0,2,3])+"
+                 "'\\nСидоренко 4/4-0000-abc\\nпросто текст');"
+                 "return [t.studenty.map(s=>[s.imia,!!s.r]),t.spravy.map(s=>[s.pravylno,s.z,s.kroky]),t.nevirni,t.statti.length]")
+        self.assertEqual(r[0], [['Іваненко Оля', True], ['Петренко', True], ['Сидоренко', False]])
+        self.assertEqual(r[1][2], [0, 2, {'1': 0, '2': 2, '3': 0}], 'третю справу обоє — інша стаття')
+        self.assertEqual(r[1][0], [1, 2, {'1': 1, '2': 0, '3': 0}])
+        self.assertEqual(r[2], 2, 'вигаданий код і рядок без коду')
+        self.assertEqual(r[3], 2)
+
+    def test_temy_zaniat(self):
+        r = node("return [Y.N.temy.length,Y.temy(D).map(t=>[t.id,t.statti]),Y.N.temy.every(t=>t.rozriznyaie&&t.statti.length>=2)]")
+        self.assertGreaterEqual(r[0], 8)
+        self.assertLessEqual(r[0], 12)
+        self.assertTrue(r[2])
+        ids = dict((a, b) for a, b in r[1])
+        self.assertEqual(ids.get('dtp-spianinnia'), ['КУпАП 124', 'КУпАП 130'])
+        self.assertNotIn('tilesni', ids, 'тема без справ щонайменше двох статей — не показується')
 
     def test_zachatok_kvalifikuy(self):
         skrypt = (f"const Y=require({json.dumps(str(KAR / 'kariera-yadro.js'))});"
@@ -220,7 +254,7 @@ class Henerator(unittest.TestCase):
             with lzma.open(tmp / 't' / '2025-05.jsonl.xz', 'wt', encoding='utf-8') as fh:
                 for doc in ('1', '2', '3'):
                     fh.write(json.dumps({'doc_id': doc, 'tekst': TEKST_130}, ensure_ascii=False) + '\n')
-            d = K.zibraty(tmp / 'events.db', [tmp / 't' / '2025-05.jsonl.xz'])
+            d = K.zibraty(tmp / 'events.db', [tmp / 't' / '2025-05.jsonl.xz'], log=lambda *a: None)
         self.assertEqual(d['vypusk'], 'events-2026-11-08')
         self.assertEqual([s[0] for s in d['spravy']], ['1'], 'домашнє насильство й справа з неповнолітнім — поза грою')
         s = dict(zip(d['pole'], d['spravy'][0]))
@@ -228,6 +262,46 @@ class Henerator(unittest.TestCase):
         self.assertNotRegex(s['fabula'], r'ОСОБА_|22')
         self.assertIn('тобто', s['chomu'])
         self.assertEqual(d['statti']['КУпАП 130']['riven'], 1)
+
+    def test_skasovani_v_apeliatsii_poza_hroiu(self):
+        """MV-17, ZAVDANNYA-152: скасоване чи змінене вищим судом і видалене за зверненням — не йде; «без змін» — йде."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            con = sqlite3.connect(tmp / 'events.db')
+            con.executescript(
+                'CREATE TABLE release(versiia TEXT, podii INT, khesh_vkhodu TEXT);'
+                "INSERT INTO release VALUES('events-2026-12-01',5,'x');"
+                'CREATE TABLE document(doc_id TEXT, data_rishennia TEXT, url TEXT);'
+                'CREATE TABLE event(event_id TEXT, doc_id TEXT, stattia TEXT, fabula TEXT, vyd TEXT, chutlyva INT);'
+                'CREATE TABLE skasuvannia(doc_id TEXT, rishennia_vyshchoho TEXT, data TEXT, naslidok TEXT, kintsevyi_stan TEXT, pro_tse TEXT);'
+                'CREATE TABLE withdrawal(doc_id TEXT, data_zvernennia TEXT, prychyna TEXT);'
+                "INSERT INTO skasuvannia VALUES('2','a2',NULL,'novyi_rozghliad','',NULL),('3','a3',NULL,'zmina','',NULL),"
+                "('4','a4',NULL,'bez_zmin','',NULL);"
+                "INSERT INTO withdrawal VALUES('5','2026-11-01','звернення');")
+            fab = ('Особа ОСОБА_1 керувала автомобілем у стані алкогольного сп`яніння по вул. Хрещатик, 22 у м. Києві, '
+                   'повторно протягом року, від огляду не відмовлялась, результат огляду — 1,2 проміле.')
+            for doc in '12345':
+                con.execute('INSERT INTO document VALUES(?,?,?)', (doc, '2025-05-01', f'https://reyestr.court.gov.ua/Review/{doc}'))
+                con.execute('INSERT INTO event VALUES(?,?,?,?,?,?)',
+                            (doc + '-1', doc, "ст.130 КУпАП · керування у стані сп'яніння", fab, 'ДОР', 0))
+            con.commit()
+            con.close()
+            (tmp / 't').mkdir()
+            with lzma.open(tmp / 't' / '2025-05.jsonl.xz', 'wt', encoding='utf-8') as fh:
+                for doc in '12345':
+                    fh.write(json.dumps({'doc_id': doc, 'tekst': TEKST_130}, ensure_ascii=False) + '\n')
+            zhurnal = []
+            d = K.zibraty(tmp / 'events.db', [tmp / 't' / '2025-05.jsonl.xz'], log=zhurnal.append)
+        self.assertEqual(sorted(s[0] for s in d['spravy']), ['1', '4'])
+        self.assertIn('скасованих чи змінених вищим судом: 2', d['skasovani'])
+        self.assertIn('видалених за зверненням: 1', zhurnal[0])
+
+    def test_bez_tablytsi_skasuvan_kazhe_vholos(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            con = sqlite3.connect(Path(tmp) / 'e.db')
+            con.execute('CREATE TABLE event(doc_id TEXT)')
+            self.assertEqual(K.poza_skasovani(con)[0], set())
+            self.assertIn('не відсіяно', K.poza_skasovani(con)[1])
 
 
 class Mezhi(unittest.TestCase):
@@ -247,7 +321,8 @@ class Mezhi(unittest.TestCase):
             self.assertIsNone(zab.search(vydyme), f)
 
     def test_ne_yurydychna_dopomoha(self):
-        self.assertIn('Навчання, не юридична допомога', (KAR / 'index.html').read_text(encoding='utf-8'))
+        # і на окремій сторінці, і в карті — підвал малює сам модуль гри
+        self.assertIn('Навчання, не юридична допомога', (KAR / 'kariera.js').read_text(encoding='utf-8'))
 
     def test_bez_vbudovanykh_styliv(self):
         for f in ('index.html', 'kariera.js'):
@@ -255,7 +330,7 @@ class Mezhi(unittest.TestCase):
 
     def test_zminni_dyzainu_yak_u_hri(self):
         hra = (KORIN / 'site' / 'hra' / 'hra.css').read_text(encoding='utf-8')
-        kar = (KAR / 'kariera.css').read_text(encoding='utf-8')
+        kar = (KAR / 'kariera-storinka.css').read_text(encoding='utf-8')
         z = lambda t: dict(re.findall(r'(--[\w-]+):\s*(#[0-9A-Fa-f]{6})', t.split('* {')[0]))
         self.assertEqual(z(kar), z(hra))
 

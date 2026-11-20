@@ -16,6 +16,7 @@
   /miy-budynok/, /osbb/, /sudova-praktyka/, /biznes/   вітрини (ZAVDANNYA-85)
   /sudova-praktyka/<kupap|kk>/<номер>/  сторінки статей (з --sudova-praktyka; ZAVDANNYA-111, MV-122)
   /oplata/                  оплата-заглушка «залиште пошту»; /vydalyty/, /pro-dani/ — видалення й про дані
+  /doslidnykam/             «Дані для дослідників» — відкритий набір чисел (site/storinka_doslidnykam.py, ZAVDANNYA-158)
   /zahlushka/               заглушка з формою і грою (site/zahlushka/zibraty.py, без змін)
   sitemap.xml (або індекс sitemap-N.xml, якщо адрес більше 45 000), robots.txt, 404.html
   manifest.webmanifest      сайт як застосунок; /.well-known/assetlinks.json — підтвердження застосунку Android,
@@ -301,7 +302,7 @@ def storinka(*, shlyakh: str, title: str, opys: str, tilo: str, adresa_saitu: st
     if len(opys) > 170:
         opys = opys[:169].rsplit(' ', 1)[0].rstrip(',;:—–-') + '…'
     css_mapy = '<link rel="stylesheet" href="/sait/biblioteka/maplibre-gl.css">\n' if mapa else ''
-    js = ''.join(f'<script src="{s}"></script>\n' for s in skrypty)
+    js = ''.join(f'<script src="{s}"></script>\n' for s in skrypty + ('/sait/vkhid.js',))   # мітка входу з реклами (ZAVDANNYA-153)
     robots = '' if indeksuvaty else '<meta name="robots" content="noindex, follow">\n'
     return f'''<!doctype html>
 <html lang="uk" data-koren="/">
@@ -343,7 +344,7 @@ def storinka(*, shlyakh: str, title: str, opys: str, tilo: str, adresa_saitu: st
 <p>Дані — з рішень судів у Єдиному державному реєстрі судових рішень. Це лише те, що дійшло до суду, а не всі події на вулиці.</p>
 <p>Колір і числа показують лише кількість подій у даних — це не оцінка вулиці, будинку чи району. Ми не стверджуємо причин і не прогнозуємо.</p>
 <p><a href="/miy-budynok/">Мій будинок</a> · <a href="/osbb/">Для ОСББ</a> · <a href="/sudova-praktyka/">Судова практика</a> · <a href="/biznes/">Для бізнесу</a> · <a href="/rayony/">Райони</a> · <a href="/karta/?ihry">Ігри</a></p>
-<p><a href="/pro-dani/">Як ми працюємо з даними</a> · <a href="/vydalyty/">Видалити або виправити подію</a> · <a href="/zahlushka/polityka.html">Політика конфіденційності</a> · <a href="/zahlushka/oferta.html">Оферта</a> · Карта: <a href="https://www.openstreetmap.org/copyright">© учасники OpenStreetMap</a></p>
+<p><a href="/pro-dani/">Як ми працюємо з даними</a> · <a href="/doslidnykam/">Дані для дослідників</a> · <a href="/vydalyty/">Видалити або виправити подію</a> · <a href="/zahlushka/polityka.html">Політика конфіденційності</a> · <a href="/zahlushka/oferta.html">Оферта</a> · Карта: <a href="https://www.openstreetmap.org/copyright">© учасники OpenStreetMap</a></p>
 </div>
 </footer>
 {js}{ANALITYKA}</body>
@@ -781,7 +782,8 @@ DZHERELA_KARTY = ('Підкладка: <a href="https://openfreemap.org" target=
 # Ігри в карті (ZAVDANNYA-117): значок «Ігри» — сота з зірочкою; дані ігор — /ihry/*.json (збирає zibraty_ihry).
 IHRY_IK = svg_html('<path d="M12 3 19.8 7.5V16.5L12 21 4.2 16.5V7.5Z"/><path d="m12 8.6 1.1 2.3 2.5.3-1.8 1.7.5 2.5-2.3-1.2-2.3 1.2.5-2.5-1.8-1.7 2.5-.3Z"/>', 22)
 SKRYPTY_IHOR = ('/sait/hra-yadro.js', '/sait/vulytsia-yadro.js', '/sait/ihry-yadro.js', '/sait/litopys-yadro.js', '/sait/litopys.js',
-                '/sait/ihry.js')   # «Літопис міста» — у панелі ігор (ZAVDANNYA-141)
+                '/sait/kariera-yadro.js', '/sait/kariera.js',
+                '/sait/ihry.js')   # «Літопис міста» (ZAVDANNYA-141) і «Кваліфікуй: кар'єра» (ZAVDANNYA-152) — у панелі ігор
 IHRY_DANI: dict = {}
 
 
@@ -935,6 +937,11 @@ def zibraty_ihry(dn: D.Dani, vykhid: Path, koloda: Path | None, baza: Path | Non
     kv.pop('dzherelo_poroha', None)   # службова примітка для перевірки (ZAVDANNYA-123), на сайт не йде
     zapysaty(tsil / 'kvalifikuy.json', json.dumps(kv, ensure_ascii=False, separators=(',', ':')))
     IHRY_DANI['kvalifikuy'] = '/ihry/kvalifikuy.json'
+    # «Кваліфікуй: кар'єра» (ZAVDANNYA-152): справи з випуску й текстів (kariera.py, поза git); немає — гра на зачатку kvalifikuy.json
+    kar = DZHERELO / 'ihry' / 'kariera' / 'kariera.json'
+    if kar.exists():
+        shutil.copyfile(kar, tsil / 'kariera.json')
+        IHRY_DANI['kariera'] = '/ihry/kariera.json'
     shutil.copyfile(DZHERELO / 'ihry' / 'nalashtuvannia.json', tsil / 'nalashtuvannia.json')
     IHRY_DANI['nalashtuvannia'] = '/ihry/nalashtuvannia.json'
     gotova = KH_.pidhotuvaty(KH_.prochytaty(koloda or KH_.DEMO))
@@ -972,7 +979,7 @@ def zapysaty(shlyakh: Path, tekst: str) -> None:
 def kopiyuvaty_spilne(vykhid: Path) -> None:
     sait = vykhid / 'sait'
     (sait / 'shryfty').mkdir(parents=True, exist_ok=True)
-    for f in ('karta.js', 'poshuk.js', 'tema.js', 'oplata.js', 'sp.js', 'sp.css', 'budynok-pole.js'):
+    for f in ('karta.js', 'poshuk.js', 'tema.js', 'oplata.js', 'sp.js', 'sp.css', 'budynok-pole.js', 'vkhid.js', 'vkhid.css'):
         shutil.copyfile(DZHERELO / 'sait' / f, sait / f)
     for f in ('hra-yadro.js', 'vulytsia-yadro.js'):          # спільне ядро ігор (ZAVDANNYA-117)
         shutil.copyfile(DZHERELO / 'hra' / f, sait / f)
@@ -980,10 +987,13 @@ def kopiyuvaty_spilne(vykhid: Path) -> None:
         shutil.copyfile(DZHERELO / 'ihry' / f, sait / f)
     for f in ('litopys-yadro.js', 'litopys.js'):             # «Літопис міста» в панелі ігор (ZAVDANNYA-141)
         shutil.copyfile(DZHERELO / 'ihry' / 'litopys' / f, sait / f)
+    for f in ('kariera-yadro.js', 'kariera.js'):             # «Кваліфікуй: кар'єра» в панелі ігор (ZAVDANNYA-152)
+        shutil.copyfile(DZHERELO / 'ihry' / 'kariera' / f, sait / f)
     # Кольори обох тем — на початок стилів (одна сторінка стилів, без зайвого запиту); ігри в карті — у кінець.
     zapysaty(sait / 'sait.css', kolory_css() + (DZHERELO / 'sait' / 'sait.css').read_text(encoding='utf-8')
              + '\n' + (DZHERELO / 'ihry' / 'ihry.css').read_text(encoding='utf-8')
-             + '\n' + (DZHERELO / 'ihry' / 'litopys' / 'litopys.css').read_text(encoding='utf-8'))
+             + '\n' + (DZHERELO / 'ihry' / 'litopys' / 'litopys.css').read_text(encoding='utf-8')
+             + '\n' + (DZHERELO / 'ihry' / 'kariera' / 'kariera.css').read_text(encoding='utf-8'))
     for f in sorted((DZHERELO / 'sait' / 'shryfty').iterdir()):   # IBM Plex Sans і ліцензія OFL поруч
         shutil.copyfile(f, sait / 'shryfty' / f.name)
     (sait / 'biblioteka').mkdir(exist_ok=True)
@@ -1159,6 +1169,8 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
     # Будинки, райони, вітрини, оплата-заглушка, видалення, про дані (ZAVDANNYA-85).
     pachky = KH.Pachky(len(bud.spysok)) if (bud and khostynh == 'workers') else None
     adresy += M.zibraty_vse(dn, rayony, za_rayonom, bud, vykhid, adresa_saitu, pachky, len(vulytsi), mistsia_rayonu)
+    import storinka_doslidnykam as SD   # «Дані для дослідників» (ZAVDANNYA-158)
+    adresy += SD.zibraty(vykhid, adresa_saitu)
     a_mists, media_mists_m, _ = SM.zibraty(dn, vykhid, adresa_saitu, bud, media, mistsia)
     adresy += a_mists
     media_mists += media_mists_m
@@ -1171,6 +1183,8 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
         novi = [a for a in SP.zibraty(sudova_praktyka, vykhid, adresa_saitu) if a not in adresy]
         adresy += novi
         sp_storinok = len(novi)
+    import storinky_vkhodiv as V   # сторінки-входи під рекламу (ZAVDANNYA-153): noindex, не в sitemap
+    V.zibraty(vykhid, adresa_saitu, bud, dn.versiia, D.period_podii(dn), sudova_praktyka)
 
     # Заглушка з грою — її власним збирачем, без змін.
     import zibraty as zahlushka
