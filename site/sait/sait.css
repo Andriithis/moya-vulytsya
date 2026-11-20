@@ -212,6 +212,10 @@ body.z-kartoyu .shapka__vnutri { max-width: none; padding: 6px 16px; min-height:
 /* ================= Карта на весь екран (головна і /karta/) — вигляд макета М7 ================= */
 .ekran-karty { position: relative; height: calc(100vh - 53px); height: calc(100dvh - 53px); min-height: 480px; overflow: hidden; border-bottom: 1px solid var(--line); }
 .karta-povna { position: absolute; inset: 0; background: var(--karta-tlo); }
+/* Перший екран (ZAVDANNYA-164, MV-176): картинка карти з сотами, поки жива карта не потрібна. Положення й саму
+   картинку (телефон/комп'ютер, світла/темна) дописує збирач — site/zastavka.py; тут — запасний вигляд «на весь екран». */
+.zastavka { position: absolute; z-index: 1; inset: 0; background: var(--karta-tlo) center / cover no-repeat; transition: opacity .45s ease-out; }
+.zastavka--hasne { opacity: 0; pointer-events: none; }
 .ekran-karty .karta__zboi { left: 16px; bottom: 40px; z-index: 4; }
 
 /* Верх ліворуч: пошук і в тому ж рядку значки 3D/2D, день/ніч, ⓘ; під ними — фільтр. Ніщо не рухається, коли картка
