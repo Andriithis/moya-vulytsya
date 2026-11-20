@@ -69,7 +69,7 @@ class Yadro(unittest.TestCase):
         r = node(self.T0 + "const s=Y.novyi(t0,'Подільський');s.pomichnyky.chytach=10;"
                  "const r=Y.plyn(s,D.vydy,t0+24*3600e3);return [r.obrizano,Math.round(r.storinok)]")
         self.assertTrue(r[0])
-        self.assertEqual(r[1], round(10 * 0.2 * 0.5 * 8 * 3600))   # 8 годин, удвічі повільніше
+        self.assertEqual(r[1], round(10 * 0.2 * 0.15 * 8 * 3600))   # 8 годин, у 0,15 швидкості (ZAVDANNYA-141)
 
     def test_vydannia_zberihaie_kolektsiiu(self):
         r = node(self.T0 + "const s=Y.novyi(t0,'Подільський');s.storinky=1e9;Y.vidkrytyVulytsiu(s,D.vulytsi[0],D.podii);"
@@ -80,7 +80,7 @@ class Yadro(unittest.TestCase):
         self.assertEqual(r[3], {})
         self.assertEqual(r[4], ['a'])
         self.assertEqual(r[5], 2)
-        self.assertEqual(r[6], 160000)            # наступний поріг — увосьмеро вищий
+        self.assertEqual(r[6], 200000)            # наступний поріг — удесятеро вищий
 
     def test_sprava_dnia_odnakova_dlia_vsikh_i_pravylna_sered_variantiv(self):
         r = node("const a=Y.spravaDnia('2026-11-19',D),b=Y.spravaDnia('2026-11-19',D);"
@@ -104,31 +104,100 @@ class Yadro(unittest.TestCase):
                  "const b=Y.vidpovisty(s,t0,'sprava','shum','dtp');return [a,b,s.natkhnennia_do-t0]")
         self.assertEqual(r, [True, None, 3600000])
 
+    def test_povazhni_bez_bonusu_i_ne_v_spravi_dnia(self):
+        dani = "const P=JSON.parse(JSON.stringify(D));P.vydy.tilesni={nazva:'Тілесні',n:5,chastka:0.5,ridkist:'ridkisna',povazhna:true};" \
+               "P.podii['4-1']=['tilesni',2025,'',' вул. Г, 4',50.4,30.5,'https://x','4'];P.vulytsi[1].podii.push('4-1');"
+        r = node(self.T0 + dani + "const s=Y.novyi(t0,'Подільський');s.karty={tilesni:16};const b=Y.bonusKart(s,P.vydy);"
+                 "const ids=new Set();for(let i=0;i<400;i++){const d=new Date(t0+i*864e5).toISOString().slice(0,10);"
+                 "const sp=Y.spravaDnia(d,P);ids.add(sp.id);if(sp.varianty_vydu.includes('tilesni'))ids.add('VARIANT');}"
+                 "return [b,[...ids].sort()]")
+        self.assertEqual(r[0], 0, 'без балів «за шкоду»')
+        self.assertNotIn('4-1', r[1])
+        self.assertNotIn('VARIANT', r[1])
+
+    def test_poshta_arkhivu_raz_na_den(self):
+        r = node(self.T0 + "const s=Y.novyi(t0,'Подільський');const a=Y.poshta(s,t0);const b=Y.poshta(s,t0+3600e3);"
+                 "const tr=Y.skilkyNaVulytsi(s,3);const c=Y.poshta(s,t0+864e5);const d=Y.poshta(s,t0+864e5+60e3);"
+                 "return [a,b,c===tr,d,tr===Y.tsinaVulytsi(s)+Y.tsinaVulytsi({vulytsi:['x']})+Y.tsinaVulytsi({vulytsi:['x','y']})]")
+        self.assertEqual(r, [0, 0, True, 0, True], 'перший день без пошти; далі — раз на день, рівно на 3 наступні вулиці')
+
     def test_zlamanyi_stan_ne_valyt_hru(self):
         self.assertEqual(node("return [Y.pryniaty(null,1),Y.pryniaty({v:99},1),Y.pryniaty('x',1)]"), [None, None, None])
 
 
+@unittest.skipUnless(NODE and (LIT / 'litopys.json').exists(), 'потрібні Node.js і зібраний litopys.json (з колоди, поза git)')
+class Temp(unittest.TestCase):
+    """ZAVDANNYA-141, крок 3: місто не закінчується за тиждень, щодня є що відкрити (симулятор, 60 днів)."""
+
+    def test_60_dniv(self):
+        r = subprocess.run([NODE, str(LIT / 'symuliatsiia.js'), str(LIT / 'litopys.json'), '--json'],
+                           capture_output=True, text=True, timeout=300)
+        d = json.loads(r.stdout)
+        dni = {x['den']: x for x in d['dni'] if 'mitka' not in x}
+        self.assertLess(dni[7]['vulyts'], d['vsogo_vulyts'] * 0.15, 'за тиждень — менше 15 % вулиць')
+        self.assertLess(dni[60]['vulyts'], d['vsogo_vulyts'] * 0.5)
+        self.assertGreaterEqual(min(dni[n]['novykh'] for n in range(2, 61)), 3, 'щодня щонайменше 3 нові вулиці')
+
+
+class UKarti(unittest.TestCase):
+    """ZAVDANNYA-141, крок 4: «Літопис» — у панелі «Ігри» карти (MV-129), прогрес на пристрої, бали — спільна скарбничка."""
+
+    def test_zbyrach_kopiiuie_hru(self):
+        z = (KORIN / 'site' / 'zibraty_sait.py').read_text(encoding='utf-8')
+        for f in ("'/sait/litopys-yadro.js'", "'/sait/litopys.js'", "'litopys' / 'litopys.css'", "IHRY_DANI['litopys']"):
+            self.assertIn(f, z)
+        self.assertLess(z.index("'/sait/litopys.js'"), z.index("'/sait/ihry.js')"), 'гра — до панелі ігор')
+
+    def test_panel_ihor(self):
+        js = (KORIN / 'site' / 'ihry' / 'ihry.js').read_text(encoding='utf-8')
+        self.assertIn("data-litopys", js)
+        self.assertIn("kart('litopys'", js)
+        self.assertIn("prykhovaty: ['k-']", js, 'соти карти на час гри сховані')
+        self.assertIn('narakhuvaty(ochky)', js, 'бали — через спільну скарбничку')
+        self.assertIn('zupynytyLitopys()', js)
+
+    def test_baly_lyshe_za_zadachi_dnia_obmin_vymknenyi(self):
+        k = json.loads((KORIN / 'site' / 'ihry' / 'nalashtuvannia.json').read_text(encoding='utf-8'))
+        self.assertEqual(sorted(k['litopys_ochky']), ['rayon', 'sprava', 'vulytsi'])
+        self.assertFalse(k['obmin_uvimkneno'])
+        js = (LIT / 'litopys.js').read_text(encoding='utf-8')
+        self.assertEqual(len(re.findall(r'baly\(', js)), 3, 'бали лише у визначенні й двох місцях: задача-відповідь і 3 вулиці')
+        self.assertIn("'mv-ihry-litopys'", js, 'прогрес — у сховищі ігор (стирається «Скинути»)')
+
+
 class Mezhi(unittest.TestCase):
     def test_bez_vypadkovosti_i_bez_hroshei(self):
-        for f in ('litopys-yadro.js', 'litopys.js'):
+        for f in ('litopys-yadro.js', 'litopys.js', 'litopys-storinka.js', 'symuliatsiia.js'):
             t = (LIT / f).read_text(encoding='utf-8')
             self.assertNotIn('Math.random', t, f'{f}: нагороди без випадку (MV-155 П8)')
             self.assertNotRegex(t, r'fetch\([^)]*(oplata|kupyty|api)', f'{f}: прототип нічого не продає й не надсилає')
 
     def test_bez_zaboronenykh_sliv(self):
         zab = re.compile(r'небезпечн|безпечн|рейтинг|будьте уважн|уникайте|станеться знову', re.I)
-        for f in ('index.html', 'litopys.js', 'litopys-yadro.js'):
+        for f in ('index.html', 'litopys.js', 'litopys-yadro.js', 'litopys-storinka.js'):
             self.assertIsNone(zab.search((LIT / f).read_text(encoding='utf-8')), f)
 
     def test_bez_vbudovanykh_styliv(self):
-        for f in ('index.html', 'litopys.js'):
+        for f in ('index.html', 'litopys.js', 'litopys-storinka.js'):
             self.assertNotIn('style="', (LIT / f).read_text(encoding='utf-8'), f'{f}: політика безпеки сторінки')
 
     def test_zminni_dyzainu_yak_u_hri(self):
         hra = (KORIN / 'site' / 'hra' / 'hra.css').read_text(encoding='utf-8')
-        lit = (LIT / 'litopys.css').read_text(encoding='utf-8')
+        lit = (LIT / 'litopys-storinka.css').read_text(encoding='utf-8')
         z = lambda t: dict(re.findall(r'(--[\w-]+):\s*(#[0-9A-Fa-f]{6})', t.split('* {')[0]))
         self.assertEqual(z(lit), z(hra))
+
+    def test_hra_bez_kolioriv_poza_systemoiu(self):
+        # ZAVDANNYA-141: стилі гри (вони йдуть і в карту сайту) — лише змінні системи дизайну, жодного кольору числом.
+        css = (LIT / 'litopys.css').read_text(encoding='utf-8')
+        self.assertIsNone(re.search(r'#[0-9A-Fa-f]{3,6}\b|rgb\(', css))
+        self.assertNotRegex(css, r'gradient|blur\(', 'без градієнтів і розмиття (STYL.md)')
+
+    def test_zvuk_vymykaietsia_i_bez_failiv(self):
+        js = (LIT / 'litopys.js').read_text(encoding='utf-8')
+        self.assertIn("data-lit=\"zvuk\"", js)
+        self.assertIn('mv-ihry-litopys-zvuk', js)
+        self.assertNotRegex(js, r'\.(mp3|ogg|wav)\b', 'звук — синтез у браузері, без файлів')
 
     def test_ridkist(self):
         self.assertEqual([L.ridkist(x) for x in (51, 5, 1.6, 0.4, 0.05)],
@@ -136,7 +205,7 @@ class Mezhi(unittest.TestCase):
 
 
 class Henerator(unittest.TestCase):
-    def test_bez_potirpilykh_i_mv4(self):
+    def test_poterpili_povazhno_mv4_ni(self):
         koloda = {'zibrano': '2026-11-08', 'podii': [
             {'id': '1-1', 'kategoriia': 'dtp', 'vyd': 'ДТП', 'rik': 2025, 'opys_korotkyi': 'зіткнення', 'adresa': 'вул. А, 1',
              'lat': 50.4, 'lon': 30.5, 'rishennya_url': 'https://x', 'rishennya_nomer': '1'},
@@ -156,9 +225,14 @@ class Henerator(unittest.TestCase):
         with mock.patch.object(L.VD, 'podii_kolody', return_value={'a': koloda['podii']}), \
                 mock.patch.object(L.VD, 'profil', return_value=prof):
             d = L.zibraty_z_dani(Dn(), koloda, chastoty, {'Подільський': [[50.4, 30.5], [50.5, 30.5], [50.5, 30.6]]})
-        self.assertEqual(list(d['vydy']), ['dtp'])
-        self.assertEqual(list(d['podii']), ['1-1'])
-        self.assertEqual(d['vulytsi'][0][7], ['1-1'])
+        # MV-165: події з потерпілими — є (без опису, позначка «поважна»); статеві, щодо дітей, домашнє насильство — ні.
+        self.assertEqual(sorted(d['vydy']), ['dtp', 'tilesni'])
+        self.assertTrue(d['vydy']['tilesni']['povazhna'])
+        self.assertNotIn('povazhna', d['vydy']['dtp'])
+        self.assertEqual(sorted(d['podii']), ['1-1', '2-1'])
+        self.assertEqual(d['podii']['2-1'][2], '', 'без опису — без деталей про потерпілого')
+        self.assertEqual(d['podii']['2-1'][6], 'https://x', 'посилання на рішення лишається')
+        self.assertEqual(d['podii']['1-1'][2], 'зіткнення')
         self.assertEqual(d['vydy']['dtp']['chastka'], 90.0, 'частка — від усіх подій, разом із прибраними видами')
 
 

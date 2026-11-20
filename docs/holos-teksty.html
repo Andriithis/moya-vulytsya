@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Суфлер — тексти для голосу роликів</title>
+<!-- ZAVDANNYA-138: зібрано з docs/HOLOS-TEKSTY.md (таблиці — одне джерело). Торкнись репліки — піде таймер її тривалості. -->
+<style>
+  body { margin: 0; background: #11142A; color: #F0F1FA; font: 400 18px/1.4 system-ui, sans-serif; }
+  header { padding: 16px 18px 6px; } h1 { font-size: 20px; margin: 0 0 4px; } header p { margin: 0; color: #A6A9C1; font-size: 15px; }
+  section { margin: 14px 12px 22px; } h2 { font-size: 16px; color: #66E6BA; margin: 0 0 8px 6px; }
+  .r { background: #1B1F39; border-radius: 14px; padding: 14px 16px 12px; margin: 8px 0; position: relative; overflow: hidden; }
+  .r.aktyvna { outline: 3px solid #66E6BA; }
+  .t { font: 700 26px/1.3 system-ui, sans-serif; } .t b { color: #66E6BA; }
+  .m { color: #A6A9C1; font-size: 14px; margin-top: 6px; }
+  .smuha { position: absolute; left: 0; bottom: 0; height: 6px; background: #66E6BA; width: 0; }
+  .pauza1 { color: #8A8BDD; } .pauza2 { color: #B37BFF; }
+</style>
+</head>
+<body>
+<header><h1>Суфлер: тексти для голосу</h1>
+<p>Торкнись репліки — піде смуга її тривалості. <span class="pauza1">/</span> коротка пауза, <span class="pauza2">//</span> довга. Говори як другу.</p></header>
+<main id="m"></main>
+<script>
+var D = [{"zag": "138-05 · Міф чи факт: «Найбільше ДТП — у ранкову годину пік» · 12 с", "riady": [{"z": "0,2", "r": "Це правда?", "tr": 1.0, "v": "1,8", "n": "з хитринкою, ніби підморгуєш"}, {"z": "2,2", "r": "Ні. / Найбільше ДТП у даних — о п'ятій вечора.", "tr": 2.6, "v": "5", "n": "впевнено, трохи швидше; «Ні» — коротко, як печатка"}]}, {"zag": "138-z3 · POV: застава завтра (запис сайту) · 17 с", "riady": [{"z": "0,2", "r": "Квартира мрії. // Застава — завтра.", "tr": 2.2, "v": "2,4", "n": "радісно, а на «завтра» — легка напруга"}, {"z": "2,8", "r": "Перш ніж платити — / одна перевірка.", "tr": 2.0, "v": "1,8", "n": "спокійно, по-дружньому"}, {"z": "8,9", "r": "Втечі з місця ДТП: / вісімнадцять відсотків. / По Києву — чотири.", "tr": 3.0, "v": "2,5", "n": "здивовано, але рівно; числа — чітко"}, {"z": "13,8", "r": "Перевір. // До застави.", "tr": 1.4, "v": "2", "n": "коротко, тепло, як порада другові"}]}, {"zag": "t4 · Січень: 211 тисяч · 15 с", "riady": [{"z": "0,15", "r": "Стільки разів кияни написали в п'ятнадцять п'ятдесят один — / за один січень.", "tr": 3.5, "v": "3,8", "n": "здивовано, наче сам не віриш"}, {"z": "4,1", "r": "У січні — / у чотири рази більше, ніж у серпні.", "tr": 2.5, "v": "3,4", "n": "пояснюєш, рівно"}, {"z": "7,7", "r": "Тема номер один — тепло. / Двісті двадцять одна тисяча звернень.", "tr": 3.3, "v": "3,2", "n": "з притиском на «тепло»"}, {"z": "11,1", "r": "А що писали про ваш будинок?", "tr": 1.6, "v": "2,6", "n": "питання, тепліше, повільніше"}]}, {"zag": "n4 · Міф чи факт: найчастіша справа — крадіжка? · 11 с", "riady": [{"z": "0,2", "r": "Це правда?", "tr": 1.0, "v": "1,8", "n": "з хитринкою"}, {"z": "2,2", "r": "Ні. / ДТП у даних — майже у вісім разів більше, ніж крадіжок.", "tr": 3.2, "v": "5,4", "n": "впевнено; «вісім» — з наголосом"}]}, {"zag": "n5 · Міф чи факт: п'яних за кермом найбільше в п'ятницю? · 11 с", "riady": [{"z": "0,2", "r": "Це правда?", "tr": 1.0, "v": "1,8", "n": "з хитринкою"}, {"z": "2,2", "r": "Ні. / У даних найбільше — у неділю. // П'ятниця — лише третя.", "tr": 3.4, "v": "5,4", "n": "спокійно, остання фраза — з усмішкою"}]}, {"zag": "n6 · Відповідь на коментар: Кадетський Гай · 15 с (лише зі справжнім коментарем)", "riady": [{"z": "0,3", "r": "Відповідаємо.", "tr": 0.8, "v": "1,7", "n": "бадьоро, як «приймаю виклик»"}, {"z": "4,8", "r": "Тридцять сім подій на вулиці. / З них двадцять дві — ДТП.", "tr": 3.0, "v": "2,9", "n": "рівно, числа чітко"}, {"z": "7,7", "r": "Тут кожна четверта — / водій поїхав з місця ДТП.", "tr": 2.6, "v": "2,7", "n": "повільніше, без драми — лише факт"}]}, {"zag": "n8 · Вгадай число: ліфт у 1551 · 11 с", "riady": [{"z": "0,2", "r": "Скільки разів кияни скаржились у п'ятнадцять п'ятдесят один на ліфт? // За п'ятнадцять місяців.", "tr": 4.5, "v": "5,2", "n": "азарт ведучого вікторини"}, {"z": "6,9", "r": "Сто тридцять три тисячі. // Лише про ліфт.", "tr": 2.4, "v": "2,8", "n": "пауза перед числом, далі — з усмішкою"}]}, {"zag": "z1 · Запис сайту: як знайти свою вулицю · 15 с", "riady": [{"z": "0,2", "r": "Твоя вулиця — / за десять секунд.", "tr": 1.8, "v": "2,4", "n": "енергійно, як виклик"}, {"z": "6,9", "r": "Сторінка вулиці: / скільки й чого тут було.", "tr": 2.2, "v": "1,8", "n": "спокійно, показуєш"}]}];
+function esc(s) { return s.replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); }
+var m = document.getElementById('m');
+D.forEach(function (r) {
+  var s = document.createElement('section');
+  s.innerHTML = '<h2>' + esc(r.zag) + '</h2>' + r.riady.map(function (x, i) {
+    var t = esc(x.r).replace(/ \/\/ /g, ' <span class="pauza2">//</span> ').replace(/ \/ /g, ' <span class="pauza1">/</span> ');
+    return '<div class="r" data-tr="' + x.tr + '"><div class="t">' + t + '</div><div class="m">з ' + x.z + ' с · ≈ ' + String(x.tr).replace('.', ',') +
+      ' с (вміститись у ' + x.v + ' с) · ' + esc(x.n) + '</div><div class="smuha"></div></div>';
+  }).join('');
+  m.appendChild(s);
+});
+var tajmer = null;
+m.addEventListener('click', function (e) {
+  var r = e.target.closest('.r'); if (!r) return;
+  document.querySelectorAll('.r').forEach(function (x) { x.classList.remove('aktyvna'); x.querySelector('.smuha').style.transition = 'none'; x.querySelector('.smuha').style.width = 0; });
+  r.classList.add('aktyvna');
+  var sm = r.querySelector('.smuha'); void sm.offsetWidth;
+  sm.style.transition = 'width ' + r.dataset.tr + 's linear'; sm.style.width = '100%';
+});
+</script>
+</body>
+</html>

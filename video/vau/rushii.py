@@ -6,7 +6,7 @@
 
 Що виходить (теки не в git, video/vyhid/):
     <id>.mp4            — повний ролик 1080×1920, 30 кадрів/с, H.264 + AAC, гучність ≈ −14 LUFS (як у TikTok)
-    lehki/<id>.mp4      — легка копія 480×854, ≤ 3 МБ (для перегляду з телефона, гілка rolyky-127)
+    lehki/<id>.mp4      — легка копія 540×960, ≤ 3 МБ (для перегляду з телефона, гілка rolyky-127)
     arkushi/<id>.jpg    — аркуш кадрів: кадр кожні 0,5 с, зліва направо, згори вниз
     <id>.srt            — субтитри голосу (якщо є голос)
 
@@ -133,11 +133,11 @@ def rendery(brauzer, port, shliakh: Path, fps=30, zvuk_=True, kadry=None, vykhid
 
 
 def lehka(mp4: Path, kudy: Path, tryv: float, mb: float = 2.85):
-    """480×854, ≤ 3 МБ: бітрейт відео — з довжини (аудіо 64 кбіт/с)."""
+    """540×960 (ZAVDANNYA-138; було 480×854), ≤ 3 МБ: бітрейт відео — з довжини (аудіо 64 кбіт/с)."""
     kudy.parent.mkdir(parents=True, exist_ok=True)
     vsogo = mb * 8 * 1024 / max(tryv, 1)            # кбіт/с на все
     v = int(min(1400, max(250, vsogo - 72)))
-    subprocess.run([ffmpeg(), '-y', '-loglevel', 'error', '-i', str(mp4), '-vf', 'scale=480:854:flags=lanczos',
+    subprocess.run([ffmpeg(), '-y', '-loglevel', 'error', '-i', str(mp4), '-vf', 'scale=540:960:flags=lanczos',
                     '-c:v', 'libx264', '-preset', 'slow', '-b:v', f'{v}k', '-maxrate', f'{int(v * 1.25)}k',
                     '-bufsize', f'{v * 2}k', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '64k', '-ac', '1',
                     '-movflags', '+faststart', str(kudy)], check=True)

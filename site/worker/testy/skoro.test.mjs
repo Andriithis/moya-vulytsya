@@ -206,13 +206,14 @@ test('LiqPay: пісочниця (sandbox = 1) лише з LIQPAY_SANDBOX = tak'
   assert.equal((await dani({ ...env, LIQPAY_SANDBOX: 'tak' })).sandbox, '1');
 });
 
-test('оплату ввімкнено — «Судова практика» в оферті (MV-164) і продається; невідомий товар — «Скоро»', async () => {
+test('оплату ввімкнено — «Судова практика» без даних генератора (ZAVDANNYA-150, п. 11) — «Скоро», не оплата', async () => {
   const env = seredovyshche(PRODAZH);
   for (const tovar of ['spdovidka', 'spyurist']) {
-    const { r, text } = await zapyt(env, 'GET', `/oplata/?tovar=${tovar}&dzherelo=sp`);
-    // форма замовлення читає довідник статей; без даних у тестовому середовищі — 503 «довідник недоступний», але не «Скоро»
-    assert.ok([200, 503].includes(r.status), tovar);
-    assert.doesNotMatch(text, /action="\/api\/skoro"/, tovar);
+    assert.ok(!TS.prodaietsia.includes(tovar), `${tovar}: не продається, доки немає генератора й файла даних`);
+    const { text } = await zapyt(env, 'GET', `/oplata/?tovar=${tovar}&dzherelo=sp`);
+    assert.match(text, /action="\/api\/skoro"/, tovar);
+    const z = await zapyt(env, 'POST', '/api/zamovlennia', { forma: { tovar, stattia: 'kupap-130', poshta: 'a@b.ua', zghoda: 'tak', odrazu: 'tak', ne_dopomoga: 'tak' } });
+    assert.equal(z.r.status, 400, `${tovar}: замовлення без даних не створюється`);
   }
   assert.match((await zapyt(env, 'GET', '/oplata/?tovar=sudova&dzherelo=sp')).text, /action="\/api\/skoro"/);
   assert.match((await zapyt(env, 'GET', '/oplata/?tovar=dovidka&budynok=/budynok/zhylianska/5/')).text, /action="\/api\/zamovlennia"/);

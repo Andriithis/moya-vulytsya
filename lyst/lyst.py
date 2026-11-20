@@ -1,4 +1,5 @@
-"""«Нове біля дому» — щотижневий лист і сповіщення підписникам (ZAVDANNYA-119; лінія «Мій район», MV-107).
+"""«Нове біля дому» — лист і сповіщення підписникам (ZAVDANNYA-119; лінія «Мій район», MV-107). Підписка 399 — раз на
+місяць після оновлення даних (ZAVDANNYA-150, `site/prodazh/lyst_stezhu.py`); бот — щотижня.
 
 Стрічку тижня (`nove-<дата>.json`) робить `dani-edrsr/src/nove_tyzhnia.py` — одна на всіх. Тут для кожного підписника
 з неї вибирається лише те, що в радіусі `R_M` від **його** адрес «Стежу», і складається лист:
@@ -41,7 +42,7 @@ NBSP = ' '
 ADRESA_SAITU = 'https://moya-vulytsya.pages.dev'      # справжній домен — на партнера
 HASLO = 'Моя вулиця — що відбувається під боком'
 CHESNO = ('Скарга — звернення мешканця до 1551, не перевірений факт. Подія — випадок із рішення суду: лише те, що '
-          'дійшло до суду. «Нове в даних» — рішення, що з’явилися в даних цього тижня; сама подія могла статися раніше.')
+          'дійшло до суду. «Нове в даних» — рішення, що з’явилися в даних за цей період; сама подія могла статися раніше.')
 MISIATSI = ('січня', 'лютого', 'березня', 'квітня', 'травня', 'червня', 'липня', 'серпня', 'вересня', 'жовтня',
             'листопада', 'грудня')
 HRUPY = {h['kliuch']: h for h in json.loads((KORIN / 'brend' / 'hrupy.json').read_text(encoding='utf-8'))['hrupy']}
@@ -180,6 +181,21 @@ def data_slovamy(d: str) -> str:
     return f'{int(m.group(3))} {MISIATSI[int(m.group(2)) - 1]} {m.group(1)}'
 
 
+def misiachnyi(l: Lyst) -> bool:
+    """ZAVDANNYA-150, п. 4: лист підписці — раз на місяць після оновлення даних (стрічка за місяць); бот — щотижня."""
+    return (date.fromisoformat(l.do) - date.fromisoformat(l.vid)).days >= 27
+
+
+def slova_periodu(l: Lyst) -> dict:
+    if misiachnyi(l):
+        return {'tykhyi': 'Тихий місяць', 'tsoho': 'Цього місяця', 'za': 'за місяць'}
+    return {'tykhyi': 'Тихий тиждень', 'tsoho': 'Цього тижня', 'za': 'за тиждень'}
+
+
+def nemaie_skarh(l: Lyst) -> str:
+    return f'Звернень до 1551 {slova_periodu(l)["za"]} немає.'
+
+
 def tyzhden(l: Lyst) -> str:
     v, d = date.fromisoformat(l.vid), date.fromordinal(date.fromisoformat(l.do).toordinal() - 1)
     if v.month == d.month:
@@ -226,7 +242,7 @@ def ryadok_podii_chyslom(r: Rozdil) -> str:
 
 def tema(l: Lyst) -> str:
     if l.tykhyi:
-        return f'Тихий тиждень біля дому · {tyzhden(l)}'
+        return f'{slova_periodu(l)["tykhyi"]} біля дому · {tyzhden(l)}'
     n_p = sum(len(r.podii) for r in l.rozdily)
     n_s = sum(sum(r.skarhy.values()) for r in l.rozdily)
     chastyny = [x for x in (podii_slovo(n_p) if n_p else '', skarh_slovo(n_s) + ' до 1551' if n_s else '') if x]
@@ -237,7 +253,7 @@ def tekst(l: Lyst, posylannia: dict) -> str:
     """Простий текст листа (друга частина листа поруч із HTML). posylannia: stezhu, vidpyska."""
     r_ = [HASLO, '', tema(l), '']
     if l.tykhyi:
-        r_ += [f'Цього тижня в радіусі {R_M}{NBSP}м від ваших адрес нових рішень судів і звернень до 1551 у даних немає.', '']
+        r_ += [f'{slova_periodu(l)["tsoho"]} в радіусі {R_M}{NBSP}м від ваших адрес нових рішень судів і звернень до 1551 у даних немає.', '']
         r_ += [f'— {zaholovok_adresy(r.adresa)}' for r in l.rozdily] + ['']
     for r in ([] if l.tykhyi else l.rozdily):
         r_ += [zaholovok_adresy(r.adresa).upper(), f'Радіус {R_M}{NBSP}м.', '']
@@ -250,15 +266,15 @@ def tekst(l: Lyst, posylannia: dict) -> str:
                 r_.append(f'    {o}' if o else '    Опису ще немає.')
                 r_.append(f'    Рішення суду: {p["url"]}')
             if len(r.podii) > MAKS_PODII_LYST:
-                r_.append(f'  Ще {podii_slovo(len(r.podii) - MAKS_PODII_LYST)} — у «Стежу» на карті.')
+                r_.append(f'  Ще {podii_slovo(len(r.podii) - MAKS_PODII_LYST)} — на карті підписника.')
         else:
             r_.append('Нових подій з рішень судів у даних немає.')
-        r_.append(ryadok_skarh(r) if r.skarhy else 'Звернень до 1551 за тиждень немає.')
+        r_.append(ryadok_skarh(r) if r.skarhy else nemaie_skarh(l))
         if r.problema:
             r_.append(ryadok_problemy(r.problema))
         r_.append('')
-    r_ += [CHESNO, '', f'Відкрити «Стежу» на карті: {posylannia["stezhu"]}',
-           f'Не надсилати ці листи (один дотик): {posylannia["vidpyska"]}']
+    r_ += [CHESNO, '', f'Відкрити «Стежу»: {posylannia["stezhu"]}',
+           f'{posylannia.get("vidpyska_napys", "Не надсилати ці листи (один дотик)")}: {posylannia["vidpyska"]}']
     return '\n'.join(r_) + '\n'
 
 
@@ -285,7 +301,7 @@ def html_lysta(l: Lyst, posylannia: dict, zrazok: str = '') -> str:
     b.append(f'<h1 style="margin:0 0 16px;font-size:24px;line-height:30px;font-weight:700;color:{K["ink"]}">{_e(tema(l))}</h1>')
     if l.tykhyi:
         b.append(f'<div style="background:{K["surface"]};border:1px solid {K["line"]};border-radius:16px;padding:20px;margin:0 0 16px">'
-                 f'<p style="{st_p}">Цього тижня в радіусі {R_M}{NBSP}м від ваших адрес нових рішень судів і звернень до 1551 '
+                 f'<p style="{st_p}">{slova_periodu(l)["tsoho"]} в радіусі {R_M}{NBSP}м від ваших адрес нових рішень судів і звернень до 1551 '
                  f'у даних немає.</p>' + ''.join(f'<p style="{st_m}">{_e(zaholovok_adresy(r.adresa))}</p>' for r in l.rozdily)
                  + '</div>')
     for r in ([] if l.tykhyi else l.rozdily):
@@ -309,17 +325,17 @@ def html_lysta(l: Lyst, posylannia: dict, zrazok: str = '') -> str:
                      + (f'<p style="{st_p}">{_e(o)}</p>' if o else f'<p style="{st_m}">Опису ще немає.</p>')
                      + f'<p style="margin:0;font-size:13px"><a href="{_e(p["url"])}" style="color:{K["accent"]}">Рішення суду</a></p></div>')
         if len(r.podii) > MAKS_PODII_LYST:
-            s.append(f'<p style="{st_m}">Ще {podii_slovo(len(r.podii) - MAKS_PODII_LYST)} — у «Стежу» на карті.</p>')
+            s.append(f'<p style="{st_m}">Ще {podii_slovo(len(r.podii) - MAKS_PODII_LYST)} — на карті підписника.</p>')
         if not r.podii:
             s.append(f'<p style="{st_m}">Нових подій з рішень судів у даних немає.</p>')
         s.append(f'<p style="{st_p};border-top:1px solid {K["line"]};padding-top:10px">'
-                 + _e(ryadok_skarh(r) if r.skarhy else 'Звернень до 1551 за тиждень немає.') + '</p>')
+                 + _e(ryadok_skarh(r) if r.skarhy else nemaie_skarh(l)) + '</p>')
         if r.problema:
             s.append(f'<p style="margin:8px 0 0;padding:10px 12px;background:{K["soft"]};border-radius:12px;font-size:14px;'
                      f'line-height:20px;color:{K["ink"]}">{_e(ryadok_problemy(r.problema))}</p>')
         b.append(f'<div style="background:{K["surface"]};border:1px solid {K["line"]};border-radius:16px;padding:20px;'
                  f'margin:0 0 16px">{"".join(s)}</div>')
-    b.append('<p style="margin:8px 0 16px">' + _knopka('Відкрити «Стежу» на карті', posylannia['stezhu'], holovna=True) + '</p>')
+    b.append('<p style="margin:8px 0 16px">' + _knopka('Відкрити «Стежу»', posylannia['stezhu'], holovna=True) + '</p>')
     b.append(f'<p style="{st_m}">{_e(CHESNO)}</p>')
     b.append(f'<p style="{st_m}"><a href="{_e(posylannia["vidpyska"])}" style="color:{K["muted"]}">Не надсилати ці листи</a>'
              f' — один дотик, без входу. Ви отримали лист, бо стежите за адресами в підписці «Моя вулиця».</p>')
@@ -343,7 +359,7 @@ def telegram_pidpysnyk(l: Lyst) -> str:
             r_.append(f'— {HRUPY[p["hrupa"]]["nazva"]}, {data_slovamy(p.get("data"))}{mistse}. {o or "Опису ще немає."}')
         if len(r.podii) > MAKS_PODII_TELEGRAM:
             r_.append(f'— ще {podii_slovo(len(r.podii) - MAKS_PODII_TELEGRAM)} — у «Стежу».')
-        r_.append(ryadok_skarh(r) if r.skarhy else 'Звернень до 1551 за тиждень немає.')
+        r_.append(ryadok_skarh(r) if r.skarhy else nemaie_skarh(l))
         if r.problema:
             r_.append(ryadok_problemy(r.problema))
         r_.append('')
@@ -356,8 +372,8 @@ def telegram_bezkoshtovno(l: Lyst) -> str:
     r = l.rozdily[0]
     r_ = [f'Нове біля дому — {r.adresa.adresa}, радіус {R_M}{NBSP}м, {tyzhden(l)}.', '']
     r_.append(ryadok_podii_chyslom(r) if r.podii else 'Нових подій з рішень судів у даних немає.')
-    r_.append(ryadok_skarh(r, 2) if r.skarhy else 'Звернень до 1551 за тиждень немає.')
-    r_ += ['', f'Що саме й де — у підписці «Моя вулиця»: описи подій, усі ваші адреси, щотижневий лист '
+    r_.append(ryadok_skarh(r, 2) if r.skarhy else nemaie_skarh(l))
+    r_ += ['', f'Що саме й де — у підписці «Моя вулиця»: описи подій, усі ваші адреси, лист раз на місяць '
            f'({T.tsina("pidpyska")}, одна довідка про будинок включена).', '', CHESNO]
     return '\n'.join(r_)
 
@@ -371,7 +387,7 @@ def push(l: Lyst) -> list[dict]:
         chastyny = [x for x in (podii_slovo(len(r.podii)) if r.podii else '',
                                 skarh_slovo(sum(r.skarhy.values())) + ' до 1551' if r.skarhy else '') if x]
         out.append({'title': 'Нове біля дому', 'body': f'Біля: {bez_nomera(r.adresa.adresa)} — '
-                    + ' і '.join(chastyny) + ' за тиждень', 'url': f'/stezhu/?a={i}', 'tag': f'nove-{l.do}-{i}'})
+                    + ' і '.join(chastyny) + f' {slova_periodu(l)["za"]}', 'url': f'/stezhu/?a={i}', 'tag': f'nove-{l.do}-{i}'})
     return out
 
 

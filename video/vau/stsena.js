@@ -13,7 +13,11 @@
 (function () {
   'use strict';
   var W = 1080, H = 1920;
-  var S = null, map = null, T = 0, K = null;
+  var S = null, map = null, T = 0, K = null, DRUHA = null;
+  // Реєстр виглядів (ZAVDANNYA-138): теми, стилі сот і стилі адрес — рівноправні, вибір у сценарії. Окремі модулі
+  // (S.moduli, напр. вигляди ZAVDANNYA-139) лише дописують сюди свої записи — рушій не переписується.
+  var VAU = window.VAU = window.VAU || {};
+  VAU.temy = VAU.temy || {}; VAU.styliSot = VAU.styliSot || {}; VAU.styliAdres = VAU.styliAdres || {};
   var STYLI = { svitla: 'https://tiles.openfreemap.org/styles/positron', temna: 'https://tiles.openfreemap.org/styles/dark' };
   var KOL = {
     // дороги — темні й нейтральні, соти — яскраві з чіткою межею: інакше соти зливаються з вулицями («мурашник», MV-151)
@@ -22,10 +26,21 @@
     svitla: { tlo: '#EFF0F6', voda: '#CADDF6', park: '#E4F2DE', budynky: '#E3E4EB', doroha: null, pidpys: '#444658', oreol: '#FFFFFF',
       sc: ['#9CA1E3', '#7E84CE', '#6066C1', '#464AA9', '#303482'], sl: '#303482', pk: ['#5DD0A9', '#31B88D'], b3d: '#D9DBE6', mezha: '#76798C' }
   };
-  // ZAVDANNYA-139: додаткові теми й вигляди — окремий модуль vyhliady139.js (вмикаються полями tema і styl сценарію)
+  // тема = основа (темна / світла підкладка) + свої кольори; 'temna' і 'svitla' — вбудовані
+  VAU.temy.temna = VAU.temy.temna || { baza: 'temna' };
+  VAU.temy.svitla = VAU.temy.svitla || { baza: 'svitla' };
+  function tema(imia) {
+    var t = VAU.temy[imia];
+    if (!t) throw new Error('невідома тема: ' + imia);
+    var baza = t.baza || 'temna';
+    return { t: baza, imia: imia, kol: Object.assign({}, KOL[baza], t.kol || {}), styl: t.styl || STYLI[baza] };
+  }
+  // ZAVDANNYA-139: додаткові теми й вигляди — окремий модуль vyhliady139.js (поля tema і styl сценарію)
   var VY = window.VAU_VYHLIADY || null;
-  if (VY) Object.keys(VY.temy).forEach(function (k) { KOL[k] = VY.temy[k]; });
-  function osnova(t) { return (KOL[t] && KOL[t].osnova) || t; }   // підкладка й CSS: темна чи світла
+  if (VY) Object.keys(VY.temy).forEach(function (k) {
+    KOL[k] = VY.temy[k];
+    if (!VAU.temy[k]) VAU.temy[k] = { baza: VY.temy[k].osnova || 'temna', kol: VY.temy[k] };
+  });
 
   // ---------------------------------------------------------------- час і пом'якшення
   function clamp(x, a, b) { return Math.max(a, Math.min(b, x)); }
@@ -89,8 +104,12 @@
     return '#' + r.map(function (x) { return x.toString(16).padStart(2, '0'); }).join('');
   }
   function patchStyle(s, tema) {
-    var Kc = KOL[tema], temna = osnova(tema) === 'temna';
+    var Kc = K.kol, temna = tema === 'temna';
     var layers = s.layers.filter(function (l) { return !(l.type === 'symbol' && (/shield|oneway|place_state|place_country/.test(l.id) || l['source-layer'] === 'poi' || l['source-layer'] === 'housenumber')); });
+    // bez_pidpysiv: гра «Вгадай район» — жодних назв на карті (інакше відповідь написано на ній)
+    if (S.bez_pidpysiv) layers = layers.filter(function (l) { return l.type !== 'symbol'; });
+    // номерів будинків на карті не буває взагалі (MV-25): шар housenumber прибрано вище
+    if (S.bez_3d) layers = layers.filter(function (l) { return l.type !== 'fill-extrusion'; });
     // менше підписів: села й містечка навколо Києва — лише зблизька, щоб кадр не був «газетою»
     var MINZ = { place_village: 12.5, place_other: 12, place_town: 10.8, place_suburb: 10.2 };
     layers.forEach(function (l) { if (MINZ[l.id]) l.minzoom = Math.max(l.minzoom || 0, MINZ[l.id]); });
@@ -121,13 +140,14 @@
       if (l.type === 'symbol' && l.paint) l.paint = Object.assign({}, l.paint, { 'text-color': Kc.pidpys, 'text-halo-color': Kc.oreol, 'text-halo-width': 2, 'text-opacity': 1 });
     });
     var src = Object.keys(s.sources).filter(function (k) { return s.sources[k].type === 'vector'; })[0];
-    if (src && font) {
+    K.shryft = font;
+    if (src && font && !S.bez_pidpysiv) {
       layers.push({ id: 'base-metro', type: 'symbol', source: src, 'source-layer': 'poi', minzoom: 12.5,
         filter: ['all', ['==', ['get', 'class'], 'railway'], ['in', ['get', 'subclass'], ['literal', ['station', 'subway']]]],
         layout: { 'text-field': UK, 'text-font': font, 'text-size': 26, 'text-max-width': 8 },
         paint: { 'text-color': Kc.pidpys, 'text-halo-color': Kc.oreol, 'text-halo-width': 2 } });
     }
-    if (src) {   // 3D-будинки зблизька — «кіно», а не схема
+    if (src && !S.bez_3d) {   // 3D-будинки зблизька — «кіно», а не схема
       var pershyiSymvol = layers.findIndex(function (l) { return l.type === 'symbol'; });
       layers.splice(pershyiSymvol, 0, { id: 'budynky-3d', type: 'fill-extrusion', source: src, 'source-layer': 'building', minzoom: 14,
         paint: { 'fill-extrusion-color': Kc.b3d, 'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 8],
@@ -231,60 +251,159 @@
   }
 
   // ---------------------------------------------------------------- соти H3 (3D, шкала сайту)
+  // Стилі сот (ZAVDANNYA-138) — рівноправні, вибір у сценарії (sh.styl_sot). Опис стилю:
+  //   zalyvka   — непрозорість заливки (null — як на сайті: яскравіше зблизька, до 0,8)
+  //   mezha     — колір меж: 'sl' (світла лінія), 'tlo' (шов кольору тла) або #колір; shyr — товщина на z 9 / 12 / 15
+  //   znyk      — наскільки приглушити дороги й будинки під сотами (0…1); znyk_nazvy — ще й назви вулиць
+  //   vysota    — 'verkh' (стовпчики лише верхнім 12 %, як на сайті) або 'vsi' (кожна сота — стовпчик за числом)
+  //   op3d      — непрозорість стовпчиків (менше — вулиці видно крізь них)
+  //   dodaty(ctx) / onovyty(ctx) — власний вигляд (модулі ZAVDANNYA-139): замість звичайного
+  VAU.styliSot.sait = VAU.styliSot.sait || { zalyvka: null, mezha: 'sl', shyr: [1.4, 2.6, 4], mezha_a: 0.85, znyk: 0, vysota: 'verkh' };
+  VAU.styliSot.sklo = VAU.styliSot.sklo || { zalyvka: 0.5, mezha: 'sl', shyr: [1.4, 2.6, 4], mezha_a: 0.85, znyk: 0.6, vysota: 'verkh' };
+  VAU.styliSot.plytka = VAU.styliSot.plytka || { zalyvka: 0.94, mezha: 'tlo', shyr: [2.4, 4, 6], mezha_a: 1, znyk: 1, znyk_nazvy: true, vysota: 'verkh' };
+  VAU.styliSot.stovpchyky = VAU.styliSot.stovpchyky || { zalyvka: 0.18, mezha: 'sl', shyr: [1, 1.6, 2.4], mezha_a: 0.45, znyk: 0, vysota: 'vsi', op3d: 0.66 };
+  VAU.styliSot.stovpchyky_shchilno = VAU.styliSot.stovpchyky_shchilno || { zalyvka: 0.0, mezha: 'tlo', shyr: [1, 1.6, 2.4], mezha_a: 0.0, znyk: 0.5, vysota: 'vsi', op3d: 0.93 };
+  var STAROVYI = { zalyvka: null, mezha: 'sl', shyr: [1.4, 2.6, 4], mezha_a: 0.85, znyk: 0, vysota: 'verkh' };   // без styl_sot — як було до 134
+  function stylSot(sh) {
+    if (!sh.styl_sot) return STAROVYI;
+    var d = VAU.styliSot[sh.styl_sot];
+    if (!d) throw new Error('невідомий стиль сот: ' + sh.styl_sot);
+    return d;
+  }
   function dodatySoty(i, sh, pered) {
-    var id = 'soty-' + i, Kc = KOL[K.t];
+    var id = 'soty-' + i, Kc = K.kol, d = stylSot(sh);
     map.addSource(id, { type: 'geojson', data: sh.dani, promoteId: 'id' });
     var kolir = ['match', ['get', 'k'], 1, Kc.sc[0], 2, Kc.sc[1], 3, Kc.sc[2], 4, Kc.sc[3], Kc.sc[4]];
     var vershyna = ['case', ['>', ['get', 'v'], 0], ['interpolate', ['linear'], ['get', 'v'], 0, Kc.pk[0], 1, Kc.pk[1]], kolir];
-    map.addLayer({ id: id + '-f', type: 'fill', source: id, paint: { 'fill-color': kolir, 'fill-opacity': 0 } }, pered);
-    map.addLayer({ id: id + '-l', type: 'line', source: id, paint: { 'line-color': sh.styl_sot === 'plytka' ? Kc.tlo : Kc.sl,
-      'line-width': ['interpolate', ['linear'], ['zoom'], 9, sh.styl_sot === 'plytka' ? 2.4 : 1.4, 12, sh.styl_sot === 'plytka' ? 4 : 2.6, 15, sh.styl_sot === 'plytka' ? 6 : 4], 'line-opacity': 0 } }, pered);
-    if (sh.styl_sot === 'sklo' || sh.styl_sot === 'plytka') zibratyZnyk(sh.styl_sot);
     var rozpadIds = (sh.rozpad || []).map(function (r) { return r.id; });
     sh._ids = rozpadIds;
+    if (d.dodaty) { d.dodaty({ map: map, id: id, sh: sh, Kc: Kc, pered: pered, kolir: kolir }); return; }
+    map.addLayer({ id: id + '-f', type: 'fill', source: id, paint: { 'fill-color': kolir, 'fill-opacity': 0 } }, pered);
+    var lk = d.mezha === 'tlo' ? Kc.tlo : d.mezha === 'sl' ? Kc.sl : d.mezha;
+    map.addLayer({ id: id + '-l', type: 'line', source: id, paint: { 'line-color': lk,
+      'line-width': ['interpolate', ['linear'], ['zoom'], 9, d.shyr[0], 12, d.shyr[1], 15, d.shyr[2]], 'line-opacity': 0 } }, pered);
+    if (d.znyk) zibratyZnyk(d);
+    var filtr = d.vysota === 'vsi' ? ['>', ['get', 'n'], 0] :
+      sh.lyshe_rozpad ? ['in', ['get', 'id'], ['literal', rozpadIds]] : ['any', ['>', ['get', 'v'], 0], ['in', ['get', 'id'], ['literal', rozpadIds]]];
     map.addLayer({ id: id + '-3d', type: 'fill-extrusion', source: id,
       // lyshe_rozpad: у 3D — лише соти, що розпадаються; решта пласкі з чіткою межею (інакше стовпи затуляють «вибух»)
-      filter: sh.lyshe_rozpad ? ['in', ['get', 'id'], ['literal', rozpadIds]] : ['any', ['>', ['get', 'v'], 0], ['in', ['get', 'id'], ['literal', rozpadIds]]], paint: {
-      'fill-extrusion-color': sh.vershyny === false ? kolir : vershyna,
+      filter: filtr, paint: {
+      'fill-extrusion-color': d.vysota === 'vsi' ? kolir : sh.vershyny === false ? kolir : vershyna,
       'fill-extrusion-height': 0, 'fill-extrusion-base': 0, 'fill-extrusion-opacity': 0.9,
       'fill-extrusion-vertical-gradient': true } }, pered);
   }
-  // під «склом» дороги й будинки приглушені (рівна напівпрозорість замість доріжок); під «плиткою» — ще й назви вулиць
+  // під сотами дороги й будинки приглушені (рівна заливка замість доріжок); znyk_nazvy — ще й назви вулиць
   var ZNYK = [];
-  function zibratyZnyk(ss) {
+  function zibratyZnyk(d) {
     if (ZNYK.length) return;
     map.getStyle().layers.forEach(function (l) {
       var sl = l['source-layer'];
       if (l.type === 'line' && (sl === 'transportation' || sl === 'aeroway')) ZNYK.push([l.id, 'line-opacity', map.getPaintProperty(l.id, 'line-opacity') === undefined ? 1 : +map.getPaintProperty(l.id, 'line-opacity') || 1]);
       else if (l.id === 'building') ZNYK.push([l.id, 'fill-opacity', 1]);
-      else if (ss === 'plytka' && l.type === 'symbol' && sl === 'transportation_name') ZNYK.push([l.id, 'text-opacity', 1]);
+      else if (d.znyk_nazvy && l.type === 'symbol' && sl === 'transportation_name') ZNYK.push([l.id, 'text-opacity', 1]);
     });
   }
   function onovytySoty(i, sh) {
-    var id = 'soty-' + i;
+    var id = 'soty-' + i, d = stylSot(sh);
     var a = trek(sh.prozorist, T, 1) * (T < (sh.t0 || 0) || T > (sh.t1 || 1e9) ? 0 : 1);
     var v = trek(sh.vysota, T, 0);
     var zum = map.getZoom();
+    if (d.onovyty) { d.onovyty({ map: map, id: id, sh: sh, a: a, v: v, zum: zum, T: T, Kc: K.kol }); return; }
     // зблизька заливка яскравіша (MV-151): на z 12+ сота читається плямою, а не сіткою поверх вулиць
     var zal = (sh.zalyvka === undefined ? 0.55 : sh.zalyvka) * (sh.yaskravo_zblyzka === false ? 1 : lerp(1, 1.8, clamp((zum - 11) / 2, 0, 1)));
-    // В1 («мурашник», ZAVDANNYA-134): styl_sot — 'sait' (над дорогами, як на сайті), 'sklo' (рівна напівпрозорість),
-    // 'plytka' (суцільна мозаїка); без нього — як було (соти під дорогами й будинками)
-    var ss = sh.styl_sot;
-    var fz = ss === 'plytka' ? 0.94 : ss === 'sklo' ? (sh.zalyvka === undefined ? 0.5 : sh.zalyvka) : Math.min(0.8, zal);
+    // В1 («мурашник»): стиль зі styl_sot лежить над дорогами (як на сайті); без нього — як було (під дорогами)
+    var fz = d.zalyvka === null ? Math.min(0.8, zal) : (sh.zalyvka !== undefined && sh.styl_sot === 'sklo' ? sh.zalyvka : d.zalyvka);
     map.setPaintProperty(id + '-f', 'fill-opacity', a * fz);
-    map.setPaintProperty(id + '-l', 'line-opacity', a * (sh.mezha_prozorist === undefined ? (ss === 'plytka' ? 1 : 0.85) : sh.mezha_prozorist));
-    if (ss === 'sklo' || ss === 'plytka') ZNYK.forEach(function (l) { map.setPaintProperty(l[0], l[1], l[2] * (1 - a * (ss === 'plytka' ? 1 : 0.6))); });
+    map.setPaintProperty(id + '-l', 'line-opacity', a * (sh.mezha_prozorist === undefined ? d.mezha_a : sh.mezha_prozorist));
+    if (d.znyk) ZNYK.forEach(function (l) { map.setPaintProperty(l[0], l[1], l[2] * (1 - a * d.znyk)); });
     // висота відносно наближення: зблизька стовпчики нижчі, інакше закривають вулиці (як на сайті)
     var maks = (sh.maks_vysota || 2500) * clamp(Math.pow(2, (sh.z_ref || 10.5) - zum), 0.06, 1.4);
     var rozpad = ['coalesce', ['feature-state', 'r'], 1];
-    var vv = sh._ids.length ? ['case', ['in', ['get', 'id'], ['literal', sh._ids]], ['max', ['get', 'v'], 0.45], ['get', 'v']] : ['get', 'v'];
+    var vv = d.vysota === 'vsi' ? ['get', 'h'] :
+      sh._ids.length ? ['case', ['in', ['get', 'id'], ['literal', sh._ids]], ['max', ['get', 'v'], 0.45], ['get', 'v']] : ['get', 'v'];
     map.setPaintProperty(id + '-3d', 'fill-extrusion-height', ['*', vv, maks, v, rozpad]);
-    var op3 = zum > 13 ? 0.62 : zum > 12 ? 0.8 : 0.92;
+    var op3 = d.op3d !== undefined ? d.op3d : zum > 13 ? 0.62 : zum > 12 ? 0.8 : 0.92;
     map.setPaintProperty(id + '-3d', 'fill-extrusion-opacity', Math.max(0.0, Math.min(1, a * (v > 0.001 ? op3 : 0))));
     (sh.rozpad || []).forEach(function (r) {
       var k = clamp((T - r.t) / 0.35, 0, 1);
       map.setFeatureState({ source: id, id: r.id }, { r: 1 - E.i(k) });
     });
+  }
+
+  // ---------------------------------------------------------------- адреси (В3): місця з числом подій, як карта підписника
+  // sh: {dani: GeoJSON точок {n, t}, styl_adres, t0, t1, prozorist, rozmir}. Підпис — лише число подій, ніколи не номер
+  // будинку (MV-25, MV-60). Стилі — рівноправні: 'kola' (коло з числом), 'svitni' (світні точки без числа),
+  // 'kiltsia' (кільце з числом). Модулі можуть дописати свої: VAU.styliAdres[імʼя] = {dodaty(ctx), onovyty(ctx)}.
+  function radiusAdres(baza, k) {   // радіус ∝ √n і росте з наближенням (zoom — лише зовнішнім interpolate, інакше шар не малюється)
+    var r = ['+', baza, ['*', 6.5, ['sqrt', ['get', 'n']]]];
+    k = k || 1;
+    return ['interpolate', ['linear'], ['zoom'], 11, ['*', 0.5 * k, r], 13, ['*', 0.85 * k, r], 15, ['*', 1.3 * k, r], 17, ['*', 1.7 * k, r]];
+  }
+  function shryftZhyrnyi() {
+    var f = (K.shryft || ['Noto Sans Regular']).map(function (x) { return String(x).replace('Regular', 'Bold'); });
+    return f;
+  }
+  VAU.styliAdres.kola = VAU.styliAdres.kola || {
+    dodaty: function (c) {
+      var Kc = c.Kc;
+      c.map.addLayer({ id: c.id + '-k', type: 'circle', source: c.id, paint: { 'circle-color': Kc.pk[1], 'circle-opacity': 0,
+        'circle-radius': radiusAdres(12), 'circle-stroke-color': Kc.oreol, 'circle-stroke-width': 3, 'circle-stroke-opacity': 0 } }, c.pered);
+      c.map.addLayer({ id: c.id + '-n', type: 'symbol', source: c.id, filter: ['>=', ['get', 'n'], c.sh.min_chyslo || 2],
+        layout: { 'text-field': ['to-string', ['get', 'n']], 'text-font': shryftZhyrnyi(), 'text-size': ['interpolate', ['linear'], ['zoom'], 11, 20, 13, 26, 15, 38, 17, 46],
+          'text-allow-overlap': false, 'text-padding': 6, 'symbol-sort-key': ['-', 0, ['get', 'n']] },
+        paint: { 'text-color': K.t === 'temna' ? '#0B0D1C' : '#FFFFFF', 'text-opacity': 0 } });
+    },
+    onovyty: function (c) {
+      c.map.setPaintProperty(c.id + '-k', 'circle-opacity', c.a * 0.92);
+      c.map.setPaintProperty(c.id + '-k', 'circle-stroke-opacity', c.a);
+      c.map.setPaintProperty(c.id + '-n', 'text-opacity', c.a);
+    }
+  };
+  VAU.styliAdres.kiltsia = VAU.styliAdres.kiltsia || {
+    dodaty: function (c) {
+      var Kc = c.Kc;
+      c.map.addLayer({ id: c.id + '-k', type: 'circle', source: c.id, paint: { 'circle-color': Kc.tlo, 'circle-opacity': 0,
+        'circle-radius': radiusAdres(12), 'circle-stroke-color': Kc.pk[0], 'circle-stroke-width': 5, 'circle-stroke-opacity': 0 } }, c.pered);
+      c.map.addLayer({ id: c.id + '-n', type: 'symbol', source: c.id, filter: ['>=', ['get', 'n'], c.sh.min_chyslo || 2],
+        layout: { 'text-field': ['to-string', ['get', 'n']], 'text-font': shryftZhyrnyi(), 'text-size': ['interpolate', ['linear'], ['zoom'], 11, 20, 13, 26, 15, 38, 17, 46],
+          'text-allow-overlap': false, 'text-padding': 6, 'symbol-sort-key': ['-', 0, ['get', 'n']] }, paint: { 'text-color': Kc.pidpys, 'text-opacity': 0 } });
+    },
+    onovyty: function (c) {
+      c.map.setPaintProperty(c.id + '-k', 'circle-opacity', c.a * 0.85);
+      c.map.setPaintProperty(c.id + '-k', 'circle-stroke-opacity', c.a);
+      c.map.setPaintProperty(c.id + '-n', 'text-opacity', c.a);
+    }
+  };
+  VAU.styliAdres.svitni = VAU.styliAdres.svitni || {
+    dodaty: function (c) {
+      var Kc = c.Kc;
+      c.map.addLayer({ id: c.id + '-g', type: 'circle', source: c.id, paint: { 'circle-color': Kc.pk[1], 'circle-opacity': 0,
+        'circle-radius': radiusAdres(18), 'circle-blur': 1 } }, c.pered);
+      c.map.addLayer({ id: c.id + '-k', type: 'circle', source: c.id, paint: { 'circle-color': K.t === 'temna' ? '#E9FFF6' : Kc.pk[1], 'circle-opacity': 0,
+        'circle-radius': radiusAdres(8, 0.35) } }, c.pered);
+    },
+    onovyty: function (c) {
+      c.map.setPaintProperty(c.id + '-g', 'circle-opacity', c.a * 0.75);
+      c.map.setPaintProperty(c.id + '-k', 'circle-opacity', c.a);
+    }
+  };
+  function dodatyAdresy(i, sh, pered) {
+    var id = 'adresy-' + i, d = VAU.styliAdres[sh.styl_adres || 'kola'];
+    if (!d) throw new Error('невідомий стиль адрес: ' + sh.styl_adres);
+    map.addSource(id, { type: 'geojson', data: sh.dani });
+    d.dodaty({ map: map, id: id, sh: sh, Kc: K.kol, pered: pered });
+    sh._shary = map.getStyle().layers.filter(function (l) { return l.source === id; }).map(function (l) { return l.id; });
+  }
+  function onovytyAdresy(i, sh) {
+    var id = 'adresy-' + i, d = VAU.styliAdres[sh.styl_adres || 'kola'];
+    var a = trek(sh.prozorist, T, 1) * (T < (sh.t0 || 0) || T > (sh.t1 || 1e9) ? 0 : 1);
+    // місця з'являються за власним часом t (хвиля, хронологія): фільтр за часом кадру
+    var f = ['<=', ['get', 't'], T];
+    sh._shary.forEach(function (l) {
+      var bazovyi = l.slice(-2) === '-n' ? ['>=', ['get', 'n'], sh.min_chyslo || 2] : null;
+      map.setFilter(l, bazovyi ? ['all', f, bazovyi] : f);
+    });
+    d.onovyty({ map: map, id: id, sh: sh, a: a, T: T, Kc: K.kol });
   }
 
   // ---------------------------------------------------------------- кінетичний текст
@@ -339,6 +458,14 @@
         '</span><span class="s"></span><span class="nz">' + r.tekst + '</span></div>'; }).join('');
     } else if (it.styl === 'shtamp') {       // печатка «МІФ» / «ФАКТ»
       el.innerHTML = '<span>' + it.tekst + '</span>';
+    } else if (it.styl === 'kalendar') {     // «Календар року»: місяці → клітинки-дні, рівень 0–4 (ZAVDANNYA-138)
+      var gi = 0;
+      el.innerHTML = it.misiatsi.map(function (m) {
+        var h = '<div class="mis"><b>' + m.nazva + '</b><div class="sitka">';
+        for (var p = 0; p < m.pochatok; p++) h += '<span class="d pust"></span>';
+        m.dni.forEach(function (k) { h += '<span class="d k' + k + '" data-i="' + (gi++) + '"></span>'; });
+        return h + '</div></div>';
+      }).join('');
     } else if (it.styl === 'taimer') {       // смуга часу «3 секунди»
       el.innerHTML = '<span class="s"></span><span class="n"></span>';
     } else {
@@ -480,6 +607,15 @@
       el.querySelector('span').style.transform = 'rotate(-8deg) scale(' + lerp(2.4, 1, E.oo(kt)) + ')';
       el.style.opacity = Math.min(kt * 1.5, s.z);
     }
+    if (it.styl === 'kalendar') {
+      if (!it._dni) it._dni = Array.prototype.slice.call(el.querySelectorAll('.d[data-i]'));
+      var cur = odrazu(it) && !it.kluchi ? 1e9 : trek(it.kluchi, t, 1e9);
+      it._dni.forEach(function (d, i) {
+        d.classList.toggle('on', i <= cur);
+        // akc: індекси днів-акцентів; кожен — число (з akc_t) або [індекс, з якої секунди]
+        d.classList.toggle('akc', (it.akc || []).some(function (a) { return Array.isArray(a) ? a[0] === i && t >= a[1] : a === i && t >= (it.akc_t || 0); }));
+      });
+    }
     if (it.styl === 'taimer') {
       var zl = clamp((it.t1 - t) / Math.max(0.1, it.t1 - it.t0), 0, 1);
       el.querySelector('.s').style.width = (zl * 100) + '%';
@@ -492,7 +628,7 @@
     var el = document.createElement('div');
     el.className = 'ui ' + u.typ;
     var ZN = '<svg viewBox="0 0 48 48"><path class="z1" d="M24 2 43 13v22L24 46 5 35V13z"/><path class="z2" d="M24 15 32 19.5v9L24 33l-8-4.5v-9z"/></svg>';
-    if (u.typ === 'zavisa') { el.style.cssText = 'position:absolute;inset:0;background:#05060F'; }
+    if (u.typ === 'zavisa') { el.style.cssText = 'position:absolute;inset:0;background:' + (u.kolir || (K.t === 'svitla' ? '#F4F5FB' : '#05060F')); }
     if (u.typ === 'sota') el.innerHTML = ZN;   // персонаж «Сота» — лише знак, без обличчя (MV-148)
     if (u.typ === 'poshuk') el.innerHTML = '<span class="lupa"></span><span class="txt"></span><span class="kursor"></span>';
     if (u.typ === 'spov') el.innerHTML = ZN + '<div><b>' + u.zag + '</b><span>' + u.tekst + '</span></div><small>' + (u.koly || 'зараз') + '</small>';
@@ -648,6 +784,17 @@
     var k = kamera(t);
     map.jumpTo({ center: k.c, zoom: k.z, pitch: k.p || 0, bearing: k.b || 0 });
     (S.soty || []).forEach(function (sh, i) { onovytySoty(i, sh); });
+    (S.adresy || []).forEach(function (sh, i) { onovytyAdresy(i, sh); });
+    var druha = null;
+    if (S.druha && DRUHA) {   // поділений екран (День і ніч): друга сцена в рамці, межа рухається за доріжкою kordon
+      // os 'y' — межа горизонтальна (друга сцена знизу), 'x' — вертикальна (друга сцена праворуч)
+      var vert = S.druha.os === 'x', rozm = vert ? W : H, yk = trek(S.druha.kordon, t, 0.5) * rozm;
+      DRUHA.el.style.clipPath = vert ? 'inset(0 0 0 ' + yk + 'px)' : 'inset(' + yk + 'px 0 0 0)';
+      DRUHA.liniia.className = vert ? 'x' : '';
+      DRUHA.liniia.style[vert ? 'left' : 'top'] = (yk - 3) + 'px';
+      DRUHA.liniia.style.opacity = yk > 2 && yk < rozm - 2 ? 1 : 0;
+      druha = DRUHA.el.contentWindow.kadr(t);
+    }
     (S.tekst || []).forEach(function (it) { onovytyTekst(it, t); });
     (S.ui || []).forEach(function (u) { onovytyUi(u, t); });
     var spalakh = 0; (S.spalakh || []).forEach(function (f) { var a = t - f.t; if (a >= 0 && a < 0.35) spalakh = Math.max(spalakh, (f.sila || 0.6) * Math.exp(-a * 12)); });
@@ -669,7 +816,7 @@
     var z = document.getElementById('znak'); z.style.opacity = S.znak === false ? 0 : trek(S.znak_prozorist, t, 0.92);
     var dz = document.getElementById('dzherelo'); dz.style.opacity = trek(S.dzherelo_prozorist, t, 1);
     if (VY && S.styl) VY.kadr(t);
-    return zachekaty().then(function () {
+    return Promise.all([zachekaty(), druha]).then(function () {
       (S.mitky || []).forEach(function (m) { onovytyMitku(m, t); });
       nakladka(t);
       return true;
@@ -679,9 +826,15 @@
   function start() {
     var q = new URLSearchParams(location.search);
     return fetch(q.get('s')).then(function (v) { return v.json(); }).then(function (s) {
-      S = s; K = { t: S.tema || 'temna' };
-      document.documentElement.setAttribute('data-t', osnova(K.t));
-      document.documentElement.setAttribute('data-tema', K.t);
+      S = s;
+      return Promise.all((S.moduli || []).map(function (m) {   // власні вигляди (ZAVDANNYA-139) — до вибору теми
+        return new Promise(function (ok, ne) { var e = document.createElement('script'); e.src = m; e.onload = ok; e.onerror = function () { ne(new Error('модуль ' + m)); }; document.head.appendChild(e); });
+      }));
+    }).then(function () {
+      K = tema(S.tema || 'temna');
+      document.documentElement.setAttribute('data-t', K.t);
+      document.documentElement.setAttribute('data-tema', K.imia);
+      if (S.bez_nakladok) document.documentElement.classList.add('bez-nakladok');
       // С5: джерело й «Голос згенеровано» — великі, вгорі під логотипом (зона, вільна від інтерфейсу TikTok); MV-150
       document.getElementById('dzherelo').innerHTML = '<span>' + (S.dzherelo === undefined ? 'Рішення судів (ЄДРСР) · лише те, що дійшло до суду' : S.dzherelo) +
         '</span>' + (S.holos_poznaka ? '<span class="hp">' + S.holos_poznaka + '</span>' : '');
@@ -689,7 +842,16 @@
       (S.tekst || []).forEach(zbuduvatyTekst);
       (S.ui || []).forEach(zbuduvatyUi);
       (S.mitky || []).forEach(zbuduvatyMitku);
-      return fetch(STYLI[osnova(K.t)]).then(function (v) { return v.json(); });
+      if (S.druha) {
+        var fr = document.createElement('iframe');
+        fr.id = 'druha'; fr.src = 'stsena.html?s=' + encodeURIComponent(S.druha.s);
+        var li = document.createElement('div'); li.id = 'druha-liniia';
+        var kadrEl = document.getElementById('kadr');
+        kadrEl.insertBefore(fr, document.getElementById('nakladka'));
+        kadrEl.insertBefore(li, document.getElementById('nakladka'));
+        DRUHA = { el: fr, liniia: li, gotovo: new Promise(function (ok) { fr.onload = function () { fr.contentWindow.gotovo.then(ok); }; }) };
+      }
+      return fetch(K.styl).then(function (v) { return v.json(); });
     }).then(function (styl) {
       var k0 = kamera(0);
       maplibregl.setWorkerUrl('../../site/hra/biblioteka/maplibre-gl-csp-worker.js');
@@ -702,17 +864,20 @@
       var pershyiSymvol = (map.getStyle().layers.find(function (l) { return l.type === 'symbol'; }) || {}).id;
       if (S.mezha) {
         map.addSource('mezha', { type: 'geojson', data: S.mezha });
-        map.addLayer({ id: 'mezha', type: 'line', source: 'mezha', paint: { 'line-color': KOL[K.t].mezha, 'line-width': 2, 'line-opacity': 0.7 } }, pershyiSymvol);
+        map.addLayer({ id: 'mezha', type: 'line', source: 'mezha', paint: { 'line-color': K.kol.mezha, 'line-width': 2, 'line-opacity': 0.7 } }, pershyiSymvol);
       }
       // pershyiSymvol у стилях OpenFreeMap — назва води, вона йде ДО будинків і доріг: усе, що вставлено перед нею, лежить
       // під дорогами (причина «мурашника», В1). nadLiniiamy — над останнім шаром ліній, під підписами (як на сайті).
       var shary = map.getStyle().layers, ost = shary.map(function (l) { return l.type !== 'symbol'; }).lastIndexOf(true);
       var nadLiniiamy = (shary[ost + 1] || {}).id;
+      if (S.mezha && S.nad_dorohamy) map.moveLayer('mezha', nadLiniiamy);   // MV-161: межа міста — над дорогами
       (S.soty || []).forEach(function (sh, i) { dodatySoty(i, sh, sh.styl_sot ? nadLiniiamy : pershyiSymvol); });
-      (S.tochky || []).forEach(function (sh, i) { map.addLayer(sharTochok('tochky-' + i, sh), S.tochky_nad_pidpysamy ? undefined : pershyiSymvol); });
-      if (VY && S.styl) VY.dodaty({ map: map, S: S, tema: K.t, Kc: KOL[K.t], temna: osnova(K.t) === 'temna', trek: trek, E: E, clamp: clamp,
+      (S.adresy || []).forEach(function (sh, i) { dodatyAdresy(i, sh, nadLiniiamy); });
+      // MV-161: точки подій — над дорогами (nad_dorohamy); інакше — як було (під дорогами)
+      (S.tochky || []).forEach(function (sh, i) { map.addLayer(sharTochok('tochky-' + i, sh), S.tochky_nad_pidpysamy ? undefined : S.nad_dorohamy ? nadLiniiamy : pershyiSymvol); });
+      if (VY && S.styl) VY.dodaty({ map: map, S: S, tema: K.imia, Kc: K.kol, temna: K.t === 'temna', trek: trek, E: E, clamp: clamp,
         lerp: lerp, nad: nadLiniiamy, pid: pershyiSymvol, W: W, H: H });
-      return document.fonts.ready;
+      return Promise.all([document.fonts.ready, DRUHA ? DRUHA.gotovo : null]);
     }).then(function () { return window.kadr(0); }).then(function () {
       return { tryvalist: S.tryvalist };
     });

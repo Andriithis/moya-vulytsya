@@ -223,3 +223,40 @@ class Vidpyska(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class LystStezhu(unittest.TestCase):
+    """ZAVDANNYA-150, п. 4: щомісячний лист «Стежу» підписникам через чергу сервера продажу (site/prodazh/lyst_stezhu.py)."""
+
+    @classmethod
+    def setUpClass(cls):
+        sys.path.insert(0, str(KORIN / 'site' / 'prodazh'))
+        import lyst_stezhu
+        cls.LS = lyst_stezhu
+        cls.strichka = Z.strichka()
+        cls.strichka['tyzhden'] = {'vid': '2026-10-17', 'do': '2026-11-16'}     # місяць після оновлення даних
+        cls.indeks = {'budynky': [{'u': '/budynok/zrazkova/5/', 'a': 'вулиця Зразкова, 5', 'la': Z.LA, 'lo': Z.LO},
+                                  {'u': '/budynok/testovyi/1/', 'a': 'провулок Тестовий, 1', 'la': Z.LA2, 'lo': Z.LO2}]}
+
+    def test_lyst_z_cherhy_servera(self):
+        cherha = [{'id': 'k1', 'adresy': [{'budynok': '/budynok/zrazkova/5/', 'adresa': 'вулиця Зразкова, 5'},
+                                          {'budynok': '/budynok/zniknuv/9/', 'adresa': 'вулиця Зникла, 9'}]},
+                  {'id': 'k2', 'adresy': [{'budynok': '/budynok/zniknuv/9/', 'adresa': 'вулиця Зникла, 9'}]}]
+        vyhid, zvit = self.LS.lysty(self.strichka, cherha, self.indeks, SAIT)
+        self.assertEqual([l['id'] for l in vyhid], ['k1'])
+        self.assertEqual((zvit['bez_tochky'], zvit['bez_adres'], zvit['lystiv']), (2, 1, 1))
+        l = vyhid[0]
+        self.assertIn('ВУЛИЦЯ ЗРАЗКОВА, 5', l['tekst'])
+        self.assertIn('17 жовтня – 15 листопада', l['tema'])
+        self.assertNotIn('тиж', l['tema'] + l['tekst'], 'лист підписці — місячний')
+        self.assertIn(f'{SAIT}/kabinet/#stezhu', l['tekst'])
+        self.assertNotIn('один дотик', l['tekst'], 'вимикається кнопкою в кабінеті, не одним дотиком')
+        self.assertEqual(L.vady_tekstu(l['tekst']), [])
+
+    def test_tykhyi_misiats(self):
+        t = Z.strichka(tykha=True)
+        t['tyzhden'] = {'vid': '2026-10-17', 'do': '2026-11-16'}
+        vyhid, _ = self.LS.lysty(t, [{'id': 'k3', 'adresy': [{'budynok': '/budynok/zrazkova/5/', 'adresa': 'вулиця Зразкова, 5'}]}],
+                                 self.indeks, SAIT)
+        self.assertTrue(vyhid[0]['tema'].startswith('Тихий місяць біля дому'))
+        self.assertIn('Цього місяця', vyhid[0]['tekst'])

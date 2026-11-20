@@ -86,6 +86,68 @@ export function shliakhBudynku(t) {
   return s.slice(0, 200);
 }
 
+// ---------------------------------------------------------------- будинок словами (ZAVDANNYA-150, п. 6)
+// ОСББ, рієлтор, «Стежу», пакет: людина пише адресу словами («Оболонський 16», «вул. Хрещатик, 22») — сервер шукає її
+// у тому самому файлі пошуку будинків, що й «Мій будинок» (/vulytsi/budynky.json сайту). Посилання на сторінку — теж можна.
+
+const normNazvy = (t) => String(t ?? '').toLowerCase().replace(/[ʼ’'`]/g, '').replace(/ґ/g, 'г').replace(/[-.,«»"]/g, ' ').replace(/\s+/g, ' ').trim();
+const normNomera = (t) => String(t ?? '').toLowerCase().replace(/[\s-]/g, '').replace(/\\/g, '/');
+const ADRESA = /^(.*?)[\s,]+(?:буд(?:инок)?\.?\s*)?(?:№\s*)?(\d+[^\s,]*(?:\s?[а-яіїєa-z])?)$/i;
+let keshBudynkiv = null;        // { env, dani } — файл пошуку в пам'яті скрипта (один на версію сайту)
+
+async function budynkyPoshuku(env, url) {
+  if (keshBudynkiv && keshBudynkiv.env === env) return keshBudynkiv.dani;
+  let dani = [];
+  try {
+    const r = await env.ASSETS.fetch(new Request(new URL('/vulytsi/budynky.json', url)));
+    if (r && r.ok) dani = await r.json();
+  } catch { dani = []; }
+  keshBudynkiv = { env, dani };
+  return dani;
+}
+
+/**
+ * Будинок з того, що написала людина: посилання на сторінку або адреса словами.
+ * Повертає { budynok, adresa } | { varianty: [{ budynok, adresa }] } (кілька вулиць підходять) | { nemaie: true }.
+ */
+export async function znaityBudynok(env, url, tekst) {
+  const t = String(tekst ?? '').trim().slice(0, 200);
+  if (!t) return { nemaie: true };
+  if (/^(https?:\/\/|\/budynok\/)/i.test(t)) {
+    const budynok = shliakhBudynku(t);
+    const adresa = await perevirytyBudynok(env, budynok, url);
+    return adresa ? { budynok, adresa } : { nemaie: true };
+  }
+  const m = ADRESA.exec(t);
+  if (!m || !m[1].trim()) return { nemaie: true, bezNomera: true };
+  const slova = normNazvy(m[1]).split(' ').filter(Boolean), nn = normNomera(m[2]);
+  let vs = [];
+  for (const [nazva, , stari, bs] of await budynkyPoshuku(env, url)) {
+    const p = normNazvy(`${nazva} ${stari || ''}`);
+    if (!slova.every((s) => p.includes(s))) continue;
+    for (const [nomer, u] of bs) if (normNomera(nomer) === nn) vs.push({ budynok: u, adresa: `${nazva}, ${nomer}`, tochno: normNazvy(nazva) === normNazvy(m[1]) });
+  }
+  if (vs.length > 1 && vs.some((v) => v.tochno)) vs = vs.filter((v) => v.tochno);   // обрано з підказки — повна назва
+  if (vs.length > 1) return { varianty: vs.slice(0, 6).map(({ budynok, adresa }) => ({ budynok, adresa })) };
+  if (!vs.length) return { nemaie: true };
+  const adresa = await perevirytyBudynok(env, vs[0].budynok, url);
+  return adresa ? { budynok: vs[0].budynok, adresa } : { nemaie: true };
+}
+
+/** Що сказати людині, якщо будинок не знайшли (той самий текст у формі замовлення й кабінеті). */
+export function chomuNeZnaideno(v) {
+  if (v.varianty) return `Підходить кілька адрес: ${v.varianty.map((x) => x.adresa).join('; ')}. Оберіть одну з підказок або впишіть повну назву вулиці.`;
+  if (v.bezNomera) return 'Додайте номер будинку: наприклад, «Оболонський 16».';
+  return 'Такого будинку в наших даних немає: сторінка будинку є, лише коли є скарги 1551 чи події з рішень. Перевірте назву й номер — або оберіть із підказок.';
+}
+
+/** ZAVDANNYA-150, п. 3: скільки довідок людина може взяти на цей будинок без оплати (підписка, пакет «3 довідки»; ОСББ — лише свій будинок). */
+export async function zalyshokNaBudynok(env, korystuvach_id, budynok) {
+  const { ps, pakety } = await dostupno(env, korystuvach_id);
+  return ps.filter((p) => p.tovar !== 'osbb' || p.budynok === budynok).reduce((s, p) => s + p.zalyshok, 0)
+    + pakety.reduce((s, z) => s + z.zalyshok, 0);
+}
+
 export function potribenBudynok(tovar) {
   return !BEZ_BUDYNKU.includes(tovar);
 }
@@ -309,6 +371,7 @@ export async function vydalytyDani(env, korystuvach_id) {
   await zrobyty(env, 'UPDATE zamovlennia SET korystuvach_id = NULL, budynok = NULL, adresa = NULL WHERE korystuvach_id = ?', korystuvach_id);
   await zrobyty(env, 'UPDATE pidpysky SET korystuvach_id = NULL, budynok = NULL, adresa = NULL WHERE korystuvach_id = ?', korystuvach_id);
   await zrobyty(env, 'DELETE FROM stezhu WHERE korystuvach_id = ?', korystuvach_id);
+  await zrobyty(env, 'DELETE FROM lysty_stezhu WHERE korystuvach_id = ?', korystuvach_id);   // щомісячний лист «Стежу» (ZAVDANNYA-150)
   await zrobyty(env, 'DELETE FROM bali_rukh WHERE korystuvach_id = ?', korystuvach_id);   // бали ігор (ZAVDANNYA-123)
   await zrobyty(env, 'DELETE FROM sesii WHERE korystuvach_id = ?', korystuvach_id);
   await zrobyty(env, 'DELETE FROM vkhody WHERE korystuvach_id = ?', korystuvach_id);

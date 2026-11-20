@@ -90,7 +90,7 @@ test('ОСББ: форма без будинку — поле для посил�
   assert.match(text, /1\s490\sгрн на рік/);
   const chuzhyi = await zapyt(env, 'POST', '/api/zamovlennia', { forma: { tovar: 'osbb', budynok: '/budynok/nema/1/', poshta: 'o@poshta.ua', zghoda: 'tak', odrazu: 'tak' } });
   assert.equal(chuzhyi.r.status, 200);
-  assert.match(chuzhyi.text, /Такого будинку на сайті немає/);
+  assert.match(chuzhyi.text, /Такого будинку в наших даних немає/);
   assert.match(chuzhyi.text, /name="budynok"/, 'можна виправити тут же');
   assert.equal(sql(env, 'SELECT COUNT(*) n FROM zamovlennia')[0].n, 0);
 });

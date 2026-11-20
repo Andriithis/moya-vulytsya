@@ -1,0 +1,78 @@
+# Щомісячний лист «Стежу» підписникам (ZAVDANNYA-150, п. 4; черга сервера продажу — як у видавача довідок).
+#
+# Куди класти: у той самий ПРИВАТНИЙ репозиторій партнера, що й видавач (`moyavulytsya/vydavach`), як
+# .github/workflows/lyst_stezhu.yml. Ключі — ті самі: MV_DANI_TOKEN (dani-edrsr лише на читання) і VYDACHA_KLIUCH.
+# Пошти підписників запуск не бачить: сервер дає номер і адреси «Стежу», лист складається тут, надсилає — сервер.
+#
+# Коли: раз на місяць ПІСЛЯ оновлення даних (новий випуск у Release dani-edrsr і свіжі скарги 1551). Розклад нижче —
+# 5-го числа; або вручну (Actions → «Лист Стежу» → Run). Повтор за той самий місяць нікому не шле вдруге (сервер — 409).
+#
+# Вимкнено, доки не налаштовано: змінна LYST_STEZHU = uvimknuto. Після першого вдалого запуску — у викладці сайту
+# MV_LYST_STEZHU=tak (без нього site/vyklasty.py не ввімкне оплату: підписка обіцяє цей лист).
+#   змінна  LYST_STEZHU        uvimknuto
+#   змінна  MV_ADRESA_SAITU    https://<сайт>
+#   змінна  VYPUSK             тег Release dani-edrsr з новим випуском (events-*.db, budynky-*.json)
+#   змінна  VYPUSK_POPEREDNII  тег попереднього випуску: «нове» = чого там не було
+#   секрет  MV_DANI_TOKEN, VYDACHA_KLIUCH — як у vydavach.yml
+# НЕ ПЕРЕВІРЕНО на GitHub (у хмарі — лише проба на штучних даних і місцевому сервері продажу, docs/ZVIT-150.md).
+name: Лист Стежу
+
+on:
+  schedule:
+    - cron: '17 9 5 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lyst-stezhu
+  cancel-in-progress: false
+
+jobs:
+  lyst:
+    if: ${{ vars.LYST_STEZHU == 'uvimknuto' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: Andriithis/dani-edrsr
+          token: ${{ secrets.MV_DANI_TOKEN }}
+          path: dani-edrsr
+
+      - uses: actions/checkout@v4
+        with:
+          repository: Andriithis/moya-vulytsya
+          ref: main
+          path: produkt
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Бібліотеки (покажчик будинків рахує адреси сторінок тим самим кодом, що сайт)
+        run: python -m pip install h3
+
+      - name: Випуски з Release dani-edrsr (новий і попередній) і скарги 1551
+        env:
+          GH_TOKEN: ${{ secrets.MV_DANI_TOKEN }}
+        run: |
+          mkdir -p _dani
+          gh release download "${{ vars.VYPUSK }}" -R Andriithis/dani-edrsr --pattern 'events-*.db' --output _dani/nova.db --clobber
+          gh release download "${{ vars.VYPUSK }}" -R Andriithis/dani-edrsr --pattern 'budynky-*.json' --output _dani/budynky.json --clobber
+          gh release download "${{ vars.VYPUSK_POPEREDNII }}" -R Andriithis/dani-edrsr --pattern 'events-*.db' --output _dani/stara.db --clobber
+          (cd dani-edrsr && git fetch --depth 1 origin dani-1551 && git worktree add ../_dani/1551 FETCH_HEAD)
+
+      - name: Стрічка місяця і покажчик будинків
+        run: |
+          python dani-edrsr/src/nove_tyzhnia.py _dani/nova.db _dani/1551 _dani/nove.json --do "$(date -u +%F)" --dniv 30 \
+            --poperednii _dani/stara.db
+          python produkt/bot/indeks.py _dani/nova.db _dani/budynky.json _dani/indeks.json
+
+      - name: Листи
+        env:
+          VYDACHA_KLIUCH: ${{ secrets.VYDACHA_KLIUCH }}
+        run: |
+          python produkt/site/prodazh/lyst_stezhu.py --server "${{ vars.MV_ADRESA_SAITU }}" --strichka _dani/nove.json \
+            --indeks _dani/indeks.json --period "$(date -u +%Y-%m)" | tee -a "$GITHUB_STEP_SUMMARY"

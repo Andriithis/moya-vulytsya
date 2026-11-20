@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'none'; base-uri 'none'">
+<meta name="robots" content="noindex">
+<title>Кваліфікуй: кар'єра — Моя вулиця (прототип)</title>
+<meta name="theme-color" content="#F4F5FB" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#11142A" media="(prefers-color-scheme: dark)">
+<link rel="stylesheet" href="kariera.css">
+</head>
+<body>
+<!-- Навчальна гра «Кваліфікуй: кар'єра» (ZAVDANNYA-146). Прототип: справи — пробний випуск 08.11 і тексти рішень
+     (kariera.json, поза git; без нього — зачаток ../kvalifikuy.json), прогрес — лише на пристрої (localStorage).
+     Нічого не надсилає й нічого не продає. Навчання, не юридична допомога. -->
+<div class="ekran">
+  <header class="shapka">
+    <div class="znak">Кваліфікуй<span class="znak-2">: кар'єра</span> <span class="mitka">прототип</span></div>
+    <div class="prostir"></div>
+    <div class="plashka" id="plashka-seriia" title="Серія днів: щодня 5 справ"><small>серія</small><b id="seriia">0</b></div>
+    <button class="plashka plashka--riven" id="plashka-riven" type="button" title="Рівень і досвід">
+      <span class="riven-nazva" id="riven-nazva">—</span>
+      <span class="smuha" aria-hidden="true"><span id="smuha"></span></span>
+      <small id="dosvid">0</small>
+    </button>
+  </header>
+  <nav class="vkladky" role="tablist">
+    <button role="tab" data-v="den" aria-selected="true">Справи дня</button>
+    <button role="tab" data-v="trenuvannia" aria-selected="false">Тренування</button>
+    <button role="tab" data-v="plutaiu" aria-selected="false">Де плутаю</button>
+    <button role="tab" data-v="vykladachu" aria-selected="false">Викладачу</button>
+  </nav>
+  <main class="vmist" id="vmist"></main>
+  <footer class="pidval">Навчання, не юридична допомога. Справи — справжні рішення судів Києва, знеособлені; статтю в тексті приховано.</footer>
+  <div class="tost" id="tost" role="status" aria-live="polite"></div>
+  <div class="vikno" id="vikno" hidden></div>
+</div>
+<script src="kariera-yadro.js"></script>
+<script src="kariera.js"></script>
+</body>
+</html>

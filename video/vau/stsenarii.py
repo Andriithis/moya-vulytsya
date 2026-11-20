@@ -474,7 +474,7 @@ def r_06(B: Baza):
     R.tekst(3.2, 19.5, 'lich', kluchi=kluchi, pidpys='кг риби з рук — там,\nде вагу записано', y=1120)
     R.kam(19.5, (30.63, 50.45), 11.3, 35, 10, e='io')
     R.tekst(19.4, 21.0, 'velykyi', 'Усі п\'ять — про продаж\nриби *без документів.*', y='verkh', anim='vgoru')
-    R.fin(21.0, 'Що продають з рук біля тебе?', 'Сторінка району — події щотижня', PROFIL, y=600)
+    R.fin(21.0, 'Що продають з рук біля тебе?', 'Сторінка району — нове щомісяця', PROFIL, y=600)
     return R
 
 
@@ -612,13 +612,13 @@ def r_12(B: Baza):
     R.kam(6.0, (c[0], c[1] - 0.0012), 16.2, 62, -30, e='io').kam(14, (c[0], c[1] - 0.001), 16.4, 64, -60, e='l')
     R.tochky(pod[:-1], [0.2] * (len(pod) - 1), rozmir=((0, 7),), yaskr=((0, 0.45),), glow=0.2, kiltse=False)
     R.tochky([ost], [5.6], rozmir=((0, 64),), glow=0.6)
-    R.ui(1.0, 5.4, 'spov', zag='Нова подія на вашій вулиці', tekst=f'{imia} · {ost.mitka}', koly='щойно')
+    R.ui(1.0, 5.4, 'spov', zag='Лист «Нове біля дому»', tekst=f'{imia} · {ost.mitka}', koly='раз на місяць')   # ZAVDANNYA-150: лист, не миттєве сповіщення
     R.efekt(1.0, 'spov')
     R.kiltse(5.6, c, '#66E6BA', 320)
     R.efekt(5.6, 'pop', h=1.2)
     R.mitka(5.8, 13, c, f'{ost.mitka} · {ost.data[8:10]}.{ost.data[5:7]}.{ost.data[:4]}', kolir=hrupa_kol(ost.vyd))
-    R.tekst(6.2, 10.0, 'velykyi', 'Стеж за своєю вулицею.\n*Нове — щотижня.*', y='verkh', anim='vgoru')
-    R.holos(6.3, 'Стеж за своєю вулицею. Нове — щотижня.', 'tetiana')
+    R.tekst(6.2, 10.0, 'velykyi', 'Стеж за своєю вулицею.\n*Нове — щомісяця.*', y='verkh', anim='vgoru')
+    R.holos(6.3, 'Стеж за своєю вулицею. Нове — щомісяця.', 'tetiana')
     R.fin(10.2, 'Підписка «Моя вулиця»', '399 грн на місяць · одна довідка про будинок — включена', PROFIL)
     return R
 
