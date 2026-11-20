@@ -28,7 +28,8 @@ class Chernetky(unittest.TestCase):
 
     def test_polityka_vsia_posluha(self):
         t = tekst('polityka.html')
-        for slovo in ('Телеграм', 'застосунок', 'Стежу', 'Сповіщення', 'Уповноваженому', 'Геолокацію'):
+        for slovo in ('Телеграм', 'застосунок', 'Стежу', 'сповіщень браузера чи телефона ми не надсилаємо', 'Уповноваженому',
+                      'Геолокацію'):
             self.assertIn(slovo.lower(), t.lower(), slovo)
 
     def test_oferta_dani_i_onovlennia(self):
@@ -61,7 +62,7 @@ class Chernetky(unittest.TestCase):
 
     def test_polityka_kuky_i_stroky(self):
         t = tekst('polityka.html')
-        for slovo in ('Єдиний кукі', '3 роки', 'пункт 44.3', 'стаття 29', 'відповідальна особа', '[ПЛАТІЖНИЙ СЕРВІС]'):
+        for slovo in ('Кукі — лише два', '30 днів', '10 хвилин', '3 роки', 'пункт 44.3', 'стаття 29', 'відповідальна особа', '[ПЛАТІЖНИЙ СЕРВІС]'):
             self.assertIn(slovo, t)
 
     def test_umovy_u_zbyranni_i_vnyzu(self):
@@ -79,7 +80,7 @@ class Chernetky(unittest.TestCase):
         for n in range(1, 18):
             self.assertRegex(d, rf'\*\*{n}\. ', f'питання {n}')
         for mistse in ('[ВЛАСНИК]', '[КОД]', '[АДРЕСА]', '[КОНТАКТ]', '[САЙТ]', '[ДАТА]', '[НАЗВА ВЛАСНИКА ПРОЄКТУ]',
-                       '[ПЛАТІЖНИЙ СЕРВІС]', '[СЕРВІС І КРАЇНА ЗБЕРІГАННЯ]'):
+                       '[ПЛАТІЖНИЙ СЕРВІС]', '[СЕРВІС ПОШТИ]'):
             self.assertIn(mistse, d, 'місце є в списку для партнера')
 
 
