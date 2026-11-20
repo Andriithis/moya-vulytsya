@@ -66,7 +66,8 @@ async function uviity(env, poshta = 'ana@poshta.ua') {
   await zapyt(env, 'POST', '/kabinet/vkhid', { forma: { poshta } });
   const lyst = env.__LYSTY.find((l) => l.komu === poshta);
   assert.ok(lyst, 'лист входу');
-  const { r } = await zapyt(env, 'GET', new URL(lyst.tekst.match(/https:\S+/)[0]).pathname + new URL(lyst.tekst.match(/https:\S+/)[0]).search);
+  const t = new URL(lyst.tekst.match(/https:\S+/)[0]).searchParams.get('t');
+  const { r } = await zapyt(env, 'POST', '/kabinet/vkhid/uviity', { forma: { t } });   // кнопка «Увійти» (ZAVDANNYA-161)
   return r.headers.get('set-cookie').split(';')[0];
 }
 
@@ -272,10 +273,11 @@ test('пошти не витікають: вхід відповідає одна
   assert.equal(a.text, b.text);
   assert.equal(a.r.status, b.r.status);
   const posylannia = new URL(env.__LYSTY.at(-1).tekst.match(/https:\S+/)[0]);
-  const pershyi = await zapyt(env, 'GET', posylannia.pathname + posylannia.search);
+  const t = posylannia.searchParams.get('t');
+  const pershyi = await zapyt(env, 'POST', '/kabinet/vkhid/uviity', { forma: { t } });
   assert.equal(pershyi.r.status, 303);
   assert.match(pershyi.r.headers.get('set-cookie'), /HttpOnly; Secure; SameSite=Lax/);
-  const druhyi = await zapyt(env, 'GET', posylannia.pathname + posylannia.search);
+  const druhyi = await zapyt(env, 'POST', '/kabinet/vkhid/uviity', { forma: { t } });
   assert.equal(druhyi.r.status, 200);
   assert.equal(druhyi.r.headers.get('set-cookie'), null, 'вдруге — без входу');
   // перебір листів входу на одну пошту — не більше 5 на годину

@@ -70,7 +70,8 @@ async function vydavach(env) {
 async function uviity(env, poshta) {
   await zapyt(env, 'POST', '/kabinet/vkhid', { forma: { poshta } });
   const t = env.__LYSTY.filter((l) => l.komu === poshta && l.tema.startsWith('Вхід')).at(-1).tekst.match(/\?t=([a-z2-7]+)/)[1];
-  const { r } = await zapyt(env, 'GET', `/kabinet/vkhid/?t=${t}`);
+  assert.equal((await zapyt(env, 'GET', `/kabinet/vkhid/?t=${t}`)).r.status, 200);   // сторінка з кнопкою «Увійти» (ZAVDANNYA-161)
+  const { r } = await zapyt(env, 'POST', '/kabinet/vkhid/uviity', { forma: { t } });
   return r.headers.get('set-cookie').split(';')[0];
 }
 

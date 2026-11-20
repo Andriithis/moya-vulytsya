@@ -212,6 +212,17 @@ export function vkhid(povidomlennia_ = '', google = false, status = 200) {
 ${povidomlennia_ ? `<p class="prymitka" role="status">${e(povidomlennia_)}</p>` : ''}</section>`, { status });
 }
 
+/** ZAVDANNYA-161, п. 1: сторінка за посиланням із листа — вхід лише натисканням (поштові сканери посилання не спалюють). */
+export function knopkaVkhodu(t) {
+  return storinka('Вхід у кабінет', `<section class="zaholovok"><h1>Вхід у кабінет</h1>
+<p>Натисніть «Увійти», щоб відкрити кабінет. Посилання з листа діє 30 хвилин і лише один раз.</p></section>
+<section class="rozdil"><form class="forma" method="post" action="/kabinet/vkhid/uviity">
+<input type="hidden" name="t" value="${e(t)}">
+<button class="knopka knopka--holovna" type="submit">Увійти</button></form>
+<p class="prymitka">Якщо ви не просили посилання — просто закрийте сторінку.</p></section>`,
+  { zaholovky: { 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' } });
+}
+
 const STATUS_DOVIDKY = { v_cherzi: 'готується', hotuietsia: 'готується', hotova: 'готова', vydaleno: 'файл видалено за строком зберігання', pomylka: 'не вдалося — напишіть партнеру, повернемо гроші або зробимо ще раз' };
 const NAZVA_PIDPYSKY = { pidpyska: 'Підписка', rieltor: 'Підписка для рієлтора', osbb: 'Будинок для ОСББ', spyurist: 'Підписка юриста «Практика»' };
 const VYD_DOVIDKY = { povnyi: 'повний звіт', dovidka: 'довідка', sp: 'судова практика', osbb: 'щомісячна довідка ОСББ' };

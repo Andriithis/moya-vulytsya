@@ -85,7 +85,10 @@ async function uviity(env, poshta = 'ana@poshta.ua') {
   await zapyt(env, 'POST', '/kabinet/vkhid', { forma: { poshta } });
   const lyst = env.__LYSTY.filter((l) => l.komu === poshta && l.tema.startsWith('Вхід')).at(-1);
   const t = lyst.tekst.match(/\/kabinet\/vkhid\/\?t=([a-z2-7]+)/)[1];
-  const { r, kudy } = await zapyt(env, 'GET', `/kabinet/vkhid/?t=${t}`);
+  const storinka = await zapyt(env, 'GET', `/kabinet/vkhid/?t=${t}`);
+  assert.equal(storinka.r.status, 200);
+  assert.match(storinka.text, /Увійти<\/button>/);
+  const { r, kudy } = await zapyt(env, 'POST', '/kabinet/vkhid/uviity', { forma: { t } });
   assert.equal(r.status, 303);
   assert.equal(new URL(kudy).pathname, '/kabinet/');
   return r.headers.get('set-cookie').split(';')[0];
@@ -309,12 +312,13 @@ test('кабінет: посилання входу одноразове й на
   assert.equal(text.replace(/\s+/g, ''), t2.replace(/\s+/g, ''), 'однакова відповідь для відомої й невідомої пошти');
   const lyst = env.__LYSTY.filter((l) => l.tema.startsWith('Вхід')).at(-1);
   const t = lyst.tekst.match(/\?t=([a-z2-7]+)/)[1];
-  assert.equal((await zapyt(env, 'GET', `/kabinet/vkhid/?t=${t}`)).r.status, 303);
-  assert.notEqual((await zapyt(env, 'GET', `/kabinet/vkhid/?t=${t}`)).r.status, 303, 'вдруге — ні');
+  assert.equal((await zapyt(env, 'POST', '/kabinet/vkhid/uviity', { forma: { t } })).r.status, 303);
+  assert.notEqual((await zapyt(env, 'POST', '/kabinet/vkhid/uviity', { forma: { t } })).r.status, 303, 'вдруге — ні');
   await zapyt(env, 'POST', '/kabinet/vkhid', { forma: { poshta: 'ana@poshta.ua' } });
   env.krok(31 * 60);
   const t3 = env.__LYSTY.filter((l) => l.tema.startsWith('Вхід')).at(-1).tekst.match(/\?t=([a-z2-7]+)/)[1];
-  assert.notEqual((await zapyt(env, 'GET', `/kabinet/vkhid/?t=${t3}`)).r.status, 303, 'за 30 хв — застаріле');
+  assert.notEqual((await zapyt(env, 'POST', '/kabinet/vkhid/uviity', { forma: { t: t3 } })).r.status, 303, 'за 30 хв — застаріле');
+  assert.match((await zapyt(env, 'GET', `/kabinet/vkhid/?t=${t3}`)).text, /застаріло/);
   const bulo = env.__LYSTY.length;
   for (let i = 0; i < 8; i++) await zapyt(env, 'POST', '/kabinet/vkhid', { forma: { poshta: 'ana@poshta.ua' } });
   assert.ok(env.__LYSTY.length - bulo <= 5);
@@ -407,4 +411,33 @@ test('видалення на запит через партнера: лише �
   assert.deepEqual(JSON.parse(text), { vydaleno: true });
   assert.equal(sql(env, 'SELECT COUNT(*) n FROM korystuvachi')[0].n, 0);
   assert.equal(sql(env, 'SELECT status FROM pidpysky')[0].status, 'skasovana');
+});
+
+test('вхід (ZAVDANNYA-161, п. 1): поштовий сканер відкриває посилання — вхід не згоряє; увійти — лише кнопкою з нашого сайту', async () => {
+  const env = seredovyshche();
+  await oplatyty(env, await zamovyty(env, 'dovidka', '/budynok/zhylianska/5/'));
+  await zapyt(env, 'POST', '/kabinet/vkhid', { forma: { poshta: 'ana@poshta.ua' } });
+  const lyst = env.__LYSTY.filter((l) => l.tema.startsWith('Вхід')).at(-1);
+  assert.match(lyst.tekst, /натисніть «Увійти»/);
+  const t = lyst.tekst.match(/\?t=([a-z2-7]+)/)[1];
+  // сканер пошти тричі відкрив посилання (GET) — сесії немає, вхід не витрачено
+  for (let i = 0; i < 3; i++) {
+    const { r, text } = await zapyt(env, 'GET', `/kabinet/vkhid/?t=${t}`, { origin: null });
+    assert.equal(r.status, 200);
+    assert.equal(r.headers.get('set-cookie'), null);
+    assert.match(text, /name="t" value="[a-z2-7]+"/);
+    assert.equal(r.headers.get('cache-control'), 'no-store');
+  }
+  assert.equal(sql(env, 'SELECT COUNT(*) AS n FROM sesii')[0].n, 0);
+  // кнопка з чужого сайту — ні
+  assert.equal((await zapyt(env, 'POST', '/kabinet/vkhid/uviity', { forma: { t }, origin: 'https://zlyi.test' })).r.status, 403);
+  // людина натиснула «Увійти»
+  const { r, kudy } = await zapyt(env, 'POST', '/kabinet/vkhid/uviity', { forma: { t } });
+  assert.equal(r.status, 303);
+  assert.equal(new URL(kudy).pathname, '/kabinet/');
+  assert.match(r.headers.get('set-cookie'), /^mv_sesiia=/);
+  // після входу сторінка з посиланням каже «застаріло», а не показує кнопку
+  assert.doesNotMatch((await zapyt(env, 'GET', `/kabinet/vkhid/?t=${t}`)).text, /Увійти<\/button>/);
+  // вигаданий ключ — «застаріло», без кнопки
+  assert.match((await zapyt(env, 'GET', '/kabinet/vkhid/?t=<script>')).text, /застаріло/);
 });

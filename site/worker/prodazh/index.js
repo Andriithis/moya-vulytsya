@@ -15,7 +15,7 @@
 //   POST /api/spovishchennia/<сервіс>      підписане сповіщення про оплату → перевірка підпису й суми → видача
 //   GET  /oplata/dyakuiemo/                «дякуємо»
 //   GET  /dovidka/<id>/?k=<ключ>           довідка: ключ із листа або вхід у кабінет власника
-//   /kabinet/…                             вхід за посиланням на пошту, мої довідки, «Стежу», підписка, видалення даних
+//   /kabinet/…                             вхід за посиланням на пошту (посилання → сторінка з кнопкою «Увійти» → POST /kabinet/vkhid/uviity), мої довідки, «Стежу», підписка, видалення даних
 //   GET  /kabinet/google/…                 вхід через Google — лише з GOOGLE_KLIIENT_ID і GOOGLE_SEKRET (google.js, ZAVDANNYA-142)
 //   /api/vnutr/…                           для видавача (site/prodazh/vydavach.py), заголовок Authorization: Bearer VYDACHA_KLIUCH
 //   POST /kabinet/obmin                    обмін балів ігор на довідку / місяць підписки — лише з OBMIN_BALIV = 'tak' (ZAVDANNYA-123)
@@ -238,16 +238,34 @@ async function nadislatyVkhid(request, env, url) {
   await L.zrobyty(env, 'INSERT INTO vkhody (hash, korystuvach_id, do_) VALUES (?, ?, ?)', sha256(kliuch), k.id, t + VKHID_S);
   await nadislaty(env, {
     komu: poshta, tema: 'Вхід у кабінет «Моєї вулиці»',
-    tekst: `Посилання для входу (діє 30 хвилин, один раз):\n${adresaSaitu(env, url)}/kabinet/vkhid/?t=${kliuch}\n\nЯкщо ви не просили — нічого не робіть.`,
+    tekst: `Відкрийте посилання й натисніть «Увійти» (діє 30 хвилин, один раз):\n${adresaSaitu(env, url)}/kabinet/vkhid/?t=${kliuch}\n\nЯкщо ви не просили — нічого не робіть.`,
   });
   return vidpovid;
 }
 
-async function uviity(request, env, url) {
-  const t = url.searchParams.get('t') || '';
-  const zaraz = L.teper(env);
+// ZAVDANNYA-161, п. 1 (MV-173): посилання з листа лише ВІДКРИВАЄ сторінку з кнопкою «Увійти» — нічого не витрачає.
+// Поштові сканери (Outlook, корпоративні пошти) самі відкривають посилання з листа запитом GET; раніше вхід згоряв ще до людини.
+// Вхід — лише натисканням (POST з нашої сторінки). Заодно чужий «підставний» лист не впустить вас у чужий кабінет без натискання.
+const zastarilo = (env) => S.vkhid('Посилання застаріло або вже використане. Надішлемо нове.', G.uvimkneno(env));
+
+async function diisnyiVkhid(env, t) {
+  if (!/^[a-z2-7]{10,64}$/.test(t)) return null;
   const v = await L.odyn(env, 'SELECT * FROM vkhody WHERE hash = ?', sha256(t));
-  if (!v || v.vykorystano || v.do_ < zaraz) return S.vkhid('Посилання застаріло або вже використане. Надішлемо нове.', G.uvimkneno(env));
+  return v && !v.vykorystano && v.do_ >= L.teper(env) ? v : null;
+}
+
+async function storinkaVkhodu(env, url) {
+  const t = url.searchParams.get('t') || '';
+  if (!(await diisnyiVkhid(env, t))) return zastarilo(env);
+  return S.knopkaVkhodu(t);
+}
+
+async function uviity(request, env, url) {
+  if (!zNashohoSaitu(request, env)) return S.vkhid('Відкрийте посилання з листа ще раз і натисніть «Увійти».', G.uvimkneno(env), 403);
+  const t = String((await forma(request)).t || '');
+  const v = await diisnyiVkhid(env, t);
+  if (!v) return zastarilo(env);
+  const zaraz = L.teper(env);
   const r = await L.zrobyty(env, 'UPDATE vkhody SET vykorystano = ? WHERE hash = ? AND vykorystano IS NULL', zaraz, v.hash);
   if (!r.meta?.changes) return S.vkhid('Посилання вже використане.', G.uvimkneno(env));
   const s = vypadkovyi(32);
@@ -482,7 +500,7 @@ async function spilne(request, env, url) {
 
 /** Відповідь сервера продажу або null (тоді — звичайний сайт). */
 // Що обмежуємо (ZAVDANNYA-156): усе, що пише в базу чи шле листи з дії незнайомця, і вгадування ключів.
-const OBMEZHENI = [['POST', /^\/api\/(skoro|zamovlennia)$/, 'zapys'], ['POST', /^\/kabinet\/vkhid$/, 'vkhid'],
+const OBMEZHENI = [['POST', /^\/api\/(skoro|zamovlennia)$/, 'zapys'], ['POST', /^\/kabinet\/vkhid(\/uviity)?$/, 'vkhid'],
   ['GET', /^\/kabinet\/(vkhid|google)\/$/, 'vkhid'], ['GET', /^\/dovidka\//, 'dovidka'], ['GET', /^\/pidpysnyk\/api\//, 'karta']];
 
 export async function prodazh(request, env) {
@@ -517,7 +535,8 @@ export async function prodazh(request, env) {
   r = s.match(/^\/dovidka\/(d[a-z2-7]+)\/?$/);
   if (r && m === 'GET') return vidkrytyDovidku(request, env, url, r[1]);
   if (s === '/kabinet/vkhid' && m === 'POST') return nadislatyVkhid(request, env, url);
-  if (s === '/kabinet/vkhid/' && m === 'GET') return uviity(request, env, url);
+  if (s === '/kabinet/vkhid/' && m === 'GET') return storinkaVkhodu(env, url);
+  if (s === '/kabinet/vkhid/uviity' && m === 'POST') return uviity(request, env, url);
   if (s.startsWith('/kabinet/google/') && m === 'GET') return google(request, env, url);
   if (s.startsWith('/kabinet/')) {
     const ja = await sesiia(request, env);
