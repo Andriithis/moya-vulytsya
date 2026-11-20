@@ -83,8 +83,8 @@ ROZMYTTIA = r"""
 class Proksi(ZS.Obrobnyk):
     """/__vau/ — рамка й стилі рушія; решта — до місцевого сервера продажу (той самий шлях, куки, форми).
     Origin і Referer переписуються на адресу сервера (він приймає форми лише «зі свого сайту»); заборону вбудовування
-    (frame-ancestors) знято — сторінка показується в рамці «телефона» лише тут, на сервері вона та сама."""
-    server = 'http://127.0.0.1:8799'
+    (frame-ancestors) і політику сторінки знято — сторінка показується в рамці «телефона» лише тут, на сервері вона та сама."""
+    prodazh = 'http://127.0.0.1:8799'          # не «server»: так у обробника зветься сам HTTP-сервер
 
     def _peredaty(self):
         if self.path.startswith('/__vau/') or self.path.startswith('/site/sait/shryfty/'):
@@ -97,14 +97,14 @@ class Proksi(ZS.Obrobnyk):
             http.server.SimpleHTTPRequestHandler.end_headers(self)
             self.wfile.write(dani)
             return
-        u = urllib.parse.urlparse(self.server)
+        u = urllib.parse.urlparse(self.prodazh)
         dovzh = int(self.headers.get('content-length') or 0)
         tilo = self.rfile.read(dovzh) if dovzh else None
         h = {k: v for k, v in self.headers.items() if k.lower() not in ('host', 'origin', 'referer', 'accept-encoding', 'connection')}
         if self.headers.get('origin'):
-            h['origin'] = self.server
+            h['origin'] = self.prodazh
         if self.headers.get('referer'):
-            h['referer'] = self.server + urllib.parse.urlparse(self.headers['referer']).path
+            h['referer'] = self.prodazh + urllib.parse.urlparse(self.headers['referer']).path
         c = http.client.HTTPConnection(u.hostname, u.port, timeout=120)
         c.request(self.command, self.path, body=tilo, headers=h)
         r = c.getresponse()
@@ -115,9 +115,9 @@ class Proksi(ZS.Obrobnyk):
             if kl in ('transfer-encoding', 'connection', 'content-length', 'x-frame-options'):
                 continue
             if kl == 'content-security-policy':
-                v = re.sub(r'frame-ancestors[^;]*;?', '', v)
+                continue        # лише в записі: інакше політика сторінок кабінету не пускає стиль розмиття номерів
             if kl == 'location':
-                v = v.replace(self.server, '')
+                v = v.replace(self.prodazh, '')
             self.send_header(k, v)
         self.send_header('content-length', str(len(dani)))
         http.server.SimpleHTTPRequestHandler.end_headers(self)
@@ -197,7 +197,7 @@ def p1(stan, P, ix):
     druha, n2 = riadky[1][0], riadky[1][1]          # другий рядок порівняння (перший — найчастіша група)
     hrupa_k = hrupa.split(',')[0].strip()
     c = tochka(ix, stan['budynky']['pryozerna'])
-    c = (c[0] + 0.004, c[1] - 0.002)               # кадр — квартал, не будинок
+    c = (c[0] + 0.002, c[1] + 0.006)               # кадр — квартал на північ від будинку, не будинок
     T = 16.5
     R = vstup('p1', 'svitla', {'typ': 'teplo', 'z_ref': 13, 'radius': 30, 'ln_maks': 4.0, 'tryv': 2.2}, c, (13.4, 14.2), (20, 45),
               (0, -25), 'Живеш тут роками.\n*А що болить будинку?*', P, radius=2500)
@@ -257,7 +257,7 @@ def p2(stan, P, ix):
         'tekst': [
             {'t0': 3.5, 't1': 5.8, 'styl': 'velykyi', 'tekst': 'Кабінет → *«Стежу»*.\nДодав свій будинок.', 'y': 330},
             {'t0': 5.9, 't1': 8.2, 'styl': 'velykyi', 'tekst': 'Раз на місяць —\n*лист*', 'y': 330},
-            {'t0': 8.3, 't1': 10.8, 'styl': 'velykyi', 'tekst': f'*{n_p} {fp(n_p).split()[-1]}* з рішень судів\nу 300 м', 'y': 330},
+            {'t0': 8.3, 't1': 10.8, 'styl': 'velykyi', 'tekst': f'*{n_p} {fp(n_p)}* з рішень\nсудів поруч', 'y': 330},
             {'t0': 10.9, 't1': 13.2, 'styl': 'velykyi', 'tekst': f'*{D.chyslo(n_s)}* звернень\nдо 1551 поруч', 'y': 330},
             {'t0': 13.3, 't1': 14.4, 'styl': 'velykyi', 'tekst': 'Ти знаєш\n*першим*', 'y': 330},
             {'t0': 14.5, 't1': 15.5, 'styl': 'baner', 'zag': 'Стежу за вулицею', 'knopka': 'Підписка 399 грн · ' + PROFIL, 'y': 1180},
@@ -347,7 +347,7 @@ def p4(stan, P, ix):
             {'t0': 3.5, 't1': 5.8, 'styl': 'velykyi', 'tekst': 'Кабінет рієлтора:\n*«Мої об\'єкти»*', 'y': 330},
             {'t0': 5.9, 't1': 8.2, 'styl': 'velykyi', 'tekst': f'*{vyk} з {vsi}* довідок\nцього місяця', 'y': 330},
             {'t0': 8.3, 't1': 10.6, 'styl': 'velykyi', 'tekst': 'Кожен об\'єкт —\n*одна кнопка*', 'y': 330},
-            {'t0': 10.7, 't1': 13.3, 'styl': 'velykyi', 'tekst': 'Довідка —\n*клієнту в месенджер*', 'y': 330},
+            {'t0': 10.7, 't1': 13.3, 'styl': 'velykyi', 'tekst': 'Довідка —\n*клієнту за хвилину*', 'y': 330},
             {'t0': 13.4, 't1': 14.4, 'styl': 'velykyi', 'tekst': 'Відповідь —\n*з даними*', 'y': 330},
             {'t0': 14.5, 't1': 15.5, 'styl': 'baner', 'zag': 'Для рієлтора', 'knopka': '799 грн/міс · ' + PROFIL, 'y': 1180},
         ],
@@ -401,10 +401,10 @@ def p5(stan, P, ix):
             {'t': 6.0, 'dia': 'skrol', 'do_dy': 200, 'tryv': 1.0},
             {'t': 7.6, 'dia': 'tap', 'sel': 'a[href*="/dovidka/"]'},
             {'t': 8.2, 'dia': 'goto', 'url': url},
-            {'t': 9.0, 'dia': 'skrol', 'do_sel': 'h2', 'tryv': 1.0},
-            {'t': 10.9, 'dia': 'skrol', 'do_dy': 500, 'tryv': 1.2},
-            {'t': 12.4, 'dia': 'skrol', 'do_dy': 350, 'tryv': 0.9},
-            {'t': 13.4, 'dia': 'skrol', 'do_dy': 300, 'tryv': 0.9},
+            {'t': 8.9, 'dia': 'skrol', 'do_tekst': 'Місяць:', 'tryv': 1.2},
+            {'t': 10.9, 'dia': 'skrol', 'do_dy': 330, 'tryv': 1.2},
+            {'t': 12.4, 'dia': 'skrol', 'do_dy': 260, 'tryv': 0.9},
+            {'t': 13.4, 'dia': 'skrol', 'do_dy': 260, 'tryv': 0.9},
         ],
         'zvuk': {'muzyka': {'styl': 'lofi', 'bpm': 100}, 'efekty': [
             {'t': 0.0, 'typ': 'pop', 'v': 0.5}, {'t': 3.5, 'typ': 'vzhukh', 'v': 0.6}, {'t': 5.9, 'typ': 'spovishchennia', 'v': 0.6},
@@ -419,9 +419,9 @@ def p6(stan, P, ix):
     t = tekst_storinky(stan, '/sudova-praktyka/')
     dni, porohy = kalendar_2025(P)
     T = 13.5
-    R = vstup('p6', 'temna', {'typ': 'kalendar', 'zag': '2025 рік, день за днем', 'rik': 2025, 'dni': dni, 'porohy': porohy,
+    R = vstup('p6', 'temna', {'typ': 'kalendar', 'zag': '', 'rik': 2025, 'dni': dni, 'porohy': porohy,
                               'maks_den': dni.index(max(dni)), 'tryv': 3.0, 'pid': f'{fp(sum(dni))} за 2025 рік'},
-              (30.5234, 50.4501), (10, 10), (0, 0), (0, 0), 'Клієнт питає:\n*«Чим такі справи закінчуються?»*', P)
+              (30.5234, 50.4501), (10, 10), (0, 0), (0, 0), 'Чим закінчуються\n*такі справи?*', P)
     return R, {
         'id': '155-p6-sudova-praktyka-skoro', 'tryvalist': T, 'tema': 'temna', 'start': '/sudova-praktyka/', 'kuka': None,
         'meta': dict(nazva='«Судова практика» — скоро', typ='Стежу за вулицею · Рієлтор · ОСББ', hrupa='Потреба → продукт',
@@ -431,8 +431,8 @@ def p6(stan, P, ix):
                      sudova_tekst=t[:400]),
         'tekst': [
             {'t0': 3.5, 't1': 5.8, 'styl': 'velykyi', 'tekst': 'Для юриста —\n*«Судова практика»*', 'y': 330},
-            {'t0': 5.9, 't1': 8.2, 'styl': 'velykyi', 'tekst': 'Стаття + суд →\n*як закінчуються справи*', 'y': 330},
-            {'t0': 8.3, 't1': 10.8, 'styl': 'velykyi', 'tekst': 'Числами,\n*з посиланнями на рішення*', 'y': 330},
+            {'t0': 5.9, 't1': 8.2, 'styl': 'velykyi', 'tekst': 'Стаття + суд →\n*чим закінчуються*', 'y': 330},
+            {'t0': 8.3, 't1': 10.8, 'styl': 'velykyi', 'tekst': 'Числами —\n*з рішеннями судів*', 'y': 330},
             {'t0': 10.9, 't1': 12.4, 'styl': 'velykyi', 'tekst': '*Скоро.*\nЗалиш пошту', 'y': 330},
             {'t0': 12.5, 't1': 13.5, 'styl': 'baner', 'zag': '«Судова практика» — скоро', 'knopka': PROFIL, 'y': 1180},
         ],
@@ -632,6 +632,9 @@ def vykonaty(s, sait, d, t, krok):
         d['_z'] = sait().evaluate('() => window.scrollY')
         if d.get('do_sel'):
             d['_do'] = sait().evaluate('sel => { const e = document.querySelector(sel); return e ? Math.max(0, e.getBoundingClientRect().top + window.scrollY - 70) : window.scrollY; }', d['do_sel'])
+        elif d.get('do_tekst'):
+            d['_do'] = sait().evaluate('''t => { const e = [...document.querySelectorAll('h1,h2,h3,h4')].find(x => x.textContent.includes(t));
+                return e ? Math.max(0, e.getBoundingClientRect().top + window.scrollY - 60) : window.scrollY; }''', d['do_tekst'])
         elif d.get('do_dy') is not None:
             d['_do'] = d['_z'] + d['do_dy']
         elif d.get('do_frac') is not None:
@@ -652,7 +655,7 @@ def main():
     a.add_argument('--cpu', action='store_true')
     arg = a.parse_args()
     stan = json.loads(arg.stan.read_text(encoding='utf-8'))
-    Proksi.server = stan['server']
+    Proksi.prodazh = stan['server']
     ix = {b['u']: b for b in json.loads(arg.indeks.read_text(encoding='utf-8'))['budynky']}
     P = D.Vypusk(arg.baza).podii
     vybir = arg.lyshe.split(',') if arg.lyshe else PACHKA
