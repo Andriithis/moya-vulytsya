@@ -142,8 +142,9 @@ class Rolyk:
         teka.mkdir(parents=True, exist_ok=True)
         S = self.S
         S['kamera'].sort(key=lambda k: k['t'])
-        if S['zvuk']['holos']:          # MV-150: синтезований голос — завжди з позначкою в кадрі
-            S['holos_poznaka'] = 'Голос згенеровано'
+        if S['zvuk']['holos']:          # голос — завжди з позначкою в кадрі: чий голос, така й позначка (MV-150, MV-171)
+            import holos_servis
+            S['holos_poznaka'] = holos_servis.poznaka()
             self.meta['holos'] = True
         zauv = perevirka.pereviryty(S, self.meta)
         if zauv:

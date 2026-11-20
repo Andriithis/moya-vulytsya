@@ -26,6 +26,7 @@ from pathlib import Path
 
 TUT = Path(__file__).resolve().parent
 sys.path.insert(0, str(TUT))
+import holos_servis  # noqa: E402
 import perevirka  # noqa: E402
 from rushii import arkush, ffmpeg, lehka  # noqa: E402
 from stsenarii import KYIV, PROFIL  # noqa: E402
@@ -208,7 +209,7 @@ ZAPYSY = {'z1': z1, 'z2': z2, 'z3': z3}
 def perevir(Z: dict) -> list[str]:
     """Ті самі правила, що й у рушія: слова, банер ≤ 1 с, гачок у кадрі 0, нове кожні ≤ 2 с, голос з позначкою."""
     S = {'id': Z['id'], 'tryvalist': Z['tryvalist'], 'tema': 'temna', 'tekst': Z['tekst'], 'kamera': [{'t': 0, 'c': list(KYIV), 'z': 11}],
-         'zvuk': Z['zvuk'], 'pidpys_publikatsii': Z['pidpys'], 'holos_poznaka': 'Голос згенеровано' if Z['zvuk'].get('holos') else None,
+         'zvuk': Z['zvuk'], 'pidpys_publikatsii': Z['pidpys'], 'holos_poznaka': holos_servis.poznaka() if Z['zvuk'].get('holos') else None,
          'ui': [{'t0': 0, 't1': Z['tryvalist'], 'typ': 'sait'}, {'t0': 0, 't1': Z['tryvalist'], 'typ': 'ramka'}],
          'novynky': [d['t'] for d in Z['dii']] + [d['t'] + x * 1.5 for d in Z['dii'] if d.get('tryv')
                                                    for x in range(1, int(d['tryv'] / 1.5) + 1)]}   # наближення/прокрутка — рух сайту
@@ -221,7 +222,7 @@ def zapysaty(brauzer, port, Z: dict, kadry=None, vykhid=VYHID):
     if zauv:
         raise SystemExit(f"{Z['id']}: " + '; '.join(zauv))
     holos = bool(Z['zvuk'].get('holos'))
-    S_ov = {'tekst': Z['tekst'], 'dzherelo': 'Справжній сайт · дані — рішення судів (ЄДРСР)', 'holos_poznaka': 'Голос згенеровано' if holos else None,
+    S_ov = {'tekst': Z['tekst'], 'dzherelo': 'Справжній сайт · дані — рішення судів (ЄДРСР)', 'holos_poznaka': holos_servis.poznaka() if holos else None,
             'paltsi': []}
     kont = brauzer.new_context(viewport={'width': 540, 'height': 960}, device_scale_factor=2, color_scheme='dark')
     kont.add_init_script(VIRTUALNYI_CHAS)

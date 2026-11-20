@@ -26,6 +26,8 @@ NOMER_RISHENNIA = re.compile(r'рішенн\w*\s+(?:суду\s+)?№', re.I)
 KOMPONUVANNIA = {'hook', 'velykyi', 'pytannia', 'lich', 'kartka', 'stovpchyky', 'variant', 'vidlik', 'godynnyk', 'slovo', 'split',
                  'komentar', 'kolony', 'shtamp', 'taimer', 'kalendar'}
 ZASTARILI = {'fin'}         # нерухома кінцева картка 3–5 с (С1) — заборонено
+# ZAVDANNYA-175: позначка — за тим, чий голос (video/vau/holos_servis.py, poznaka())
+POZNAKY_HOLOSU = ('Голос змінено програмою', 'Голос згенеровано')
 LICH_PODII = re.compile(r'\bподі[яйї]', re.I)
 
 
@@ -161,8 +163,11 @@ def pereviryty(S: dict, meta: dict | None = None) -> list[str]:
         m = NOMER_BUDYNKU.search(t)
         if m and not any(p in t for p in dozvoleni_nomery):
             z.append(f'номер будинку (MV-25): «{m.group()}»')
-    if (S.get('zvuk') or {}).get('holos') and not S.get('holos_poznaka'):
-        z.append('голос без позначки «голос згенеровано» (MV-150)')
+    if (S.get('zvuk') or {}).get('holos'):
+        if not S.get('holos_poznaka'):
+            z.append('голос без позначки (MV-150, MV-171)')
+        elif S['holos_poznaka'] not in POZNAKY_HOLOSU:
+            z.append(f"позначка голосу «{S['holos_poznaka']}» — лише {' або '.join(POZNAKY_HOLOSU)} (MV-171)")
     tryv = S.get('tryvalist', 0)
     if not 5 <= tryv <= 65:
         z.append(f'довжина {tryv} с поза 5–65 с')

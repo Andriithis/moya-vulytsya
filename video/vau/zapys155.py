@@ -34,6 +34,7 @@ TUT = Path(__file__).resolve().parent
 KORIN = TUT.parents[1]
 sys.path.insert(0, str(TUT))
 import dani as D  # noqa: E402
+import holos_servis  # noqa: E402
 import perevirka  # noqa: E402
 import zapys_saitu as ZS  # noqa: E402
 from laboratoriia139 import mistsia  # noqa: E402
@@ -484,7 +485,7 @@ def S_rolyka(R: Rolyk, Z: dict) -> tuple[dict, dict]:
     zv['efekty'] = list(R.S['zvuk'].get('efekty', [])) + zv.get('efekty', [])
     S['zvuk'] = zv
     S['pidpys_publikatsii'] = Z['pidpys']
-    S['holos_poznaka'] = 'Голос згенеровано' if zv.get('holos') else None
+    S['holos_poznaka'] = holos_servis.poznaka() if zv.get('holos') else None
     meta = dict(Z['meta'], id=Z['id'], pravyla=138, kintsivka=PROFIL, pidpys=' '.join(Z['pidpys']))
     meta.pop('sudova_tekst', None)
     return S, meta
@@ -529,7 +530,7 @@ def zapysaty(brauzer, port, stan, R, Z, kadry=None, vykhid=VYHID, cpu=False):
     # 2) запис сторінок
     holos = bool(Z['zvuk'].get('holos'))
     S_ov = {'tekst': Z['tekst'], 'dzherelo': 'Справжній сайт · тестова оплата · дані — рішення судів',
-            'holos_poznaka': 'Голос згенеровано' if holos else None, 'paltsi': []}
+            'holos_poznaka': holos_servis.poznaka() if holos else None, 'paltsi': []}
     svitla = Z['tema'] == 'svitla'
     kont = brauzer.new_context(viewport={'width': 540, 'height': 960}, device_scale_factor=2,
                                color_scheme='light' if svitla else 'dark')

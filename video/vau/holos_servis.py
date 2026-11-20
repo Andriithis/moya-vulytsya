@@ -8,8 +8,9 @@
     MV_HOLOS=piper       (або не задано) — безкоштовний офлайн-голос
 
 Ключ ніколи не пишеться у файли, сценарії чи журнал. Готовий голос кешується у video/vyhid/kesh/holos/ (не в git): той самий
-текст тим самим голосом вдруге не оплачується. Позначка «Голос згенеровано» (MV-150) лишається для будь-якого сервісу —
-її ставить сценарій, а не цей модуль.
+текст тим самим голосом вдруге не оплачується. Позначка в кадрі залежить від того, чий голос (ZAVDANNYA-175, MV-171):
+`teka` — запис Андрія, перетворений програмою (`video/holos/`) → «Голос змінено програмою»; Piper і платні сервіси читають
+текст самі → «Голос згенеровано». Одне місце — `poznaka()`; її беруть сценарії й рушій перед записом.
 """
 from __future__ import annotations
 
@@ -37,6 +38,16 @@ def servis() -> str:
     if s in ('elevenlabs', 'azure') and not os.environ.get('MV_HOLOS_KLUCH'):
         raise SystemExit(f'MV_HOLOS={s}: немає ключа в змінній MV_HOLOS_KLUCH')
     return s
+
+
+POZNAKA_ZMINENO = 'Голос змінено програмою'    # MV-171: голос людини, перетворений (kNN-VC)
+POZNAKA_SYNTEZ = 'Голос згенеровано'           # MV-150: текст читає програма (Piper, платні сервіси)
+POZNAKY = (POZNAKA_ZMINENO, POZNAKA_SYNTEZ)
+
+
+def poznaka(s: str | None = None) -> str:
+    """Позначка голосу в кадрі для сервісу s (типово — той, що вибрано змінною MV_HOLOS)."""
+    return POZNAKA_ZMINENO if (s or servis()) == 'teka' else POZNAKA_SYNTEZ
 
 
 def holos_id(s: str, imia: str) -> str:
