@@ -10,6 +10,7 @@
     perehliad   [--port 8107]            сторінка-перегляд (пароль — змінна MV_PEREHLIAD_PAROL)
     prybraty ID --prychyna "…" [--mistse] [--usi-merezhi]
     vidnovyty MEREZHA                    зняти зупинку мережі після того, як партнер розібрався
+    tiktok ID ПОСИЛАННЯ                  ролик з черги поставлено в TikTok вручну (ZAVDANNYA-159)
     zhurnal [--dniv 7]
 Пробний режим (`--probnyi` або MV_PROBNYI=1): нічого не надсилає — «публікує» у теку `<тека>/opublikovano/`.
 Публікує сам, без попереднього схвалення (MV-114); Андрій переглядає вже опубліковане й за потреби прибирає.
@@ -30,6 +31,7 @@ sys.path.insert(0, str(TUT))
 sys.path.insert(0, str(KORIN / 'video'))
 
 import cherha as C  # noqa: E402
+import cherha_rolykiv as CR  # noqa: E402
 import dzherela as D  # noqa: E402
 import merezhi as M  # noqa: E402
 import pravyla as P  # noqa: E402
@@ -109,6 +111,24 @@ class Servis:
         self.q.zapys('pachka', f'{tyzhden}: нових {novi}, відхилено перевіркою {vidkhyleni}, пропусків {len(propusky)}')
         self.eksport(tyzhden)
         return {'tyzhden': tyzhden, 'novi': novi, 'vidkhyleni': vidkhyleni, 'propusky': propusky}
+
+    def rolyky_z_cherhy(self, zaraz: datetime | None = None) -> list[str]:
+        """Нові ролики з теки черги (ZAVDANNYA-159) → вільні слоти на тиждень уперед, кожна одиниця — через перевірку."""
+        zaraz = zaraz or C.teper()
+        novi, povidomlennia = CR.zaplanuvaty(self.q, self.media, self.sait, zaraz)
+        for p in povidomlennia:
+            self.q.zapys('propusk', p)
+        nedavni = self.q.nedavni_podii(zaraz, P.DNIV_BEZ_POVTORU)
+        zvit, tyzhni = [], set()
+        for o in novi:
+            zh = self.pereviryty(o, nedavni)
+            if self.q.dodaty(o, zh):
+                tyzhni.add(o['tyzhden'])
+                zvit.append(f'черга роликів: {o["rolyk_id"]} → {o["merezha"]} {R.po_kyievu(o["chas"])}'
+                            + (f' — НЕ ПРОЙШЛО: {"; ".join(zh)}' if zh else ''))
+        for t in sorted(tyzhni):
+            self.eksport(t)
+        return zvit + [f'черга роликів: {p}' for p in povidomlennia]
 
     def eksport(self, tyzhden: str) -> Path:
         """Пачка тижня у теку: pachka.json і perehliad.html (той самий вигляд, що й сторінка-перегляд, без кнопок)."""
@@ -242,6 +262,7 @@ class Servis:
                 zvit.append(f'пачка {r["tyzhden"]}: {r["novi"]} одиниць, відхилено {r["vidkhyleni"]}')
         if novyi:
             self.q.vypusk_obrobleno(versiia)
+        zvit += self.rolyky_z_cherhy(zaraz)
         zvit += self.publikuvaty(zaraz)
         return zvit
 
@@ -281,6 +302,9 @@ def main(argv=None) -> int:
     s.add_argument('merezha', choices=P.MEREZHI)
     s = sp.add_parser('zhurnal')
     s.add_argument('--dniv', type=int, default=7)
+    s = sp.add_parser('tiktok', help='ролик поставлено в TikTok вручну')
+    s.add_argument('id', help='id ролика з черги, напр. 129-t5')
+    s.add_argument('posylannia')
     a = p.parse_args(argv)
     zaraz = datetime.fromisoformat(a.zaraz).astimezone(timezone.utc) if a.zaraz else None
     sv = Servis(a.teka, a.probnyi, a.media, a.adresa_saitu, zchytaty_kanaly())
@@ -308,6 +332,8 @@ def main(argv=None) -> int:
     elif a.komanda == 'vidnovyty':
         sv.q.vidnovyty(a.merezha)
         print(f'{a.merezha}: відновлено')
+    elif a.komanda == 'tiktok':
+        print(CR.tiktok_postavleno(sv.q, a.id, a.posylannia, zaraz or C.teper()))
     elif a.komanda == 'zhurnal':
         vid = C.iso((zaraz or C.teper()) - timedelta(days=a.dniv))
         for z in reversed(sv.q.zhurnal(vid)):

@@ -4,6 +4,7 @@
     python avtopostynh/khmara.py --stan … prybraty ID --prychyna "…" [--mistse] [--usi-merezhi]
     python avtopostynh/khmara.py --stan … vidnovyty MEREZHA
     python avtopostynh/khmara.py --stan … zhurnal
+    python avtopostynh/khmara.py --stan … tiktok 129-t5 --posylannia https://www.tiktok.com/@…/video/…
 
 Те саме, що `servis.py` на сервері, але для хмари, де між запусками нічого не живе:
 - стан (`cherha.db`, пачки) лежить у теці `--stan`; робочий процес бере її з гілки `avtopostynh-stan` і повертає назад;
@@ -30,17 +31,20 @@ TUT = Path(__file__).resolve().parent
 sys.path.insert(0, str(TUT))
 
 import cherha as C  # noqa: E402
+import cherha_rolykiv as CR  # noqa: E402
 import pravyla as P  # noqa: E402
 import rozklad as R  # noqa: E402
 import servis as SV  # noqa: E402
 
 NE_V_KHMARI = {'tiktok'}
 PEREHLIAD = 'PEREHLIAD.md'
+TIKTOK = 'TikTok.md'          # чекліст Микити: що поставити в TikTok вручну (ZAVDANNYA-159)
 # що зберігати між запусками (решта — тимчасове: «опубліковане» пробного режиму з копіями роликів тощо)
-ZBERIHATY = ('cherha.db', PEREHLIAD, 'pachky')
+ZBERIHATY = ('cherha.db', PEREHLIAD, TIKTOK, 'pachky')
 NAZVY = {'telegram': 'Telegram', 'youtube': 'YouTube', 'facebook': 'Facebook', 'instagram': 'Instagram', 'tiktok': 'TikTok'}
 STANY = {'chekaie': 'у черзі', 'opublikovano': 'вийшло', 'vidkhyleno': 'не пройшло перевірку', 'pomylka': 'помилка',
-         'propushcheno': 'пропущено', 'prybrano': 'прибрано', 'prybraty_vruchnu': 'прибрати вручну (партнер)'}
+         'propushcheno': 'пропущено', 'prybrano': 'прибрано', 'prybraty_vruchnu': 'прибрати вручну (партнер)',
+         CR.STAN_VRUCHNU: 'поставити вручну (TikTok.md)'}
 
 
 def probnyi() -> bool:
@@ -126,12 +130,21 @@ def zapustyty(stan: Path, vkhid: Path | None, komanda: str, a: argparse.Namespac
                 raise SystemExit(f'vidnovyty: мережа одна з {", ".join(P.MEREZHI)}')
             sv.q.vidnovyty(a.merezha)
             zvit.append(f'{a.merezha}: відновлено')
+        elif komanda == 'tiktok':
+            if not a.id or not (a.posylannia or '').strip():
+                raise SystemExit('tiktok: потрібні id ролика й посилання на нього в TikTok')
+            zvit.append(CR.tiktok_postavleno(sv.q, a.id.strip(), a.posylannia, zaraz))
         elif komanda == 'zhurnal':
             for z in reversed(sv.q.zhurnal(C.iso(zaraz - timedelta(days=7)))):
                 zvit.append(f'{R.po_kyievu(z["chas"])} {z["merezha"]:9} {z["kanal"][:14]:14} {z["podiia"]:16} '
                             f'{z["povidomlennia"]}')
         md = perehliad_md(sv, zaraz)
         (Path(stan) / PEREHLIAD).write_text(md, encoding='utf-8')
+        (Path(stan) / TIKTOK).write_text(CR.tiktok_md(sv.q, zaraz, sv.sait), encoding='utf-8')
+        if getattr(a, 'tiktok_teka', None):
+            n = len(CR.faily_tiktok(sv.q, zaraz, sv.media, Path(a.tiktok_teka)))
+            if n:
+                zvit.append(f'TikTok: {n} ролик(ів) поставити вручну — файли у вкладенні запуску, чекліст {TIKTOK}')
         pidsumok = os.environ.get('GITHUB_STEP_SUMMARY')
         if pidsumok:
             with open(pidsumok, 'a', encoding='utf-8') as f:
@@ -146,12 +159,14 @@ def main(argv=None) -> int:
     p.add_argument('--stan', type=Path, required=True, help='тека стану (з гілки avtopostynh-stan)')
     p.add_argument('--vkhid', type=Path, help='тека входу з приватного Release: indeks.json, media/, kanaly.json')
     p.add_argument('--zaraz', help='«зараз» для перевірки (ISO), типово справжній час')
-    p.add_argument('komanda', choices=['hodyna', 'prybraty', 'vidnovyty', 'zhurnal'])
+    p.add_argument('--tiktok-teka', type=Path, help='куди покласти файли TikTok на найближчі дні (вкладення запуску)')
+    p.add_argument('komanda', choices=['hodyna', 'prybraty', 'vidnovyty', 'zhurnal', 'tiktok'])
     p.add_argument('id', nargs='?', default='')
     p.add_argument('--prychyna', default='')
     p.add_argument('--mistse', action='store_true')
     p.add_argument('--usi-merezhi', action='store_true')
     p.add_argument('--merezha', default='')
+    p.add_argument('--posylannia', default='', help='tiktok: посилання на ролик у TikTok')
     a = p.parse_args(argv)
     zaraz = datetime.fromisoformat(a.zaraz).astimezone(timezone.utc) if a.zaraz else None
     print('пробний режим — нічого не надсилаємо' if probnyi() else 'СПРАВЖНЯ ПУБЛІКАЦІЯ')
