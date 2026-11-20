@@ -108,7 +108,8 @@ def s01(B):
     R.efekt(0.0, 'udar', v=0.7)
     R.zvuk_tochok(chasy, maks=14, h0=0.8, h1=1.9, v=0.45)
     R.tekst(0, 2.2, 'hook', 'Київ за 9 секунд.\n*Кожна точка —*\nподія з рішення суду', y='verkh')
-    R.tekst(2.3, 5.0, 'lich', kluchi=[[0, 0], [4.9, n, 'io']], pidpys='{f} на карті', formy=FORMY, y='verkh')
+    vsi = R.pidsumok('vsi', B.V.pidsumky['vsi'])     # те саме число, що на сайті й в інших роликах (ZAVDANNYA-175)
+    R.tekst(2.3, 5.0, 'lich', kluchi=[[0, 0], [4.9, vsi, 'io']], pidpys='{f} на карті', formy=FORMY, y='verkh', pidsumok='vsi')
     for i, (rik, t) in enumerate([('2023', 0.0), ('2024', 1.3), ('2025', 2.6), ('2026', 3.9)]):
         R.tekst(t, t + 1.3 if i < 3 else 5.0, 'velykyi', f'*{rik}*', y=1300, c=True, anim='pop')
         R.efekt(t, 'tik', h=1.2)
@@ -332,13 +333,13 @@ def s10(B):
 def s03(B):
     """Календар року (не карта): 2025 — кожна клітинка день, колір — скільки подій у даних; найбільші дні."""
     dni = Counter()
-    for p in B.P:
+    for dd, k in B.V.pidsumky['dni'].items():          # дні — з одного джерела з сайтом (ZAVDANNYA-175)
         try:
-            d = date.fromisoformat(p.data or '')
+            d = date.fromisoformat(dd)
         except ValueError:
             continue
         if d.year == 2025:
-            dni[d] += 1
+            dni[d] += k
     vsi = [date.fromordinal(date(2025, 1, 1).toordinal() + i) for i in range(365)]
     znach = sorted(dni[d] for d in vsi)
     porohy = [znach[int(len(znach) * q)] for q in (0.25, 0.5, 0.75)]       # чверті: рівень 1–4 (0 — жодної події)
@@ -364,7 +365,9 @@ def s03(B):
     for i in range(12):
         R.efekt(0.2 + i * 0.35, 'klik', h=0.9 + i * 0.04, v=0.3)
     R.S['novynky'] = [1.6, 3.0, 4.4]
-    R.tekst(2.7, 4.5, 'lich', kluchi=[[0.2, 0], [4.4, sum(dni.values()), 'io']], pidpys='{f} у даних за 2025 рік', formy=FORMY, y=380)
+    R.pidsumok('rik:2025', B.V.pidsumky['roky'].get(2025, 0))
+    R.tekst(2.7, 4.5, 'lich', kluchi=[[0.2, 0], [4.4, sum(dni.values()), 'io']], pidpys='{f} у даних за 2025 рік', formy=FORMY, y=380,
+            pidsumok='rik:2025')
     R.tekst(0.6, 11, 'mala', 'Яскравіше — більше подій у даних', y=1500, klas='zaklyk')
     R.udar(4.6, 0.25, 0)
     R.tekst(4.6, 6.5, 'velykyi', f'Найбільше —\n*{d1.day} {MISIATSI_R[d1.month - 1]}*: {n1}', y=380, anim='slam')
@@ -608,7 +611,9 @@ def s14(B):
     R.zvuk_tochok(chasy, maks=10, typ='pop', h0=1.0, h1=1.6, v=0.4)
     R.tekst(0, 2.4, 'hook', 'Вулиця тижня:\n*Теремківська*', y='verkh')
     R.tekst(0, 2.4, 'mala', 'Частина 1 з 3 · скільки', y=640, klas='zaklyk')
-    R.tekst(2.5, 5.2, 'lich', kluchi=[[1.4, 0], [4.5, n, 'io']], pidpys='{f} за 2024–2026', formy=FORMY, y='verkh')
+    # число — як на сторінці вулиці сайту (критик ZVIT-170: «56 у ролику, 57 на сайті»: ролик не рахував насильства)
+    n_s = R.pidsumok('vulytsia', B.V.lich_vulytsi('teremkivska'))
+    R.tekst(2.5, 5.2, 'lich', kluchi=[[1.4, 0], [4.5, n_s, 'io']], pidpys='{f} за 2024–2026', formy=FORMY, y='verkh', pidsumok='vulytsia')
     R.udar(4.7, 0.2, 8)
     R.tekst(5.3, 8.2, 'stovpchyky', riady=[{'tekst': v, 'n': k, 'kolir': '#31B88D' if i == 0 else '#6066C1'} for i, (v, k) in enumerate(vydy)], y=1080)
     R.tekst(5.3, 8.2, 'velykyi', f'Найчастіше —\n*{vydy[0][0]}*', y='verkh', anim='slam')

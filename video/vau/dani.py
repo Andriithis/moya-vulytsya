@@ -134,14 +134,44 @@ class Vypusk:
 
     @cached_property
     def rayony(self):
+        return self.sait_modul.Rayony(self.borders)
+
+    @cached_property
+    def sait_modul(self):
+        """site/sait/dani.py — той самий код, яким сайт рахує свої числа (ім'я модуля збігається з цим, тож — напряму)."""
         import importlib.util
         sys.path.insert(0, str(KORIN / 'site' / 'sait'))
         sys.path.insert(0, str(KORIN / 'site'))
+        if 'sait_dani' in sys.modules:
+            return sys.modules['sait_dani']
         spec = importlib.util.spec_from_file_location('sait_dani', KORIN / 'site' / 'sait' / 'dani.py')
         m = importlib.util.module_from_spec(spec)
         sys.modules['sait_dani'] = m
-        spec.loader.exec_module(m)   # site/sait/dani.py: межі районів (ім'я модуля збігається з цим, тож — напряму)
-        return m.Rayony(self.borders)
+        spec.loader.exec_module(m)
+        return m
+
+    # ---- ZAVDANNYA-175 (критик ZVIT-170, топ-10 №6): одне джерело чисел для всіх роликів і сайту.
+    # Ролики малюють точки без насильства (NE_V_ROLYKY), а число, яке називають, — те саме, що на сайті: правила сайту
+    # (site/sait/dani.py: домашнє насильство рахується нарівні, статеві й щодо дітей — ні, MV-102). Раніше кожен сценарій
+    # рахував len(своїх точок) — і в сусідніх роликах виходило 71 420, 71 417, 71 428.
+    @cached_property
+    def dani_saitu(self):
+        import os
+        pereim = os.environ.get('MV_PEREIMENUVANNIA') or KORIN.parent / 'dani-edrsr' / 'config' / 'pereimenuvannia-kyiv.csv'
+        pereim = Path(pereim) if Path(pereim).is_file() else None
+        return self.sait_modul.zibraty_dani(self.baza, pereim, self.borders if Path(self.borders).is_file() else None)
+
+    @cached_property
+    def pidsumky(self) -> dict:
+        """Скільки подій на карті Києва (з точкою) — усього, за роками й за днями; правила лічби — як на сайті."""
+        return pidsumky_z(self.sait_modul.prochytaty_podii(self.con))
+
+    def lich_vulytsi(self, slug: str) -> int:
+        """Скільки подій на сторінці вулиці сайту (/vulytsia/<slug>/) — те саме число, що бачить людина після ролика."""
+        dn = self.dani_saitu
+        if slug not in dn.vulytsi:
+            raise SystemExit(f'вулиці {slug} немає на сайті — ролик не може на неї вести')
+        return self.sait_modul.profil_vulytsi(dn, dn.vulytsi[slug])['vsogo']
 
     def rayon(self, p: Podiia):
         return self.rayony.rayon(p.lat, p.lon)
@@ -169,6 +199,13 @@ class Vypusk:
     def podii_problemy(self, problem_id: str) -> list[Podiia]:
         ids = {r[0] for r in self.con.execute('SELECT event_id FROM problem_event WHERE problem_id = ?', (problem_id,))}
         return [p for p in self.podii if p.id in ids]
+
+
+def pidsumky_z(podii) -> dict:
+    """Підсумки з подій у форматі site/sait/dani.py (lat, rik, data, chutlyva): лише з точкою на карті й не чутливі."""
+    vsi = [p for p in podii if p.lat is not None and not p.chutlyva]
+    return {'vsi': len(vsi), 'roky': dict(Counter(p.rik for p in vsi if p.rik)),
+            'dni': dict(Counter(p.data for p in vsi if p.data))}
 
 
 # ------------------------------------------------------------------ формати для сцени

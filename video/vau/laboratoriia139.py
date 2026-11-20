@@ -221,7 +221,7 @@ def adresy(L: Lab, kod, tema, styl, nazva, hook, c=PODIL, z=(14.1, 14.7), p=(40,
 
 def zbuduvaty(L: Lab, lyshe=None):
     P = L.P
-    n_vsi = len(P)
+    n_vsi = L.V.pidsumky['vsi']     # одне «усього подій» з сайтом і роликами (ZAVDANNYA-175)
 
     def treba(kod):
         return not lyshe or kod in lyshe
@@ -395,14 +395,14 @@ def zbuduvaty(L: Lab, lyshe=None):
         rik = 2025
         d0 = date(rik, 1, 1)
         dni = [0] * 365
-        for p in P:
-            if (p.data or '').startswith(str(rik)):
+        for dd, k in L.V.pidsumky['dni'].items():      # дні — з одного джерела з сайтом і роликом 138-03 (ZAVDANNYA-175)
+            if dd.startswith(str(rik)):
                 try:
-                    i = (date.fromisoformat(p.data) - d0).days
+                    i = (date.fromisoformat(dd) - d0).days
                 except ValueError:
                     continue
                 if 0 <= i < 365:
-                    dni[i] += 1
+                    dni[i] += k
         nenul = sorted(v for v in dni if v)
         porohy = [nenul[int(len(nenul) * q)] for q in (0.0, 0.25, 0.5, 0.8)]
 

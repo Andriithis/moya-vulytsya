@@ -19,6 +19,7 @@
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 import base64
 import http.client
 import http.server
@@ -166,18 +167,22 @@ def vstup(id_, tema, styl, c, z, p, b, hook, P, radius=1500, maks=None, poriadok
     return R
 
 
+PIDSUMKY: dict = {}        # Vypusk.pidsumky — одне джерело чисел з сайтом і роликами 138 (ZAVDANNYA-175); ставить main()
+
+
 def kalendar_2025(P):
     from datetime import date
     d0 = date(2025, 1, 1)
     dni = [0] * 365
-    for x in P:
-        if (x.data or '').startswith('2025'):
+    dzherelo = PIDSUMKY.get('dni') or dict(Counter(x.data for x in P if x.data))
+    for dd, k in dzherelo.items():
+        if dd.startswith('2025'):
             try:
-                i = (date.fromisoformat(x.data) - d0).days
+                i = (date.fromisoformat(dd) - d0).days
             except ValueError:
                 continue
             if 0 <= i < 365:
-                dni[i] += 1
+                dni[i] += k
     nenul = sorted(v for v in dni if v)
     return dni, [nenul[int(len(nenul) * q)] for q in (0.0, 0.25, 0.5, 0.8)]
 
@@ -675,7 +680,9 @@ def main():
     stan = json.loads(arg.stan.read_text(encoding='utf-8'))
     Proksi.prodazh = stan['server']
     ix = {b['u']: b for b in json.loads(arg.indeks.read_text(encoding='utf-8'))['budynky']}
-    P = D.Vypusk(arg.baza).podii
+    V = D.Vypusk(arg.baza)
+    P = V.podii
+    PIDSUMKY.update(V.pidsumky)
     vybir = arg.lyshe.split(',') if arg.lyshe else PACHKA
     zibrani = {k: ROLYKY[k](stan, P, ix) for k in (PACHKA if arg.pachka else vybir)}
     if 'p2' in zibrani:                     # лист «Стежу» — у рамці як сторінка пошти (той самий HTML, що піде підписнику)

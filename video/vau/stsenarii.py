@@ -117,6 +117,12 @@ class Rolyk:
         self.meta.setdefault('fakty', {}).update(kw)
         return next(iter(kw.values())) if len(kw) == 1 else None
 
+    def pidsumok(self, kliuch: str, n: int) -> int:
+        """Підсумок з одного джерела (Vypusk.pidsumky, lich_vulytsi): 'vsi', 'rik:2025', 'vulytsia'. Лічильник з ним — pidsumok=kliuch."""
+        self.meta.setdefault('pidsumky', {})[kliuch] = n
+        self.fakt(**{'pidsumok_' + kliuch.replace(':', '_'): n})
+        return n
+
     def vidsotok(self, k: int, n: int) -> int | None:
         """Відсоток — лише з базою >= perevirka.VIDSOTOK_BAZA подій; менше — None (тоді показувати «k з n»)."""
         if n < perevirka.VIDSOTOK_BAZA:

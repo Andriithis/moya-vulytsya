@@ -257,5 +257,85 @@ class Mif(unittest.TestCase):
         self.assertIn("kn <= 0 ? ''", js)
 
 
+class OdneDzherelo(unittest.TestCase):
+    """Топ-10 №6: одне «усього подій» в усіх роликах і на сайті — правила лічби сайту (MV-102)."""
+
+    def baza(self, d):
+        import sqlite3
+        f = Path(d) / 'proba.db'
+        con = sqlite3.connect(f)
+        con.executescript("""
+            CREATE TABLE release (versiia TEXT);
+            INSERT INTO release VALUES ('proba');
+            CREATE TABLE document (doc_id TEXT, url TEXT, data_rishennia TEXT);
+            CREATE TABLE withdrawal (doc_id TEXT);
+            CREATE TABLE location (location_id INTEGER, lat REAL, lon REAL, adresa TEXT, tochnist TEXT);
+            CREATE TABLE event (event_id TEXT, doc_id TEXT, location_id INTEGER, data_podii TEXT, chas TEXT, vyd TEXT,
+                                stattia TEXT, fabula TEXT, chutlyva INTEGER, sota TEXT);
+        """)
+        riady = [   # (подія, вид, стаття, чутлива, з точкою)
+            ('1-1', 'ДТП', 'ст.124 КУпАП · ДТП', 0, True),
+            ('2-1', 'ДТП', 'ст.124 КУпАП · ДТП', 0, True),
+            ('3-1', 'НАС', 'ст.173-2 КУпАП · домашнє насильство', 0, True),   # домашнє — рахується (MV-102), але не малюється
+            ('4-1', 'НАС', 'ст.152 КК · статевий злочин', 1, True),             # статеве — не рахується
+            ('5-1', 'ДТП', 'ст.124 КУпАП · ДТП', 0, False),                      # без точки — не на карті
+            ('6-1', 'МАЙ', 'ст.185 КК · крадіжка', 0, True),
+        ]
+        for i, (eid, vyd, st, ch, tochka) in enumerate(riady):
+            con.execute('INSERT INTO document VALUES (?, ?, ?)', (eid.split('-')[0], 'https://reyestr.court.gov.ua/Review/1', '2025-03-01'))
+            con.execute('INSERT INTO location VALUES (?, ?, ?, ?, ?)', (i, 50.45 if tochka else None, 30.52 if tochka else None,
+                                                                         'вул. Проба, 1', 'house'))
+            con.execute('INSERT INTO event VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                        (eid, eid.split('-')[0], i if tochka else None, '2025-03-0' + str(1 + i % 2), '12:00', vyd, st, None, ch, None))
+        con.commit()
+        con.close()
+        return f
+
+    def test_pidsumky_iak_na_saiti(self):
+        chuzhi = {k: sys.modules.pop(k) for k in ('dani', 'perevirka', 'stsenarii', 'sait_dani') if k in sys.modules}
+        try:
+            D = modul('vau_dani175', 'dani.py')
+        except ImportError as e:
+            self.skipTest(str(e))
+        try:
+            with tempfile.TemporaryDirectory() as d:
+                V = D.Vypusk(self.baza(d))
+                pid = V.pidsumky
+                self.assertEqual(pid['vsi'], 4)                    # 2 ДТП + домашнє + крадіжка
+                self.assertEqual(pid['roky'], {2025: 4})
+                self.assertEqual(sum(pid['dni'].values()), 4)
+                self.assertEqual(len(V.podii), 3)                  # точки в ролику — без насильства (NE_V_ROLYKY)
+                V.con.close()
+        finally:
+            for k in ('dani', 'perevirka', 'stsenarii', 'sait_dani'):
+                sys.modules.pop(k, None)
+            sys.modules.update(chuzhi)
+
+    def test_lich_z_pidsumkom(self):
+        lich = lambda kin: (lambda s: s['tekst'].__setitem__(1, {'t0': 1.8, 't1': 4, 'styl': 'lich', 'kluchi': [[1.8, 0], [3, kin]],
+                                                                 'pidpys': '{f} на карті Києва', 'formy': ['подія', 'події', 'подій'],
+                                                                 'pidsumok': 'vsi'}))
+        self.assertEqual(z(lich(71743), {'pidsumky': {'vsi': 71743}}), [])
+        self.assertTrue(any('у джерелі' in x for x in z(lich(71420), {'pidsumky': {'vsi': 71743}})))
+        self.assertTrue(any('одного джерела' in x for x in z(lich(71420))))
+        bez = lambda s: s['tekst'].__setitem__(1, {'t0': 1.8, 't1': 4, 'styl': 'lich', 'do': 71420, 'pidpys': '{f} на карті Києва',
+                                                   'formy': ['подія', 'події', 'подій']})
+        self.assertTrue(any('одного джерела' in x for x in z(bez)))
+
+    def test_pachka_odne_chyslo(self):
+        a = (copy.deepcopy(CHYSTYI), dict(META, id='a', pidsumky={'vsi': 71420}))
+        b = (dict(copy.deepcopy(CHYSTYI), tema='svitla'), dict(META, id='b', shar='soty', pidsumky={'vsi': 71417}))
+        self.assertTrue(any('усього подій' in x for x in P.pereviryty_pachku([a, b])))
+        b[1]['pidsumky'] = {'vsi': 71420}
+        self.assertFalse(any('усього подій' in x for x in P.pereviryty_pachku([a, b])))
+
+    def test_stsenarii_z_odnogo_dzherela(self):
+        for f, kl in (('stsenarii129.py', ("'vsi'", "'vulytsia'")), ('stsenarii138.py', ("'vsi'", "'rik:2025'", "'vulytsia'")),
+                      ('laboratoriia139.py', ("pidsumky['vsi']", "pidsumky['dni']")), ('zapys155.py', ("PIDSUMKY",))):
+            t = (VAU / f).read_text(encoding='utf-8')
+            for k in kl:
+                self.assertIn(k, t, f'{f}: {k}')
+
+
 if __name__ == '__main__':
     unittest.main()

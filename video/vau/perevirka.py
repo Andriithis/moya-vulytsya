@@ -256,6 +256,9 @@ def osi(S: dict, meta: dict) -> dict:
 def pereviryty_pachku(rolyky: list[tuple[dict, dict]]) -> list[str]:
     """В2 (Андрій: «всі відео однотипні»): два ролики поспіль різняться щонайменше за двома осями з трьох."""
     z = []
+    vsi = {(m.get('pidsumky') or {}).get('vsi') for _, m in rolyky} - {None}
+    if len(vsi) > 1:      # критик ZVIT-170: 71 420 / 71 417 / 71 428 у сусідніх роликах
+        z.append(f'одне «усього подій» на пачку — зараз різні: {", ".join(str(x) for x in sorted(vsi))} (зібрати з одного випуску)')
     oo = [(m.get('id', S.get('id')), osi(S, m)) for S, m in rolyky]
     for (ia, a), (ib, b) in zip(oo, oo[1:]):
         rizni = [k for k in ('tema', 'shar', 'riven') if a[k] != b[k]]
@@ -340,6 +343,20 @@ def pravda(S: dict, meta: dict) -> list[str]:
         if VULYTSIA.search(str(m.get('tekst', ''))) and dvoinyk:
             z.append(f"підпис «{m.get('tekst')}{n if isinstance(n, str) else ''}» — число після назви вулиці схоже на номер будинку: "
                      f"n числом (сцена пише «N подій» окремим рядком)")
+    # одне «усього подій» (топ-10 №6): лічильник з підсумком несе pidsumok і показує саме число з meta['pidsumky']
+    pids = meta.get('pidsumky') or {}
+    for it in S.get('tekst', []):
+        if it.get('styl') not in ('lich', 'slovo', 'velykyi'):
+            continue
+        k = it.get('pidsumok')
+        kin = kinets_lich(it)
+        if k:
+            if k not in pids:
+                z.append(f'підсумок «{k}» без числа з одного джерела (Rolyk.pidsumok)')
+            elif kin is not None and kin != pids[k]:
+                z.append(f'підсумок «{k}»: у кадрі {kin}, у джерелі {pids[k]}')
+        elif it.get('styl') == 'lich' and NA_KARTI_MISTA.search(str(it.get('pidpys', ''))):
+            z.append(f"лічильник «{it.get('pidpys')}» — усього подій: лише з одного джерела (pidsumok='vsi')")
     # відсоток — лише з базою: кожне «N %» має запис meta['vidsotky'] = [{'v': N, 'k': k, 'n': n}] з n >= VIDSOTOK_BAZA
     vs = meta.get('vidsotky') or []
     vsi = list(teksty(S))
@@ -363,6 +380,16 @@ KUDY_MISTSE = re.compile(r'^/(?:vulytsia|rayon|budynok|mistse)/[^/?#]+/')
 KUDY_PRODUKT = re.compile(r'^/(?:miy-budynok|osbb|sudova-praktyka|biznes|dlia|pidpyska|oplata)/')
 KUDY_HRA = re.compile(r'^/(?:karta/\?ihry|hra/|ihry/)')
 KUDY_KARTA_MISTSE = re.compile(r'^/karta/#\d+(?:\.\d+)?/\d+\.\d+/\d+\.\d+')     # карта, відкрита на цьому місці
+
+
+NA_KARTI_MISTA = re.compile(r'на карті(?: Києва)?\s*$|усього подій|подій у Києві', re.I)
+
+
+def kinets_lich(it: dict):
+    """Число, на якому лічильник зупиняється (останній ключ або do)."""
+    if it.get('kluchi'):
+        return it['kluchi'][-1][1]
+    return it.get('do')
 
 
 def kudy(meta: dict) -> list[str]:

@@ -117,7 +117,8 @@ def t5(B):
     R.efekt(0.0, 'udar', v=0.7)
     R.zvuk_tochok(chasy, maks=14, h0=0.8, h1=1.9, v=0.45)
     R.tekst(0, 2.2, 'hook', 'Кожна точка —\n*справжня подія*\nз рішення суду', y='verkh')
-    R.tekst(2.3, 5.6, 'lich', kluchi=[[0, 0], [5.4, n, 'io']], pidpys='{f} на карті Києва', formy=FORMY, y='verkh')
+    vsi = R.pidsumok('vsi', B.V.pidsumky['vsi'])     # те саме число, що на сайті й в інших роликах (ZAVDANNYA-175)
+    R.tekst(2.3, 5.6, 'lich', kluchi=[[0, 0], [5.4, vsi, 'io']], pidpys='{f} на карті Києва', formy=FORMY, y='verkh', pidsumok='vsi')
     for i, (rik, t) in enumerate([('2023', 0.0), ('2024', 1.4), ('2025', 2.9), ('2026', 4.3)]):
         R.tekst(t, t + 1.45 if i < 3 else 5.6, 'velykyi', f'*{rik}*', y=1300, c=True, anim='pop')
         R.efekt(t, 'tik', h=1.2)
@@ -433,20 +434,21 @@ def n6(B):
     R.tochky(pod, chasy, rozmir=((0, 20),), glow=0.5)
     R.zvuk_tochok(chasy, maks=12, h0=1.0, h1=1.7, v=0.45)
     R.tekst(2.0, 4.6, 'velykyi', 'Кадетський Гай.\n*Відповідаємо.*', y='verkh', anim='slam')
-    R.tekst(4.7, 7.4, 'lich', kluchi=[[4.7, 0], [5.9, n, 'o']], pidpys='{f} на вулиці\nза 2024–2026', formy=FORMY, y='verkh')
+    n_s = R.pidsumok('vulytsia', B.V.lich_vulytsi('kadetskyi-hai'))     # як на сторінці вулиці сайту
+    R.tekst(4.7, 7.4, 'lich', kluchi=[[4.7, 0], [5.9, n_s, 'o']], pidpys='{f} на вулиці\nза 2024–2026', formy=FORMY, y='verkh', pidsumok='vulytsia')
     R.udar(5.9, 0.2, 8)
-    R.holos(4.8, f'{n} {fp(n)} на вулиці. З них {dtp} — де-те-пе.', 'tetiana')
+    R.holos(4.8, f'{n_s} {fp(n_s)} на вулиці. З них {dtp} — де-те-пе.', 'tetiana')
     # ZAVDANNYA-175 (критик ZVIT-170): «24 %» з 10 випадків — сигнал без бази. Відсоток — лише від >= 50 подій, інакше «k з n»
-    tut_v = R.vidsotok(vtekly, n)
+    tut_v = R.vidsotok(vtekly, n_s)          # база — усі події вулиці, як на сайті
     m_k = sum(1 for p in P24 if p.mitka == 'поїхав з місця ДТП')
     misto_v = R.vidsotok(m_k, len(P24))
-    tut_riad = ({'zag': 'Тут', 'n': tut_v, 'pislia': ' %', 'tekst': f'поїхав з місця ДТП ({vtekly} з {n})'} if tut_v is not None else
-                {'zag': 'Тут', 'n': vtekly, 'pislia': f' з {n}', 'tekst': 'поїхав з місця ДТП'})
+    tut_riad = ({'zag': 'Тут', 'n': tut_v, 'pislia': ' %', 'tekst': f'поїхав з місця ДТП ({vtekly} з {n_s})'} if tut_v is not None else
+                {'zag': 'Тут', 'n': vtekly, 'pislia': f' з {n_s}', 'tekst': 'поїхав з місця ДТП'})
     R.tekst(7.5, 10.4, 'split', riady=[tut_riad, {'zag': 'По Києву', 'n': misto_v, 'pislia': ' %', 'tekst': 'поїхав з місця ДТП'}], y=560)
     R.efekt(7.5, 'vzhukh')
     R.efekt(9.0, 'pop', h=1.3)
     R.S['novynky'] = [9.0]
-    R.holos(7.7, f'Тут {vtekly} з {n} — водій поїхав з місця де-те-пе. По Києву — {misto_v} відсотків.', 'tetiana')
+    R.holos(7.7, f'Тут {vtekly} з {n_s} — водій поїхав з місця де-те-пе. По Києву — {misto_v} відсотків.', 'tetiana')
     R.tekst(10.5, 13.0, 'velykyi', 'Пиши свою вулицю —\n*наступна відповідь завтра*', y='verkh', anim='slam')
     R.efekt(10.5, 'pop', h=1.4)
     R.efekt(12.0, 'pop', h=1.5)
