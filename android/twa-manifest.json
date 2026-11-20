@@ -12,7 +12,7 @@
   "navigationDividerColor": "#DFE1E9",
   "navigationDividerColorDark": "#2A2E47",
   "backgroundColor": "#F4F5FB",
-  "enableNotifications": true,
+  "enableNotifications": false,
   "startUrl": "/?dzherelo=dodatok",
   "iconUrl": "https://moyavulytsya.com.ua/zahlushka/ikony/ikona-512.png",
   "maskableIconUrl": "https://moyavulytsya.com.ua/zahlushka/ikony/ikona-maskable-512.png",
