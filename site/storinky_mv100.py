@@ -295,7 +295,9 @@ def urivok_dovidky(b: dict, r_m: int) -> str:
     punkty.append(f'події з рішень судів біля будинку й на вулиці — коротко, з посиланням на кожне рішення'
                   + (f' (з адресою самого будинку — {chyslo(b["podii_vidkr"])} за {D.VIDKRYTI_ROKY[0]}–{D.VIDKRYTI_ROKY[-1]})'
                      if b['podii_vidkr'] else ''))
-    punkty.append('три висновки зверху — прочитати за 2–3 хвилини; можна зберегти файлом PDF')
+    # ZAVDANNYA-178: заміряно на випуску 08.11 — три висновки 80–100 слів (менше хвилини), уся довідка в PDF — 3 сторінки,
+    # 770–920 слів (≈ 4–5 хв): обіцяємо хвилину лише висновкам, не всьому документу
+    punkty.append('три висновки зверху — прочитати за хвилину; уся довідка — 3 сторінки, можна зберегти файлом PDF')
     return ('<div class="kartka urivok"><p><b>Що буде в довідці про цей будинок</b></p><ul class="spysok-tekst">'
             + ''.join(f'<li>{x}</li>' for x in punkty)
             + '</ul><p class="prymitka"><a href="/zahlushka/zrazok.html">Подивитися зразок</a></p></div>')
@@ -560,7 +562,7 @@ def vitryna_miy_budynok(adresa_saitu: str, prykl: list, kartynka: tuple | None =
         kartka_tovaru('dovidka', 'Разово, для одного будинку', [
             'скарги 1551 за 12 місяців: теми, місяці, статуси простими словами',
             'порівняння з сусідніми будинками', 'події з рішень судів біля будинку й на вулиці — коротко',
-            'прочитати за 2–3 хвилини'], True, dzherelo='miy-budynok'),
+            'головне — три висновки зверху, за хвилину'], True, dzherelo='miy-budynok'),
         kartka_tovaru('try', 'Три будинки — порівняти перед орендою чи купівлею', [
             'три довідки на вибір', 'дешевше, ніж три окремо'], dzherelo='miy-budynok'),
         kartka_tovaru('zvit', 'Перед купівлею житла', [
