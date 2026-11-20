@@ -73,5 +73,30 @@ class Vypravlennia(unittest.TestCase):
         self.assertEqual(t[('проспект', D.kliuch('І. Івасюка'))], ('проспект', 'Володимира Івасюка'))
 
 
+class Rayony(unittest.TestCase):
+    """П. 4 і 8: відмінок району; вулиця на межі районів — усі її райони."""
+
+    def test_mistsevyi_vidminok_10_rayoniv(self):
+        import zibraty_sait as Z
+        mezhi = json.loads((KORIN / 'data' / 'borders.json').read_text(encoding='utf-8'))
+        self.assertEqual(len(mezhi), 10)
+        for r in mezhi:
+            t = Z.u_rayoni(r)
+            self.assertRegex(t, r'^[УВ] \S+(ському|цькому) районі$', r)
+        self.assertEqual(Z.u_rayoni('Оболонський'), 'В Оболонському районі')
+        self.assertEqual(Z.u_rayoni('Дарницький'), 'У Дарницькому районі')
+        self.assertEqual(Z.u_rayoni("Солом'янський", False), "у Солом'янському районі")
+
+    def test_vulytsia_na_mezhi(self):
+        import zibraty_sait as Z
+        from collections import Counter
+        v = D.Vulytsia('khreshchatyk', 'вулиця Хрещатик', 'вулиця', 'Хрещатик', 'osm')
+        v.rayony = Counter({'Печерський': 40, 'Шевченківський': 30, 'Голосіївський': 3})
+        self.assertEqual(Z.rayony_vulytsi(v), ['Печерський', 'Шевченківський'])
+        self.assertEqual(Z.rayony_tekst(Z.rayony_vulytsi(v)), 'Печерський і Шевченківський райони')
+        self.assertEqual(Z.rayony_tekst(['Печерський']), 'Печерський район')
+        self.assertEqual(Z.rayony_tekst([], False), '')
+
+
 if __name__ == '__main__':
     unittest.main()

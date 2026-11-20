@@ -434,7 +434,7 @@ def storinka_rayonu(dn: D.Dani, rayon: str, vulytsi: list, bud: Budynky | None, 
         skarhy.update(b['skarhy'])
     kryhty = [('/', 'Головна'), ('/rayony/', 'Райони'), ('', f'{rayon} район')]
     ch = [kryhty_html(kryhty)]
-    rech = [f'У {e(rayon)} районі за {roky_t} у даних судів — {Z.podii_slovo(vsogo)} з точною адресою'
+    rech = [f'{e(Z.u_rayoni(rayon))} за {roky_t} у даних судів — {Z.podii_slovo(vsogo)} з точною адресою'
             + (': ' + ', '.join(f'{D.HR.SLOVO[k]} — {chyslo(n)}'
                                 for k, n in podii_hrupy.most_common(3)) if vsogo else '') + '.']
     if skarhy:
@@ -490,7 +490,7 @@ def storinka_rayonu(dn: D.Dani, rayon: str, vulytsi: list, bud: Budynky | None, 
         Z.zapysaty_bajty(vykhid / 'rayon' / slug / 'kartynka.png', K.kartynka('Київ · район', f'{rayon} район', chysla, kolory))
         kartynka = (f'/rayon/{slug}/kartynka.png', f'{rayon} район: ' + ', '.join(f'{a} {p}' for a, p in chysla))
     return Z.storinka(shlyakh=f'/rayon/{slug}/', title=title, opys=opys, tilo='\n'.join(ch), adresa_saitu=adresa_saitu,
-                      aktyvne='vulytsi/', dodatkovo_head=ld_skrypt(place, kryhty_ld(kryhty, adresa_saitu)), kartynka=kartynka)
+                      aktyvne='rayony/', dodatkovo_head=ld_skrypt(place, kryhty_ld(kryhty, adresa_saitu)), kartynka=kartynka)
 
 
 def storinka_rayoniv(rayony: list, adresa_saitu: str, bez_rayonu: list | None = None) -> str:
@@ -504,7 +504,7 @@ def storinka_rayoniv(rayony: list, adresa_saitu: str, bez_rayonu: list | None = 
                      f'<li><a href="{b["url"]}">{e(b["adresa"])}</a></li>' for b in bez_rayonu) + '</ul></section>')
     return Z.storinka(shlyakh='/rayony/', title='Райони Києва — події з судових рішень і скарги 1551 | Моя вулиця',
                       opys='Райони Києва: події з судових рішень, скарги 1551 і вулиці кожного району.', tilo=tilo,
-                      adresa_saitu=adresa_saitu, aktyvne='vulytsi/', dodatkovo_head=ld_skrypt(kryhty_ld(kryhty, adresa_saitu)))
+                      adresa_saitu=adresa_saitu, aktyvne='rayony/', dodatkovo_head=ld_skrypt(kryhty_ld(kryhty, adresa_saitu)))
 
 
 # ---------------------------------------------------------------- вітрини

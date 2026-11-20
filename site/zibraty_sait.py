@@ -261,6 +261,44 @@ def slug_rayonu(r: str) -> str:
     return D.translit(r)
 
 
+# ZVIT-165, п. 4 (ZAVDANNYA-177): «У Оболонський районі» → «В Оболонському районі». Місцевий відмінок прикметника:
+# «-ський» → «-ському», «-цький» → «-цькому»; «у/в» — за першою літерою (перед голосною на початку речення — «в»).
+GOLOSNI = 'АЕЄИІЇОУЮЯаеєиіїоуюя'
+
+
+def rayon_mistsevyi(r: str) -> str:
+    """«Оболонський» → «Оболонському»; «Солом'янський» → «Солом'янському»; інше закінчення — як є."""
+    return re.sub(r'(ськ|цьк|зьк)ий$', r'\1ому', r)
+
+
+def u_rayoni(r: str, z_velykoi: bool = True) -> str:
+    """«В Оболонському районі», «У Дарницькому районі» (або з малої — посеред речення)."""
+    pr = 'в' if r[:1] in GOLOSNI else 'у'
+    return f'{pr.upper() if z_velykoi else pr} {rayon_mistsevyi(r)} районі'
+
+
+# ZVIT-165, п. 8: вулиця на межі районів (Хрещатик — Печерський і Шевченківський) — усі райони, де в неї помітна частка
+# подій; будинок — свій район з координати (dani-edrsr/src/budynky_sait.py, S-М.21). Тоді вулиця й будинок не суперечать.
+CHASTKA_RAYONU = 0.1
+
+
+def rayony_vulytsi(v: D.Vulytsia, n: int = 3) -> list:
+    """Головний район вулиці і ті, де в неї ≥ 10 % і ≥ 3 подій (не більше трьох)."""
+    if not v.rayony:
+        return []
+    vsogo = sum(v.rayony.values())
+    rr = v.rayony.most_common()
+    return [rr[0][0]] + [r for r, k in rr[1:n] if k >= 3 and k >= CHASTKA_RAYONU * vsogo]
+
+
+def rayony_tekst(rr: list, slovo: bool = True) -> str:
+    """['Печерський', 'Шевченківський'] → «Печерський і Шевченківський райони»; без слова — для підказки пошуку."""
+    if not rr:
+        return 'Київ' if slovo else ''
+    t = rr[0] if len(rr) == 1 else ', '.join(rr[:-1]) + ' і ' + rr[-1]
+    return t + ((' район' if len(rr) == 1 else ' райони') if slovo else '')
+
+
 # ---------------------------------------------------------------- рамка сторінки
 
 MISIATSI = ('січень', 'лютий', 'березень', 'квітень', 'травень', 'червень', 'липень', 'серпень', 'вересень',
@@ -444,10 +482,11 @@ def blok_sudova_praktyka(statti_vulytsi: dict, sp_statti: dict | None) -> str:
 def storinka_vulytsi(dn: D.Dani, v: D.Vulytsia, pr: dict, adresa_saitu: str, susidy: list, budynky: list | None = None,
                      media: dict | None = None, mistsia: list | None = None, sp_statti: dict | None = None) -> str:
     rayon = v.rayony.most_common(1)[0][0] if v.rayony else None
-    inshi_rayony = [r for r, _ in v.rayony.most_common()[1:] if v.rayony[r] >= 3]
+    rr = rayony_vulytsi(v)
+    inshi_rayony = [r for r, _ in v.rayony.most_common()[1:] if v.rayony[r] >= 3 and r not in rr]
     vsogo = pr['vsogo']
     roky_t = PERIOD_VIDKRYTYI
-    rayon_t = f'{rayon} район' if rayon else 'Київ'
+    rayon_t = rayony_tekst(rr)
     # ZAVDANNYA-154: шаблони під запити людей — site/zaholovky.py
     import zaholovky as ZH
     title = ZH.title_vulytsi(v.nazva, rayon, podii_slovo(vsogo), roky_t)
@@ -910,7 +949,7 @@ def poshuk_karty(dn: D.Dani, vulytsi: list, tsentry: dict) -> dict:
             continue
         buly.add(v.nazva)
         inshi = sorted(set(v.varianty) | set(stari.get(v.slug, [])))
-        vs.append([v.nazva, v.rayony.most_common(1)[0][0] if v.rayony else '', v.slug, *tsentry[v.slug], len(v.nedavni),
+        vs.append([v.nazva, rayony_tekst(rayony_vulytsi(v), False), v.slug, *tsentry[v.slug], len(v.nedavni),
                    ' '.join(inshi)])
     rayony = []
     if dn.rayony is not None:
@@ -1187,7 +1226,7 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
     for stara, tsili in dn.zvedennia.pereimenuvannia:
         for t in tsili:
             stari_nazvy[t].add(stara)
-    pokazhchyk = [[v.slug, v.nazva, v.rayony.most_common(1)[0][0] if v.rayony else '', len(v.nedavni),
+    pokazhchyk = [[v.slug, v.nazva, rayony_tekst(rayony_vulytsi(v), False), len(v.nedavni),
                    ' '.join(sorted(set(v.varianty) | stari_nazvy.get(v.slug, set())))]
                   for v in sorted(vulytsi, key=lambda v: (kliuch_abetky(v.korotka), v.slug))]
     zapysaty(vykhid / 'vulytsi' / 'pokazhchyk.json', json.dumps(pokazhchyk, ensure_ascii=False, separators=(',', ':')))
