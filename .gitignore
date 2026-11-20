@@ -86,9 +86,15 @@ site/hra/vulytsia-dnia.json
 !site/storinky_mv100.py
 !site/storinky_sp.py
 !site/storinky_mistsia.py
+!site/storinky_vkhodiv.py
+!site/storinka_doslidnykam.py
+!site/doslidnykam.json
 !site/tsiny.py
 !site/khostynh.py
 !site/kartynky.py
+!site/perevirka_google.py
+!site/zaholovky.py
+!site/zastavka.py
 !site/worker/
 !site/sait/
 # === ІГРИ В КАРТІ (ZAVDANNYA-117) ===
@@ -110,3 +116,4 @@ site/prodazh/__pycache__/
 video/vyhid/
 *.mp4
 _vykladka/
+avtorstvo/znimky/

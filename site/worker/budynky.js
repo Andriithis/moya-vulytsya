@@ -21,6 +21,8 @@ export async function budynok(request, env) {
   const m = url.pathname.match(/^\/budynok\/([a-z0-9-]+\/[a-z0-9-]+)(\/|\/kartynka\.png|\/index\.html)?$/);
   if (!m) return null;
   if (!m[2]) return Response.redirect(new URL(url.pathname + '/' + url.search, url).toString(), 301);
+  // ZAVDANNYA-154: …/index.html — та сама сторінка; одна адреса для Google (без дубліката)
+  if (m[2] === '/index.html') return Response.redirect(new URL(`/budynok/${m[1]}/${url.search}`, url).toString(), 301);
   const slug = m[1];
   const kartynka = m[2] === '/kartynka.png';
   const pachok = parseInt(env.PACHOK, 10) || 1;

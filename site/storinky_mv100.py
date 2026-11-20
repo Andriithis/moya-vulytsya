@@ -20,6 +20,7 @@ from pathlib import Path
 
 import dani as D
 import tsiny as T
+import zaholovky as ZH
 import zibraty_sait as Z
 
 e, chyslo, vidminok, NBSP = Z.e, Z.chyslo, Z.vidminok, Z.NBSP
@@ -112,6 +113,9 @@ def kryhty_html(punkty: list) -> str:
 
 
 def kryhty_ld(punkty: list, adresa_saitu: str) -> dict:
+    # ZAVDANNYA-154: Google вимагає адресу в кожного пункту, крім останнього; проміжний пункт без сторінки (вулиця без
+    # своєї сторінки) у розмітку не йде — на сторінці його видно, як і раніше.
+    punkty = [p for i, p in enumerate(punkty) if p[0] or i == len(punkty) - 1]
     return {'@context': 'https://schema.org', '@type': 'BreadcrumbList', 'itemListElement': [
         {'@type': 'ListItem', 'position': i + 1, 'name': n, **({'item': adresa_saitu + u} if u else {})}
         for i, (u, n) in enumerate(punkty)]}
@@ -196,6 +200,37 @@ class Budynky:
         return b['skarh'] + b['podii_vidkr'] >= MIN_DANYKH_DLYA_POSHUKU
 
 
+BUDYNKIV_PORUCH = 6
+R_PORUCH_M = 400
+
+
+def budynky_poruch(spysok: list, n: int = BUDYNKIV_PORUCH, r_m: float = R_PORUCH_M) -> dict:
+    """ZAVDANNYA-154: для кожного будинку — до n найближчих будинків інших вулиць у радіусі r_m (slug → [будинки]).
+    Посилання «Будинки поруч»: людина бачить сусідній квартал, Google — шлях до кожного будинку, і до тих, у чиєї вулиці
+    немає своєї сторінки."""
+    import math
+    krok = 0.005                       # ≈ 550 м по широті — клітинка сітки
+    sitka = defaultdict(list)
+    for b in spysok:
+        sitka[(int(b['lat'] // krok), int(b['lon'] // krok))].append(b)
+    kx = math.cos(math.radians(50.45))
+    rez = {}
+    for b in spysok:
+        i, j = int(b['lat'] // krok), int(b['lon'] // krok)
+        kandydaty = []
+        for di in (-1, 0, 1):
+            for dj in (-1, 0, 1):
+                for x in sitka.get((i + di, j + dj), ()):
+                    if x is b or (x['vulytsia'] == b['vulytsia']):
+                        continue
+                    d = math.hypot(x['lat'] - b['lat'], (x['lon'] - b['lon']) * kx) * 111_200
+                    if d <= r_m:
+                        kandydaty.append((round(d), x['slug'], x))
+        kandydaty.sort(key=lambda t: (t[0], t[1]))
+        rez[b['slug']] = [x for _, _, x in kandydaty[:n]]
+    return rez
+
+
 def kliuch_nomera(n: str) -> tuple:
     m = re.match(r'(\d+)(.*)', n)
     return (int(m.group(1)), m.group(2)) if m else (10 ** 6, n)
@@ -260,7 +295,8 @@ def podii_zvitu(period: str) -> str:
     return (f'події за {period} зі стислим описом з рішення' if period else 'події з рішень судів зі стислим описом з рішення')
 
 
-def storinka_budynku(b: dict, bud: Budynky, adresa_saitu: str, susidni: list, period_podii: str = '') -> str:
+def storinka_budynku(b: dict, bud: Budynky, adresa_saitu: str, susidni: list, period_podii: str = '',
+                    poruch: list | None = None) -> str:
     period = period_1551(bud.misiatsi)
     roky_t = f'{D.VIDKRYTI_ROKY[0]}–{D.VIDKRYTI_ROKY[-1]}'
     kryhty = [('/', 'Головна')]
@@ -338,6 +374,10 @@ def storinka_budynku(b: dict, bud: Budynky, adresa_saitu: str, susidni: list, pe
     if susidni:
         ch.append('<section class="rozdil"><h2>Інші будинки вулиці</h2><ul class="spysok-vulyts spysok-bud">' + ''.join(
             f'<li><a href="{x["url"]}">{e(x["nomer"])}</a></li>' for x in susidni) + '</ul></section>')
+    if poruch:      # ZAVDANNYA-154: сусідні будинки інших вулиць — лише адреса й посилання, без чисел і оцінок
+        ch.append(f'<section class="rozdil"><h2>Будинки поруч</h2><p class="rozdil__pidpys">Найближчі будинки інших вулиць '
+                  f'у радіусі {R_PORUCH_M}{NBSP}м, що мають свою сторінку.</p><ul class="spysok-tekst">' + ''.join(
+                      f'<li><a href="{x["url"]}">{e(x["adresa"])}</a></li>' for x in poruch) + '</ul></section>')
     posylannia = []
     if b['vulytsia_slug']:
         posylannia.append(f'<a class="knopka" href="/vulytsia/{b["vulytsia_slug"]}/">{e(b["vulytsia"])} — уся вулиця</a>')
@@ -357,10 +397,10 @@ def storinka_budynku(b: dict, bud: Budynky, adresa_saitu: str, susidni: list, pe
         place['containedInPlace'] = {'@type': 'Place', 'name': f'{b["rayon"]} район, Київ'}
     if re.match(r'^\d{4}-\d{2}-\d{2}$', bud.versiia or ''):
         place['dateModified'] = bud.versiia           # Д-2 (ZAVDANNYA-110), як на сторінці вулиці (MV-101)
-    title = f'{b["adresa"]}, Київ: скарги 1551 і події з рішень судів | Моя вулиця'
-    opys = (f'{b["adresa"]} ({rayon_t}): {skarhy_slovo(b["skarh"])} до 1551 за 12 місяців'
-            + (f' (найчастіше — {next(iter(b["skarhy"]))})' if b['skarh'] else '')
-            + f', {Z.podii_slovo(b["podii_vidkr"])} з рішень судів за {roky_t}. Порівняння з сусідніми будинками.')
+    # ZAVDANNYA-154: шаблони під запити людей — site/zaholovky.py
+    title = ZH.title_budynku(b['vulytsia'], b['nomer'])
+    opys = ZH.opys_budynku(b['vulytsia'], b['nomer'], rayon_t, skarhy_slovo(b['skarh']),
+                           next(iter(b['skarhy'])) if b['skarh'] else None, Z.podii_slovo(b['podii_vidkr']), roky_t)
     return Z.storinka(shlyakh=b['url'], title=title, opys=opys, tilo='\n'.join(ch), adresa_saitu=adresa_saitu,
                       aktyvne='miy-budynok/', dodatkovo_head=ld_skrypt(place, kryhty_ld(kryhty, adresa_saitu)),
                       indeksuvaty=Budynky.indeksuvaty(b), kartynka=(f'{b["url"]}kartynka.png', alt_budynku(b)))
@@ -423,14 +463,21 @@ def storinka_rayonu(dn: D.Dani, rayon: str, vulytsi: list, bud: Budynky | None, 
     vs = sorted((v for v in vulytsi if v.nedavni), key=lambda v: (Z.kliuch_abetky(v.korotka), v.slug))   # Д-6: без «0»
     ch.append(f'<section class="rozdil"><h2>Вулиці району</h2><p class="rozdil__pidpys">За абеткою; поруч — подій за {roky_t}. '
               f'<a href="/vulytsi/{slug}/">Покажчик вулиць району</a>.</p>{Z.spysok_vulyts(vs)}</section>')
+    bez_vulytsi = sorted((b for b in budynky if not b['vulytsia_slug']), key=lambda b: (b['vulytsia'], kliuch_nomera(b['nomer'])))
+    if bez_vulytsi:     # ZAVDANNYA-154: інакше на ці будинки не веде жодна сторінка (сироти для Google)
+        ch.append('<section class="rozdil"><h2>Будинки на вулицях без окремої сторінки</h2>'
+                  '<p class="rozdil__pidpys">Ці вулиці не мають своєї сторінки, а будинки на них — мають: '
+                  'скарги 1551 чи події з рішень судів з адресою будинку.</p><ul class="spysok-tekst">' + ''.join(
+                      f'<li><a href="{b["url"]}">{e(b["adresa"])}</a></li>' for b in bez_vulytsi) + '</ul></section>')
     if mistsia:     # ZAVDANNYA-124: публічні місця району — посилання на їхні сторінки
         import storinky_mistsia as SM
         ch.append(SM.blok_mists(mistsia, 'Публічні місця району'))
     ch.append(f'<section class="rozdil"><h2>Мій будинок</h2><p class="rozdil__pidpys">Знайдіть свою вулицю — на її сторінці є '
               f'будинки зі своєю сторінкою.</p>{knopky_dovidky("", "rayon")}</section>')
-    title = f'{rayon} район, Київ: події з судових рішень і скарги 1551 | Моя вулиця'
-    opys = (f'{rayon} район Києва: {Z.podii_slovo(vsogo)} з судових рішень за {roky_t}, скарги 1551 за темами, '
-            f'{chyslo(len(vulytsi))} вулиць зі своєю сторінкою.')
+    title = ZH.title_rayonu(rayon)
+    opys = ZH.opys_rayonu(rayon, Z.podii_slovo(vsogo), roky_t,
+                          f'{chyslo(len(vulytsi))} {vidminok(len(vulytsi), ("вулиця", "вулиці", "вулиць"))}',
+                          f'{chyslo(len(budynky))} {vidminok(len(budynky), ("будинок", "будинки", "будинків"))}' if budynky else None)
     place = {'@context': 'https://schema.org', '@type': 'Place', 'name': f'{rayon} район, Київ',
              'url': f'{adresa_saitu}/rayon/{slug}/', 'containedInPlace': {'@type': 'City', 'name': 'Київ'}}
     kartynka = None
@@ -446,11 +493,15 @@ def storinka_rayonu(dn: D.Dani, rayon: str, vulytsi: list, bud: Budynky | None, 
                       aktyvne='vulytsi/', dodatkovo_head=ld_skrypt(place, kryhty_ld(kryhty, adresa_saitu)), kartynka=kartynka)
 
 
-def storinka_rayoniv(rayony: list, adresa_saitu: str) -> str:
+def storinka_rayoniv(rayony: list, adresa_saitu: str, bez_rayonu: list | None = None) -> str:
     kryhty = [('/', 'Головна'), ('', 'Райони')]
     tilo = (kryhty_html(kryhty) + '<section class="zaholovok"><h1>Райони Києва</h1><p>Десять районів: події з судових рішень, '
             'скарги 1551 і всі вулиці кожного району.</p></section><nav class="rayony" aria-label="Райони">'
             + ''.join(f'<a href="/rayon/{Z.slug_rayonu(r)}/">{e(r)}</a>' for r in rayony) + '</nav>')
+    if bez_rayonu:      # ZAVDANNYA-154: будинки без вулиці й району зі сторінкою — інакше на них не веде жодне посилання
+        tilo += ('<section class="rozdil"><h2>Будинки поза районами</h2><p class="rozdil__pidpys">Будинки, район і вулицю яких '
+                 'у даних не визначено.</p><ul class="spysok-tekst">' + ''.join(
+                     f'<li><a href="{b["url"]}">{e(b["adresa"])}</a></li>' for b in bez_rayonu) + '</ul></section>')
     return Z.storinka(shlyakh='/rayony/', title='Райони Києва — події з судових рішень і скарги 1551 | Моя вулиця',
                       opys='Райони Києва: події з судових рішень, скарги 1551 і вулиці кожного району.', tilo=tilo,
                       adresa_saitu=adresa_saitu, aktyvne='vulytsi/', dodatkovo_head=ld_skrypt(kryhty_ld(kryhty, adresa_saitu)))
@@ -459,12 +510,13 @@ def storinka_rayoniv(rayony: list, adresa_saitu: str) -> str:
 # ---------------------------------------------------------------- вітрини
 
 def vitryna(shlyakh: str, nazva: str, mitka: str, vstup: str, tilo: str, title: str, opys: str, adresa_saitu: str,
-            aktyvne: str = '', kartynka: tuple | None = None) -> str:
+            aktyvne: str = '', kartynka: tuple | None = None, skrypty: tuple = (), css: tuple = ()) -> str:
     kryhty = [('/', 'Головна'), ('', nazva)]
     t = (kryhty_html(kryhty) + f'<section class="zaholovok"><span class="mitka">{e(mitka)}</span><h1>{e(nazva)}</h1>'
          f'<p>{vstup}</p></section>' + tilo)
     return Z.storinka(shlyakh=shlyakh, title=title, opys=opys, tilo=t, adresa_saitu=adresa_saitu, aktyvne=aktyvne or shlyakh[1:],
-                      dodatkovo_head=ld_skrypt(kryhty_ld(kryhty, adresa_saitu)), kartynka=kartynka)
+                      dodatkovo_head=ld_skrypt(kryhty_ld(kryhty, adresa_saitu)) + ''.join(f'<link rel="stylesheet" href="{c}">\n' for c in css),
+                      kartynka=kartynka, skrypty=skrypty)
 
 
 def kartka_tovaru(kl: str, pidpys: str, punkty: list, holovna: bool = False, dzherelo: str = '') -> str:
@@ -553,20 +605,85 @@ def vitryna_sudova(adresa_saitu: str, kartynka: tuple | None = None) -> str:
                    adresa_saitu, kartynka=kartynka)
 
 
-def vitryna_biznes(adresa_saitu: str, kartynka: tuple | None = None, period_podii: str = '') -> str:
-    tilo = f'''<section class="rozdil"><h2>Набори й доступ</h2><div class="tovary">
-{kartka_tovaru('biznes', 'Користування базою на місяць або рік за договором — не продаж', [
-        f'події з рішень судів з адресами й точками на карті (Київ{", " + period_podii if period_podii else ""})', 'скарги 1551 по будинках',
-        'вивантаження файлом або доступ для програм', 'оновлення щомісяця'], True, dzherelo='biznes')}
-<div class="kartka tovar"><h3>Для кого</h3><ul><li>забудовники й агенції нерухомості</li><li>страхові й банки</li>
-<li>дослідники й медіа</li></ul></div></div>
-<p class="prymitka">Умови — в <a href="/zahlushka/oferta.html">оферті</a> і договорі. Вивантаження бази — лише компаніям за договором.
-Платежі й договори оформлює партнер проєкту.</p></section>'''
+# «Для бізнесу» (ZAVDANNYA-157; MV-3, MV-92, MV-102): що в копії бази — ті самі поля, що в dani-edrsr/src/kopiia_biznesu.py
+# (POLIA), людськими словами; у прикладі рядка — лише формат, без жодної справжньої чи вигаданої події.
+POLIA_BIZNES = [
+    ('data, hodyna', 'дата й година події (немає дати події — дата рішення з позначкою)'),
+    ('hrupa, vyd, stattia', 'група події, як на карті, вид і стаття кодексу'),
+    ('opys', 'опис події з рішення суду, без імен суддів, поліцейських і захисників'),
+    ('adresa, tochnist', 'будинок, перехрестя чи назване місце'),
+    ('shyrota, dovhota, sota', 'координати точки; без точного місця — клітинка ≈ 500 м'),
+    ('sud, data_rishennia, nomer_spravy', 'суд, дата рішення, номер справи'),
+    ('posylannia', 'посилання на рішення в державному реєстрі — оригінал біля кожної події'),
+    ('chutlyva, domashnie', 'позначки: домашнє насильство, статеві злочини, справи щодо дітей — як оприлюднив суд'),
+    ('problemy', 'окрема таблиця: місця, де однотипні події повторюються, і які події туди входять'),
+    ('skarhy_1551', 'окрема таблиця: звернення до 1551 по будинках — числом за темами, без тексту заявника'),
+]
+PRYKLAD_BIZNES = [('data', '2025-03-14'), ('hodyna', '22'), ('hrupa', HRUPY_PODII['vod']), ('stattia', 'ст.130 КУпАП'),
+                  ('opys', '‹опис події з рішення›'), ('adresa', '‹вулиця, номер будинку›'), ('tochnist', 'будинок'),
+                  ('shyrota', '50.4…'), ('dovhota', '30.5…'), ('sud', '‹районний суд міста Києва›'),
+                  ('posylannia', 'https://reyestr.court.gov.ua/…')]
+META_BIZNES = [('nerukhomist', 'нерухомість (забудова, агенція, оцінка)'), ('strakhuvannia', 'страхування чи банк'),
+               ('doslidzhennia', 'дослідження чи медіа'), ('mista', 'громада, міська служба'), ('inshe', 'інше')]
+
+
+def vitryna_biznes(adresa_saitu: str, kartynka: tuple | None = None, period_podii: str = '', chysla: list | None = None) -> str:
+    kyiv = f'Київ{", " + period_podii if period_podii else ""}'
+    ch = ''.join(f'<div class="kartka chyslo-blok"><b class="chyslo-velyke">{e(n)}</b><span>{e(t)}</span></div>' for n, t in (chysla or []))
+    polia = ''.join(f'<tr><th scope="row"><code>{e(k)}</code></th><td>{e(v)}</td></tr>' for k, v in POLIA_BIZNES)
+    pryklad = ''.join(f'<tr><th scope="row"><code>{e(k)}</code></th><td>{e(v)}</td></tr>' for k, v in PRYKLAD_BIZNES)
+    meta = ''.join(f'<option value="{k}">{e(v)}</option>' for k, v in META_BIZNES)
+    tilo = f'''{f'<section class="rozdil"><div class="chysla">{ch}</div></section>' if ch else ''}
+<section class="rozdil"><h2>Що в базі</h2><div class="kartka"><ul class="spysok-tekst">
+<li>Події з рішень судів з адресою й точкою на карті ({e(kyiv)}): що сталося, коли, де, за якою статтею — і посилання на оригінал рішення.</li>
+<li>Місця, де однотипні події повторюються, — окремою таблицею.</li>
+<li>Звернення до 1551 по будинках — числом за темами.</li>
+<li>Оновлення щомісяця: нова копія з усіма змінами, події, видалені за зверненнями людей, з неї прибрано.</li>
+</ul></div>
+<p class="prymitka">Подія — окремий випадок, установлений судом. Концентрація подій — статистика, а не оцінка місця й не прогноз.
+Дані показують лише те, що дійшло до суду.</p></section>
+<section class="rozdil"><h2>Поля</h2><div class="tablytsia-obhortka"><table class="biznes-tablytsia"><thead><tr><th scope="col">Поле</th>
+<th scope="col">Що в ньому</th></tr></thead><tbody>{polia}</tbody></table></div>
+<p class="prymitka">Повний опис полів — у файлі з описом, що йде з кожною копією.</p></section>
+<section class="rozdil"><h2>Як виглядає рядок</h2><div class="tablytsia-obhortka"><table class="biznes-tablytsia biznes-tablytsia--pryklad">
+<caption>Лише формат: у кутових дужках — що стоїть у справжньому рядку</caption><tbody>{pryklad}</tbody></table></div></section>
+<section class="rozdil"><h2>Як ви отримуєте базу</h2><ol class="spysok-tekst">
+<li>Залишаєте запит нижче — партнер проєкту відповідає протягом 2 робочих днів.</li>
+<li>Підписуєте договір користування на місяць або рік; {tsina('biznes')} — залежить від строку й території.</li>
+<li>Щомісяця отримуєте особисте посилання на свіжу копію: база SQLite і таблиці CSV (відкриваються в Excel і Google Таблицях).
+Посилання діє кілька днів, потім — нове з новою копією.</li>
+<li>Доступ для програм за адресою — пізніше, за запитом.</li></ol></section>
+<section class="rozdil"><h2>Умови користування</h2><div class="kartka"><ul class="spysok-tekst">
+<li>Користування, а не продаж: база лише для вашої компанії, без перепродажу й передачі іншим.</li>
+<li>Без спроб упізнати людей і відновити те, що суд приховав.</li>
+<li>Видалення за зверненням людей діє і для вас: такі події зникають з наступної копії, попередню треба замінити.</li>
+<li>Посилання на оригінал рішення лишається біля кожної події, коли ви показуєте дані своїм клієнтам.</li>
+</ul></div><p class="prymitka">Повністю — у договорі користування. Загальні правила сайту — в <a href="/zahlushka/oferta.html">оферті</a>.
+Договори й рахунки оформлює партнер проєкту.</p></section>
+<section class="rozdil"><h2>Для кого</h2><div class="kartka"><ul class="spysok-tekst"><li>забудовники, агенції й оцінювачі нерухомості</li>
+<li>страхові компанії й банки</li><li>дослідники, медіа, громади</li></ul></div></section>
+<section class="rozdil" id="zapyt"><h2>Запит на доступ</h2>
+<form class="biznes-forma" id="biznes-forma" novalidate>
+<label>Компанія<input name="kompaniia" required maxlength="160" autocomplete="organization"></label>
+<label>Контакт — пошта чи телефон<input name="kontakt" required maxlength="160" autocomplete="email"></label>
+<label>Для чого<select name="meta" required><option value="">Оберіть</option>{meta}</select></label>
+<label>Яка територія<input name="terytoriia" maxlength="200" placeholder="Київ, район, кілька вулиць"></label>
+<fieldset><legend>На який строк</legend>
+<label class="vybir-riadok"><input type="radio" name="strok" value="misiats"> місяць</label>
+<label class="vybir-riadok"><input type="radio" name="strok" value="rik"> рік</label>
+<label class="vybir-riadok"><input type="radio" name="strok" value="ne_znaiu" checked> ще не знаю</label></fieldset>
+<label>Що ще важливо<textarea name="komentar" maxlength="2000" rows="4"></textarea></label>
+<label class="vybir-riadok"><input type="checkbox" name="zghoda" required> Погоджуюся з <a href="/zahlushka/polityka.html">політикою конфіденційності</a></label>
+<button class="knopka knopka--holovna" type="submit">Надіслати запит</button>
+<p class="biznes-forma__stan" role="status" aria-live="polite"></p>
+</form>
+<p class="prymitka">Самі ми нікому не пишемо — лише відповідаємо на запити. Не виходить надіслати — <a href="/zahlushka/?shcho=kompaniya&amp;dzherelo=biznes#peredzamovlennya">запасна форма</a>.</p></section>'''
     return vitryna('/biznes/', 'Для бізнесу', 'Для компаній',
-                   MESEDZH['biznes'] + ' База подій із судових рішень і скарг 1551 — у користування на місяць або рік за договором. Ціна — за домовленістю: залиште запит, відповість партнер проєкту.',
+                   MESEDZH['biznes'] + ' База подій із судових рішень і скарг 1551 — у користування на місяць або рік за договором. '
+                   'Свіжа копія щомісяця за особистим посиланням. Ціна — за домовленістю.',
                    tilo, 'Дані для бізнесу: події з судових рішень і скарги 1551 Києва | Моя вулиця',
                    'Дані для компаній: події з судових рішень з адресами, скарги 1551 по будинках. Користування на місяць або рік за договором.',
-                   adresa_saitu, kartynka=kartynka)
+                   adresa_saitu, kartynka=kartynka, skrypty=('/sait/biznes.js',), css=('/sait/biznes.css',))
 
 
 def storinka_oplaty(adresa_saitu: str) -> str:
@@ -597,12 +714,14 @@ def storinka_vydalyty(adresa_saitu: str) -> str:
 <li>Заповніть <a href="/zahlushka/zvernennya.html">форму звернення</a>: адреса або вулиця, що саме не так, як з вами зв’язатися.</li>
 <li>Ми перевіряємо подію за рішенням суду, з якого її взято.</li>
 <li>Протягом 10 робочих днів — виправляємо, прибираємо або пояснюємо, чому лишаємо, і пишемо вам.</li>
-<li>Прибрана подія зникає з карти, довідок і звітів після найближчого оновлення даних і більше не повертається.</li>
+<li>Прибрана подія зникає з карти, довідок і звітів у той самий строк і більше не повертається. Уже надіслані довідки — знімок
+на свою дату, їх ми не змінюємо.</li>
 </ol></div></section>
 <section class="rozdil"><h2>Що ми можемо виправити</h2><div class="kartka"><ul class="spysok-tekst">
 <li>Неправильна адреса чи місце події.</li><li>Опис, який каже більше, ніж рішення суду.</li>
 <li>Подія, яку суд не підтвердив (виправдання, скасування рішення).</li>
-<li>Подія, що дозволяє впізнати вас, хоча суд приховав ці дані.</li></ul></div>
+<li>Подія, що дозволяє впізнати вас, хоча суд приховав ці дані.</li>
+<li>Подія, що сталася понад 10 років тому: номер будинку прибираємо за першим проханням, без пояснень.</li></ul></div>
 <p class="prymitka">Скарги 1551 — відкриті дані міста; ми показуємо лише теми й кількість, без текстів. Помилку в них виправляє гаряча лінія 1551.</p></section>'''
     return Z.storinka(shlyakh='/vydalyty/', title='Видалити або виправити подію — 10 робочих днів | Моя вулиця',
                       opys='Як прибрати або виправити подію на сайті «Моя вулиця»: форма звернення, відповідь за 10 робочих днів.',
@@ -692,8 +811,10 @@ def zibraty_vse(dn: D.Dani, rayony: list, za_rayonom: dict, bud: Budynky | None,
     adresy = []
     kolory = Z.kolory_tem()['svitla']
 
+    poruch = budynky_poruch(bud.spysok) if bud else {}
+
     def budynok(b, vikno):
-        html_ = storinka_budynku(b, bud, adresa_saitu, vikno, D.period_podii(dn))
+        html_ = storinka_budynku(b, bud, adresa_saitu, vikno, D.period_podii(dn), poruch.get(b['slug']))
         png = kartynka_budynku(b, kolory)
         if pachky is not None:
             pachky.dodaty(b['slug'], html_, png)
@@ -714,7 +835,9 @@ def zibraty_vse(dn: D.Dani, rayony: list, za_rayonom: dict, bud: Budynky | None,
                    storinka_rayonu(dn, r, za_rayonom[r], bud, pr.get(r, Counter()), adresa_saitu, kolory, vykhid,
                                    (mistsia_rayonu or {}).get(r)))
         adresy.append(f'/rayon/{Z.slug_rayonu(r)}/')
-    Z.zapysaty(vykhid / 'rayony' / 'index.html', storinka_rayoniv(rayony, adresa_saitu))
+    bez_rayonu = sorted((b for b in bud.spysok if not b['vulytsia_slug'] and b['rayon'] not in rayony),
+                        key=lambda b: (b['vulytsia'], kliuch_nomera(b['nomer']))) if bud else []
+    Z.zapysaty(vykhid / 'rayony' / 'index.html', storinka_rayoniv(rayony, adresa_saitu, bez_rayonu))
     adresy.append('/rayony/')
     prykl = []
     if bud:
@@ -734,13 +857,14 @@ def zibraty_vse(dn: D.Dani, rayony: list, za_rayonom: dict, bud: Budynky | None,
         prykl.sort(key=lambda b: b['url'])
     import kartynky as K
     kv = {}
-    for shl, (mitka, nazva, chysla) in chysla_vitryn(dn, bud, vulyts).items():
+    cv = chysla_vitryn(dn, bud, vulyts)
+    for shl, (mitka, nazva, chysla) in cv.items():
         Z.zapysaty_bajty(vykhid / shl / 'kartynka.png', K.kartynka(mitka, nazva, chysla, kolory))
         kv[shl] = (f'/{shl}/kartynka.png', f'{nazva}: ' + ', '.join(f'{a} {p}' for a, p in chysla))
     for shl, html_ in (('miy-budynok', vitryna_miy_budynok(adresa_saitu, prykl, kv['miy-budynok'], D.period_podii(dn))),
                        ('osbb', vitryna_osbb(adresa_saitu, kv['osbb'])),
                        ('sudova-praktyka', vitryna_sudova(adresa_saitu, kv['sudova-praktyka'])),
-                       ('biznes', vitryna_biznes(adresa_saitu, kv['biznes'], D.period_podii(dn))),
+                       ('biznes', vitryna_biznes(adresa_saitu, kv['biznes'], D.period_podii(dn), cv['biznes'][2])),
                        ('vydalyty', storinka_vydalyty(adresa_saitu)),
                        ('pro-dani', storinka_pro_dani(adresa_saitu, dn.versiia, period_1551(bud.misiatsi) if bud else ''))):
         Z.zapysaty(vykhid / shl / 'index.html', html_)

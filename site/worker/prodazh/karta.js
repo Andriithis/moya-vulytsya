@@ -9,16 +9,25 @@
 //   GET /pidpysnyk/                       сторінка карти (index.html чинної версії)
 //   GET /pidpysnyk/<файл>                 файли карти (dani/…, spravy/…, adresy/…, vendor/…, shryfty/…)
 //   GET /pidpysnyk/api/podii?la=…&lo=…    «події адреси»: JSON з адресою й подіями точки (клітинка → покажчик → справи)
+//   GET  /pidpysnyk/api/stezhu            «Стежу» з кабінету: { adresy: [{ budynok, adresa }] } (ZAVDANNYA-151)
+//   POST /pidpysnyk/api/stezhu            { dia: 'dodaty', adresa } | { dia: 'prybraty', budynok } — кнопка «Стежити»
+//                                         у картці адреси пише в ту саму таблицю stezhu, що й кабінет, і лист «Нове біля дому»
 //
 // Без входу — на вхід у кабінет; з входом, але без дійсної підписки — сторінка «Карта — для підписників» (403).
+// Ліміт (ZAVDANNYA-161, п. 2; MV-173): описи подій (spravy/<клітинка>.json і «події адреси») — до OPYSIV_NA_DEN запитів на
+// людину на добу (змінна KARTA_NA_DEN). Людина відкриває панель адреси — це один файл клітинки; за день дослідження карти —
+// десятки, рідко сотні. Хто тягне всю карту (тисячі клітинок) — упирається в ліміт; партнер отримує лист (без пошти людини).
 // Відповіді — private, noindex: їх не кешує Cloudflare і не бачать пошуковики.
 import * as L from './logika.js';
 import * as S from './storinky.js';
 import TS from './tsiny.js';
+import { nadislaty } from './poshta.js';
+import * as PR from './prybrannia.js';
 
 export const KOREN = '/pidpysnyk/';
 const POTOCHNA = 'karta/potochna.json';
 const R_TOCHKY_M = 30;                 // «події адреси»: найближча точка покажчика не далі за це
+export const OPYSIV_NA_DEN = 300;      // запитів описів (клітинка або «події адреси») на людину на добу, UTC; KARTA_NA_DEN — інше число
 const TYPY = {
   html: 'text/html; charset=utf-8', json: 'application/json; charset=utf-8', js: 'text/javascript; charset=utf-8',
   css: 'text/css; charset=utf-8', woff2: 'font/woff2', woff: 'font/woff', png: 'image/png', svg: 'image/svg+xml',
@@ -77,13 +86,74 @@ export async function podiiAdresy(env, la, lo) {
   }
   if (!naikrashcha) return null;
   const spravy = await chytatyJson(env, `karta/${m.versiia}/spravy/${kl}.json`);
-  const ryadky = (spravy && spravy[naikrashcha.i]) || [];
+  // позачергово прибрані події (ZAVDANNYA-161, п. 5) — геть одразу, без нової версії карти
+  const ryadky = PR.vidfiltruvaty((spravy && spravy[naikrashcha.i]) || [], await PR.aktyvni(env)).dani;
   const podii = ryadky.map((r) => ({
     data: r[1], stattia: (m.kategorii || [])[r[0]] ?? null, opys: r[5] || '',
     // посилання на рішення (AGENTS.md, розд. 7): клітинка зберігає «тека + відбиток» файла ЄДРСР
     rishennia: (r[4] || []).map((ref) => `https://od.reyestr.court.gov.ua/files/${ref.slice(0, 2)}/${ref.slice(2)}.rtf`),
   }));
   return { adresa: naikrashcha.adresa, la: naikrashcha.pla, lo: naikrashcha.plo, versiia: m.versiia, podii };
+}
+
+export const limitOpysiv = (env) => parseInt(env.KARTA_NA_DEN || '', 10) || OPYSIV_NA_DEN;
+
+/**
+ * Один запит описів підписника: +1 до лічильника доби одним реченням SQL (дві вкладки разом не проскочать за межу).
+ * true — можна віддати; false — ліміт доби вичерпано. Коли людина саме дійшла до межі — один лист партнеру.
+ */
+export async function zarakhuvatyOpys(env, ja) {
+  const t = L.teper(env), mezha = limitOpysiv(env);
+  const den = new Date(t * 1000).toISOString().slice(0, 10);
+  let r;
+  try {
+    r = await L.zrobyty(env, `INSERT INTO karta_zavantazhennia (korystuvach_id, den, n) VALUES (?, ?, 1)
+      ON CONFLICT (korystuvach_id, den) DO UPDATE SET n = n + 1 WHERE n < ?`, ja.id, den, mezha);
+  } catch (err) {
+    console.log(`ліміт карти не працює (виконайте skhema-161.sql): ${err.message}`);
+    return true;           // як і ліміт запитів: зламаний лічильник не зупиняє підписника
+  }
+  if (!r.meta?.changes) return false;
+  const n = (await L.odyn(env, 'SELECT n FROM karta_zavantazhennia WHERE korystuvach_id = ? AND den = ?', ja.id, den))?.n;
+  if (n === mezha && env.POSHTA_PARTNERA) {
+    try {
+      await nadislaty(env, { komu: env.POSHTA_PARTNERA, tema: 'Карта підписника: ліміт описів за добу',
+        tekst: `Підписник №${ja.id} за ${den} відкрив ${mezha} клітинок або адрес карти — це межа доби (KARTA_NA_DEN). ` +
+          'Далі до кінця доби описи йому не віддаються. Якщо так щодня — схоже на вивантаження всієї карти (оферта, розд. 6).' });
+    } catch (err) { console.log(`ліміт карти: лист партнеру не пішов: ${err.message}`); }
+  }
+  return true;
+}
+
+const LIMIT_VYCHERPANO = (env) => Response.json({ pomylka: 'limit',
+  tekst: `За добу можна відкрити до ${limitOpysiv(env)} адрес і клітинок з описами. Завтра — знову.` },
+{ status: 429, headers: { ...PRYVATNO, 'cache-control': 'private, no-store' } });
+
+const MAKS_STEZHU = 50;                 // адрес «Стежу» на людину — запобіжник від скрипта, не обмеження для людини
+
+/** «Стежу» з картки адреси (ZAVDANNYA-151): ті самі таблиця й пошук будинку, що в кабінеті (index.js, diiaKabinetu). */
+async function stezhu(request, env, url, ja) {
+  const spysok = async () => L.vsi(env, 'SELECT budynok, adresa FROM stezhu WHERE korystuvach_id = ? ORDER BY stvoreno', ja.id);
+  const h = { ...PRYVATNO, 'cache-control': 'private, no-store' };
+  if (request.method === 'GET') return Response.json({ adresy: await spysok() }, { headers: h });
+  // запис — лише з нашого сайту (як форми кабінету): чужа сторінка не додасть адрес у чужий кабінет
+  const o = request.headers.get('origin');
+  if (!o || o !== new URL(env.ADRESA_SAITU || url.origin).origin) return Response.json({ pomylka: 'origin' }, { status: 403, headers: h });
+  let f = {};
+  try { f = await request.json(); } catch { f = {}; }
+  if (f.dia === 'prybraty') {
+    await L.zrobyty(env, 'DELETE FROM stezhu WHERE korystuvach_id = ? AND budynok = ?', ja.id, String(f.budynok || ''));
+    return Response.json({ ok: true, adresy: await spysok() }, { headers: h });
+  }
+  if (f.dia !== 'dodaty') return Response.json({ pomylka: 'dia' }, { status: 400, headers: h });
+  const z = await L.znaityBudynok(env, url, String(f.adresa || '').slice(0, 200));
+  if (!z.budynok) return Response.json({ ok: false, chomu: L.chomuNeZnaideno(z) }, { status: 404, headers: h });
+  const vzhe = await spysok();
+  if (!vzhe.some((x) => x.budynok === z.budynok) && vzhe.length >= MAKS_STEZHU) {
+    return Response.json({ ok: false, chomu: `У «Стежу» вже ${MAKS_STEZHU} адрес — приберіть зайві в кабінеті.` }, { status: 409, headers: h });
+  }
+  await L.zrobyty(env, 'INSERT OR IGNORE INTO stezhu (korystuvach_id, budynok, adresa, stvoreno) VALUES (?, ?, ?, ?)', ja.id, z.budynok, z.adresa, L.teper(env));
+  return Response.json({ ok: true, budynok: z.budynok, adresa: z.adresa, adresy: await spysok() }, { headers: h });
 }
 
 const dlyaPidpysnykiv = () => S.povidomlennia('Карта — для підписників',
@@ -95,25 +165,37 @@ export async function karta(request, env, url, ja) {
   const s = url.pathname;
   if (!(s === KOREN.slice(0, -1) || s.startsWith(KOREN))) return null;
   if (!env.KARTA) return null;                         // сховище карти не прив'язано — карти підписника ще немає
-  if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('ні', { status: 405 });
+  const zapysStezhu = request.method === 'POST' && s === `${KOREN}api/stezhu`;
+  if (request.method !== 'GET' && request.method !== 'HEAD' && !zapysStezhu) return new Response('ні', { status: 405 });
   if (s === KOREN.slice(0, -1)) return Response.redirect(new URL(KOREN, url).toString(), 301);
   if (!ja) return Response.redirect(new URL('/kabinet/', url).toString(), 303);
   if (!(await maieDostup(env, ja))) return dlyaPidpysnykiv();
 
   const shliakh = s.slice(KOREN.length) || 'index.html';
+  if (shliakh === 'api/stezhu') return stezhu(request, env, url, ja);
   if (shliakh === 'api/podii') {
     const la = Number(url.searchParams.get('la')), lo = Number(url.searchParams.get('lo'));
     if (!Number.isFinite(la) || !Number.isFinite(lo) || Math.abs(la) > 90 || Math.abs(lo) > 180) {
       return Response.json({ pomylka: 'la, lo' }, { status: 400, headers: PRYVATNO });
     }
+    if (!(await zarakhuvatyOpys(env, ja))) return LIMIT_VYCHERPANO(env);
     const v = await podiiAdresy(env, la, lo);
     return Response.json(v || { adresa: null, podii: [] }, { status: v ? 200 : 404, headers: { ...PRYVATNO, 'cache-control': 'private, no-store' } });
   }
   if (!bezpechnyiShliakh(shliakh)) return S.nemaie();
+  if (shliakh.startsWith('spravy/') && !(await zarakhuvatyOpys(env, ja))) return LIMIT_VYCHERPANO(env);
   const m = await potochna(env);
   if (!m) return S.povidomlennia('Карта готується', 'Карту підписника ще не викладено. Спробуйте трохи згодом.', 503);
   const o = await env.KARTA.get(`karta/${m.versiia}/${shliakh}`);
   if (!o) return S.nemaie();
+  if (shliakh.startsWith('spravy/')) {
+    const k = await PR.aktyvni(env);
+    if (k.length) {     // позачергово прибрані події (ZAVDANNYA-161, п. 5): описи клітинки — без них
+      const v = PR.vidfiltruvaty(JSON.parse(await o.text()), k);
+      return new Response(request.method === 'HEAD' ? null : JSON.stringify(v.dani), {
+        headers: { ...PRYVATNO, 'content-type': TYPY.json } });
+    }
+  }
   const typ = TYPY[shliakh.split('.').pop()] || 'application/octet-stream';
   // Файли з відбитком у назві (dani/meta.<хеш>.json) не міняються — браузер може тримати їх довше; решта — 5 хвилин.
   const dovgo = /\.[0-9a-f]{10}\.json$/.test(shliakh) || shliakh.startsWith('vendor/') || shliakh.startsWith('shryfty/');

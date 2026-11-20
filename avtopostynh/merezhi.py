@@ -307,15 +307,31 @@ class Instagram(Merezha):
         return self.http('GET', f'{self.baza}/{shliakh}?{q}')
 
     def opublikuvaty(self, o: dict) -> Rezultat:
-        try:
-            adresa = publichna_adresa(o)
-        except NeNalashtovano as e:
-            return Rezultat(False, pomylka=str(e), typ='blokuvannia')
-        polia = ({'media_type': 'REELS', 'video_url': adresa} if o['typ'] == 'rolyk' else {'image_url': adresa})
-        v = self._post(f'{self.ig}/media', {**polia, 'caption': o['tekst']})
-        if v.status != 200:
-            return _meta_pomylka(v, self.token)
-        kont = v.json()['id']
+        # Ролик без публічної адреси (MV_MEDIA_URL не задано, файл є в запуску) — завантаження частинами
+        # (upload_type=resumable → rupload.facebook.com/ig-api-upload): так у хмарі не потрібне публічне сховище.
+        rozdilne = (o['typ'] == 'rolyk' and not os.environ.get('MV_MEDIA_URL', '').strip()
+                    and self.teka_media is not None and self.fail(o).is_file())
+        if rozdilne:
+            v = self._post(f'{self.ig}/media', {'media_type': 'REELS', 'upload_type': 'resumable', 'caption': o['tekst']})
+            if v.status != 200:
+                return _meta_pomylka(v, self.token)
+            kont = v.json()['id']
+            uri = v.json().get('uri') or f'https://rupload.facebook.com/ig-api-upload/{self.baza.rsplit("/", 1)[1]}/{kont}'
+            dani = self.fail(o).read_bytes()
+            v = self.http('POST', uri, {'Authorization': f'OAuth {self.token}', 'offset': '0',
+                                        'file_size': str(len(dani))}, dani, chas=1800)
+            if v.status != 200:
+                return _meta_pomylka(v, self.token)
+        else:
+            try:
+                adresa = publichna_adresa(o)
+            except NeNalashtovano as e:
+                return Rezultat(False, pomylka=str(e), typ='blokuvannia')
+            polia = ({'media_type': 'REELS', 'video_url': adresa} if o['typ'] == 'rolyk' else {'image_url': adresa})
+            v = self._post(f'{self.ig}/media', {**polia, 'caption': o['tekst']})
+            if v.status != 200:
+                return _meta_pomylka(v, self.token)
+            kont = v.json()['id']
         for _ in range(self.CHEKATY_RAZIV):
             v = self._get(kont, {'fields': 'status_code'})
             st = v.json().get('status_code')
@@ -343,6 +359,13 @@ class Instagram(Merezha):
 
 
 # ==================================================================== YouTube
+def syntetychnyi(o: dict) -> bool:
+    z = os.environ.get('MV_YOUTUBE_SYNTETYCHNYI', '').strip()
+    if z in ('0', '1'):
+        return z == '1'
+    return bool(o.get('holos', True))      # старі позиції manifest.json без поля — як раніше, з позначкою
+
+
 class YouTube(Merezha):
     """YouTube Data API v3: `videos.insert` (завантаження з відновленням), вертикальний до 3 хв = Shorts.
     Змінні: MV_YOUTUBE_CLIENT_ID, MV_YOUTUBE_CLIENT_SECRET, MV_YOUTUBE_REFRESH_TOKEN (застосунок Google — у стані
@@ -388,9 +411,9 @@ class YouTube(Merezha):
                             'defaultLanguage': 'uk', 'defaultAudioLanguage': 'uk'},
                 'status': {'privacyStatus': os.environ.get('MV_YOUTUBE_PRYVATNIST', 'public'),
                            'selfDeclaredMadeForKids': False,
-                           # голос диктора синтезований (MV-93); позначку YouTube вимагає для «реалістичних» підробок —
-                           # ставимо за змінною, типово так (безпечніше)
-                           'containsSyntheticMedia': os.environ.get('MV_YOUTUBE_SYNTETYCHNYI', '1') == '1'}}
+                           # «Голос змінено програмою» (MV-171): ролик з голосом — позначка «змінений вміст»;
+                           # без голосу — ні. MV_YOUTUBE_SYNTETYCHNYI=1/0 перекриває для всіх роликів.
+                           'containsSyntheticMedia': syntetychnyi(o)}}
         dani = self.fail(o).read_bytes()
         v = self.http('POST', 'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status',
                       {'Authorization': f'Bearer {t}', 'Content-Type': 'application/json; charset=UTF-8',

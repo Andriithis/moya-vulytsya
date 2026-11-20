@@ -85,7 +85,10 @@ async function uviity(env, poshta = 'ana@poshta.ua') {
   await zapyt(env, 'POST', '/kabinet/vkhid', { forma: { poshta } });
   const lyst = env.__LYSTY.filter((l) => l.komu === poshta && l.tema.startsWith('Вхід')).at(-1);
   const t = lyst.tekst.match(/\/kabinet\/vkhid\/\?t=([a-z2-7]+)/)[1];
-  const { r, kudy } = await zapyt(env, 'GET', `/kabinet/vkhid/?t=${t}`);
+  const storinka = await zapyt(env, 'GET', `/kabinet/vkhid/?t=${t}`);
+  assert.equal(storinka.r.status, 200);
+  assert.match(storinka.text, /Увійти<\/button>/);
+  const { r, kudy } = await zapyt(env, 'POST', '/kabinet/vkhid/uviity', { forma: { t } });
   assert.equal(r.status, 303);
   assert.equal(new URL(kudy).pathname, '/kabinet/');
   return r.headers.get('set-cookie').split(';')[0];
@@ -144,7 +147,7 @@ test('повний шлях: замовлення → тестова оплат�
   assert.deepEqual(Object.keys(ds[0]).sort(), ['adresa', 'budynok', 'id', 'rezhym']);
   assert.equal(ds[0].adresa, 'вулиця Жилянська, 5', 'адреса — із заголовка сторінки будинку');
   assert.equal(ds[0].rezhym, 'dovidka');
-  const lyst = env.__LYSTY.find((l) => l.komu === 'ana@poshta.ua' && /Довідка/.test(l.tema));
+  const lyst = env.__LYSTY.find((l) => l.komu === 'ana@poshta.ua' && /^Довідка/.test(l.tema));
   assert.ok(lyst, 'лист із посиланням');
   const { r: d, text } = await zapyt(env, 'GET', posylannia(lyst));
   assert.equal(d.status, 200);
@@ -163,7 +166,7 @@ test('чужий не відкриє чужу довідку', async () => {
   const id = await zamovyty(env, 'dovidka', '/budynok/zhylianska/5/', 'ana@poshta.ua');
   await oplatyty(env, id);
   await vydavach(env);
-  const prava = posylannia(env.__LYSTY.find((l) => /Довідка/.test(l.tema)));
+  const prava = posylannia(env.__LYSTY.find((l) => /^Довідка/.test(l.tema)));
   const nomer = prava.match(/\/dovidka\/(d[a-z2-7]+)\//)[1];
   // інший покупець зі своєю сесією
   const z = await zamovyty(env, 'dovidka', '/budynok/obolonskyi/16/', 'bohdan@poshta.ua');
@@ -309,12 +312,13 @@ test('кабінет: посилання входу одноразове й на
   assert.equal(text.replace(/\s+/g, ''), t2.replace(/\s+/g, ''), 'однакова відповідь для відомої й невідомої пошти');
   const lyst = env.__LYSTY.filter((l) => l.tema.startsWith('Вхід')).at(-1);
   const t = lyst.tekst.match(/\?t=([a-z2-7]+)/)[1];
-  assert.equal((await zapyt(env, 'GET', `/kabinet/vkhid/?t=${t}`)).r.status, 303);
-  assert.notEqual((await zapyt(env, 'GET', `/kabinet/vkhid/?t=${t}`)).r.status, 303, 'вдруге — ні');
+  assert.equal((await zapyt(env, 'POST', '/kabinet/vkhid/uviity', { forma: { t } })).r.status, 303);
+  assert.notEqual((await zapyt(env, 'POST', '/kabinet/vkhid/uviity', { forma: { t } })).r.status, 303, 'вдруге — ні');
   await zapyt(env, 'POST', '/kabinet/vkhid', { forma: { poshta: 'ana@poshta.ua' } });
   env.krok(31 * 60);
   const t3 = env.__LYSTY.filter((l) => l.tema.startsWith('Вхід')).at(-1).tekst.match(/\?t=([a-z2-7]+)/)[1];
-  assert.notEqual((await zapyt(env, 'GET', `/kabinet/vkhid/?t=${t3}`)).r.status, 303, 'за 30 хв — застаріле');
+  assert.notEqual((await zapyt(env, 'POST', '/kabinet/vkhid/uviity', { forma: { t: t3 } })).r.status, 303, 'за 30 хв — застаріле');
+  assert.match((await zapyt(env, 'GET', `/kabinet/vkhid/?t=${t3}`)).text, /застаріло/);
   const bulo = env.__LYSTY.length;
   for (let i = 0; i < 8; i++) await zapyt(env, 'POST', '/kabinet/vkhid', { forma: { poshta: 'ana@poshta.ua' } });
   assert.ok(env.__LYSTY.length - bulo <= 5);
@@ -327,7 +331,7 @@ test('«Стежу» й видалення даних на запит: пошт�
   const env = seredovyshche();
   await oplatyty(env, await zamovyty(env, 'dovidka', '/budynok/zhylianska/5/'));
   await vydavach(env);
-  const prava = posylannia(env.__LYSTY.find((l) => /Довідка/.test(l.tema)));
+  const prava = posylannia(env.__LYSTY.find((l) => /^Довідка/.test(l.tema)));
   const kuka = await uviity(env);
   assert.match((await zapyt(env, 'POST', '/kabinet/stezhu', { kuka, forma: { budynok: '/budynok/obolonskyi/16/' } })).text, /Стежите: проспект Оболонський, 16/);
   assert.equal((await zapyt(env, 'POST', '/kabinet/stezhu', { kuka, forma: { budynok: '/budynok/vyhadana/1/' } })).text.includes('Такого будинку'), true);
@@ -407,4 +411,137 @@ test('видалення на запит через партнера: лише �
   assert.deepEqual(JSON.parse(text), { vydaleno: true });
   assert.equal(sql(env, 'SELECT COUNT(*) n FROM korystuvachi')[0].n, 0);
   assert.equal(sql(env, 'SELECT status FROM pidpysky')[0].status, 'skasovana');
+});
+
+test('вхід (ZAVDANNYA-161, п. 1): поштовий сканер відкриває посилання — вхід не згоряє; увійти — лише кнопкою з нашого сайту', async () => {
+  const env = seredovyshche();
+  await oplatyty(env, await zamovyty(env, 'dovidka', '/budynok/zhylianska/5/'));
+  await zapyt(env, 'POST', '/kabinet/vkhid', { forma: { poshta: 'ana@poshta.ua' } });
+  const lyst = env.__LYSTY.filter((l) => l.tema.startsWith('Вхід')).at(-1);
+  assert.match(lyst.tekst, /натисніть «Увійти»/);
+  const t = lyst.tekst.match(/\?t=([a-z2-7]+)/)[1];
+  // сканер пошти тричі відкрив посилання (GET) — сесії немає, вхід не витрачено
+  for (let i = 0; i < 3; i++) {
+    const { r, text } = await zapyt(env, 'GET', `/kabinet/vkhid/?t=${t}`, { origin: null });
+    assert.equal(r.status, 200);
+    assert.equal(r.headers.get('set-cookie'), null);
+    assert.match(text, /name="t" value="[a-z2-7]+"/);
+    assert.equal(r.headers.get('cache-control'), 'no-store');
+  }
+  assert.equal(sql(env, 'SELECT COUNT(*) AS n FROM sesii')[0].n, 0);
+  // кнопка з чужого сайту — ні
+  assert.equal((await zapyt(env, 'POST', '/kabinet/vkhid/uviity', { forma: { t }, origin: 'https://zlyi.test' })).r.status, 403);
+  // людина натиснула «Увійти»
+  const { r, kudy } = await zapyt(env, 'POST', '/kabinet/vkhid/uviity', { forma: { t } });
+  assert.equal(r.status, 303);
+  assert.equal(new URL(kudy).pathname, '/kabinet/');
+  assert.match(r.headers.get('set-cookie'), /^mv_sesiia=/);
+  // після входу сторінка з посиланням каже «застаріло», а не показує кнопку
+  assert.doesNotMatch((await zapyt(env, 'GET', `/kabinet/vkhid/?t=${t}`)).text, /Увійти<\/button>/);
+  // вигаданий ключ — «застаріло», без кнопки
+  assert.match((await zapyt(env, 'GET', '/kabinet/vkhid/?t=<script>')).text, /застаріло/);
+});
+
+test('лист «Оплату отримано» (ZAVDANNYA-161, п. 3): одразу після оплати — що, сума, номер, коли й де, як повернути; один раз', async () => {
+  const env = seredovyshche();
+  const id = await zamovyty(env, 'dovidka', '/budynok/zhylianska/5/');
+  assert.equal(env.__LYSTY.filter((l) => /^Оплату отримано/.test(l.tema)).length, 0, 'до оплати — нічого');
+  await oplatyty(env, id);
+  const lysty = env.__LYSTY.filter((l) => /^Оплату отримано/.test(l.tema));
+  assert.equal(lysty.length, 1);
+  const l = lysty[0];
+  assert.equal(l.komu, 'ana@poshta.ua');
+  assert.match(l.tema, /Довідка про будинок/);
+  assert.match(l.tekst, /вулиця Жилянська, 5/);
+  assert.match(l.tekst, new RegExp(`Сума: ${t.tsiny.dovidka} грн`));
+  assert.match(l.tekst, new RegExp(`Замовлення: ${id}`));
+  assert.match(l.tekst, /не пізніше ніж за 1 робочий день/);
+  assert.match(l.tekst, /Повернення — за офертою/);
+  assert.match(l.tekst, /https:\/\/mv\.test\/zahlushka\/oferta\.html/);
+  // повтор того самого сповіщення й друга подія «оплачено» — другого листа немає
+  await oplatyty(env, id);
+  assert.equal(env.__LYSTY.filter((l) => /^Оплату отримано/.test(l.tema)).length, 1);
+});
+
+test('лист «Оплату отримано»: підписка — до якої дати, як скасувати; чергове списання — «продовжено»; відмова — без листа', async () => {
+  const env = seredovyshche();
+  const id = await zamovyty(env, 'pidpyska', null, 'bo@poshta.ua');
+  await oplatyty(env, id);
+  const l = env.__LYSTY.find((x) => /^Оплату отримано/.test(x.tema));
+  assert.match(l.tekst, /Доступ відкрито до \d\d\.\d\d\.\d{4}/);
+  assert.match(l.tekst, /\/pidpysnyk\//);
+  assert.match(l.tekst, /Скасувати — у кабінеті/);
+  env.krok(29 * 86400);
+  await oplatyty(env, id, 'Списання наступного періоду');
+  const p = env.__LYSTY.filter((x) => /^Оплату отримано/.test(x.tema));
+  assert.equal(p.length, 2);
+  assert.match(p[1].tema, /продовжено/);
+  assert.match(p[1].tekst, /Доступ продовжено до/);
+  const id2 = await zamovyty(env, 'dovidka', '/budynok/zhylianska/5/', 'vira@poshta.ua');
+  await oplatyty(env, id2, 'Відмова');
+  assert.equal(env.__LYSTY.filter((x) => x.komu === 'vira@poshta.ua' && /^Оплату отримано/.test(x.tema)).length, 0);
+});
+
+// ---------------------------------------------------------------- стирання за строками (ZAVDANNYA-161, п. 4)
+
+test('стирання за строками: пошта без покупки — через 30 днів; хто купив, стежить чи входив — лишається', async () => {
+  const { styratyZaStrokom } = await import('../prodazh/logika.js');
+  const env = seredovyshche();
+  await zamovyty(env, 'dovidka', '/budynok/zhylianska/5/', 'kynuv@poshta.ua');                  // не оплатив
+  await oplatyty(env, await zamovyty(env, 'dovidka', '/budynok/zhylianska/5/', 'kupyv@poshta.ua'));
+  await zamovyty(env, 'dovidka', '/budynok/obolonskyi/16/', 'stezhyt@poshta.ua');
+  const kStezhyt = sql(env, `SELECT id FROM korystuvachi WHERE poshta = 'stezhyt@poshta.ua'`)[0].id;
+  env.BAZA.db.prepare('INSERT INTO stezhu (korystuvach_id, budynok, adresa, stvoreno) VALUES (?, ?, ?, ?)').run(kStezhyt, '/budynok/zhylianska/5/', 'вулиця Жилянська, 5', 1);
+  env.krok(29 * 86400);
+  assert.equal((await styratyZaStrokom(env)).korystuvachi, 0, '29 днів — ще рано');
+  await zamovyty(env, 'dovidka', '/budynok/zhylianska/5/', 'svizhyi@poshta.ua');               // свіже незавершене
+  env.krok(2 * 86400);
+  const v = await styratyZaStrokom(env);
+  assert.equal(v.korystuvachi, 1);
+  const poshty = sql(env, 'SELECT poshta FROM korystuvachi ORDER BY poshta').map((r) => r.poshta);
+  assert.deepEqual(poshty, ['kupyv@poshta.ua', 'stezhyt@poshta.ua', 'svizhyi@poshta.ua']);
+  // незавершене замовлення лишилось без людини (облік), пошти в базі ніде немає
+  assert.equal(sql(env, `SELECT COUNT(*) AS n FROM zamovlennia WHERE korystuvach_id IS NULL AND status = 'stvoreno'`)[0].n, 1);
+  assert.doesNotMatch(JSON.stringify(sql(env, 'SELECT * FROM zamovlennia')), /kynuv/);
+  // людина, яка входила за останні 30 днів (сесія діє), — не стирається
+  const env2 = seredovyshche();
+  await zamovyty(env2, 'dovidka', '/budynok/zhylianska/5/', 'ana@poshta.ua');
+  env2.krok(25 * 86400);
+  await uviity(env2);
+  env2.krok(10 * 86400);
+  assert.equal((await styratyZaStrokom(env2)).korystuvachi, 0);
+});
+
+test('стирання за строками: звернення — рік після відповіді; «скоро» і передзамовлення Києва — пів року після запуску', async () => {
+  const { styratyZaStrokom } = await import('../prodazh/logika.js');
+  const env = seredovyshche();
+  const db = env.BAZA.db, t0 = 1_790_000_000;
+  db.prepare(`INSERT INTO zvernennya (posylannya, shcho_ne_tak, kontakt, stvoreno, zakryto) VALUES ('a', 'opys', 'x@p.ua', ?, ?)`).run(t0, t0);
+  db.prepare(`INSERT INTO zvernennya (posylannya, shcho_ne_tak, kontakt, stvoreno, zakryto) VALUES ('b', 'opys', 'y@p.ua', ?, NULL)`).run(t0);
+  db.prepare(`INSERT INTO skoro (poshta, tovar, stvoreno, napysano) VALUES ('s1@p.ua', 'sudova', ?, ?)`).run(t0, t0);   // написали про запуск
+  db.prepare(`INSERT INTO skoro (poshta, tovar, stvoreno) VALUES ('s2@p.ua', 'sudova', ?)`).run(t0);                   // «Судова» ще не продається
+  db.prepare(`INSERT INTO skoro (poshta, tovar, stvoreno) VALUES ('s3@p.ua', 'dovidka', ?)`).run(t0);
+  db.prepare(`INSERT INTO zayavka (shcho, misto, kontakt, kanal, stvoreno) VALUES ('analiz', 'Київ', 'z1@p.ua', 'priamo', ?)`).run(t0);
+  db.prepare(`INSERT INTO zayavka (shcho, misto, kontakt, kanal, stvoreno) VALUES ('analiz', 'Львів', 'z2@p.ua', 'priamo', ?)`).run(t0);
+  // до запуску продажу (жодної справжньої оплати) — заявки не стираються
+  env.krok(200 * 86400);
+  let v = await styratyZaStrokom(env);
+  assert.deepEqual(v, { korystuvachi: 0, zvernennya: 0, skoro: 1, zayavka: 0 }, 'лише «скоро», кому вже написали про запуск');
+  // запуск — DATA_ZAPUSKU; минуло пів року — Київ і товари в продажу стерто; інше місто й «Судова» — ні
+  env.DATA_ZAPUSKU = new Date((t0 + 10 * 86400) * 1000).toISOString().slice(0, 10);
+  env.krok(170 * 86400);
+  v = await styratyZaStrokom(env);
+  assert.equal(v.zvernennya, 1, 'відповіли понад рік тому');
+  assert.equal(v.skoro, 1);
+  assert.equal(v.zayavka, 1);
+  assert.deepEqual(sql(env, 'SELECT posylannya FROM zvernennya').map((r) => r.posylannya), ['b'], 'без відповіді — лишається');
+  assert.deepEqual(sql(env, 'SELECT poshta FROM skoro').map((r) => r.poshta), ['s2@p.ua']);
+  assert.deepEqual(sql(env, 'SELECT misto FROM zayavka').map((r) => r.misto), ['Львів']);
+});
+
+test('стирання за строками: щоденний розклад Workers запускає його і в режимі «скоро»', async () => {
+  const env = seredovyshche({ PRODAZH: 'skoro' });
+  env.BAZA.db.prepare(`INSERT INTO zvernennya (posylannya, shcho_ne_tak, kontakt, stvoreno, zakryto) VALUES ('a', 'opys', 'x@p.ua', 1, 1)`).run();
+  await worker.scheduled({ cron: '17 2 * * *' }, env);
+  assert.equal(sql(env, 'SELECT COUNT(*) AS n FROM zvernennya')[0].n, 0);
 });

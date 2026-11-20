@@ -27,6 +27,10 @@ class Nalashtuvannia(unittest.TestCase):
         for k in ('iconUrl', 'maskableIconUrl', 'monochromeIconUrl', 'webManifestUrl', 'fullScopeUrl'):
             self.assertTrue(TWA[k].startswith(f'https://{DOMEN}/'), k)
 
+    def test_spovishchennia_vymkneno(self):
+        # MV-173, ZAVDANNYA-161: до подання в Google Play застосунок не просить дозволу на сповіщення — сервер їх не надсилає
+        self.assertIs(TWA['enableNotifications'], False)
+
     def test_bez_oplaty_google_play(self):
         """MV-126: у застосунку нічого не продаємо."""
         self.assertFalse(TWA['features']['playBilling']['enabled'])

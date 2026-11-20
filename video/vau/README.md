@@ -1,7 +1,7 @@
 # Рушій роликів «Вау» (ZAVDANNYA-127)
 
 Новий рушій замість зразків ZAVDANNYA-94 (відгук Андрія — `docs/VIDEO-VIDHUK-2026-11-17.md`). Старий `video/rendery.py`
-лишається як був; цей — окремо, у `video/vau/`.
+(ZAVDANNYA-11) видалено 20.11.2026 (ZAVDANNYA-162); від нього лишились перевірка `video/perevirka.py` і соти `video/dani/`.
 
 ## Що вміє
 

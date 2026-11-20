@@ -1,7 +1,8 @@
 """Перевірки рушія роликів (ZAVDANNYA-11): сценарії, перевірка тексту, файл сот.
 
 Запуск: python -m unittest tests/test_video.py
-Рендер у браузері тут не запускається (він довгий) — див. video/rendery.py і ZVIT-11.md.
+Старий рендер ZAVDANNYA-11 (video/rendery.py, video/stsena.*) видалено (ZAVDANNYA-162): ролики робить video/vau/.
+Перевірка video/perevirka.py лишилась — її беруть бот і автопостинг.
 """
 from __future__ import annotations
 
@@ -122,14 +123,6 @@ class NomerBudynkuMV60(unittest.TestCase):
         S = zavantazhyty(KORIN / 'video' / 'stsenarii' / 'vhadai.json')
         S['tochky'][0]['id'] = 'x'
         self.assertTrue(any('номера рішення' in z for z in perevirka.pereviryty(S, 't')))
-
-    def test_stsena_pokazuie_lyshe_pidhotovanyi(self):
-        js = (KORIN / 'video' / 'stsena.js').read_text(encoding='utf-8')
-        self.assertIn('if (!S.pidhotovano) throw', js)
-        self.assertIn('Рішення суду № ', js)
-        self.assertIn('лише те, що дійшло до суду', js)
-        self.assertIn('лише те, що дійшло до суду', (KORIN / 'video' / 'stsena.html').read_text(encoding='utf-8'))
-        self.assertIn('perevirka.pidhotuvaty(S)', (KORIN / 'video' / 'rendery.py').read_text(encoding='utf-8'))
 
 
 class Soty(unittest.TestCase):
