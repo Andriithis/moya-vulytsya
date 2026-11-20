@@ -82,13 +82,33 @@
 
   // ---------- панель ----------
   var ZARAZ = 'menyu';
+  // Під час гри — без стовпчиків 3D сот і нахилу: карта для гри, а не «кричить» сама (ZVIT-168, №8). Після — як було.
+  var BEZ3D = null;
+  function vymknuty3d() {
+    var m = karta(); if (!m || BEZ3D || !m.getStyle) return;
+    var shari = ((m.getStyle() || {}).layers || []).filter(function (l) { return l.type === 'fill-extrusion' && m.getLayoutProperty(l.id, 'visibility') !== 'none'; }).map(function (l) { return l.id; });
+    BEZ3D = { pitch: m.getPitch(), shari: shari };
+    shari.forEach(function (id) { m.setLayoutProperty(id, 'visibility', 'none'); });
+    if (BEZ3D.pitch > 0) m.easeTo({ pitch: 0, duration: MV.tykho ? 0 : 500 });
+  }
+  function povernuty3d() {
+    var m = karta(), b = BEZ3D; BEZ3D = null; if (!m || !b) return;
+    b.shari.forEach(function (id) { if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', 'visible'); });
+    if (b.pitch > 0) m.easeTo({ pitch: b.pitch, duration: MV.tykho ? 0 : 500 });
+  }
   function vidkryty(gra) {
     panel.hidden = false; knopka.setAttribute('aria-expanded', 'true'); ekran.classList.add('ihry-vidkryto');
+    try { vymknuty3d(); } catch (e) { /* карта ще не готова — гра й так працює */ }
     if (window.MvKarta && window.MvKarta.zakryty) window.MvKarta.zakryty();
     hovatyZaproshennia(false);
     pokazaty(gra || 'menyu');
   }
-  function zakryty() { panel.hidden = true; knopka.setAttribute('aria-expanded', 'false'); ekran.classList.remove('ihry-vidkryto'); rezhym(null); prybratyMitky(); zupynytyLitopys(); zupynytyKarieru(); }
+  function zakryty() {
+    panel.hidden = true; knopka.setAttribute('aria-expanded', 'false'); ekran.classList.remove('ihry-vidkryto'); panel.classList.remove('zghornuta', 'z-opysom');
+    rezhym(null); prybratyMitky(); zupynytyLitopys(); zupynytyKarieru();
+    try { povernuty3d(); } catch (e) { /* без карти */ }
+    knopka.focus();
+  }
   knopka.addEventListener('click', function () { if (panel.hidden) vidkryty(); else zakryty(); });
   panel.addEventListener('click', function (e) {
     if (panel.classList.contains('zghornuta') && e.target.closest('.i-shap') && !e.target.closest('[data-i]')) { panel.classList.remove('zghornuta'); return; }
@@ -313,14 +333,14 @@
         spysok = Y.sprobaVgadai(podii, c.data, nomer, K.vgadai_podii_v_sprobi);
       }
       VG = { typ: typ, podii: spysok, i: -1, ochky: 0 };
-      if (window.matchMedia('(max-width: 700px)').matches) panel.classList.add('zghornuta');
+      if (window.matchMedia('(max-width: 700px)').matches) panel.classList.add('zghornuta', 'z-opysom');
       vgadaiKrok();
     });
   }
   function vgadaiKrok() {
     prybratyMitky(); VG.i++;
     if (VG.i >= VG.podii.length) {
-      panel.classList.remove('zghornuta'); rezhym(null);
+      panel.classList.remove('zghornuta', 'z-opysom'); rezhym(null);
       var b = narakhuvaty(VG.ochky);
       if (VG.typ === 'den') { var c = chas(), den = chytaty('mv-ihry-den-' + c.data, {}); den.podiia = true; pysaty('mv-ihry-den-' + c.data, den); }
       ramka('Вгадай, де це було', '<p class="i-ochky">' + chyslo(VG.ochky) + ' ' + H.slovoOchky(VG.ochky) + (b ? ' · +' + b + ' ' + slovoBaly(b) : '') + '</p><button type="button" class="knopka klav" data-i="hra" data-gra="vgadai">Ще раз</button>');
@@ -331,7 +351,7 @@
     rezhym(function (ll) {
       var m = H.vidstan(ll.lat, ll.lng, p.lat, p.lon), o = H.ochky(m); VG.ochky += o;
       marker(ll.lat, ll.lng, 'sproba'); marker(p.lat, p.lon, 'pravda', 'тут');
-      rezhym(null); panel.classList.remove('zghornuta');
+      rezhym(null); panel.classList.remove('zghornuta', 'z-opysom');
       ramka('Вгадай, де це було', '<p class="i-den">Подія ' + (VG.i + 1) + ' з ' + VG.podii.length + '</p><p class="i-ochky">' + H.vidstanTekstom(m) + ' · ' + chyslo(o) + ' ' + H.slovoOchky(o) + '</p><p>' + esc(p.opys_povnyi) + '</p>' +
         (/^https:\/\//.test(p.rishennya_url || '') ? '<p><a href="' + esc(p.rishennya_url) + '" target="_blank" rel="noopener noreferrer">Рішення суду</a></p>' : '') +
         '<button type="button" class="knopka klav knopka--holovna" data-i="vgadai-dali">' + (VG.i + 1 < VG.podii.length ? 'Далі' : 'Підсумок') + '</button>');

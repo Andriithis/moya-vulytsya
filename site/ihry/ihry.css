@@ -138,6 +138,11 @@
   .i-shap { top: -1px; }
   /* Під час пошуку на карті шторка згортається до рядка з назвою — карта вільна. */
   .panel-ihor.zghornuta { height: 64px; overflow: hidden; }
+  /* «Вгадай» (ZAVDANNYA-176): згорнута шторка лишає видимим сам опис — без нього нема що вгадувати. */
+  .panel-ihor.zghornuta.z-opysom { height: auto; max-height: 40%; overflow-y: auto; }
+  .panel-ihor.zghornuta.z-opysom .i-tilo > :not(.i-opys):not(.i-den) { display: none; }
+  /* Поки відкрита шторка гри, сторінка під нею не гортається. */
+  body:has(.ekran-karty.ihry-vidkryto) { overflow: hidden; }
   .i-sitka { grid-template-columns: 1fr 1fr; }
   .i-gra { min-height: 104px; }
 }
@@ -163,3 +168,7 @@
 
 /* Панель гри відкрита — смуга «Де ви живете?» не лізе під неї (одна плашка за раз, ZAVDANNYA-123) */
 .ekran-karty.ihry-vidkryto .vau-rayony { display: none; }
+
+/* Під час гри карта — лише для гри (ZAVDANNYA-176, ZVIT-168 №8): без плашки «Що болить вашому будинку?» і смуги часу,
+   що «оживає» сама; стовпчики 3D сот ховає ihry.js. */
+.ekran-karty.ihry-vidkryto .haslo-karty, .ekran-karty.ihry-vidkryto .chas { display: none; }
