@@ -4,7 +4,7 @@
 // Скрипт запускається лише для адрес із run_worker_first у wrangler.jsonc; решту сайту Cloudflare віддає сам.
 // Частина будинків нічого не пише й ключів не має; ключі продажу — лише секрети Workers (docs/PRODAZH-SERVER.md).
 import { prodazh } from './prodazh/index.js';
-import { prybraty, nahadatyOsbb, shchomisiachnaOsbb } from './prodazh/logika.js';
+import { prybraty, nahadatyOsbb, shchomisiachnaOsbb, styratyZaStrokom } from './prodazh/logika.js';
 import { budynok } from './budynky.js';
 import { pidhaniaty } from './prodazh/vydavach.js';
 
@@ -19,9 +19,12 @@ export default {
   // Щодня (Cron Trigger у wrangler.jsonc): прибирання (прострочені входи, старі файли довідок) і лист ОСББ
   // за 3 дні до річного списання (MV-155, П7); щомісячна довідка ОСББ — сама, раз на місяць підписки (ZAVDANNYA-143).
   // Кожні 10 хв (ZAVDANNYA-133): якщо оплачена довідка чекає довше за 5 хв — ще раз штовхнути видавача в GitHub Actions.
+  // Стирання за строками (ZAVDANNYA-161, п. 4) — щодня й у режимі «скоро»: форми сайту пишуться й тоді.
   async scheduled(event, env) {
+    if (env.PRODAZH !== 'tak' && env.PRODAZH !== 'skoro') return;
+    if (event?.cron === CHASTO) { if (env.PRODAZH === 'tak') await pidhaniaty(env); return; }
+    await styratyZaStrokom(env);
     if (env.PRODAZH !== 'tak') return;
-    if (event?.cron === CHASTO) { await pidhaniaty(env); return; }
     await prybraty(env);
     await nahadatyOsbb(env, (env.ADRESA_SAITU || '').replace(/\/$/, ''));
     await shchomisiachnaOsbb(env);

@@ -88,7 +88,8 @@ R2_KARTY = 'moya-vulytsya-karta'     # карта підписника (ZAVDANNY
 SERVISY_OPLATY = ('liqpay', 'mono', 'test')
 OBMEZHENNIA = {'limit': 20, 'period': 60}      # запитів однієї групи з однієї адреси за 60 с (prodazh/index.js, OBMEZHENI)
 # Не секретні змінні, які скрипт викладки може записати у wrangler.jsonc (ключі — лише `wrangler secret put`).
-DODATKOVI_ZMINNI = {'POSHTA_PARTNERA', 'POSHTA_VID', 'POSHTA_URL', 'LIQPAY_SANDBOX', 'LIQPAY_HESH', 'DOVIDKY_DNIV'}
+DODATKOVI_ZMINNI = {'POSHTA_PARTNERA', 'POSHTA_VID', 'POSHTA_URL', 'LIQPAY_SANDBOX', 'LIQPAY_HESH', 'DOVIDKY_DNIV',
+                    'KARTA_NA_DEN', 'POSHTA_KONTAKT', 'DATA_ZAPUSKU'}   # ZAVDANNYA-161
 
 
 def pidhotuvaty_worker(vykhid: Path, pachok: int, nazva: str = 'moya-vulytsya', prodazh: dict | None = None,
@@ -139,6 +140,8 @@ def pidhotuvaty_worker(vykhid: Path, pachok: int, nazva: str = 'moya-vulytsya', 
         konfig['vars'].update({'PRODAZH': 'skoro', 'ADRESA_SAITU': prodazh.get('adresa', ''),
                                'POSHTA_SERVIS': prodazh.get('poshta', 'zahlushka')})
         konfig['d1_databases'] = [{'binding': 'BAZA', 'database_name': f'{nazva}-prodazh', 'database_id': prodazh['d1']}]
+        # щодня: стирання форм за строками й у режимі «скоро» (logika.js, styratyZaStrokom; ZAVDANNYA-161)
+        konfig['triggers'] = {'crons': ['17 2 * * *']}
     elif prodazh:
         if prodazh.get('servis') not in SERVISY_OPLATY or not prodazh.get('d1'):
             raise SystemExit(f'Продаж: потрібні --d1 і --platizhnyi-servis ({", ".join(SERVISY_OPLATY)})')

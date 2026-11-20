@@ -442,6 +442,66 @@ export async function prybraty(env) {
   return stari.length;
 }
 
+// ---------------------------------------------------------------- стирання за строками (ZAVDANNYA-161, п. 4; MV-173)
+
+export const NEZAVERSHENE_S = 30 * 86400;       // пошта без жодної покупки (лише незавершені замовлення) — 30 днів
+export const ZVERNENNIA_S = 365 * 86400;        // звернення — 1 рік після відповіді (політика, розд. 5)
+export const ZAIAVKY_S = 183 * 86400;           // передзамовлення й «скоро» — пів року після запуску (політика, розд. 5)
+const KYIV = /ки[їі]в|kyiv|kiev/i;
+
+/**
+ * Коли запущено продаж: змінна DATA_ZAPUSKU (РРРР-ММ-ДД) або, без неї, перша справжня оплата (не тестова й не за бали).
+ * null — продажу ще не було (режим «скоро»): тоді заявки до запуску не стираються.
+ */
+export async function chasZapusku(env) {
+  const z = String(env.DATA_ZAPUSKU || '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(z)) return Math.floor(Date.parse(`${z}T00:00:00Z`) / 1000);
+  const r = await odyn(env, `SELECT MIN(oplacheno) AS t FROM zamovlennia WHERE oplacheno IS NOT NULL AND servis NOT IN ('test', 'bali')`);
+  return r?.t ?? null;
+}
+
+/**
+ * Щодня (той самий розклад, що й prybraty; і в режимі «скоро», бо форми пишуться й тоді). Повертає, скільки стерто.
+ *  • пошта людини, яка нічого не купила: усі її замовлення незавершені й старші за 30 днів, немає підписки, довідок,
+ *    «Стежу», балів і входу за 30 днів — людину стираємо як «Видалити мої дані»; незавершені замовлення лишаються без пошти;
+ *  • звернення — через рік після відповіді (zakryto); без відповіді не стираються — партнер ще має відповісти;
+ *  • «скоро» — через пів року після листа про запуск (napysano) або після запуску продажу, якщо товар уже продається;
+ *  • передзамовлення із заглушки (Київ) — через пів року після запуску; інше місто — лише вручну, коли запустимо там.
+ *  Що створено вже після запуску — пів року від створення.
+ */
+export async function styratyZaStrokom(env) {
+  const t = teper(env);
+  const v = { korystuvachi: 0, zvernennya: 0, skoro: 0, zayavka: 0 };
+  if (env.PRODAZH === 'tak') {
+    const mezha = t - NEZAVERSHENE_S;
+    const ludy = await vsi(env, `SELECT k.id FROM korystuvachi k WHERE k.stvoreno < ?
+      AND NOT EXISTS (SELECT 1 FROM zamovlennia z WHERE z.korystuvach_id = k.id AND (z.status IN ('oplacheno', 'povernuto') OR z.stvoreno >= ?))
+      AND NOT EXISTS (SELECT 1 FROM pidpysky p WHERE p.korystuvach_id = k.id AND p.status <> 'ochikuie')
+      AND NOT EXISTS (SELECT 1 FROM dovidky d WHERE d.korystuvach_id = k.id)
+      AND NOT EXISTS (SELECT 1 FROM stezhu s WHERE s.korystuvach_id = k.id)
+      AND NOT EXISTS (SELECT 1 FROM bali_rukh b WHERE b.korystuvach_id = k.id)
+      AND NOT EXISTS (SELECT 1 FROM sesii s WHERE s.korystuvach_id = k.id AND s.do_ > ?)
+      AND NOT EXISTS (SELECT 1 FROM vkhody x WHERE x.korystuvach_id = k.id AND x.do_ >= ?)
+      ORDER BY k.id LIMIT 500`, mezha, mezha, t, mezha);
+    for (const k of ludy) await vydalytyDani(env, k.id);
+    v.korystuvachi = ludy.length;
+  }
+  v.zvernennya = (await zrobyty(env, 'DELETE FROM zvernennya WHERE zakryto IS NOT NULL AND zakryto < ?', t - ZVERNENNIA_S)).meta?.changes ?? 0;
+  v.skoro = (await zrobyty(env, 'DELETE FROM skoro WHERE napysano IS NOT NULL AND napysano < ?', t - ZAIAVKY_S)).meta?.changes ?? 0;
+  const zapusk = await chasZapusku(env);
+  if (zapusk !== null && t - zapusk > ZAIAVKY_S) {
+    const tovary = TS.prodaietsia;
+    v.skoro += (await zrobyty(env, `DELETE FROM skoro WHERE tovar IN (${tovary.map(() => '?').join(', ')}) AND MAX(stvoreno, ?) < ?`,
+      ...tovary, zapusk, t - ZAIAVKY_S)).meta?.changes ?? 0;
+    const kyiv = await vsi(env, 'SELECT id, misto FROM zayavka WHERE MAX(stvoreno, ?) < ?', zapusk, t - ZAIAVKY_S);
+    for (const z of kyiv.filter((x) => KYIV.test(x.misto))) {
+      v.zayavka += (await zrobyty(env, 'DELETE FROM zayavka WHERE id = ?', z.id)).meta?.changes ?? 0;
+    }
+  }
+  if (v.korystuvachi + v.zvernennya + v.skoro + v.zayavka) console.log(`стерто за строком: ${JSON.stringify(v)}`);
+  return v;
+}
+
 // ---------------------------------------------------------------- нагадування ОСББ (MV-155, П7; ZAVDANNYA-132)
 
 export const NAHADATY_ZA_S = 3 * 86400;

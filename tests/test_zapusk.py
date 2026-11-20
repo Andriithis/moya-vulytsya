@@ -130,6 +130,7 @@ class Zapusk(unittest.TestCase):
         self.assertTrue(k['keep_vars'], 'змінні з панелі Cloudflare не стираються')
         self.assertEqual(k['vars']['POSHTA_PARTNERA'], 'p@moyavulytsya.com.ua')
         self.assertNotRegex(json.dumps(k), r'(?i)token|secret|ключ|private')
+        self.assertEqual(k['triggers'], {'crons': ['17 2 * * *']}, 'щодня: стирання форм за строками (ZAVDANNYA-161)')
 
     def test_pomylky_peremykacha(self):
         t = Path(self.tmp.name)

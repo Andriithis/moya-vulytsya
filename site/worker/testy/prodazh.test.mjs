@@ -481,3 +481,67 @@ test('лист «Оплату отримано»: підписка — до як
   await oplatyty(env, id2, 'Відмова');
   assert.equal(env.__LYSTY.filter((x) => x.komu === 'vira@poshta.ua' && /^Оплату отримано/.test(x.tema)).length, 0);
 });
+
+// ---------------------------------------------------------------- стирання за строками (ZAVDANNYA-161, п. 4)
+
+test('стирання за строками: пошта без покупки — через 30 днів; хто купив, стежить чи входив — лишається', async () => {
+  const { styratyZaStrokom } = await import('../prodazh/logika.js');
+  const env = seredovyshche();
+  await zamovyty(env, 'dovidka', '/budynok/zhylianska/5/', 'kynuv@poshta.ua');                  // не оплатив
+  await oplatyty(env, await zamovyty(env, 'dovidka', '/budynok/zhylianska/5/', 'kupyv@poshta.ua'));
+  await zamovyty(env, 'dovidka', '/budynok/obolonskyi/16/', 'stezhyt@poshta.ua');
+  const kStezhyt = sql(env, `SELECT id FROM korystuvachi WHERE poshta = 'stezhyt@poshta.ua'`)[0].id;
+  env.BAZA.db.prepare('INSERT INTO stezhu (korystuvach_id, budynok, adresa, stvoreno) VALUES (?, ?, ?, ?)').run(kStezhyt, '/budynok/zhylianska/5/', 'вулиця Жилянська, 5', 1);
+  env.krok(29 * 86400);
+  assert.equal((await styratyZaStrokom(env)).korystuvachi, 0, '29 днів — ще рано');
+  await zamovyty(env, 'dovidka', '/budynok/zhylianska/5/', 'svizhyi@poshta.ua');               // свіже незавершене
+  env.krok(2 * 86400);
+  const v = await styratyZaStrokom(env);
+  assert.equal(v.korystuvachi, 1);
+  const poshty = sql(env, 'SELECT poshta FROM korystuvachi ORDER BY poshta').map((r) => r.poshta);
+  assert.deepEqual(poshty, ['kupyv@poshta.ua', 'stezhyt@poshta.ua', 'svizhyi@poshta.ua']);
+  // незавершене замовлення лишилось без людини (облік), пошти в базі ніде немає
+  assert.equal(sql(env, `SELECT COUNT(*) AS n FROM zamovlennia WHERE korystuvach_id IS NULL AND status = 'stvoreno'`)[0].n, 1);
+  assert.doesNotMatch(JSON.stringify(sql(env, 'SELECT * FROM zamovlennia')), /kynuv/);
+  // людина, яка входила за останні 30 днів (сесія діє), — не стирається
+  const env2 = seredovyshche();
+  await zamovyty(env2, 'dovidka', '/budynok/zhylianska/5/', 'ana@poshta.ua');
+  env2.krok(25 * 86400);
+  await uviity(env2);
+  env2.krok(10 * 86400);
+  assert.equal((await styratyZaStrokom(env2)).korystuvachi, 0);
+});
+
+test('стирання за строками: звернення — рік після відповіді; «скоро» і передзамовлення Києва — пів року після запуску', async () => {
+  const { styratyZaStrokom } = await import('../prodazh/logika.js');
+  const env = seredovyshche();
+  const db = env.BAZA.db, t0 = 1_790_000_000;
+  db.prepare(`INSERT INTO zvernennya (posylannya, shcho_ne_tak, kontakt, stvoreno, zakryto) VALUES ('a', 'opys', 'x@p.ua', ?, ?)`).run(t0, t0);
+  db.prepare(`INSERT INTO zvernennya (posylannya, shcho_ne_tak, kontakt, stvoreno, zakryto) VALUES ('b', 'opys', 'y@p.ua', ?, NULL)`).run(t0);
+  db.prepare(`INSERT INTO skoro (poshta, tovar, stvoreno, napysano) VALUES ('s1@p.ua', 'sudova', ?, ?)`).run(t0, t0);   // написали про запуск
+  db.prepare(`INSERT INTO skoro (poshta, tovar, stvoreno) VALUES ('s2@p.ua', 'sudova', ?)`).run(t0);                   // «Судова» ще не продається
+  db.prepare(`INSERT INTO skoro (poshta, tovar, stvoreno) VALUES ('s3@p.ua', 'dovidka', ?)`).run(t0);
+  db.prepare(`INSERT INTO zayavka (shcho, misto, kontakt, kanal, stvoreno) VALUES ('analiz', 'Київ', 'z1@p.ua', 'priamo', ?)`).run(t0);
+  db.prepare(`INSERT INTO zayavka (shcho, misto, kontakt, kanal, stvoreno) VALUES ('analiz', 'Львів', 'z2@p.ua', 'priamo', ?)`).run(t0);
+  // до запуску продажу (жодної справжньої оплати) — заявки не стираються
+  env.krok(200 * 86400);
+  let v = await styratyZaStrokom(env);
+  assert.deepEqual(v, { korystuvachi: 0, zvernennya: 0, skoro: 1, zayavka: 0 }, 'лише «скоро», кому вже написали про запуск');
+  // запуск — DATA_ZAPUSKU; минуло пів року — Київ і товари в продажу стерто; інше місто й «Судова» — ні
+  env.DATA_ZAPUSKU = new Date((t0 + 10 * 86400) * 1000).toISOString().slice(0, 10);
+  env.krok(170 * 86400);
+  v = await styratyZaStrokom(env);
+  assert.equal(v.zvernennya, 1, 'відповіли понад рік тому');
+  assert.equal(v.skoro, 1);
+  assert.equal(v.zayavka, 1);
+  assert.deepEqual(sql(env, 'SELECT posylannya FROM zvernennya').map((r) => r.posylannya), ['b'], 'без відповіді — лишається');
+  assert.deepEqual(sql(env, 'SELECT poshta FROM skoro').map((r) => r.poshta), ['s2@p.ua']);
+  assert.deepEqual(sql(env, 'SELECT misto FROM zayavka').map((r) => r.misto), ['Львів']);
+});
+
+test('стирання за строками: щоденний розклад Workers запускає його і в режимі «скоро»', async () => {
+  const env = seredovyshche({ PRODAZH: 'skoro' });
+  env.BAZA.db.prepare(`INSERT INTO zvernennya (posylannya, shcho_ne_tak, kontakt, stvoreno, zakryto) VALUES ('a', 'opys', 'x@p.ua', 1, 1)`).run();
+  await worker.scheduled({ cron: '17 2 * * *' }, env);
+  assert.equal(sql(env, 'SELECT COUNT(*) AS n FROM zvernennya')[0].n, 0);
+});
