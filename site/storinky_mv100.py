@@ -398,12 +398,14 @@ def storinka_budynku(b: dict, bud: Budynky, adresa_saitu: str, susidni: list, pe
                   f'у радіусі {R_PORUCH_M}{NBSP}м, що мають свою сторінку.</p><ul class="spysok-tekst">' + ''.join(
                       f'<li><a href="{x["url"]}">{e(x["adresa"])}</a></li>' for x in poruch) + '</ul></section>')
     posylannia = []
+    # ZVIT-165, п. 6: «де це» — будинок на карті Києва (та сама безкоштовна карта сотами, без адрес подій)
+    posylannia.append(f'<a class="knopka" href="/karta/#16.5/{b["lat"]:.5f}/{b["lon"]:.5f}/0/0">Показати місце на карті</a>')
     if b['vulytsia_slug']:
         posylannia.append(f'<a class="knopka" href="/vulytsia/{b["vulytsia_slug"]}/">{e(b["vulytsia"])} — уся вулиця</a>')
     if b['rayon']:
         posylannia.append(f'<a class="knopka" href="/rayon/{Z.slug_rayonu(b["rayon"])}/">{e(b["rayon"])} район</a>')
     if posylannia:
-        ch.append(f'<section class="rozdil"><h2>Поруч</h2><div class="diyi">{"".join(posylannia)}</div></section>')
+        ch.append(f'<section class="rozdil"><h2>Де це й що поруч</h2><div class="diyi">{"".join(posylannia)}</div></section>')
     ch.append(f'<p class="prymitka">Скарги 1551 — відкриті дані міста (КМДА, data.gov.ua, CC BY), {e(period)}. Події — з рішень судів '
               f'у Єдиному державному реєстрі судових рішень, станом на {e(Z.data_slovamy(bud.versiia))}. Колір смуг показує кількість, а не оцінку будинку. '
               f'<a href="/pro-dani/">Як ми працюємо з даними</a> · <a href="/vydalyty/">Видалити або виправити подію</a>.</p>')

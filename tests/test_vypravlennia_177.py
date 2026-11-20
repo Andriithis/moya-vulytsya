@@ -157,6 +157,15 @@ class Sait(unittest.TestCase):
         self.assertIn('станом на 8\u00a0листопада 2026', h)
         self.assertNotRegex(h, r'станом на \d{4}-\d{2}-\d{2}')
 
+    def test_dostupnist_i_karta_budynku(self):
+        for f in ('index.html', 'budynok/khreshchatyk/22/index.html', 'rayony/index.html', '_404-budynok.html'):
+            h = self.html(f)
+            self.assertLess(h.index('class="do-zmistu" href="#zmist"'), h.index('<header'), f)
+            self.assertIn('<main class="storinka" id="zmist"', h, f)
+        css = (self.sait / 'sait' / 'sait.css').read_text(encoding='utf-8')
+        self.assertIn('.pidval a { display: inline-block; min-height: 24px;', css)
+        self.assertRegex(self.html('budynok/khreshchatyk/22/index.html'), r'href="/karta/#16\.5/50\.44750/30\.52300/0/0">Показати місце на карті')
+
     def test_susidni_nul(self):
         import storinky_mv100 as M
         self.assertIn('У більшості сусідніх будинків у радіусі 400', M.rechennia_susidiv('вода', 0, 400))

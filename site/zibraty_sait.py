@@ -385,6 +385,7 @@ def storinka(*, shlyakh: str, title: str, opys: str, tilo: str, adresa_saitu: st
 {css_mapy}<link rel="stylesheet" href="/sait/sait.css">
 {dodatkovo_head}</head>
 <body{' class="z-kartoyu"' if pered_main else ''}>
+<a class="do-zmistu" href="#zmist">Перейти до змісту</a>
 <header class="shapka">
 <div class="shapka__vnutri">
 <a class="lohotyp" href="/" aria-label="Моя вулиця — на головну">{ZNAK}<span class="lohotyp__nazva">Моя вулиця</span></a>
@@ -392,7 +393,7 @@ def storinka(*, shlyakh: str, title: str, opys: str, tilo: str, adresa_saitu: st
 {'' if pered_main else KNOPKA_TEMY}
 </div>
 </header>
-{pered_main}<main class="storinka">
+{pered_main}<main class="storinka" id="zmist" tabindex="-1">
 {tilo}
 </main>
 <footer class="pidval">

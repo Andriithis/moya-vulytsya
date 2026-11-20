@@ -177,6 +177,14 @@ body.z-kartoyu .shapka__vnutri { max-width: none; padding: 6px 16px; min-height:
 .pidval__vnutri { max-width: 1120px; margin: 0 auto; padding: 24px 24px 40px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: var(--muted); }
 .pidval__vnutri p { margin: 0; }
 .pidval a { color: var(--muted); }
+/* ZAVDANNYA-177 (ZVIT-165, п. 9): посилання підвалу — ціль дотику ≥ 24 px (WCAG 2.5.8), рядки не впритул */
+.pidval__vnutri p { line-height: 28px; }
+.pidval a { display: inline-block; min-height: 24px; padding: 2px 0; }
+/* «Перейти до змісту» — перше, куди веде Tab; видно лише у фокусі */
+.do-zmistu { position: absolute; z-index: 100; left: 8px; top: -60px; padding: 10px 16px; border-radius: var(--radius-m);
+  background: var(--surface); color: var(--ink); font-weight: 600; outline: 2px solid var(--accent); }
+.do-zmistu:focus { top: 8px; }
+main.storinka:focus { outline: none; }
 
 /* Під картою на головній */
 .vstup-ryad { display: flex; flex-direction: column; gap: 8px; max-width: 760px; }
