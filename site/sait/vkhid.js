@@ -1,7 +1,7 @@
 // Мітки джерела (ZAVDANNYA-153): який вхід і який ролик привели покупця.
 // Реклама веде на вхід з міткою: /orenda/?dzherelo=tt0412. На вході (<div class="vkhid" data-vkhid="or">) мітка стає
 // «or-tt0412», без мітки — «or». Ролик, що веде прямо на сторінку будинку з ?dzherelo=…, — мітка як є.
-// Мітку пам'ятаємо лише в цій вкладці (sessionStorage, без кукі) і ставимо в кнопки оплати й форми на будь-якій сторінці,
+// Мітку пам'ятаємо лише в цій вкладці (перша мітка не з входу не затирається внутрішніми посиланнями) (sessionStorage, без кукі) і ставимо в кнопки оплати й форми на будь-якій сторінці,
 // тож у заявці (канал «oplata-dovidka-or-tt0412») видно, звідки людина прийшла. Канал обмежено 40 знаками.
 (function () {
   'use strict';
@@ -21,11 +21,15 @@
   try { skhovyshche = window.sessionStorage; } catch (e) { skhovyshche = null; }
   if (skhovyshche) {
     try {
-      if (dzherelo) skhovyshche.setItem(KLYUCH, dzherelo);
-      else dzherelo = chystyty(skhovyshche.getItem(KLYUCH), 20);
+      // Вхід — завжди нова мітка. Інша сторінка з ?dzherelo= (ролик веде прямо на будинок) — лише якщо мітки ще немає:
+      // внутрішні посилання сайту теж мають ?dzherelo= (holovna, budynok…), вони не мають затирати рекламу.
+      var bula = chystyty(skhovyshche.getItem(KLYUCH), 20);
+      if (dzherelo && (kod || !bula)) skhovyshche.setItem(KLYUCH, dzherelo);
+      else dzherelo = bula;
     } catch (e) { /* приватний режим — лише ця сторінка */ }
   }
-  if (!dzherelo) return;
+  // На /oplata/ мітка вже в адресі сторінки, а канал форми («oplata-<товар>-<мітка>») складає oplata.js — не чіпаємо.
+  if (!dzherelo || /^\/oplata\//.test(location.pathname)) return;
   var posylannia = document.querySelectorAll('a[href*="/oplata/"], a[href*="/zahlushka/?"]');
   for (var i = 0; i < posylannia.length; i++) {
     var a = posylannia[i];
