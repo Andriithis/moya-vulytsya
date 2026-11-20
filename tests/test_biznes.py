@@ -25,6 +25,7 @@ KORIN = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(KORIN / 'site'))
 sys.path.insert(0, str(KORIN / 'site' / 'prodazh'))
 sys.path.insert(0, str(KORIN / 'tests'))
+sys.path.insert(0, str(KORIN / 'site' / 'sait'))
 
 import khostynh as KH  # noqa: E402
 import biznes_r2  # noqa: E402
@@ -167,3 +168,28 @@ class Naskrizno(unittest.TestCase):
     def test_bez_kliucha(self):
         self.assertEqual(self.kom('spysok', env={'MV_ADRESA_SAITU': self.adresa})[0], 2)
         self.assertEqual(self.kom('spysok', env={**self.env, 'MV_ADMIN_KLIUCH': 'ne-toi'})[0], 1)
+
+
+class Storinka(unittest.TestCase):
+    """Сторінка /biznes/: поля форми — ті, що читає site/sait/biznes.js і перевіряє сервер; без описів справ і службових слів."""
+
+    def test_forma_i_spysky_odnakovi(self):
+        import storinky_mv100 as M
+        html = M.vitryna_biznes('https://pryklad.ua', None, '2024–2026', [('65 701', 'подія з рішень судів')])
+        js = (KORIN / 'site' / 'sait' / 'biznes.js').read_text(encoding='utf-8')
+        for pole in ('kompaniia', 'kontakt', 'meta', 'terytoriia', 'strok', 'komentar', 'zghoda'):
+            self.assertIn(f'name="{pole}"', html)
+            self.assertIn(pole, js)
+        meta_html = re.findall(r'<option value="([a-z]+)">', html)
+        meta_js = json.loads(re.search(r"var META = (\[[^\]]*\]);", js).group(1).replace("'", '"'))
+        meta_srv = re.findall(r"(\w+): '", BIZNES_JS.split('export const META = ')[1].split('};')[0])
+        self.assertEqual(meta_html, meta_js)
+        self.assertEqual(meta_html, meta_srv)
+        stroky_html = re.findall(r'name="strok" value="([a-z_]+)"', html)
+        self.assertEqual(stroky_html, re.findall(r"(\w+): '", BIZNES_JS.split('export const STROKY = ')[1].split('};')[0]))
+        self.assertIn('/sait/biznes.js', html)
+        self.assertIn('ціна за домовленістю', html)
+        for zaboroneno in ('ОСОБА_', 'MV-', 'конвеєр', 'макет', 'рейтинг', 'небезпечн', 'уникайте', 'будьте уважні'):
+            self.assertNotIn(zaboroneno, html)
+        self.assertIn('не оцінка безпечності', html)
+        self.assertIn("referrerPolicy: 'same-origin'", js, 'з no-referrer браузер шле Origin: null — форму відхилить сервер')
