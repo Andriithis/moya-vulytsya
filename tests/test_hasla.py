@@ -16,7 +16,7 @@ sys.path.insert(0, str(KORIN / 'site'))
 sys.path.insert(0, str(KORIN / 'site' / 'sait'))
 
 STARI = ('що суди розповіли про вашу вулицю', 'карта подій за даними судів', 'що відбувається на вашій вулиці')
-TEKY = ('site', 'brend', 'video', 'bot', 'avtopostynh', 'android', 'zvit_adresy')
+TEKY = ('site', 'brend', 'video', 'bot', 'avtopostynh', 'android')
 ROZSHYRENNIA = {'.py', '.html', '.js', '.css', '.json', '.md', '.webmanifest', '.txt', '.xml', '.kt', '.yml', '.sql'}
 
 
