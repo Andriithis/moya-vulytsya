@@ -56,6 +56,13 @@ EMODZI = re.compile('[\U0001F000-\U0001FAFF☀-➿⬀-⯿️]')
 LYSHE_SUD = 'лише те, що дійшло до суду'
 # Сторінка конкретного місця на сайті (site/zibraty_sait.py, site/storinky_mv100.py).
 MISTSE_URL = re.compile(r'^/(?:budynok/[^?#]+/|vulytsia/[^/?#]+/|rayon/[^/?#]+/|karta/)$')
+# Ролик з черги (ZAVDANNYA-159) веде туди, куди веде його тип (docs/ROLYKY-TYPY.md, «Куди веде»): карта, гра, сторінка
+# місця, «Мій будинок», «Судова практика» чи сторінка-вхід ZAVDANNYA-153 (шляхи входів ще не остаточні) — будь-яка
+# сторінка сайту, крім оплати, кабінету й службових адрес.
+STORINKA_URL = re.compile(r'^/(?!oplata/|kabinet/|api/|pidpysnyk/)(?:[a-z0-9-]+/)*$')
+# Короткі коди мереж для мітки ролика `?dzherelo=yt-129-t5` (ZAVDANNYA-153: мітка ролика — до 16 знаків).
+KOD_MEREZHI = {'youtube': 'yt', 'instagram': 'ig', 'facebook': 'fb', 'telegram': 'tg', 'tiktok': 'tt'}
+POZNACHKA_HOLOSU = 'Голос змінено програмою'   # MV-171
 URL = re.compile(r'https?://[^\s<>"\')]+')
 
 # Межі мереж (символів). Telegram: текст 4096, підпис до файлу 1024, вікторина 300/100/200 (Bot API).
@@ -133,12 +140,12 @@ def pereviryty(o: dict, adresa_saitu: str, teka_media: Path | None = None, zabor
     for u in posyl:
         s = urlsplit(u)
         q = parse_qs(s.query)
-        if not MISTSE_URL.match(s.path):
+        if not (STORINKA_URL if o.get('dzherelo') == 'cherha' else MISTSE_URL).match(s.path):
             zh.append(f'посилання не на сторінку місця: {s.path}')
         elif mistse.get('shliakh') and s.path != mistse['shliakh']:
             zh.append(f'посилання на інше місце: {s.path}, а одиниця про {mistse["shliakh"]}')
         dz = q.get('dzherelo', [''])
-        if len(dz) != 1 or not (dz[0] == merezha or dz[0].startswith(merezha + '-')):
+        if len(dz) != 1 or not (dz[0] == merezha or dz[0].startswith((merezha + '-', KOD_MEREZHI[merezha] + '-'))):
             zh.append(f'мітка dzherelo={",".join(dz)} не відповідає мережі {merezha}')
         if set(q) - {'dzherelo'}:
             zh.append('зайві параметри в посиланні')
@@ -167,6 +174,11 @@ def pereviryty(o: dict, adresa_saitu: str, teka_media: Path | None = None, zabor
             zh.append('вікторина — лише Telegram')
         if not 2 <= len(o.get('varianty') or []) <= 10 or not 0 <= o.get('pravylna', -1) < len(o.get('varianty') or []):
             zh.append('вікторина: 2–10 варіантів і правильний серед них')
+    if o.get('holos') and POZNACHKA_HOLOSU not in vse:
+        zh.append(f'ролик з голосом без позначки «{POZNACHKA_HOLOSU}» (MV-171)')
+    if o.get('dzherelo') == 'cherha':
+        for z in o.get('zauvazhennia_opysu') or []:
+            zh.append(z)
     if merezha == 'youtube' and not o.get('nazva'):
         zh.append('немає назви ролика')
     # файл

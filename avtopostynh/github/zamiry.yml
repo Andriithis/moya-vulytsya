@@ -1,0 +1,87 @@
+# Заміри роликів «Моєї вулиці» — щоденний збір чисел і тижневий підсумок (ZAVDANNYA-159; docs/ROLYKY-SYSTEMA.md, розд. 4).
+#
+# Куди класти: у той самий ПРИВАТНИЙ репозиторій, що й автопостинг (організація партнера, `avtopostynh`), як
+# `.github/workflows/zamiry.yml`. Сирі числа — лише там (розд. 4.3), у публічний `moya-vulytsya` — ніколи.
+#
+# Читає чергу автопостингу (гілка avtopostynh-stan, лише читання), пише теку zamiry/ у головну гілку цього репозиторію:
+#   zamiry/rolyky.csv  — реєстр публікацій (колонка typ — з docs/ROLYKY-TYPY.md)
+#   zamiry/znimky.csv  — числа щодня (YouTube, Instagram, Facebook; TikTok — з вивантаження в zamiry/tiktok/)
+#   zamiry/tyzhden-<дата>.md — підсумок у понеділок: які типи посилити / тримати / прибрати
+# Ключі — тільки «секрети» репозиторію; ті самі, що для автопостингу, плюс MV_ADMIN_KLIUCH (вивантаження форм сайту).
+
+name: Заміри роликів
+
+on:
+  schedule:
+    - cron: '7 4 * * *'     # ≈ 06:07 за Києвом узимку (07:07 влітку); не :00 — тоді GitHub найбільше затримує
+  workflow_dispatch:
+    inputs:
+      pidsumok:
+        description: 'Зробити тижневий підсумок зараз (не лише в понеділок)'
+        type: boolean
+        default: false
+
+concurrency:
+  group: zamiry
+  cancel-in-progress: false
+
+permissions:
+  contents: write     # лише щоб записати теку zamiry/ у цей репозиторій
+
+jobs:
+  zamiry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      MV_ADRESA_SAITU: ${{ vars.MV_ADRESA_SAITU }}
+      PIDSUMOK: ${{ inputs.pidsumok }}
+    steps:
+      - name: Код «Моєї вулиці» (публічний репозиторій, гілка main)
+        uses: actions/checkout@v4
+        with:
+          repository: Andriithis/moya-vulytsya
+          ref: main
+          path: kod
+          persist-credentials: false
+
+      - name: Цей репозиторій (тека zamiry/)
+        uses: actions/checkout@v4
+        with:
+          path: repo
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Черга автопостингу (гілка avtopostynh-stan, лише читання)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p stan
+          if git ls-remote --exit-code "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" avtopostynh-stan >/dev/null 2>&1; then
+            git clone --quiet --depth 1 --branch avtopostynh-stan \
+              "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" stan-git
+            [ -f stan-git/cherha.db ] && cp stan-git/cherha.db stan/
+            rm -rf stan-git
+          fi
+
+      - name: Зібрати числа
+        env:
+          MV_YOUTUBE_CLIENT_ID: ${{ secrets.MV_YOUTUBE_CLIENT_ID }}
+          MV_YOUTUBE_CLIENT_SECRET: ${{ secrets.MV_YOUTUBE_CLIENT_SECRET }}
+          MV_YOUTUBE_REFRESH_TOKEN: ${{ secrets.MV_YOUTUBE_REFRESH_TOKEN }}
+          MV_META_PAGE_TOKEN: ${{ secrets.MV_META_PAGE_TOKEN }}
+          MV_ADMIN_KLIUCH: ${{ secrets.MV_ADMIN_KLIUCH }}
+        run: |
+          dod=()
+          [ "$PIDSUMOK" = "true" ] && dod+=(--pidsumok)
+          python kod/avtopostynh/zamiry.py --cherha stan/cherha.db --zamiry repo/zamiry "${dod[@]}"
+
+      - name: Записати zamiry/ у цей репозиторій
+        run: |
+          cd repo
+          git add zamiry
+          if git diff --cached --quiet; then echo "без змін"; exit 0; fi
+          git -c user.name="zamiry" -c user.email="zamiry@users.noreply.github.com" \
+              commit -q -m "Заміри роликів $(date -u +%F)"
+          git push -q

@@ -16,6 +16,7 @@
   /miy-budynok/, /osbb/, /sudova-praktyka/, /biznes/   вітрини (ZAVDANNYA-85)
   /sudova-praktyka/<kupap|kk>/<номер>/  сторінки статей (з --sudova-praktyka; ZAVDANNYA-111, MV-122)
   /oplata/                  оплата-заглушка «залиште пошту»; /vydalyty/, /pro-dani/ — видалення й про дані
+  /doslidnykam/             «Дані для дослідників» — відкритий набір чисел (site/storinka_doslidnykam.py, ZAVDANNYA-158)
   /zahlushka/               заглушка з формою і грою (site/zahlushka/zibraty.py, без змін)
   sitemap.xml (або індекс sitemap-N.xml, якщо адрес більше 45 000), robots.txt, 404.html
   manifest.webmanifest      сайт як застосунок; /.well-known/assetlinks.json — підтвердження застосунку Android,
@@ -343,7 +344,7 @@ def storinka(*, shlyakh: str, title: str, opys: str, tilo: str, adresa_saitu: st
 <p>Дані — з рішень судів у Єдиному державному реєстрі судових рішень. Це лише те, що дійшло до суду, а не всі події на вулиці.</p>
 <p>Колір і числа показують лише кількість подій у даних — це не оцінка вулиці, будинку чи району. Ми не стверджуємо причин і не прогнозуємо.</p>
 <p><a href="/miy-budynok/">Мій будинок</a> · <a href="/osbb/">Для ОСББ</a> · <a href="/sudova-praktyka/">Судова практика</a> · <a href="/biznes/">Для бізнесу</a> · <a href="/rayony/">Райони</a> · <a href="/karta/?ihry">Ігри</a></p>
-<p><a href="/pro-dani/">Як ми працюємо з даними</a> · <a href="/vydalyty/">Видалити або виправити подію</a> · <a href="/zahlushka/polityka.html">Політика конфіденційності</a> · <a href="/zahlushka/oferta.html">Оферта</a> · Карта: <a href="https://www.openstreetmap.org/copyright">© учасники OpenStreetMap</a></p>
+<p><a href="/pro-dani/">Як ми працюємо з даними</a> · <a href="/doslidnykam/">Дані для дослідників</a> · <a href="/vydalyty/">Видалити або виправити подію</a> · <a href="/zahlushka/polityka.html">Політика конфіденційності</a> · <a href="/zahlushka/oferta.html">Оферта</a> · Карта: <a href="https://www.openstreetmap.org/copyright">© учасники OpenStreetMap</a></p>
 </div>
 </footer>
 {js}{ANALITYKA}</body>
@@ -1169,6 +1170,8 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
     # Будинки, райони, вітрини, оплата-заглушка, видалення, про дані (ZAVDANNYA-85).
     pachky = KH.Pachky(len(bud.spysok)) if (bud and khostynh == 'workers') else None
     adresy += M.zibraty_vse(dn, rayony, za_rayonom, bud, vykhid, adresa_saitu, pachky, len(vulytsi), mistsia_rayonu)
+    import storinka_doslidnykam as SD   # «Дані для дослідників» (ZAVDANNYA-158)
+    adresy += SD.zibraty(vykhid, adresa_saitu)
     a_mists, media_mists_m, _ = SM.zibraty(dn, vykhid, adresa_saitu, bud, media, mistsia)
     adresy += a_mists
     media_mists += media_mists_m

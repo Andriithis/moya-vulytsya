@@ -458,7 +458,9 @@ class InshiMerezhi(unittest.TestCase):
         self.assertEqual(r.url, 'https://instagram.com/p/x')
         self.assertIn('video_url=https%3A%2F%2Fmedia.example%2Fpachky%2Fr.mp4', s.zapyty[0][3].decode())
         with mock.patch.dict(os.environ, {'MV_INSTAGRAM_ID': 'ig', 'MV_META_PAGE_TOKEN': 'PT', 'MV_MEDIA_URL': ''}):
-            r = M.Instagram(http_=Sitka([]), teka_media=self.t).opublikuvaty(dict(self.o, merezha='instagram'))
+            # без публічної адреси й без файлу в запуску — нема звідки взяти ролик (з файлом — частинами, ZAVDANNYA-159)
+            r = M.Instagram(http_=Sitka([]), teka_media=self.t).opublikuvaty(
+                dict(self.o, merezha='instagram', fail='nemaie.mp4'))
         self.assertEqual(r.typ, 'blokuvannia')
 
     def test_tiktok_i_novyi_kliuch(self):

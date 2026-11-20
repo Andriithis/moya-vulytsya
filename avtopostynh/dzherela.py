@@ -25,7 +25,7 @@ from datetime import date, timedelta
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from pravyla import mitka, z_mitkoiu
+from pravyla import POZNACHKA_HOLOSU, mitka, z_mitkoiu
 from rozklad import HRUPY, chas_telegram, nazva_tyzhnia, sloty_kartok, sloty_rolykiv
 
 KORIN = Path(__file__).resolve().parents[1]
@@ -85,6 +85,8 @@ def telegram_tyzhnia(indeks: dict, pn: date, vzhe: set, bot_teka: Path | None = 
 def pidpys_dlia(poz: dict, merezha: str, adresa_saitu: str) -> tuple[str, str]:
     url = z_mitkoiu(adresa_saitu.rstrip('/') + poz['mistse']['shliakh'], mitka(merezha))
     tekst = poz.get('pidpys', '').strip()
+    if poz.get('holos') and POZNACHKA_HOLOSU not in tekst:
+        tekst += f'\n\n{POZNACHKA_HOLOSU}.'           # MV-171
     return f'{tekst}\n\n{poz["mistse"].get("nazva", "Це місце")} — на сайті: {url}', url
 
 
@@ -95,6 +97,8 @@ def z_pozytsii(poz: dict, merezha: str, chas_: str, tyzhden: str, adresa_saitu: 
          'podii': poz.get('podii') or [], 'perepysano': bool(poz.get('perepysano', True)),
          'chernetka': bool(poz.get('chernetka')), 'pozytsiia': poz['nazva'], 'stsenarii': poz.get('stsenarii', ''),
          'dzherelo': 'manifest'}
+    if 'holos' in poz:
+        o['holos'] = bool(poz['holos'])
     if merezha == 'youtube':
         o['nazva'] = poz.get('zaholovok') or poz['mistse'].get('nazva', '')
     o['id'] = id_odynytsi(tyzhden, merezha, chas_, poz['nazva'])
