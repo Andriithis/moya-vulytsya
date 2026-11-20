@@ -54,7 +54,7 @@ export async function perevirytyBudynok(env, budynok, url) {
   if (!r || !r.ok) return null;
   const m = (await r.text()).match(/<h1>([^<]{1,200})<\/h1>/);
   if (!m) return null;
-  return m[1].replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&mdash;/g, '—').replace(/&ndash;/g, '–').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+  return m[1].replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 }
 
 export async function korystuvach(env, poshta) {
@@ -368,7 +368,7 @@ export async function vziatyZCherhy(env, n) {
 export function holovneZDovidky(html) {
   const m = String(html || '').match(/<ol class="holovne">\s*<li>([\s\S]*?)<\/li>/);
   if (!m) return '';
-  const t = m[1].replace(/<[^>]*>/g, ' ').replace(/&nbsp;|&#160;/g, '\u00a0').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+  const t = m[1].replace(/<[^>]*>/g, ' ').replace(/&nbsp;|&#160;/g, '\u00a0').replace(/&mdash;/g, '—').replace(/&ndash;/g, '–').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"').replace(/&#39;|&#x27;/g, "'").replace(/&amp;/g, '&').replace(/\s+/g, ' ').replace(/\s([.,;:])/g, '$1').trim();
   return t.length > 300 ? `${t.slice(0, t.lastIndexOf(' ', 297))}…` : t;
 }
