@@ -285,6 +285,28 @@ def prochytaty_pereimenuvannia(shlyakh: Path | None) -> list[dict]:
         return [r for r in csv.DictReader(f) if r.get('stara_nazva') and r.get('nova_nazva')]
 
 
+def shliakh_vypravlen(pereimenuvannia: Path | None) -> Path | None:
+    """Таблиця виправлень назв (dani-edrsr, S-М.21) лежить поруч із таблицею перейменувань: pereimenuvannia-kyiv.csv →
+    vypravlennia-nazv-kyiv.csv (ZAVDANNYA-177)."""
+    if not pereimenuvannia:
+        return None
+    p = Path(pereimenuvannia)
+    return p.with_name(p.name.replace('pereimenuvannia-', 'vypravlennia-nazv-', 1))
+
+
+def prochytaty_vypravlennia(shlyakh: Path | None) -> dict:
+    """(тип, ключ назви з помилкою) → (тип, правильна назва). «просп. Вололодимира Івасюка» — не окрема вулиця (ZVIT-165, п. 10)."""
+    if not shlyakh or not Path(shlyakh).is_file():
+        return {}
+    z = {}
+    with open(shlyakh, encoding='utf-8') as f:
+        for r in csv.DictReader(f):
+            if r.get('pomylka') and r.get('pravylno'):
+                pom = re.sub(r'\.(?=\S)', '. ', chystyi(r['pomylka']))
+                z[(r.get('typ') or 'вулиця', kliuch(pom))] = (r.get('typ_pravylnyi') or r.get('typ') or 'вулиця', chystyi(r['pravylno']))
+    return z
+
+
 LINIINI = {'вулиця', 'бульвар', 'проспект', 'провулок', 'шосе', 'узвіз', 'набережна', 'алея', 'дорога', 'проїзд', 'спуск', 'лінія'}
 
 
@@ -538,12 +560,14 @@ def period_podii(dn) -> str:
 
 
 
-def zibraty_dani(baza: Path, pereimenuvannia: Path | None, mezhi_rayoniv: Path | None) -> Dani:
+def zibraty_dani(baza: Path, pereimenuvannia: Path | None, mezhi_rayoniv: Path | None,
+                 vypravlennia: Path | None = None) -> Dani:
     con = sqlite3.connect(f'file:{baza}?mode=ro', uri=True)
     versiia = (con.execute('SELECT versiia FROM release ORDER BY versiia DESC LIMIT 1').fetchone() or ['?'])[0]
     podii = prochytaty_podii(con)
     kanon = kanonichni_z_osm(con)
     pereim = prochytaty_pereimenuvannia(pereimenuvannia)
+    vypr = prochytaty_vypravlennia(vypravlennia or shliakh_vypravlen(pereimenuvannia))
     rayony = Rayony(mezhi_rayoniv)
 
     # 1. Які варіанти назв вулиць є в місцях подій.
@@ -553,6 +577,8 @@ def zibraty_dani(baza: Path, pereimenuvannia: Path | None, mezhi_rayoniv: Path |
     for i, p in enumerate(podii):
         publichne = p.tochnist == 'mistse' and MS.rozibraty(p.adresa) is not None
         vv = vulytsi_mistsia(p.adresa, p.tochnist) if p.lat is not None and not publichne else []
+        if vypr:      # одруківка з таблиці виправлень — правильна назва (S-М.21 dani-edrsr, ZAVDANNYA-177)
+            vv = [vypr.get((t, kliuch(n)), (t, n)) + (b,) for (t, n, b) in vv]
         vulytsi_podii.append(vv)
         for (t, n, _) in vv:
             varianty[(t, n)] += 1
