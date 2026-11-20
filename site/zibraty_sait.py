@@ -781,7 +781,8 @@ DZHERELA_KARTY = ('Підкладка: <a href="https://openfreemap.org" target=
 # Ігри в карті (ZAVDANNYA-117): значок «Ігри» — сота з зірочкою; дані ігор — /ihry/*.json (збирає zibraty_ihry).
 IHRY_IK = svg_html('<path d="M12 3 19.8 7.5V16.5L12 21 4.2 16.5V7.5Z"/><path d="m12 8.6 1.1 2.3 2.5.3-1.8 1.7.5 2.5-2.3-1.2-2.3 1.2.5-2.5-1.8-1.7 2.5-.3Z"/>', 22)
 SKRYPTY_IHOR = ('/sait/hra-yadro.js', '/sait/vulytsia-yadro.js', '/sait/ihry-yadro.js', '/sait/litopys-yadro.js', '/sait/litopys.js',
-                '/sait/ihry.js')   # «Літопис міста» — у панелі ігор (ZAVDANNYA-141)
+                '/sait/kariera-yadro.js', '/sait/kariera.js',
+                '/sait/ihry.js')   # «Літопис міста» (ZAVDANNYA-141) і «Кваліфікуй: кар'єра» (ZAVDANNYA-152) — у панелі ігор
 IHRY_DANI: dict = {}
 
 
@@ -935,6 +936,11 @@ def zibraty_ihry(dn: D.Dani, vykhid: Path, koloda: Path | None, baza: Path | Non
     kv.pop('dzherelo_poroha', None)   # службова примітка для перевірки (ZAVDANNYA-123), на сайт не йде
     zapysaty(tsil / 'kvalifikuy.json', json.dumps(kv, ensure_ascii=False, separators=(',', ':')))
     IHRY_DANI['kvalifikuy'] = '/ihry/kvalifikuy.json'
+    # «Кваліфікуй: кар'єра» (ZAVDANNYA-152): справи з випуску й текстів (kariera.py, поза git); немає — гра на зачатку kvalifikuy.json
+    kar = DZHERELO / 'ihry' / 'kariera' / 'kariera.json'
+    if kar.exists():
+        shutil.copyfile(kar, tsil / 'kariera.json')
+        IHRY_DANI['kariera'] = '/ihry/kariera.json'
     shutil.copyfile(DZHERELO / 'ihry' / 'nalashtuvannia.json', tsil / 'nalashtuvannia.json')
     IHRY_DANI['nalashtuvannia'] = '/ihry/nalashtuvannia.json'
     gotova = KH_.pidhotuvaty(KH_.prochytaty(koloda or KH_.DEMO))
@@ -980,10 +986,13 @@ def kopiyuvaty_spilne(vykhid: Path) -> None:
         shutil.copyfile(DZHERELO / 'ihry' / f, sait / f)
     for f in ('litopys-yadro.js', 'litopys.js'):             # «Літопис міста» в панелі ігор (ZAVDANNYA-141)
         shutil.copyfile(DZHERELO / 'ihry' / 'litopys' / f, sait / f)
+    for f in ('kariera-yadro.js', 'kariera.js'):             # «Кваліфікуй: кар'єра» в панелі ігор (ZAVDANNYA-152)
+        shutil.copyfile(DZHERELO / 'ihry' / 'kariera' / f, sait / f)
     # Кольори обох тем — на початок стилів (одна сторінка стилів, без зайвого запиту); ігри в карті — у кінець.
     zapysaty(sait / 'sait.css', kolory_css() + (DZHERELO / 'sait' / 'sait.css').read_text(encoding='utf-8')
              + '\n' + (DZHERELO / 'ihry' / 'ihry.css').read_text(encoding='utf-8')
-             + '\n' + (DZHERELO / 'ihry' / 'litopys' / 'litopys.css').read_text(encoding='utf-8'))
+             + '\n' + (DZHERELO / 'ihry' / 'litopys' / 'litopys.css').read_text(encoding='utf-8')
+             + '\n' + (DZHERELO / 'ihry' / 'kariera' / 'kariera.css').read_text(encoding='utf-8'))
     for f in sorted((DZHERELO / 'sait' / 'shryfty').iterdir()):   # IBM Plex Sans і ліцензія OFL поруч
         shutil.copyfile(f, sait / 'shryfty' / f.name)
     (sait / 'biblioteka').mkdir(exist_ok=True)
