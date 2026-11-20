@@ -115,3 +115,43 @@ test('без сховища KARTA адреса — звичайний сайт (
   assert.equal(r.status, 404);
   assert.equal(text, 'сайт');
 });
+
+test('«Стежу» з картки адреси (ZAVDANNYA-151): та сама таблиця, що кабінет; лише підписник і лише з нашого сайту', async () => {
+  const env = seredovyshche();
+  const POSHUK = [['вулиця Вигадана', 'vyhadana', '', [['1', '/budynok/vyhadana/1/'], ['3', '/budynok/vyhadana/3/']]]];
+  env.ASSETS = { async fetch(req) {
+    const p = new URL(req.url).pathname;
+    if (p === '/vulytsi/budynky.json') return Response.json(POSHUK);
+    if (p === '/budynok/vyhadana/1/') return new Response('<main><h1>вулиця Вигадана, 1</h1></main>');
+    return new Response('немає', { status: 404 });
+  } };
+  const post = (kuka, tilo, origin = SAIT) => worker.fetch(new Request(SAIT + '/pidpysnyk/api/stezhu', {
+    method: 'POST', redirect: 'manual', body: JSON.stringify(tilo),
+    headers: { 'content-type': 'application/json', ...(origin ? { origin } : {}), ...(kuka ? { cookie: kuka } : {}) } }), env);
+  const n = () => env.BAZA.db.prepare('SELECT COUNT(*) n FROM stezhu').get().n;
+  // без входу — на вхід, нічого не записано
+  assert.equal((await post(null, { dia: 'dodaty', adresa: 'вул. Вигадана, 1' })).status, 303);
+  const kuka = pidpysnyk(env);
+  // чужа сторінка — 403
+  assert.equal((await post(kuka, { dia: 'dodaty', adresa: 'вул. Вигадана, 1' }, 'https://zlyi.test')).status, 403);
+  assert.equal(n(), 0);
+  // підпис з карти («вул. Вигадана, 1») знаходить будинок сайту
+  let r = await post(kuka, { dia: 'dodaty', adresa: 'вул. Вигадана, 1' });
+  let v = await r.json();
+  assert.equal(r.status, 200);
+  assert.equal(v.budynok, '/budynok/vyhadana/1/');
+  assert.deepEqual(v.adresy, [{ budynok: '/budynok/vyhadana/1/', adresa: 'вулиця Вигадана, 1' }]);
+  // повтор не дублює; список — і через GET
+  await post(kuka, { dia: 'dodaty', adresa: 'вул. Вигадана, 1' });
+  assert.equal(n(), 1);
+  const g = await worker.fetch(new Request(SAIT + '/pidpysnyk/api/stezhu', { headers: { cookie: kuka } }), env);
+  assert.equal((await g.json()).adresy.length, 1);
+  // будинку без сторінки на сайті — чесне «немає», не запис
+  r = await post(kuka, { dia: 'dodaty', adresa: 'вул. Вигадана, 3' });
+  assert.equal(r.status, 404);
+  assert.match((await r.json()).chomu, /Такого будинку/);
+  // прибрати
+  v = await (await post(kuka, { dia: 'prybraty', budynok: '/budynok/vyhadana/1/' })).json();
+  assert.deepEqual(v.adresy, []);
+  assert.equal(n(), 0);
+});
