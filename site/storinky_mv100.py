@@ -510,12 +510,13 @@ def storinka_rayoniv(rayony: list, adresa_saitu: str, bez_rayonu: list | None = 
 # ---------------------------------------------------------------- вітрини
 
 def vitryna(shlyakh: str, nazva: str, mitka: str, vstup: str, tilo: str, title: str, opys: str, adresa_saitu: str,
-            aktyvne: str = '', kartynka: tuple | None = None) -> str:
+            aktyvne: str = '', kartynka: tuple | None = None, skrypty: tuple = (), css: tuple = ()) -> str:
     kryhty = [('/', 'Головна'), ('', nazva)]
     t = (kryhty_html(kryhty) + f'<section class="zaholovok"><span class="mitka">{e(mitka)}</span><h1>{e(nazva)}</h1>'
          f'<p>{vstup}</p></section>' + tilo)
     return Z.storinka(shlyakh=shlyakh, title=title, opys=opys, tilo=t, adresa_saitu=adresa_saitu, aktyvne=aktyvne or shlyakh[1:],
-                      dodatkovo_head=ld_skrypt(kryhty_ld(kryhty, adresa_saitu)), kartynka=kartynka)
+                      dodatkovo_head=ld_skrypt(kryhty_ld(kryhty, adresa_saitu)) + ''.join(f'<link rel="stylesheet" href="{c}">\n' for c in css),
+                      kartynka=kartynka, skrypty=skrypty)
 
 
 def kartka_tovaru(kl: str, pidpys: str, punkty: list, holovna: bool = False, dzherelo: str = '') -> str:
@@ -604,20 +605,85 @@ def vitryna_sudova(adresa_saitu: str, kartynka: tuple | None = None) -> str:
                    adresa_saitu, kartynka=kartynka)
 
 
-def vitryna_biznes(adresa_saitu: str, kartynka: tuple | None = None, period_podii: str = '') -> str:
-    tilo = f'''<section class="rozdil"><h2>Набори й доступ</h2><div class="tovary">
-{kartka_tovaru('biznes', 'Користування базою на місяць або рік за договором — не продаж', [
-        f'події з рішень судів з адресами й точками на карті (Київ{", " + period_podii if period_podii else ""})', 'скарги 1551 по будинках',
-        'вивантаження файлом або доступ для програм', 'оновлення щомісяця'], True, dzherelo='biznes')}
-<div class="kartka tovar"><h3>Для кого</h3><ul><li>забудовники й агенції нерухомості</li><li>страхові й банки</li>
-<li>дослідники й медіа</li></ul></div></div>
-<p class="prymitka">Умови — в <a href="/zahlushka/oferta.html">оферті</a> і договорі. Вивантаження бази — лише компаніям за договором.
-Платежі й договори оформлює партнер проєкту.</p></section>'''
+# «Для бізнесу» (ZAVDANNYA-157; MV-3, MV-92, MV-102): що в копії бази — ті самі поля, що в dani-edrsr/src/kopiia_biznesu.py
+# (POLIA), людськими словами; у прикладі рядка — лише формат, без жодної справжньої чи вигаданої події.
+POLIA_BIZNES = [
+    ('data, hodyna', 'дата й година події (немає дати події — дата рішення з позначкою)'),
+    ('hrupa, vyd, stattia', 'група події, як на карті, вид і стаття кодексу'),
+    ('opys', 'опис події з рішення суду, без імен суддів, поліцейських і захисників'),
+    ('adresa, tochnist', 'будинок, перехрестя чи назване місце'),
+    ('shyrota, dovhota, sota', 'координати точки; без точного місця — клітинка ≈ 500 м'),
+    ('sud, data_rishennia, nomer_spravy', 'суд, дата рішення, номер справи'),
+    ('posylannia', 'посилання на рішення в державному реєстрі — оригінал біля кожної події'),
+    ('chutlyva, domashnie', 'позначки: домашнє насильство, статеві злочини, справи щодо дітей — як оприлюднив суд'),
+    ('problemy', 'окрема таблиця: місця, де однотипні події повторюються, і які події туди входять'),
+    ('skarhy_1551', 'окрема таблиця: звернення до 1551 по будинках — числом за темами, без тексту заявника'),
+]
+PRYKLAD_BIZNES = [('data', '2025-03-14'), ('hodyna', '22'), ('hrupa', HRUPY_PODII['vod']), ('stattia', 'ст.130 КУпАП'),
+                  ('opys', '‹опис події з рішення›'), ('adresa', '‹вулиця, номер будинку›'), ('tochnist', 'будинок'),
+                  ('shyrota', '50.4…'), ('dovhota', '30.5…'), ('sud', '‹районний суд міста Києва›'),
+                  ('posylannia', 'https://reyestr.court.gov.ua/…')]
+META_BIZNES = [('nerukhomist', 'нерухомість (забудова, агенція, оцінка)'), ('strakhuvannia', 'страхування чи банк'),
+               ('doslidzhennia', 'дослідження чи медіа'), ('mista', 'громада, міська служба'), ('inshe', 'інше')]
+
+
+def vitryna_biznes(adresa_saitu: str, kartynka: tuple | None = None, period_podii: str = '', chysla: list | None = None) -> str:
+    kyiv = f'Київ{", " + period_podii if period_podii else ""}'
+    ch = ''.join(f'<div class="kartka chyslo-blok"><b class="chyslo-velyke">{e(n)}</b><span>{e(t)}</span></div>' for n, t in (chysla or []))
+    polia = ''.join(f'<tr><th scope="row"><code>{e(k)}</code></th><td>{e(v)}</td></tr>' for k, v in POLIA_BIZNES)
+    pryklad = ''.join(f'<tr><th scope="row"><code>{e(k)}</code></th><td>{e(v)}</td></tr>' for k, v in PRYKLAD_BIZNES)
+    meta = ''.join(f'<option value="{k}">{e(v)}</option>' for k, v in META_BIZNES)
+    tilo = f'''{f'<section class="rozdil"><div class="chysla">{ch}</div></section>' if ch else ''}
+<section class="rozdil"><h2>Що в базі</h2><div class="kartka"><ul class="spysok-tekst">
+<li>Події з рішень судів з адресою й точкою на карті ({e(kyiv)}): що сталося, коли, де, за якою статтею — і посилання на оригінал рішення.</li>
+<li>Місця, де однотипні події повторюються, — окремою таблицею.</li>
+<li>Звернення до 1551 по будинках — числом за темами.</li>
+<li>Оновлення щомісяця: нова копія з усіма змінами, події, видалені за зверненнями людей, з неї прибрано.</li>
+</ul></div>
+<p class="prymitka">Подія — окремий випадок, установлений судом. Концентрація подій — статистика, а не оцінка місця й не прогноз.
+Дані показують лише те, що дійшло до суду.</p></section>
+<section class="rozdil"><h2>Поля</h2><div class="tablytsia-obhortka"><table class="biznes-tablytsia"><thead><tr><th scope="col">Поле</th>
+<th scope="col">Що в ньому</th></tr></thead><tbody>{polia}</tbody></table></div>
+<p class="prymitka">Повний опис полів — у файлі з описом, що йде з кожною копією.</p></section>
+<section class="rozdil"><h2>Як виглядає рядок</h2><div class="tablytsia-obhortka"><table class="biznes-tablytsia biznes-tablytsia--pryklad">
+<caption>Лише формат: у кутових дужках — що стоїть у справжньому рядку</caption><tbody>{pryklad}</tbody></table></div></section>
+<section class="rozdil"><h2>Як ви отримуєте базу</h2><ol class="spysok-tekst">
+<li>Залишаєте запит нижче — партнер проєкту відповідає протягом 2 робочих днів.</li>
+<li>Підписуєте договір користування на місяць або рік; {tsina('biznes')} — залежить від строку й території.</li>
+<li>Щомісяця отримуєте особисте посилання на свіжу копію: база SQLite і таблиці CSV (відкриваються в Excel і Google Таблицях).
+Посилання діє кілька днів, потім — нове з новою копією.</li>
+<li>Доступ для програм за адресою — пізніше, за запитом.</li></ol></section>
+<section class="rozdil"><h2>Умови користування</h2><div class="kartka"><ul class="spysok-tekst">
+<li>Користування, а не продаж: база лише для вашої компанії, без перепродажу й передачі іншим.</li>
+<li>Без спроб упізнати людей і відновити те, що суд приховав.</li>
+<li>Видалення за зверненням людей діє і для вас: такі події зникають з наступної копії, попередню треба замінити.</li>
+<li>Посилання на оригінал рішення лишається біля кожної події, коли ви показуєте дані своїм клієнтам.</li>
+</ul></div><p class="prymitka">Повністю — у договорі користування. Загальні правила сайту — в <a href="/zahlushka/oferta.html">оферті</a>.
+Договори й рахунки оформлює партнер проєкту.</p></section>
+<section class="rozdil"><h2>Для кого</h2><div class="kartka"><ul class="spysok-tekst"><li>забудовники, агенції й оцінювачі нерухомості</li>
+<li>страхові компанії й банки</li><li>дослідники, медіа, громади</li></ul></div></section>
+<section class="rozdil" id="zapyt"><h2>Запит на доступ</h2>
+<form class="biznes-forma" id="biznes-forma" novalidate>
+<label>Компанія<input name="kompaniia" required maxlength="160" autocomplete="organization"></label>
+<label>Контакт — пошта чи телефон<input name="kontakt" required maxlength="160" autocomplete="email"></label>
+<label>Для чого<select name="meta" required><option value="">Оберіть</option>{meta}</select></label>
+<label>Яка територія<input name="terytoriia" maxlength="200" placeholder="Київ, район, кілька вулиць"></label>
+<fieldset><legend>На який строк</legend>
+<label class="vybir-riadok"><input type="radio" name="strok" value="misiats"> місяць</label>
+<label class="vybir-riadok"><input type="radio" name="strok" value="rik"> рік</label>
+<label class="vybir-riadok"><input type="radio" name="strok" value="ne_znaiu" checked> ще не знаю</label></fieldset>
+<label>Що ще важливо<textarea name="komentar" maxlength="2000" rows="4"></textarea></label>
+<label class="vybir-riadok"><input type="checkbox" name="zghoda" required> Погоджуюся з <a href="/zahlushka/polityka.html">політикою конфіденційності</a></label>
+<button class="knopka knopka--holovna" type="submit">Надіслати запит</button>
+<p class="biznes-forma__stan" role="status" aria-live="polite"></p>
+</form>
+<p class="prymitka">Самі ми нікому не пишемо — лише відповідаємо на запити. Не виходить надіслати — <a href="/zahlushka/?shcho=kompaniya&amp;dzherelo=biznes#peredzamovlennya">запасна форма</a>.</p></section>'''
     return vitryna('/biznes/', 'Для бізнесу', 'Для компаній',
-                   MESEDZH['biznes'] + ' База подій із судових рішень і скарг 1551 — у користування на місяць або рік за договором. Ціна — за домовленістю: залиште запит, відповість партнер проєкту.',
+                   MESEDZH['biznes'] + ' База подій із судових рішень і скарг 1551 — у користування на місяць або рік за договором. '
+                   'Свіжа копія щомісяця за особистим посиланням. Ціна — за домовленістю.',
                    tilo, 'Дані для бізнесу: події з судових рішень і скарги 1551 Києва | Моя вулиця',
                    'Дані для компаній: події з судових рішень з адресами, скарги 1551 по будинках. Користування на місяць або рік за договором.',
-                   adresa_saitu, kartynka=kartynka)
+                   adresa_saitu, kartynka=kartynka, skrypty=('/sait/biznes.js',), css=('/sait/biznes.css',))
 
 
 def storinka_oplaty(adresa_saitu: str) -> str:
@@ -648,12 +714,14 @@ def storinka_vydalyty(adresa_saitu: str) -> str:
 <li>Заповніть <a href="/zahlushka/zvernennya.html">форму звернення</a>: адреса або вулиця, що саме не так, як з вами зв’язатися.</li>
 <li>Ми перевіряємо подію за рішенням суду, з якого її взято.</li>
 <li>Протягом 10 робочих днів — виправляємо, прибираємо або пояснюємо, чому лишаємо, і пишемо вам.</li>
-<li>Прибрана подія зникає з карти, довідок і звітів після найближчого оновлення даних і більше не повертається.</li>
+<li>Прибрана подія зникає з карти, довідок і звітів у той самий строк і більше не повертається. Уже надіслані довідки — знімок
+на свою дату, їх ми не змінюємо.</li>
 </ol></div></section>
 <section class="rozdil"><h2>Що ми можемо виправити</h2><div class="kartka"><ul class="spysok-tekst">
 <li>Неправильна адреса чи місце події.</li><li>Опис, який каже більше, ніж рішення суду.</li>
 <li>Подія, яку суд не підтвердив (виправдання, скасування рішення).</li>
-<li>Подія, що дозволяє впізнати вас, хоча суд приховав ці дані.</li></ul></div>
+<li>Подія, що дозволяє впізнати вас, хоча суд приховав ці дані.</li>
+<li>Подія, що сталася понад 10 років тому: номер будинку прибираємо за першим проханням, без пояснень.</li></ul></div>
 <p class="prymitka">Скарги 1551 — відкриті дані міста; ми показуємо лише теми й кількість, без текстів. Помилку в них виправляє гаряча лінія 1551.</p></section>'''
     return Z.storinka(shlyakh='/vydalyty/', title='Видалити або виправити подію — 10 робочих днів | Моя вулиця',
                       opys='Як прибрати або виправити подію на сайті «Моя вулиця»: форма звернення, відповідь за 10 робочих днів.',
@@ -789,13 +857,14 @@ def zibraty_vse(dn: D.Dani, rayony: list, za_rayonom: dict, bud: Budynky | None,
         prykl.sort(key=lambda b: b['url'])
     import kartynky as K
     kv = {}
-    for shl, (mitka, nazva, chysla) in chysla_vitryn(dn, bud, vulyts).items():
+    cv = chysla_vitryn(dn, bud, vulyts)
+    for shl, (mitka, nazva, chysla) in cv.items():
         Z.zapysaty_bajty(vykhid / shl / 'kartynka.png', K.kartynka(mitka, nazva, chysla, kolory))
         kv[shl] = (f'/{shl}/kartynka.png', f'{nazva}: ' + ', '.join(f'{a} {p}' for a, p in chysla))
     for shl, html_ in (('miy-budynok', vitryna_miy_budynok(adresa_saitu, prykl, kv['miy-budynok'], D.period_podii(dn))),
                        ('osbb', vitryna_osbb(adresa_saitu, kv['osbb'])),
                        ('sudova-praktyka', vitryna_sudova(adresa_saitu, kv['sudova-praktyka'])),
-                       ('biznes', vitryna_biznes(adresa_saitu, kv['biznes'], D.period_podii(dn))),
+                       ('biznes', vitryna_biznes(adresa_saitu, kv['biznes'], D.period_podii(dn), cv['biznes'][2])),
                        ('vydalyty', storinka_vydalyty(adresa_saitu)),
                        ('pro-dani', storinka_pro_dani(adresa_saitu, dn.versiia, period_1551(bud.misiatsi) if bud else ''))):
         Z.zapysaty(vykhid / shl / 'index.html', html_)

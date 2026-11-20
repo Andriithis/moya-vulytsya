@@ -149,7 +149,8 @@ export const PEREKHIDNYKY = { test, liqpay, mono };
 
 /** Увімкнений перехідник. Тестовий — лише коли ОБИДВІ змінні кажуть «тест» (щоб не ввімкнути випадково на живому). */
 export function perekhidnyk(env, nazva = env.PLATIZHNYI_SERVIS) {
-  const p = PEREKHIDNYKY[nazva];
+  // лише власні ключі: «constructor», «__proto__» з адреси не мають знаходити вбудовані властивості об'єкта (ZAVDANNYA-156)
+  const p = Object.hasOwn(PEREKHIDNYKY, String(nazva)) ? PEREKHIDNYKY[nazva] : null;
   if (!p) return null;
   if (nazva === 'test' && env.TESTOVA_OPLATA !== 'tak') return null;
   return p;

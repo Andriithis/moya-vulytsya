@@ -16,6 +16,7 @@
   /miy-budynok/, /osbb/, /sudova-praktyka/, /biznes/   вітрини (ZAVDANNYA-85)
   /sudova-praktyka/<kupap|kk>/<номер>/  сторінки статей (з --sudova-praktyka; ZAVDANNYA-111, MV-122)
   /oplata/                  оплата-заглушка «залиште пошту»; /vydalyty/, /pro-dani/ — видалення й про дані
+  /doslidnykam/             «Дані для дослідників» — відкритий набір чисел (site/storinka_doslidnykam.py, ZAVDANNYA-158)
   /zahlushka/               заглушка з формою і грою (site/zahlushka/zibraty.py, без змін)
   sitemap.xml (більше 1 000 адрес — індекс і частини sitemap-<вид>[-N].xml: вулиці, будинки, райони, решта), robots.txt,
   404.html, _redirects (старі назви вулиць — 301 на нові)
@@ -305,7 +306,7 @@ def storinka(*, shlyakh: str, title: str, opys: str, tilo: str, adresa_saitu: st
     if len(opys) > 170:
         opys = opys[:169].rsplit(' ', 1)[0].rstrip(',;:—–-') + '…'
     css_mapy = '<link rel="stylesheet" href="/sait/biblioteka/maplibre-gl.css">\n' if mapa else ''
-    js = ''.join(f'<script src="{s}"></script>\n' for s in skrypty)
+    js = ''.join(f'<script src="{s}"></script>\n' for s in skrypty + ('/sait/vkhid.js',))   # мітка входу з реклами (ZAVDANNYA-153)
     robots = '' if indeksuvaty else '<meta name="robots" content="noindex, follow">\n'
     return f'''<!doctype html>
 <html lang="uk" data-koren="/">
@@ -347,7 +348,7 @@ def storinka(*, shlyakh: str, title: str, opys: str, tilo: str, adresa_saitu: st
 <p>Дані — з рішень судів у Єдиному державному реєстрі судових рішень. Це лише те, що дійшло до суду, а не всі події на вулиці.</p>
 <p>Колір і числа показують лише кількість подій у даних — це не оцінка вулиці, будинку чи району. Ми не стверджуємо причин і не прогнозуємо.</p>
 <p><a href="/miy-budynok/">Мій будинок</a> · <a href="/osbb/">Для ОСББ</a> · <a href="/sudova-praktyka/">Судова практика</a> · <a href="/biznes/">Для бізнесу</a> · <a href="/rayony/">Райони</a> · <a href="/karta/?ihry">Ігри</a></p>
-<p><a href="/pro-dani/">Як ми працюємо з даними</a> · <a href="/vydalyty/">Видалити або виправити подію</a> · <a href="/zahlushka/polityka.html">Політика конфіденційності</a> · <a href="/zahlushka/oferta.html">Оферта</a> · Карта: <a href="https://www.openstreetmap.org/copyright">© учасники OpenStreetMap</a></p>
+<p><a href="/pro-dani/">Як ми працюємо з даними</a> · <a href="/doslidnykam/">Дані для дослідників</a> · <a href="/vydalyty/">Видалити або виправити подію</a> · <a href="/zahlushka/polityka.html">Політика конфіденційності</a> · <a href="/zahlushka/oferta.html">Оферта</a> · Карта: <a href="https://www.openstreetmap.org/copyright">© учасники OpenStreetMap</a></p>
 </div>
 </footer>
 {js}{ANALITYKA}</body>
@@ -1011,7 +1012,8 @@ def zapysaty(shlyakh: Path, tekst: str) -> None:
 def kopiyuvaty_spilne(vykhid: Path) -> None:
     sait = vykhid / 'sait'
     (sait / 'shryfty').mkdir(parents=True, exist_ok=True)
-    for f in ('karta.js', 'poshuk.js', 'tema.js', 'oplata.js', 'sp.js', 'sp.css', 'budynok-pole.js'):
+    for f in ('karta.js', 'poshuk.js', 'tema.js', 'oplata.js', 'sp.js', 'sp.css', 'budynok-pole.js', 'vkhid.js', 'vkhid.css',
+              'biznes.js', 'biznes.css'):
         shutil.copyfile(DZHERELO / 'sait' / f, sait / f)
     for f in ('hra-yadro.js', 'vulytsia-yadro.js'):          # спільне ядро ігор (ZAVDANNYA-117)
         shutil.copyfile(DZHERELO / 'hra' / f, sait / f)
@@ -1207,6 +1209,8 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
     # Будинки, райони, вітрини, оплата-заглушка, видалення, про дані (ZAVDANNYA-85).
     pachky = KH.Pachky(len(bud.spysok)) if (bud and khostynh == 'workers') else None
     adresy += M.zibraty_vse(dn, rayony, za_rayonom, bud, vykhid, adresa_saitu, pachky, len(vulytsi), mistsia_rayonu)
+    import storinka_doslidnykam as SD   # «Дані для дослідників» (ZAVDANNYA-158)
+    adresy += SD.zibraty(vykhid, adresa_saitu)
     a_mists, media_mists_m, _ = SM.zibraty(dn, vykhid, adresa_saitu, bud, media, mistsia)
     adresy += a_mists
     media_mists += media_mists_m
@@ -1219,6 +1223,8 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
         novi = [a for a in SP.zibraty(sudova_praktyka, vykhid, adresa_saitu) if a not in adresy]
         adresy += novi
         sp_storinok = len(novi)
+    import storinky_vkhodiv as V   # сторінки-входи під рекламу (ZAVDANNYA-153): noindex, не в sitemap
+    V.zibraty(vykhid, adresa_saitu, bud, dn.versiia, D.period_podii(dn), sudova_praktyka)
 
     # Заглушка з грою — її власним збирачем, без змін.
     import zibraty as zahlushka
@@ -1363,13 +1369,15 @@ def main(argv=None) -> int:
     p.add_argument('--poshta-servis', choices=('zahlushka', 'http-json'), default='zahlushka', help='сервіс листів')
     p.add_argument('--karta-r2', action='store_true', help='карта підписника зі сховища R2 moya-vulytsya-karta (лише з --oplata tak; '
                    'docs/PLATNA-CHASTYNA.md, розд. 2)')
+    p.add_argument('--biznes-r2', action='store_true', help='«Для бізнесу»: копії бази для компаній зі сховища R2 '
+                   'moya-vulytsya-biznes (docs/BIZNES-DOSTUP.md)')
     a = p.parse_args(argv)
     prodazh = None
     if a.prodazh_d1 or a.platizhnyi_servis:
         if a.khostynh != 'workers':
             p.error('база D1 і продаж працюють лише з --khostynh workers')
         prodazh = {'d1': a.prodazh_d1, 'servis': a.platizhnyi_servis if a.oplata == 'tak' else None,
-                   'adresa': a.adresa_saitu, 'poshta': a.poshta_servis, 'karta': a.karta_r2}
+                   'adresa': a.adresa_saitu, 'poshta': a.poshta_servis, 'karta': a.karta_r2, 'biznes': a.biznes_r2}
     zapovnennya = json.loads(a.zapovnennya.read_text(encoding='utf-8')) if a.zapovnennya else None
     zvit = zibraty_sait(a.baza, a.vykhid, a.pereimenuvannya, a.mezhi_rayoniv, a.adresa_saitu, a.koloda,
                         a.zvit_zvedennia, a.budynky, a.mezha_failiv, a.khostynh, a.perekazy, a.kandydaty_istorii,

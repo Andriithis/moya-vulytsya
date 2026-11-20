@@ -5,6 +5,7 @@
   vidkhyleno     — не пройшла перевірку правил; у мережу не йде, видно на сторінці-перегляді з причинами;
   opublikovano   — вийшла; є посилання на допис;
   pomylka        — не вийшла після всіх спроб;
+  vruchnu        — ролик TikTok: ставить людина за чеклістом (ZAVDANNYA-159), потім команда `tiktok` → opublikovano;
   propushcheno   — мережа вимкнена або допис запізнився більше ніж на добу;
   prybrano       — Андрій прибрав, сервіс видалив допис;
   prybraty_vruchnu — Андрій прибрав, а мережа не дала видалити (інтерфейс не вміє або минуло 48 год у Telegram):
@@ -68,10 +69,11 @@ class Cherha:
 
     # ---------------------------------------------------------------- одиниці
     def dodaty(self, o: dict, zauvazhennia: list[str]) -> bool:
-        """Нова одиниця; повторне додавання тієї самої (той самий id) нічого не змінює."""
+        """Нова одиниця; повторне додавання тієї самої (той самий id) нічого не змінює.
+        Одиниця з `vruchnu` (TikTok, ZAVDANNYA-159) стає в стан `vruchnu`: її ставить людина, сервіс не публікує."""
         if self.db.execute('SELECT 1 FROM odynytsi WHERE id=?', (o['id'],)).fetchone():
             return False
-        stan = 'vidkhyleno' if zauvazhennia else 'chekaie'
+        stan = 'vidkhyleno' if zauvazhennia else ('vruchnu' if o.get('vruchnu') else 'chekaie')
         self.db.execute(
             'INSERT INTO odynytsi (id, tyzhden, merezha, kanal, typ, hrupa, chas, stan, zauvazhennia, dani) '
             'VALUES (?,?,?,?,?,?,?,?,?,?)',
