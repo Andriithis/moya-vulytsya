@@ -191,5 +191,5 @@ class Storinka(unittest.TestCase):
         self.assertIn('ціна за домовленістю', html)
         for zaboroneno in ('ОСОБА_', 'MV-', 'конвеєр', 'макет', 'рейтинг', 'небезпечн', 'уникайте', 'будьте уважні'):
             self.assertNotIn(zaboroneno, html)
-        self.assertIn('не оцінка безпечності', html)
+        self.assertIn('не оцінка місця й не прогноз', html)
         self.assertIn("referrerPolicy: 'same-origin'", js, 'з no-referrer браузер шле Origin: null — форму відхилить сервер')

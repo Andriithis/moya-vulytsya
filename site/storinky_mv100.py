@@ -568,7 +568,7 @@ POLIA_BIZNES = [
     ('problemy', 'окрема таблиця: місця, де однотипні події повторюються, і які події туди входять'),
     ('skarhy_1551', 'окрема таблиця: звернення до 1551 по будинках — числом за темами, без тексту заявника'),
 ]
-PRYKLAD_BIZNES = [('data', '2025-03-14'), ('hodyna', '22'), ('hrupa', 'Порушення водіїв'), ('stattia', 'ст.130 КУпАП'),
+PRYKLAD_BIZNES = [('data', '2025-03-14'), ('hodyna', '22'), ('hrupa', HRUPY_PODII['vod']), ('stattia', 'ст.130 КУпАП'),
                   ('opys', '‹опис події з рішення›'), ('adresa', '‹вулиця, номер будинку›'), ('tochnist', 'будинок'),
                   ('shyrota', '50.4…'), ('dovhota', '30.5…'), ('sud', '‹районний суд міста Києва›'),
                   ('posylannia', 'https://reyestr.court.gov.ua/…')]
@@ -589,11 +589,11 @@ def vitryna_biznes(adresa_saitu: str, kartynka: tuple | None = None, period_podi
 <li>Звернення до 1551 по будинках — числом за темами.</li>
 <li>Оновлення щомісяця: нова копія з усіма змінами, події, видалені за зверненнями людей, з неї прибрано.</li>
 </ul></div>
-<p class="prymitka">Подія — окремий випадок, установлений судом. Концентрація подій — не оцінка безпечності місця й не прогноз.
+<p class="prymitka">Подія — окремий випадок, установлений судом. Концентрація подій — статистика, а не оцінка місця й не прогноз.
 Дані показують лише те, що дійшло до суду.</p></section>
 <section class="rozdil"><h2>Поля</h2><div class="tablytsia-obhortka"><table class="biznes-tablytsia"><thead><tr><th scope="col">Поле</th>
 <th scope="col">Що в ньому</th></tr></thead><tbody>{polia}</tbody></table></div>
-<p class="prymitka">Повний опис полів — у файлі OPYS.md, що йде з кожною копією.</p></section>
+<p class="prymitka">Повний опис полів — у файлі з описом, що йде з кожною копією.</p></section>
 <section class="rozdil"><h2>Як виглядає рядок</h2><div class="tablytsia-obhortka"><table class="biznes-tablytsia biznes-tablytsia--pryklad">
 <caption>Лише формат: у кутових дужках — що стоїть у справжньому рядку</caption><tbody>{pryklad}</tbody></table></div></section>
 <section class="rozdil"><h2>Як ви отримуєте базу</h2><ol class="spysok-tekst">
