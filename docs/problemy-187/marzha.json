@@ -1,0 +1,139 @@
+{
+ "базовий (8 кв., 5 подій, 3 кв., 40/60 м, P 0,05, 1 справа)": {
+  "kandydativ": 6223,
+  "spilnykh_z_bazovym": 6223,
+  "dodano": 0,
+  "vybirky_u_varianti": 154,
+  "problem_otsinka": 1380,
+  "marzha": null
+ },
+ "період 6 кв.": {
+  "kandydativ": 5274,
+  "spilnykh_z_bazovym": 5108,
+  "dodano": 166,
+  "vybirky_u_varianti": 126,
+  "problem_otsinka": 1128,
+  "marzha": null
+ },
+ "період 12 кв.": {
+  "kandydativ": 7476,
+  "spilnykh_z_bazovym": 5997,
+  "dodano": 1479,
+  "vybirky_u_varianti": 145,
+  "problem_otsinka": 1449,
+  "marzha": {
+   "dodano": 1479,
+   "vybirka": 32,
+   "problem": 2,
+   "chastka": 0.062
+  }
+ },
+ "≥ 4 подій": {
+  "kandydativ": 7201,
+  "spilnykh_z_bazovym": 6111,
+  "dodano": 1090,
+  "vybirky_u_varianti": 152,
+  "problem_otsinka": 1378,
+  "marzha": {
+   "dodano": 1090,
+   "vybirka": 32,
+   "problem": 0,
+   "chastka": 0.0
+  }
+ },
+ "≥ 6 подій": {
+  "kandydativ": 5213,
+  "spilnykh_z_bazovym": 5090,
+  "dodano": 123,
+  "vybirky_u_varianti": 125,
+  "problem_otsinka": 1161,
+  "marzha": null
+ },
+ "≥ 2 квартали": {
+  "kandydativ": 6272,
+  "spilnykh_z_bazovym": 6221,
+  "dodano": 51,
+  "vybirky_u_varianti": 154,
+  "problem_otsinka": 1379,
+  "marzha": {
+   "dodano": 51,
+   "vybirka": 31,
+   "problem": 0,
+   "chastka": 0.0
+  }
+ },
+ "≥ 4 квартали": {
+  "kandydativ": 5878,
+  "spilnykh_z_bazovym": 5855,
+  "dodano": 23,
+  "vybirky_u_varianti": 144,
+  "problem_otsinka": 1314,
+  "marzha": null
+ },
+ "коло 40/40 м (інше/ДТП)": {
+  "kandydativ": 5975,
+  "spilnykh_z_bazovym": 5655,
+  "dodano": 320,
+  "vybirky_u_varianti": 136,
+  "problem_otsinka": 1398,
+  "marzha": {
+   "dodano": 320,
+   "vybirka": 30,
+   "problem": 1,
+   "chastka": 0.033
+  }
+ },
+ "коло 60/60 м (інше/ДТП)": {
+  "kandydativ": 6367,
+  "spilnykh_z_bazovym": 6160,
+  "dodano": 207,
+  "vybirky_u_varianti": 151,
+  "problem_otsinka": 1358,
+  "marzha": {
+   "dodano": 207,
+   "vybirka": 30,
+   "problem": 4,
+   "chastka": 0.133
+  }
+ },
+ "коло 100/100 м (інше/ДТП)": {
+  "kandydativ": 6842,
+  "spilnykh_z_bazovym": 5019,
+  "dodano": 1823,
+  "vybirky_u_varianti": 126,
+  "problem_otsinka": 1568,
+  "marzha": null
+ },
+ "P 0.01": {
+  "kandydativ": 4766,
+  "spilnykh_z_bazovym": 4755,
+  "dodano": 11,
+  "vybirky_u_varianti": 111,
+  "problem_otsinka": 1159,
+  "marzha": null
+ },
+ "поправка BH (FDR 5 %)": {
+  "kandydativ": 5695,
+  "spilnykh_z_bazovym": 5690,
+  "dodano": 5,
+  "vybirky_u_varianti": 134,
+  "problem_otsinka": 1298,
+  "marzha": null
+ },
+ "≥ 2 різні справи": {
+  "kandydativ": 6223,
+  "spilnykh_z_bazovym": 6223,
+  "dodano": 0,
+  "vybirky_u_varianti": 154,
+  "problem_otsinka": 1380,
+  "marzha": null
+ },
+ "≥ 3 різні справи": {
+  "kandydativ": 6223,
+  "spilnykh_z_bazovym": 6223,
+  "dodano": 0,
+  "vybirky_u_varianti": 154,
+  "problem_otsinka": 1380,
+  "marzha": null
+ }
+}
