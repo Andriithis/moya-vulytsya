@@ -321,7 +321,8 @@ class Mezhi(unittest.TestCase):
             self.assertIsNone(zab.search(vydyme), f)
 
     def test_ne_yurydychna_dopomoha(self):
-        self.assertIn('Навчання, не юридична допомога', (KAR / 'index.html').read_text(encoding='utf-8'))
+        # і на окремій сторінці, і в карті — підвал малює сам модуль гри
+        self.assertIn('Навчання, не юридична допомога', (KAR / 'kariera.js').read_text(encoding='utf-8'))
 
     def test_bez_vbudovanykh_styliv(self):
         for f in ('index.html', 'kariera.js'):
@@ -329,7 +330,7 @@ class Mezhi(unittest.TestCase):
 
     def test_zminni_dyzainu_yak_u_hri(self):
         hra = (KORIN / 'site' / 'hra' / 'hra.css').read_text(encoding='utf-8')
-        kar = (KAR / 'kariera.css').read_text(encoding='utf-8')
+        kar = (KAR / 'kariera-storinka.css').read_text(encoding='utf-8')
         z = lambda t: dict(re.findall(r'(--[\w-]+):\s*(#[0-9A-Fa-f]{6})', t.split('* {')[0]))
         self.assertEqual(z(kar), z(hra))
 
