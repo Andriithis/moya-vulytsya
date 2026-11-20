@@ -62,7 +62,10 @@ MIN_PODII_DLYA_POSHUKU = 3
 RIVNI_MISIATSI_OKREMO = (8, 9)   # Т-12: місяці цих рівнів — у soty-<рівень>-m.json (ZAVDANNYA-125)
 # MV-32: безкоштовно — останні 3 роки; старші — у підписці (сірі стовпчики з замком, без чисел).
 PERIOD_VIDKRYTYI = f'{D.VIDKRYTI_ROKY[0]}–{D.VIDKRYTI_ROKY[-1]}'
-PERIOD_ZAMKNENYI = f'{D.STARI_ROKY[0]}–{D.STARI_ROKY[-1]}'
+# Роки «у підписці» — лише ті, що є в карті підписника (D.PIDPYSKA_VID, ZAVDANNYA-174): один рік — без тире.
+PERIOD_ZAMKNENYI = (str(D.STARI_ROKY[0]) if len(D.STARI_ROKY) == 1 else f'{D.STARI_ROKY[0]}–{D.STARI_ROKY[-1]}')
+# Усі роки підписки (замкнені + відкриті) — підпис замкненої кнопки фільтра карти.
+PERIOD_PIDPYSKY = f'{(D.STARI_ROKY or D.VIDKRYTI_ROKY)[0]}–{D.VIDKRYTI_ROKY[-1]}'
 VYSOTA_ZAMKNENOHO = 36
 ZAMOK_SVG = ('<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" '
              'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect>'
@@ -859,9 +862,10 @@ def ekran_karty(dn: D.Dani) -> str:
     # Ігри на карті (≈ 215 КБ скриптів) першому екрану не потрібні: karta.js вантажить їх після завантаження сторінки,
     # з живою картою або з першим натиском «Ігри» (ZAVDANNYA-164).
     return f'''<section class="ekran-karty" aria-label="Карта Києва" data-ihry="{' '.join(SKRYPTY_IHOR)}">
-<div id="karta-mista" class="karta-povna" data-soty-7="/karta/soty-7.json" data-soty-8="/karta/soty-8.json" data-soty-9="/karta/soty-9.json" data-soty-8-m="/karta/soty-8-m.json" data-soty-9-m="/karta/soty-9-m.json" data-poshuk="/karta/poshuk.json" data-versiia="{e(dn.versiia)}"></div>
+<div id="karta-mista" class="karta-povna" data-soty-7="/karta/soty-7.json" data-soty-8="/karta/soty-8.json" data-soty-9="/karta/soty-9.json" data-soty-8-m="/karta/soty-8-m.json" data-soty-9-m="/karta/soty-9-m.json" data-poshuk="/karta/poshuk.json" data-rayony="/karta/rayony.json" data-versiia="{e(dn.versiia)}" data-oplata="{e(T.OPLATA['rezhym'])}" data-tsina-pidpysky="{e(T.tsina('pidpyska'))}" data-tsina-dovidky="{e(T.tsina('dovidka'))}"></div>
 <div class="zastavka" aria-hidden="true"></div>
 <noscript><p class="karta-bez-js">Щоб побачити карту, увімкніть JavaScript. Без нього — <a href="/vulytsi/">покажчик вулиць</a>.</p></noscript>
+<a class="karta-spyskom" href="/rayony/">Карта списком: райони → вулиці → будинки</a>
 <p class="karta__zboi" hidden>Підкладка карти не завантажилася — видно соти й межу Києва.</p>
 <div class="verkh-ryad">
 <form class="plashka verkh" role="search" action="/vulytsi/"><span class="znak">{znak}</span>
@@ -883,7 +887,7 @@ def ekran_karty(dn: D.Dani) -> str:
 {hrupy}
 </ul>
 <div class="f-period" role="group" aria-label="Період">
-<button type="button" class="seg" data-period="3" aria-pressed="true">{PERIOD_VIDKRYTYI}</button><button type="button" class="seg seg--zamok" disabled title="Усі роки — у підписці">{ZAMOK_SVG} Усі роки</button>
+<button type="button" class="seg" data-period="3" aria-pressed="true">{PERIOD_VIDKRYTYI}</button><button type="button" class="seg seg--zamok" disabled title="{PERIOD_PIDPYSKY} — у підписці">{ZAMOK_SVG} {PERIOD_PIDPYSKY}</button>
 </div>
 </div>
 </div>
@@ -897,12 +901,14 @@ def ekran_karty(dn: D.Dani) -> str:
 <p>Безкоштовно — лише числа по сотах за {PERIOD_VIDKRYTYI}, без адрес і описів; {PERIOD_ZAMKNENYI} — у підписці. Домашнє насильство — нарівні з іншими подіями; статеві злочини й справи щодо дітей входять лише в число великих сот у групі «{D.HR.NAZVA['nas']}».</p>
 <h3>Як рухатись</h3>
 <p>Коліщатко або два пальці — ближче й далі; подвійний клік — ближче; клавіші + і −. Права кнопка або два пальці вгору-вниз — нахил.</p>
+<h3>Карта списком</h3>
+<p>Те саме, що на карті, — сторінками: <a href="/rayony/">райони → вулиці → будинки</a>; кожну вулицю можна знайти й у <a href="/vulytsi/">покажчику</a>.</p>
 <h3>Джерела</h3>
 <p>{DZHERELA_KARTY}</p>
 </section>
 <div id="tykha" class="tykha" hidden>будинки — у підписці</div>
 <div id="dzherela" class="dzherela">{DZHERELA_KARTY}</div>
-<aside id="kartka" class="plashka kartka-soty" hidden aria-label="Картка соти"></aside>
+<aside id="kartka" class="plashka kartka-soty" hidden role="region" aria-labelledby="kartka-nazva" aria-label="Картка місця"></aside>
 <aside id="ihry" class="plashka panel-ihor" hidden aria-label="Ігри на карті"{dani_ihor()}></aside>
 <div id="ihry-zaproshennia" class="plashka ihry-zaproshennia" role="status" hidden><button type="button" class="z-tekst"></button><button type="button" class="z-x" aria-label="Закрити запрошення">×</button></div>
 <div id="pidkazka" class="pidkazka-toast" role="status" aria-live="polite"></div>
@@ -935,6 +941,24 @@ def poshuk_karty(dn: D.Dani, vulytsi: list, tsentry: dict) -> dict:
             rayony.append([nazva, round(min(x[1][2] for x in r), 4), round(min(x[1][0] for x in r), 4),
                            round(max(x[1][3] for x in r), 4), round(max(x[1][1] for x in r), 4)])
     return {'versiia': dn.versiia, 'vulytsi': vs, 'rayony': rayony}
+
+
+def geojson_rayoniv(dn: D.Dani, zi_storinkoyu: set) -> dict:
+    """GeoJSON меж районів (data/borders.json, OpenStreetMap; точність 4 знаки ≈ 10 м) з назвою, адресою сторінки району
+    (лише якщо вона є — zi_storinkoyu) й центром рамки — для картки району на карті. Лише межі, жодних подій."""
+    f = []
+    if dn.rayony is not None:
+        for nazva in sorted(dn.rayony.mezhi, key=kliuch_abetky):
+            kontury = [[[round(p[1], 4), round(p[0], 4)] for p in poly] for poly, _ in dn.rayony.mezhi[nazva]]
+            for k in kontury:
+                if k and k[0] != k[-1]:
+                    k.append(k[0])
+            ramky = [r for _, r in dn.rayony.mezhi[nazva]]
+            c = [round((min(r[2] for r in ramky) + max(r[3] for r in ramky)) / 2, 4),
+                 round((min(r[0] for r in ramky) + max(r[1] for r in ramky)) / 2, 4)]
+            f.append({'type': 'Feature', 'properties': {'nazva': nazva, 'slug': slug_rayonu(nazva) if nazva in zi_storinkoyu else '', 'c': c},
+                      'geometry': {'type': 'MultiPolygon', 'coordinates': [[k] for k in kontury]}})
+    return {'type': 'FeatureCollection', 'features': f}
 
 
 def predzavantazhennia(zastavka: dict | None) -> str:
@@ -1234,13 +1258,15 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
                      json.dumps({'versiia': dn.versiia, 'riven': riven, 'm': misiatsi}, ensure_ascii=False,
                                 separators=(',', ':'), sort_keys=True))
         zapysaty(vykhid / 'karta' / f'soty-{riven}.json',
-                 json.dumps({'versiia': dn.versiia, 'riven': riven, 'roky': D.ROKY, 'soty': soty},
+                 json.dumps({'versiia': dn.versiia, 'riven': riven, 'roky': D.STARI_ROKY + D.VIDKRYTI_ROKY, 'soty': soty},
                             ensure_ascii=False, separators=(',', ':'), sort_keys=True))
     # Перший екран головної й /karta/ — картинка карти з сотами цього випуску (ZAVDANNYA-164, MV-176); її стилі — у sait.css.
     import zastavka as Z
     css_zastavky, fayly_zastavky = Z.zibraty(soty_rivniv, kolory_tem(), vykhid / 'karta')
     with open(vykhid / 'sait' / 'sait.css', 'a', encoding='utf-8') as f:
         f.write('\n' + css_zastavky)
+    # Межі районів — для картки району на карті (ZAVDANNYA-174, ZVIT-166 №7): вантажаться, лише коли людина обрала район.
+    zapysaty(vykhid / 'karta' / 'rayony.json', json.dumps(geojson_rayoniv(dn, set(rayony)), ensure_ascii=False, separators=(',', ':')))
     zapysaty(vykhid / 'karta' / 'poshuk.json', json.dumps(poshuk_karty(dn, vulytsi, tsentry_vulyts), ensure_ascii=False,
                                                           separators=(',', ':')))
     zapysaty(vykhid / 'karta' / 'index.html', storinka_karty(dn, adresa_saitu, fayly_zastavky))

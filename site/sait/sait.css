@@ -225,7 +225,7 @@ body.z-kartoyu .shapka__vnutri { max-width: none; padding: 6px 16px; min-height:
 .znak { flex: none; display: flex; }
 .verkh input { flex: 1; min-width: 0; height: 44px; border: 0; background: none; font: 400 16px/24px var(--sans); color: var(--ink); outline: none; }
 .verkh input::placeholder { color: var(--muted); }
-.verkh:focus-within { border-color: var(--accent); }
+.verkh:focus-within { border-color: var(--accent); outline: 2px solid var(--accent); outline-offset: 2px; }   /* видимий фокус поля (ZVIT-171, 2.4.7) */
 #pidkazky { position: absolute; z-index: 8; left: 16px; top: 76px; width: 300px; margin: 0; padding: 4px; list-style: none; }
 #pidkazky li { display: flex; flex-direction: column; justify-content: center; gap: 0; min-height: 44px; padding: 4px 10px; border-radius: var(--radius-s); font: 400 16px/22px var(--sans); color: var(--ink-2); cursor: pointer; }
 #pidkazky li b { font-weight: 600; color: var(--ink); }
@@ -326,6 +326,10 @@ body.z-kartoyu .shapka__vnutri { max-width: none; padding: 6px 16px; min-height:
 .k-dali a { flex: 1 1 auto; padding: 7px 12px; border-radius: var(--radius-m); background: var(--surface); color: var(--ink-2);
   font: 600 13px/18px var(--sans); text-align: center; text-decoration: none; }
 .k-dali a:hover { color: var(--ink); border-color: var(--accent); }
+/* ZAVDANNYA-174: перша кнопка — покупка цього місця (або це місце в карті підписника): помітніша за решту */
+.k-dali a.k-dali__holovna { flex-basis: 100%; background: var(--accent); color: var(--on-accent); }
+.k-dali a.k-dali__holovna:hover { color: var(--on-accent); filter: brightness(1.06); }
+.k-dali a small { display: block; font: 400 12px/16px var(--sans); opacity: .85; }
 .mezha { margin: 8px 0 0; font: 400 12px/16px var(--sans); color: var(--muted); }
 
 @media (max-width: 700px) {
@@ -413,6 +417,13 @@ body.z-kartoyu .shapka__vnutri { max-width: none; padding: 6px 16px; min-height:
 }
 .menyu a, .lohotyp__nazva { white-space: nowrap; }
 @media (max-width: 600px) { .menyu { gap: 12px; } }
+/* 320 px (WCAG 1.4.10; ZAVDANNYA-174, ZVIT-171 №8): шапка не ширша за екран — менші відступи й проміжки */
+@media (max-width: 360px) {
+  .shapka__vnutri, body.z-kartoyu .shapka__vnutri { padding: 6px 10px; gap: 8px; }
+  .menyu { gap: 8px; font-size: 13.5px; }
+  .lohotyp__nazva { font-size: 16px; }
+  .shapka .znachok { width: 36px; height: 36px; }
+}
 @media (max-width: 430px) { .lohotyp__nazva { display: none; } }
 
 /* ZAVDANNYA-105 (прототип): смуга «роки · місяці» і «вау». Колір — лише наш (індиго й м'ята), без червоного. */
@@ -434,13 +445,23 @@ body.z-kartoyu .shapka__vnutri { max-width: none; padding: 6px 16px; min-height:
 .vr-chipy { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
 .vr-chipy .seg { border-radius: var(--radius-pill); padding: 0 12px; white-space: nowrap; border: 1.5px solid var(--mezha); }
 .vr-x { border: 0; background: none; font-size: 20px; color: var(--muted); min-width: 32px; min-height: 32px; }
+/* «Карта списком» (ZAVDANNYA-174, ZVIT-171 №6): перше посилання після карти — видно, коли на ньому фокус клавіатури */
+.karta-spyskom { position: absolute; z-index: 9; left: 16px; bottom: 16px; padding: 10px 14px; border-radius: var(--radius-m); background: var(--surface);
+  color: var(--ink); font: 600 14px/20px var(--sans); border: 1.5px solid var(--accent); transform: translateY(calc(100% + 24px)); }
+.karta-spyskom:focus { transform: none; }
+/* картка: назва в фокусі після відкриття — без рамки миші, з рамкою клавіатури */
+#kartka-nazva:focus { outline: none; }
+#kartka-nazva:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 @media (max-width: 700px) {
   .chas { left: 8px; right: 8px; bottom: 8px; max-width: none; justify-content: space-between; }
   .ch-skilky { display: none; }
   .ch-znach { min-width: 96px; }
   .vau-lich { top: 120px; }
   .vau-rayony { left: 8px; right: 8px; transform: none; bottom: 70px; max-width: none; }
-  .vr-pyt { display: none; }
+  /* телефон: питання — окремим рядком над районами (ZAVDANNYA-174, ZVIT-166 №7) */
+  .vau-rayony { flex-wrap: wrap; row-gap: 4px; }
+  .vr-pyt { order: -1; flex: 1 1 calc(100% - 44px); font-size: 13px; line-height: 18px; }
+  .vr-chipy { flex: 1 1 100%; order: 1; }
   .ekran-karty.shukayu .chas, .ekran-karty.shukayu .vau-rayony { display: none; }
 }
 /* «Для медіа» на сторінці публічного місця (MV-113) */
