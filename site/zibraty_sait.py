@@ -991,6 +991,7 @@ def zibraty_ihry(dn: D.Dani, vykhid: Path, koloda: Path | None, baza: Path | Non
     # «Кваліфікуй: кар'єра» (ZAVDANNYA-152): справи з випуску й текстів (kariera.py, поза git); немає — гра на зачатку kvalifikuy.json
     kar = DZHERELO / 'ihry' / 'kariera' / 'kariera.json'
     if kar.exists():
+        _kar_perevirka(kar)   # ZAVDANNYA-176: ім'я, «кв. N», номер протоколу, обірване речення — сайт не збирається
         shutil.copyfile(kar, tsil / 'kariera.json')
         IHRY_DANI['kariera'] = '/ihry/kariera.json'
     shutil.copyfile(DZHERELO / 'ihry' / 'nalashtuvannia.json', tsil / 'nalashtuvannia.json')
@@ -1413,6 +1414,18 @@ def main(argv=None) -> int:
         print(f'{k}: {v}')
     return 0
 
+
+
+def _kar_perevirka(kar: Path) -> None:
+    """Справи «кар'єри» перед публікацією — тією самою перевіркою, що й збирач (site/ihry/kariera/kariera.py, ZAVDANNYA-176)."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('kariera_perevirka', DZHERELO / 'ihry' / 'kariera' / 'kariera.py')
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    bidy = mod.perevirka(json.loads(kar.read_text(encoding='utf-8')))
+    if bidy:
+        raise SystemExit(f"kariera.json: справи не годяться для показу ({len(bidy)}): " +
+                         '; '.join(f'{d} {p}: «{u}»' for d, p, u in bidy[:10]) + ' — перезберіть kariera.py')
 
 if __name__ == '__main__':
     sys.exit(main())

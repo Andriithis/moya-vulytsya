@@ -217,12 +217,87 @@ class Henerator(unittest.TestCase):
         t = K.znejosobyty('Обвинувачений ОСОБА_3, ІНФОРМАЦІЯ_1, 05.05.2025 за адресою: м. Київ, вул. Хрещатик, 15-А, кв. 7, '
                           'біля будинку буд. 28/15 керував авто д.н.з. НОМЕР_1, повторно протягом року після засудження за ч. 2 '
                           'ст. 309 КК України, що утворює склад адміністративного правопорушення, передбаченого ч. 1 ст. 130 КУпАП.')
-        self.assertIn('Особа В', t)
-        self.assertNotRegex(t, r'ОСОБА_|ІНФОРМАЦІЯ|НОМЕР_|309|130|15-А|28/15|кв\. 7|КУпАП|КК')
+        self.assertTrue(t.startswith('Обвинувачений,'), 'роль замість мітки, як у колоді (ZAVDANNYA-176)')
+        self.assertNotRegex(t, r'ОСОБА_|ІНФОРМАЦІЯ|НОМЕР_|д\.н\.з|309|130|15-А|28/15|кв\. 7|КУпАП|КК')
         self.assertIn('вул. Хрещатик', t)
         self.assertNotIn('буд.', t)
         self.assertIn('повторно протягом року', t, 'ознака частини лишається — це і є навичка')
         self.assertIn('[стаття]', t)
+
+    def test_bez_imen_protokoliv_i_kvartyr(self):
+        '''ZAVDANNYA-176 (ZVIT-168, №1): прізвища з ініціалами, процесуальне про суддю, номери протоколів і квартир — геть.'''
+        t = K.znejosobyty('ОСОБА_1 12.03.2025 о 10 год. по вул. Хрещатик, 5, кв. 12 відмовився виконати вимогу. '
+                          'Постанову винесено інспектором УПП Діденком Т.М. на місці. Справу передано судді Шаповаловій К.В. для розгляду. '
+                          'Згідно протоколу серії ЕПР1 № 470986 водій ОСОБА_2 був у квартирі 143/144 і чекав. '
+                          'Потерпілому ОСОБА_3 завдано подряпин. Захисник — адвокат Кузьмін Є.О.')
+        self.assertNotRegex(t, r'Діденк|Шаповал|Кузьмін|470986|ЕПР|143|кв\. 12|ОСОБА_')
+        self.assertIn('Особа А', t)
+        self.assertIn('водій був у квартирі', t, 'роль замість мітки; слово «квартира» лишається, номер — ні')
+        self.assertIn('Потерпілому завдано', t)
+        self.assertEqual(K.perevirka({'pole': ['doc', 'fabula', 'chomu'], 'spravy': [['1', t, '']]}), [])
+
+    def test_perevirka_valyt_zbirku(self):
+        '''Щось лишилось — perevirka це бачить, і main не пише файл (збірка падає).'''
+        pole = ['doc', 'fabula', 'chomu']
+        for fab, chomu in (('Інспектор Красьоха Є.С. склав протокол.', ''), ('Сталося в кв. 7.', ''),
+                           ('Протокол серії ААД №728948 складено.', ''), ('Особа А зробила щось.', 'суддя І.І. Коваленко'),
+                           ('Сталося щось, і особа', '')):
+            self.assertTrue(K.perevirka({'pole': pole, 'spravy': [['1', fab, chomu]]}), fab + ' / ' + chomu)
+        self.assertEqual(K.perevirka({'pole': pole, 'spravy': [['1', 'Передав Особа В. З метою наживи взяв гроші.', '']]}), [],
+                         '«Особа В.» на кінці речення — не ініціал')
+
+    @unittest.skipUnless(__import__('os').environ.get('MV_KARIERA_TEKSTY'), 'повні тексти: MV_KARIERA_BAZA=…db MV_KARIERA_TEKSTY=тека')
+    def test_povni_teksty_bez_imen(self):
+        '''На справжньому випуску й Release teksty (≈ 3 хв): після збору perevirka порожня — нічого не лишилось.'''
+        import glob, os
+        d = K.zibraty(Path(os.environ['MV_KARIERA_BAZA']), sorted(Path(x) for x in glob.glob(os.environ['MV_KARIERA_TEKSTY'] + '/*.jsonl.xz')),
+                      log=lambda *a: None)
+        self.assertGreater(len(d['spravy']), 1000)
+        self.assertEqual(K.perevirka(d), [])
+
+    def test_sait_ne_zbyraietsia_z_imenem(self):
+        '''Збірка сайту бере kariera.json лише після тієї самої перевірки (zibraty_sait._kar_perevirka).'''
+        sys.path.insert(0, str(KORIN / 'site'))
+        import zibraty_sait as ZS
+        with tempfile.TemporaryDirectory() as tmp:
+            f = Path(tmp) / 'kariera.json'
+            f.write_text(json.dumps({'pole': ['doc', 'fabula', 'chomu'], 'spravy': [['1', 'Постанову виніс інспектор Діденко Т.М. на місці.', '']]}), encoding='utf-8')
+            with self.assertRaises(SystemExit):
+                ZS._kar_perevirka(f)
+            f.write_text(json.dumps({'pole': ['doc', 'fabula', 'chomu'], 'spravy': [['1', 'Особа А керувала авто біля ринку.', '']]}), encoding='utf-8')
+            ZS._kar_perevirka(f)
+
+    def test_tsili_rechennia(self):
+        '''Фабула випуску обрізана — дочитуємо в тексті рішення до кінця речення (S-П.1); задовге — лише цілі речення.'''
+        fab = 'ОСОБА_1 15.03.2025 о 12 год. 10 хв. по вул. Хрещатик, 22 у м. Києві знайшов поліетиленовий пакет та вирішив взяти'
+        tekst = 'Вступ. ВСТАНОВИВ: ' + fab + ' його собі, масою 0,52 г, вдруге протягом року. Вивчивши матеріали, суд дійшов висновку.'
+        t = K.tsili_rechennia(fab, tekst)
+        self.assertTrue(t.endswith('вдруге протягом року.'), t)
+        self.assertEqual(K.tsili_rechennia(fab, 'інший текст'), '', 'не знайшли й обірване — справи немає')
+        self.assertEqual(K.tsili_rechennia(fab + ' його.', 'інший текст'), fab + ' його.')
+        self.assertEqual(K.obrizaty_do_rechennia('Перше речення про подію, досить довге, щоб лишитись у грі як ціле речення з фактами, часом і місцем події біля ринку на розі. Друге обірване на'),
+                         'Перше речення про подію, досить довге, щоб лишитись у грі як ціле речення з фактами, часом і місцем події біля ринку на розі.')
+
+    def test_oznaka_chastyny_v_umovi(self):
+        '''Ознака частини (повторно, розмір, воєнний стан…) з пояснення суду має бути у фабулі.'''
+        self.assertEqual(K.oznaky('тобто повторне протягом року керування в стані сп’яніння'), {'повторно'})
+        self.assertIn('розмір', K.oznaky('пакет з речовиною масою 0,52 г'))
+        self.assertIn('воєнний стан', K.oznaky('в умовах воєнного стану'))
+        self.assertEqual(K.oznaky('керував автомобілем у стані сп’яніння'), set())
+        self.assertTrue(K.NE_KYIV.search('м. Стрий, автомобільна дорога Київ-Чоп, 548 км'))
+        self.assertTrue(K.NE_KYIV.search('у Житомирській області'))
+        self.assertFalse(K.NE_KYIV.search('у м. Києві по вул. М. Грушевського, рухаючись зі швидкістю 90 км/год'))
+        self.assertFalse(K.NE_KYIV.search('с. Гатне Київської області'))
+
+    def test_imena_yak_u_kolodi(self):
+        '''IMENA і PROTSES_SUDDI — рівно як у dani-edrsr/src/pokaz_fabuly.py (якщо репозиторій поруч).'''
+        pf = KORIN.parent / 'dani-edrsr' / 'src' / 'pokaz_fabuly.py'
+        if not pf.exists():
+            self.skipTest('dani-edrsr поруч немає')
+        t = pf.read_text(encoding='utf-8')
+        self.assertIn(K.IMENA.pattern, t)
+        for ch in K.PROTSES_SUDDI.pattern.split('|'):
+            self.assertIn(ch, t)
 
     def test_poza_hroiu(self):
         for st in ('ст.173-2 КУпАП · домашнє насильство', 'ст.152 КК · зґвалтування', 'ст.390-1 КК · приписи', 'ст.156 КК · розбещення'):
