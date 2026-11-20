@@ -329,7 +329,7 @@ def znejosobyty(t: str, prykhovaty_statti: bool = True) -> str:
     t = VULYTSIA.sub(r'\1', t)
     t = re.sub(r'(будин\w+|буд\.)\s*№?\s*\d+[^\s,.;]*', r'\1', t)
     t = re.sub(r'(будин\w+)\s+буд\.?(?=\s)', r'\1', t)
-    t = re.sub(r'(?<![\w.])буд\.+(?!\s*\d)', 'будинку', t)      # «біля буд. по вул.» → «біля будинку по вул.»
+    t = re.sub(r'(?<![\w.])буд\.(\.?)(?!\s*\d)', r'будинку\1', t)   # «буд. №5. Після» → «будинку. Після»: крапка речення лишається      # «біля буд. по вул.» → «біля будинку по вул.»
     if prykhovaty_statti:
         t = STATTIA_U_TEKSTI.sub('[стаття]', t)
         t = ZAIVE_RECHENNIA.sub('', t)

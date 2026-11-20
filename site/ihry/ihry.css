@@ -139,6 +139,7 @@
   .i-shap { top: -1px; }
   /* Під час пошуку на карті шторка згортається до рядка з назвою — карта вільна. */
   .panel-ihor.zghornuta { height: 64px; overflow: hidden; }
+  .panel-ihor.vysoka { height: calc(100% - 16px); }
   /* «Вгадай» (ZAVDANNYA-176): згорнута шторка лишає видимим сам опис — без нього нема що вгадувати. */
   .panel-ihor.zghornuta.z-opysom { height: auto; max-height: 40%; overflow-y: auto; }
   .panel-ihor.zghornuta.z-opysom .i-tilo > :not(.i-opys):not(.i-den) { display: none; }
@@ -172,7 +173,9 @@
 
 /* Під час гри карта — лише для гри (ZAVDANNYA-176, ZVIT-168 №8): без плашки «Що болить вашому будинку?» і смуги часу,
    що «оживає» сама; стовпчики 3D сот ховає ihry.js. */
-.ekran-karty.ihry-vidkryto .haslo-karty, .ekran-karty.ihry-vidkryto .chas { display: none; }
+.ekran-karty.ihry-vidkryto .haslo-karty, .ekran-karty.ihry-vidkryto .chas, .ekran-karty.ihry-vidkryto .vau-lich { display: none; }
+/* Назва гри отримує фокус програмно (читалка називає гру) — рамки клавіші їй не треба. */
+.i-shap h2:focus { outline: none; }
 
 /* Приціл для гри без дотику (ZAVDANNYA-176): хрестик у центрі карти й клавіша «Тут» під ним. */
 .ihry-prytsil { position: absolute; inset: 0; z-index: 5; pointer-events: none; }

@@ -137,7 +137,7 @@
     pokazaty(gra || 'menyu');
   }
   function zakryty() {
-    panel.hidden = true; knopka.setAttribute('aria-expanded', 'false'); ekran.classList.remove('ihry-vidkryto'); panel.classList.remove('zghornuta', 'z-opysom');
+    panel.hidden = true; knopka.setAttribute('aria-expanded', 'false'); ekran.classList.remove('ihry-vidkryto'); panel.classList.remove('zghornuta', 'z-opysom', 'vysoka');
     rezhym(null); prybratyMitky(); zupynytyLitopys(); zupynytyKarieru();
     try { povernuty3d(); } catch (e) { /* без карти */ }
     knopka.focus();
@@ -170,6 +170,7 @@
   var FOKUS = false;
   function pokazaty(gra) {
     FOKUS = true;
+    panel.classList.remove('vysoka');
     if (gra !== 'litopys') zupynytyLitopys();
     if (gra !== 'kariera') zupynytyKarieru();
     ZARAZ = gra;
@@ -234,6 +235,7 @@
     if (!window.MvKariera) { menyu(); return; }
     zupynytyKarieru();
     ramka('Кваліфікуй: кар’єра', '<div class="i-kariera"></div>');
+    panel.classList.add('vysoka');   // карта цій грі не потрібна: на телефоні шторка майже на весь екран — справа видна одразу
     KARIERA = window.MvKariera.zapustyty({ korin: $('.i-kariera'), dani: DZH.kariera || DZH.kvalifikuy, zapasni: DZH.kvalifikuy,
       bali: function (ochky) { return narakhuvaty(ochky); }, ochky: K && K.kariera_ochky,
       tost: function (t, ms) { toastDovgyi(t, ms); }, prokrutka: function () { panel.scrollTop = 0; },
@@ -392,7 +394,7 @@
       return;
     }
     var p = VG.podii[VG.i];
-    ramka('Вгадай, де це було', '<p class="i-den">Подія ' + (VG.i + 1) + ' з ' + VG.podii.length + ' · ' + esc(p.vyd) + ', ' + esc(p.rik) + '</p><p class="i-opys">' + esc(p.opys_korotkyi) + '</p><p class="i-prym">Торкніться карти там, де, на вашу думку, це сталося.</p>');
+    ramka('Вгадай, де це було', '<p class="i-den">Подія ' + (VG.i + 1) + ' з ' + VG.podii.length + ' · ' + esc(p.vyd) + ', ' + esc(p.rik) + '</p><p class="i-opys">' + esc(p.opys_korotkyi) + '</p><p class="i-prym">Торкніться карти там, де, на вашу думку, це сталося, або наведіть приціл (стрілки, «+» і «−») і натисніть «Тут».</p>');
     rezhym(function (ll) {
       var m = H.vidstan(ll.lat, ll.lng, p.lat, p.lon), o = H.ochky(m); VG.ochky += o;
       marker(ll.lat, ll.lng, 'sproba'); marker(p.lat, p.lon, 'pravda', 'тут');
