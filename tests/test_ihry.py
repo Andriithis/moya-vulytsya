@@ -417,3 +417,30 @@ class VulytsiaVKarti(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class Vypravlennia176(unittest.TestCase):
+    """ZAVDANNYA-176 (ZVIT-168): без цін спроб і «Докупити», без «Мій район», один шлях до покупки, одна картка «Кваліфікуй»."""
+    JS = (KORIN / 'site' / 'ihry' / 'ihry.js').read_text(encoding='utf-8')
+    LIT = (KORIN / 'site' / 'ihry' / 'litopys' / 'litopys.js').read_text(encoding='utf-8')
+    VD = (KORIN / 'site' / 'hra' / 'vulytsia.html').read_text(encoding='utf-8')
+
+    def test_bez_tsin_sprob(self):
+        for zaboroneno in ('Докупити', 'K.pakety', 'oplata_chomu_ni', 'куплених', "'Обміняти'", 'data-i="obmin"', 'data-i="paket"'):
+            self.assertNotIn(zaboroneno, self.JS, zaboroneno)
+        self.assertIn('лише в цьому браузері', self.JS)
+
+    def test_bez_mii_raion(self):
+        for f in (self.JS, self.LIT, self.VD):
+            self.assertNotIn('Мій район', f)
+            self.assertNotIn('за 10 років', f)
+
+    def test_odyn_shliakh_do_pokupky(self):
+        for dz in ('hra-vgadai', 'hra-detektyv'):
+            self.assertIn(f"shliakhDoVulytsi('{dz}')", self.JS)
+        self.assertIn('/oplata/?tovar=pidpyska&amp;dzherelo=hra-litopys', self.LIT)
+
+    def test_odna_kartka_kvalifikuy(self):
+        self.assertEqual(self.JS.count("'Кваліфікуй: кар’єра', 'кодекс"), 0)
+        self.assertEqual(len(re.findall(r"kart\('kariera', 'Кваліфікуй'", self.JS)), 1)
+
