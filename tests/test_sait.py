@@ -795,7 +795,9 @@ class Sait(unittest.TestCase):
                 self.assertIn(int(re.sub(r'\D', '', n)), dozvoleni, f'{f.relative_to(self.sait)}: {n} грн')
         biznes = (self.sait / 'biznes' / 'index.html').read_text(encoding='utf-8')
         self.assertIn('ціна за домовленістю', biznes)
-        self.assertIn('href="/zahlushka/?shcho=kompaniya&amp;dzherelo=biznes#peredzamovlennya">Надіслати запит', biznes)
+        # ZAVDANNYA-157: своя форма запиту (POST /api/forma/biznes), стара форма заглушки — запасна
+        self.assertIn('id="biznes-forma"', biznes)
+        self.assertIn('href="/zahlushka/?shcho=kompaniya&amp;dzherelo=biznes#peredzamovlennya">запасна форма', biznes)
         mb = (self.sait / 'miy-budynok' / 'index.html').read_text(encoding='utf-8')
         self.assertIn('799\u00a0грн на місяць', mb)
         self.assertIn('1\u00a0490\u00a0грн на рік', (self.sait / 'osbb' / 'index.html').read_text(encoding='utf-8'))
@@ -908,7 +910,12 @@ class Sait(unittest.TestCase):
         konfig = (Path(zv['teka_workera']) / 'wrangler.jsonc').read_text(encoding='utf-8')
         konfig = json.loads(konfig.split('\n', 1)[1])
         self.assertEqual(konfig['vars']['PACHOK'], str(zv['pachok_budynkiv']))
-        self.assertEqual(konfig['assets']['run_worker_first'], ['/budynok/*'] + KH.MARSHRUTY_PRODAZHU)
+        self.assertEqual(konfig['assets']['run_worker_first'], ['/budynok/*'] + KH.MARSHRUTY_PRODAZHU + KH.KOLODY_IHOR)
+        # Колоди ігор зі збирача (крім налаштувань) — усі через скрипт, щоб прибрана подія зникала одразу (ZAVDANNYA-161)
+        zibrani = set(re.findall(r"IHRY_DANI\['\w+'\] = '(/ihry/[a-z-]+\.json)'", (KORIN / 'site' / 'zibraty_sait.py').read_text(encoding='utf-8')))
+        self.assertEqual(zibrani - {'/ihry/nalashtuvannia.json'}, set(KH.KOLODY_IHOR))
+        js = (KORIN / 'site' / 'worker' / 'prodazh' / 'prybrannia.js').read_text(encoding='utf-8')
+        self.assertEqual(re.findall(r"'(/ihry/[a-z-]+\.json)'", js.split('export const KOLODY = [', 1)[1].split('];', 1)[0]), KH.KOLODY_IHOR)
         self.assertNotIn('PRODAZH', konfig['vars'], 'без --prodazh-d1 продаж вимкнено')
         self.assertFalse((Path(zv['teka_workera']) / 'testy').exists())
         self.assertEqual(konfig['assets']['directory'], f'../{teka.name}')
@@ -966,6 +973,44 @@ console.log(JSON.stringify(out));
             self.zs.zibraty_sait(self.baza, Path(self.tmp.name) / 'sait-mezha', self.pereim, KORIN / 'data' / 'borders.json',
                                  budynky=self.budynky, mezha_failiv=50)
 
+    def test_google_154(self):
+        """ZAVDANNYA-154: зібраний сайт «очима Google» — без помилок (site/perevirka_google.py): канонічні адреси, один
+        заголовок і опис потрібної довжини, карта сайту ↔ noindex, без сиріт, битих посилань і дублікатів, розмітка
+        schema.org; у заголовках і описах — ні оцінки безпечності, ні «відгуків»."""
+        import perevirka_google as G
+        import zaholovky as ZH
+        z = G.perevirka(self.sait, self.zs.ADRESA_SAITU)
+        self.assertEqual(z['pomylky'], {})
+        self.assertGreater(z['jsonld'].get('BreadcrumbList', 0), 0)
+        for p in self.nashi_storinky():
+            t = p.read_text(encoding='utf-8')
+            for m in (G.TITLE.search(t), G.OPYS.search(t)):
+                if m:
+                    self.assertIsNone(ZH.ZABORONENO.search(m.group(1)), (p, m.group(1)))
+        if self.spravzhnii:
+            return
+        b = self.budynok('khreshchatyk/22')
+        self.assertIn('<title>вул. Хрещатик, 22, Київ — скарги мешканців і події з рішень судів</title>', b)
+        import storinky_mv100 as M          # сусіди інших вулиць у радіусі 400 м, найближчі першими
+        bb = [{'slug': s, 'vulytsia': v, 'lat': lat, 'lon': 30.5} for s, v, lat in
+              (('a/1', 'A', 50.4500), ('a/2', 'A', 50.4501), ('b/1', 'B', 50.4520), ('c/1', 'C', 50.4510), ('d/1', 'D', 50.4600))]
+        self.assertEqual([x['slug'] for x in M.budynky_poruch(bb)['a/1']], ['c/1', 'b/1'])
+        self.assertIn('/budynok/nevidoma/1/', (self.sait / 'rayony' / 'index.html').read_text(encoding='utf-8'))
+        red = (self.sait / '_redirects').read_text(encoding='utf-8')
+        self.assertIn('/vulytsia/chervonoarmiiska/ /vulytsia/velyka-vasylkivska/ 301', red)
+
+    def test_zaholovky_vmishchuiutsia(self):
+        """ZAVDANNYA-154: довгі адреси — коротший хвіст, а не обрізаний Google заголовок."""
+        import zaholovky as ZH
+        for v in ('a', 'b', 'c'):
+            for vul, nom in (('вулиця Хрещатик', '22'), ('проспект Академіка Глушкова', '40/2'),
+                             ('вулиця Генерала Генерального Дуже-Довгоназвенка', '148-В корп. 2')):
+                self.assertLessEqual(len(ZH.title_budynku(vul, nom, v)), 70, (v, vul))
+        self.assertEqual(ZH.korotka_nazva('Йорданська вулиця'), 'вул. Йорданська')
+        self.assertEqual(ZH.korotka_nazva('Харківське шосе'), 'Харківське шосе')
+        self.assertLessEqual(len(ZH.opys_budynku('проспект Академіка Глушкова', '40/2', 'Голосіївський район',
+                                                 '1 125 звернень', 'опалення й гаряча вода', '112 подій', '2024–2026')), 160)
+
     def test_sitemap_dilytsia_na_chastyny(self):
         if self.spravzhnii:
             self.skipTest('лише для штучної бази')
@@ -978,7 +1023,14 @@ console.log(JSON.stringify(out));
             self.zs.MEZHA_SITEMAP = stara
         indeks = (teka / 'sitemap.xml').read_text(encoding='utf-8')
         self.assertIn('<sitemapindex', indeks)
-        self.assertTrue((teka / 'sitemap-2.xml').is_file())
+        # ZAVDANNYA-154: частини за видом сторінок, кожна до MEZHA_SITEMAP адрес
+        chastyny = sorted(p.name for p in teka.glob('sitemap-*.xml'))
+        self.assertIn('sitemap-vulytsi-2.xml', chastyny)
+        self.assertIn('sitemap-budynky.xml', chastyny)
+        self.assertIn('sitemap-inshe-2.xml', chastyny)
+        for n in chastyny:
+            self.assertIn(f'/{n}</loc>', indeks)
+            self.assertLessEqual((teka / n).read_text(encoding='utf-8').count('<loc>'), 5)
 
 
 def brauzer_dlya_karty() -> str | None:

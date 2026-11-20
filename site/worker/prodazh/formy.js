@@ -18,7 +18,8 @@ const ZAPYSIV_NA_POSHTU = 20;
 export const LYSTIV_ZVERNEN = 10;        // листів партнеру про нові звернення — не більше на годину (ZAVDANNYA-156)            // більше рядків «скоро» з однієї пошти не пишемо (захист від засмічення)
 export const TABLYTSI = { skoro: 'id, poshta, tovar, budynok, adresa, kanal, stvoreno, napysano',
   zayavka: 'id, shcho, misto, adresa, kontakt, kanal, stvoreno', zvernennya: 'id, posylannya, shcho_ne_tak, poyasnennya, kontakt, stvoreno, zakryto',
-  podiya: 'den, nazva, kanal, n' };
+  podiya: 'den, nazva, kanal, n',
+  prybrani_podii: 'id, kliuch, posylannia, zvernennya_id, prychyna, khto, prybrano, povernuto' };   // журнал прибраних (ZAVDANNYA-161)
 
 export function kanal(d) {
   const k = String(d ?? '').trim().toLowerCase();
@@ -93,7 +94,7 @@ export async function forma(request, env, tablytsia) {
   return new Response('ні', { status: 404 });
 }
 
-function csvKlityna(v) {
+export function csvKlityna(v) {
   if (v === null || v === undefined) return '';
   let s = String(v);
   if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;       // щоб таблиця не виконала вміст клітинки як формулу

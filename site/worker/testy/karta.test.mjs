@@ -116,6 +116,37 @@ test('без сховища KARTA адреса — звичайний сайт (
   assert.equal(text, 'сайт');
 });
 
+test('ліміт описів на добу (ZAVDANNYA-161, п. 2): клітинки й «події адреси» рахуються разом; понад межу — 429; завтра — знову', async () => {
+  const env = seredovyshche();
+  env.KARTA_NA_DEN = '5';
+  env.POSHTA_PARTNERA = 'partner@mv.test';
+  const kuka = pidpysnyk(env);
+  const kl = klitynka(...A);
+  for (let i = 0; i < 3; i++) assert.equal((await zapyt(env, `/pidpysnyk/spravy/${kl}.json`, kuka)).r.status, 200);
+  for (let i = 0; i < 2; i++) assert.equal((await zapyt(env, `/pidpysnyk/api/podii?la=${A[0]}&lo=${A[1]}`, kuka)).r.status, 200);
+  assert.equal(env.__LYSTY.filter((l) => /ліміт описів/.test(l.tema)).length, 1, 'партнер дізнався один раз');
+  assert.doesNotMatch(env.__LYSTY.at(-1).tekst, /ana@poshta/, 'без пошти людини');
+  const zabahato = await zapyt(env, `/pidpysnyk/spravy/${kl}.json`, kuka);
+  assert.equal(zabahato.r.status, 429);
+  assert.doesNotMatch(zabahato.text, /вигаданий опис/);
+  assert.equal((await zapyt(env, `/pidpysnyk/api/podii?la=${A[0]}&lo=${A[1]}`, kuka)).r.status, 429);
+  // сама карта й інші файли — без ліміту
+  assert.equal((await zapyt(env, '/pidpysnyk/', kuka)).r.status, 200);
+  assert.equal(env.__LYSTY.filter((l) => /ліміт описів/.test(l.tema)).length, 1, 'лист — не на кожен зайвий запит');
+  // наступна доба (UTC) — знову можна
+  env.__CHAS = () => T0 + 86400;
+  env.BAZA.db.prepare('UPDATE sesii SET do_ = ?').run(T0 + 2 * 86400);
+  env.BAZA.db.prepare('UPDATE pidpysky SET diie_do = ?').run(T0 + 30 * 86400);
+  assert.equal((await zapyt(env, `/pidpysnyk/spravy/${kl}.json`, kuka)).r.status, 200);
+});
+
+test('ліміт описів: без змінної — 300 на добу, з запасом для людини', async () => {
+  const { limitOpysiv, OPYSIV_NA_DEN } = await import('../prodazh/karta.js');
+  assert.equal(OPYSIV_NA_DEN, 300);
+  assert.equal(limitOpysiv({}), 300);
+  assert.equal(limitOpysiv({ KARTA_NA_DEN: '1000' }), 1000);
+});
+
 test('«Стежу» з картки адреси (ZAVDANNYA-151): та сама таблиця, що кабінет; лише підписник і лише з нашого сайту', async () => {
   const env = seredovyshche();
   const POSHUK = [['вулиця Вигадана', 'vyhadana', '', [['1', '/budynok/vyhadana/1/'], ['3', '/budynok/vyhadana/3/']]]];

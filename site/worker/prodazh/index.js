@@ -15,12 +15,19 @@
 //   POST /api/spovishchennia/<сервіс>      підписане сповіщення про оплату → перевірка підпису й суми → видача
 //   GET  /oplata/dyakuiemo/                «дякуємо»
 //   GET  /dovidka/<id>/?k=<ключ>           довідка: ключ із листа або вхід у кабінет власника
-//   /kabinet/…                             вхід за посиланням на пошту, мої довідки, «Стежу», підписка, видалення даних
+//   /kabinet/…                             вхід за посиланням на пошту (посилання → сторінка з кнопкою «Увійти» → POST /kabinet/vkhid/uviity), мої довідки, «Стежу», підписка, видалення даних
 //   GET  /kabinet/google/…                 вхід через Google — лише з GOOGLE_KLIIENT_ID і GOOGLE_SEKRET (google.js, ZAVDANNYA-142)
 //   /api/vnutr/…                           для видавача (site/prodazh/vydavach.py), заголовок Authorization: Bearer VYDACHA_KLIUCH
 //   POST /kabinet/obmin                    обмін балів ігор на довідку / місяць підписки — лише з OBMIN_BALIV = 'tak' (ZAVDANNYA-123)
 //   /pidpysnyk/…                          карта підписника зі сховища R2 — лише з дійсною підпискою (karta.js, ZAVDANNYA-133)
 //   POST /api/admin/vydalyty               видалення даних на запит людини (партнер), Authorization: Bearer ADMIN_KLIUCH
+//   /kabinet/zvernennia/                   кабінет звернень партнера (пошта з PARTNERY або POSHTA_PARTNERA): прибрати подію одразу,
+//                                          закрити звернення, журнал прибраних (prybrannia.js, ZAVDANNYA-161, п. 5)
+//   POST /api/admin/prybraty-podiyu, povernuty-podiyu; GET /api/admin/prybrani  — те саме для скриптів, ключ ADMIN_KLIUCH
+//   GET  /api/vnutr/prybrani               список прибраних рішень для видавача й збирання даних (ключ VYDACHA_KLIUCH)
+//   POST /api/forma/biznes                 запит «Для бізнесу» зі сторінки /biznes/ — 'skoro' і 'tak' (biznes.js, ZAVDANNYA-157)
+//   /api/admin/biznes/…                    клієнти «Для бізнесу», посилання на N днів, вимкнення — ADMIN_KLIUCH (biznes.js)
+//   GET  /kopiia/<ключ>/…                  копія бази для компанії за особистим посиланням — 'skoro' і 'tak' (biznes.js)
 import TS from './tsiny.js';
 import { vypadkovyi, sha256, rivni } from './bezpeka.js';
 import { perekhidnyk, pidpysTestu, PomylkaPidpysu, NePidtrymano } from './perekhidnyky.js';
@@ -33,8 +40,10 @@ import * as K from './karta.js';
 import * as SP from './sudova.js';
 import * as G from './google.js';
 import * as ST from './stezhu.js';
+import * as PR from './prybrannia.js';
+import * as BZ from './biznes.js';
 
-export const MARSHRUTY = ['/oplata/*', '/api/*', '/kabinet/*', '/dovidka/*', '/prodazh/*', '/pidpysnyk/*'];
+export const MARSHRUTY = ['/oplata/*', '/api/*', '/kabinet/*', '/dovidka/*', '/prodazh/*', '/pidpysnyk/*', '/kopiia/*'];
 const SESIIA_S = 30 * 86400, VKHID_S = 30 * 60, LYSTIV_NA_HODYNU = 5;
 export const STEZHU_MAKS = 100;
 
@@ -55,6 +64,12 @@ async function sesiia(request, env) {
   if (!s) return null;
   return L.odyn(env, `SELECT k.* FROM sesii s JOIN korystuvachi k ON k.id = s.korystuvach_id WHERE s.hash = ? AND s.do_ > ?`, sha256(s), L.teper(env));
 }
+
+/** Партнер (ZAVDANNYA-161, п. 5): пошта зі списку PARTNERY (через кому) або, без нього, POSHTA_PARTNERA. */
+function partnery(env) {
+  return String(env.PARTNERY || env.POSHTA_PARTNERA || '').split(',').map((x) => L.chystaPoshta(x)).filter(Boolean);
+}
+const jePartner = (env, ja) => !!ja && partnery(env).includes(ja.poshta);
 
 /**
  * Ліміт запитів з однієї адреси (ZAVDANNYA-156): прив'язка Cloudflare Rate Limiting OBMEZHENNIA (wrangler.jsonc, «ratelimits»,
@@ -229,7 +244,8 @@ async function nadislatyVkhid(request, env, url) {
   const poshta = L.chystaPoshta((await forma(request)).poshta);
   const vidpovid = S.vkhid('Якщо ця пошта є в нас, посилання для входу вже в листі. Перевірте й «Спам».', G.uvimkneno(env));
   if (!poshta) return S.vkhid('Перевірте пошту.', G.uvimkneno(env));
-  const k = await L.odyn(env, 'SELECT * FROM korystuvachi WHERE poshta = ?', poshta);
+  let k = await L.odyn(env, 'SELECT * FROM korystuvachi WHERE poshta = ?', poshta);
+  if (!k && partnery(env).includes(poshta)) k = await L.korystuvach(env, poshta);   // партнер — у кабінет звернень і без покупок
   if (!k) return vidpovid;   // не кажемо, чи є така пошта
   const t = L.teper(env);
   const n = (await L.odyn(env, 'SELECT COUNT(*) AS n FROM vkhody WHERE korystuvach_id = ? AND do_ > ?', k.id, t + VKHID_S - 3600)).n;
@@ -238,16 +254,34 @@ async function nadislatyVkhid(request, env, url) {
   await L.zrobyty(env, 'INSERT INTO vkhody (hash, korystuvach_id, do_) VALUES (?, ?, ?)', sha256(kliuch), k.id, t + VKHID_S);
   await nadislaty(env, {
     komu: poshta, tema: 'Вхід у кабінет «Моєї вулиці»',
-    tekst: `Посилання для входу (діє 30 хвилин, один раз):\n${adresaSaitu(env, url)}/kabinet/vkhid/?t=${kliuch}\n\nЯкщо ви не просили — нічого не робіть.`,
+    tekst: `Відкрийте посилання й натисніть «Увійти» (діє 30 хвилин, один раз):\n${adresaSaitu(env, url)}/kabinet/vkhid/?t=${kliuch}\n\nЯкщо ви не просили — нічого не робіть.`,
   });
   return vidpovid;
 }
 
-async function uviity(request, env, url) {
-  const t = url.searchParams.get('t') || '';
-  const zaraz = L.teper(env);
+// ZAVDANNYA-161, п. 1 (MV-173): посилання з листа лише ВІДКРИВАЄ сторінку з кнопкою «Увійти» — нічого не витрачає.
+// Поштові сканери (Outlook, корпоративні пошти) самі відкривають посилання з листа запитом GET; раніше вхід згоряв ще до людини.
+// Вхід — лише натисканням (POST з нашої сторінки). Заодно чужий «підставний» лист не впустить вас у чужий кабінет без натискання.
+const zastarilo = (env) => S.vkhid('Посилання застаріло або вже використане. Надішлемо нове.', G.uvimkneno(env));
+
+async function diisnyiVkhid(env, t) {
+  if (!/^[a-z2-7]{10,64}$/.test(t)) return null;
   const v = await L.odyn(env, 'SELECT * FROM vkhody WHERE hash = ?', sha256(t));
-  if (!v || v.vykorystano || v.do_ < zaraz) return S.vkhid('Посилання застаріло або вже використане. Надішлемо нове.', G.uvimkneno(env));
+  return v && !v.vykorystano && v.do_ >= L.teper(env) ? v : null;
+}
+
+async function storinkaVkhodu(env, url) {
+  const t = url.searchParams.get('t') || '';
+  if (!(await diisnyiVkhid(env, t))) return zastarilo(env);
+  return S.knopkaVkhodu(t);
+}
+
+async function uviity(request, env, url) {
+  if (!zNashohoSaitu(request, env)) return S.vkhid('Відкрийте посилання з листа ще раз і натисніть «Увійти».', G.uvimkneno(env), 403);
+  const t = String((await forma(request)).t || '');
+  const v = await diisnyiVkhid(env, t);
+  if (!v) return zastarilo(env);
+  const zaraz = L.teper(env);
   const r = await L.zrobyty(env, 'UPDATE vkhody SET vykorystano = ? WHERE hash = ? AND vykorystano IS NULL', zaraz, v.hash);
   if (!r.meta?.changes) return S.vkhid('Посилання вже використане.', G.uvimkneno(env));
   const s = vypadkovyi(32);
@@ -287,7 +321,7 @@ async function kabinet(env, ja, povidomlennia = '') {
   for (const p of pidpysky) p.zaBali = (await L.odyn(env, 'SELECT servis FROM zamovlennia WHERE id = ?', p.zamovlennia_id))?.servis === 'bali';
   const bali = B.uvimkneno(env) ? { balans: await B.balans(env, ja.id), kurs: B.KURS, zapyt: vypadkovyi(16) } : null;
   const lyst = { pidpyska: pidpysky.some((p) => ['pidpyska', 'rieltor'].includes(p.tovar)), vymkneno: await ST.vymknenyi(env, ja.id) };
-  return S.kabinet({ poshta: ja.poshta, dovidky, stezhu, pidpysky, dostupno: d, povidomlennia, bali, lyst });
+  return S.kabinet({ poshta: ja.poshta, dovidky, stezhu, pidpysky, dostupno: d, povidomlennia, bali, lyst, partner: jePartner(env, ja) });
 }
 
 async function diiaKabinetu(request, env, url, ja, dia) {
@@ -360,6 +394,38 @@ async function diiaKabinetu(request, env, url, ja, dia) {
   return S.nemaie();
 }
 
+// ---------------------------------------------------------------- кабінет звернень партнера (ZAVDANNYA-161, п. 5)
+
+async function storinkaZvernen(env, povidomlennia = '') {
+  const vidkryti = await L.vsi(env, 'SELECT * FROM zvernennya WHERE zakryto IS NULL ORDER BY stvoreno LIMIT 200');
+  const zakryti = await L.vsi(env, 'SELECT * FROM zvernennya WHERE zakryto IS NOT NULL ORDER BY zakryto DESC LIMIT 50');
+  return S.zvernenniaPartnera({ vidkryti, zakryti, zhurnal: await PR.zhurnal(env), povidomlennia });
+}
+
+async function zvernennia(request, env, url, ja) {
+  if (!ja) return pereity(url, '/kabinet/');
+  if (!jePartner(env, ja)) return S.nemaie();          // для людей цієї сторінки «немає»
+  const s = url.pathname.slice('/kabinet/zvernennia/'.length);
+  if (request.method === 'GET') return s === '' ? storinkaZvernen(env) : S.nemaie();
+  if (request.method !== 'POST') return S.nemaie();
+  if (!zNashohoSaitu(request, env)) return S.povidomlennia('Не вдалося', 'Дію можна зробити лише з нашого сайту.', 403);
+  const f = await forma(request);
+  if (s === 'prybraty') {
+    const zv = f.zvernennya ? await L.odyn(env, 'SELECT id FROM zvernennya WHERE id = ?', parseInt(f.zvernennya, 10) || 0) : null;
+    const v = await PR.prybraty(env, { posylannia: f.posylannia, zvernennya_id: zv?.id ?? null, prychyna: f.prychyna, khto: ja.poshta });
+    if (v.pomylka) return storinkaZvernen(env, v.pomylka);
+    return storinkaZvernen(env, v.vzhe ? 'Цю подію вже прибрано.' : 'Подію прибрано: з карти підписника й ігор — одразу (до хвилини). Не забудьте відповісти людині й закрити звернення.');
+  }
+  if (s === 'zakryty') {
+    await L.zrobyty(env, 'UPDATE zvernennya SET zakryto = ? WHERE id = ? AND zakryto IS NULL', L.teper(env), parseInt(f.zvernennya, 10) || 0);
+    return storinkaZvernen(env, 'Звернення закрито.');
+  }
+  if (s === 'povernuty') {
+    return storinkaZvernen(env, (await PR.povernuty(env, f.id, ja.poshta)) ? 'Подію повернуто.' : 'Такого прибрання немає або його вже повернуто.');
+  }
+  return S.nemaie();
+}
+
 // ---------------------------------------------------------------- «Судова практика»: довідка з підписки юриста
 
 async function spDovidkaZPidpysky(request, env, url) {
@@ -403,6 +469,7 @@ async function vnutr(request, env, url, shliakh) {
     try { tilo = await request.json(); } catch { tilo = {}; }
     return new Response(null, { status: (await ST.nadislatyLyst(env, m[1], tilo)).status });
   }
+  if (shliakh === 'prybrani' && request.method === 'GET') return Response.json({ prybrani: await PR.aktyvni(env) });
   m = shliakh.match(/^pomylka\/(d[a-z2-7]+)$/);
   if (m && request.method === 'POST') return new Response(null, { status: (await L.dovidkaPomylka(env, m[1])) ? 204 : 409 });
   return new Response('ні', { status: 404 });
@@ -424,10 +491,22 @@ async function skasuvatyVsi(env, korystuvach_id) {
 async function admin(request, env, shliakh) {
   const avt = (request.headers.get('authorization') || '').replace(/^Bearer /, '');
   if (!env.ADMIN_KLIUCH || !rivni(avt, env.ADMIN_KLIUCH)) return new Response('ні', { status: 401 });
-  const v = shliakh.match(/^vyvantazhennia\/([a-z]+)$/);
+  const b = shliakh.match(/^biznes\/(.+)$/);
+  if (b) return BZ.admin(request, env, new URL(request.url), b[1]);
+  const v = shliakh.match(/^vyvantazhennia\/([a-z_]+)$/);
   if (v && request.method === 'GET') return F.vyvantazhennia(env, v[1]);
   // щоденна перевірка форм прибирає свої тестові рядки (лише канал «perevirka»)
   if (shliakh === 'perevirka' && request.method === 'POST') return Response.json({ prybrano: await F.prybratyPerevirku(env) });
+  // позачергове прибрання події (ZAVDANNYA-161, п. 5) — для скриптів; людині-партнеру зручніше /kabinet/zvernennia/
+  if (shliakh === 'prybraty-podiyu' && request.method === 'POST') {
+    const f = await forma(request);
+    const v = await PR.prybraty(env, { posylannia: f.posylannia, zvernennya_id: f.zvernennya, prychyna: f.prychyna, khto: 'admin' });
+    return Response.json(v, { status: v.pomylka ? 400 : 200 });
+  }
+  if (shliakh === 'povernuty-podiyu' && request.method === 'POST') {
+    return Response.json({ povernuto: await PR.povernuty(env, (await forma(request)).id, 'admin') });
+  }
+  if (shliakh === 'prybrani' && request.method === 'GET') return Response.json({ zhurnal: await PR.zhurnal(env, 10000) });
   if (shliakh === 'vydalyty' && request.method === 'POST') {
     const poshta = L.chystaPoshta((await forma(request)).poshta);
     const k = poshta && await L.odyn(env, 'SELECT * FROM korystuvachi WHERE poshta = ?', poshta);
@@ -473,7 +552,11 @@ async function spilne(request, env, url) {
   if (r && request.method === 'POST') {
     if (!zNashohoSaitu(request, env)) return new Response('ні', { status: 403 });
     if (await zabahato(request, env, 'forma')) return new Response('zabahato', { status: 429 });
-    return F.forma(request, env, r[1]);
+    return r[1] === 'biznes' ? BZ.zapyt(request, env) : F.forma(request, env, r[1]);
+  }
+  if (s === BZ.KOREN.slice(0, -1) || s.startsWith(BZ.KOREN)) {
+    if (await zabahato(request, env, 'kopiia')) return ZABAHATO();
+    return BZ.kopiia(request, env, url);
   }
   const a = s.match(/^\/api\/admin\/(.+)$/);
   if (a) return admin(request, env, a[1]);
@@ -482,7 +565,7 @@ async function spilne(request, env, url) {
 
 /** Відповідь сервера продажу або null (тоді — звичайний сайт). */
 // Що обмежуємо (ZAVDANNYA-156): усе, що пише в базу чи шле листи з дії незнайомця, і вгадування ключів.
-const OBMEZHENI = [['POST', /^\/api\/(skoro|zamovlennia)$/, 'zapys'], ['POST', /^\/kabinet\/vkhid$/, 'vkhid'],
+const OBMEZHENI = [['POST', /^\/api\/(skoro|zamovlennia)$/, 'zapys'], ['POST', /^\/kabinet\/vkhid(\/uviity)?$/, 'vkhid'],
   ['GET', /^\/kabinet\/(vkhid|google)\/$/, 'vkhid'], ['GET', /^\/dovidka\//, 'dovidka'], ['GET', /^\/pidpysnyk\/api\//, 'karta']];
 
 export async function prodazh(request, env) {
@@ -517,8 +600,10 @@ export async function prodazh(request, env) {
   r = s.match(/^\/dovidka\/(d[a-z2-7]+)\/?$/);
   if (r && m === 'GET') return vidkrytyDovidku(request, env, url, r[1]);
   if (s === '/kabinet/vkhid' && m === 'POST') return nadislatyVkhid(request, env, url);
-  if (s === '/kabinet/vkhid/' && m === 'GET') return uviity(request, env, url);
+  if (s === '/kabinet/vkhid/' && m === 'GET') return storinkaVkhodu(env, url);
+  if (s === '/kabinet/vkhid/uviity' && m === 'POST') return uviity(request, env, url);
   if (s.startsWith('/kabinet/google/') && m === 'GET') return google(request, env, url);
+  if (s.startsWith('/kabinet/zvernennia/')) return zvernennia(request, env, url, await sesiia(request, env));
   if (s.startsWith('/kabinet/')) {
     const ja = await sesiia(request, env);
     if (s === '/kabinet/' && m === 'GET') return ja ? kabinet(env, ja) : S.vkhid('', G.uvimkneno(env));

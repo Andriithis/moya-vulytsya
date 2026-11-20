@@ -51,7 +51,7 @@ async function yurist() {
   await worker.fetch(new Request(ADRESA + '/api/spovishchennia/test', { method: 'POST', body: new URLSearchParams(f) }), env);
   await w('POST', '/kabinet/vkhid', { forma: { poshta } });
   const k = env.__LYSTY.at(-1).tekst.match(/vkhid\/\?t=([a-z2-7]+)/)[1];
-  r = await w('GET', `/kabinet/vkhid/?t=${k}`);
+  r = await w('POST', '/kabinet/vkhid/uviity', { forma: { t: k } });   // кнопка «Увійти» (ZAVDANNYA-161)
   return r.headers.get('set-cookie');
 }
 
