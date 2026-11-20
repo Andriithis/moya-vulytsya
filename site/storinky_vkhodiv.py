@@ -178,7 +178,7 @@ def urivok(b: dict | None, bud, versiia: str) -> str:
     podii = (f'Подій з рішень судів з адресою будинку за {roky}: {chyslo(b["podii_vidkr"])}.' if b['podii_vidkr']
              else f'Подій з рішень судів з адресою будинку за {roky} у даних немає.')
     return f'''<div class="kartka vkhid-urivok">
-<p class="mikro">Уривок зі справжніх даних · будинок на вулиці {e(b["vulytsia"])}</p>
+<p class="mikro">Уривок зі справжніх даних · будинок: {e(b["vulytsia"])}</p>
 <p class="vkhid-urivok__z"><b>{M.skarhy_slovo(b["skarh"])}</b> до 1551 за 12 місяців. Найчастіші теми — тут і в сусідніх будинках у радіусі {bud.r_susidy}{NBSP}м (зазвичай):</p>
 <div class="por"><div class="por__shapka" aria-hidden="true"><span>Тема</span><span>цей будинок</span><span></span><span>сусідні</span><span></span></div>
 {ryady}</div>
