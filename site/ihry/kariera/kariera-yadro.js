@@ -27,7 +27,34 @@
     povtory_dni: [1, 3, 7],                   // помилка повертається через 1, потім 3, потім 7 днів
     spravy_dnia: [1, 1, 2, 3, 4],             // складність п'яти «Справ дня» (тяжча — остання)
     variantiv_statti: 4,
-    zamorozka_kozhni: 7                       // один «вихідний» серії на 7 днів
+    zamorozka_kozhni: 7,                      // один «вихідний» серії на 7 днів
+    // Готові теми занять для викладача (ZAVDANNYA-152): пари й трійки статей, які студенти плутають. «Що розрізняє» — лише
+    // ознака, яку видно з самої фабули; суми, пороги й тлумачення — у статтях кодексу, не в грі. Тема показується, коли
+    // для неї у випуску є справи щонайменше двох статей (на зачатку — хоч однієї).
+    temy: [
+      { id: 'kradizhka-hrabizh', nazva: 'Крадіжка, грабіж чи розбій', statti: ['КК 185', 'КК 186', 'КК 187'],
+        rozriznyaie: 'таємно чи відкрито; чи було насильство або погроза ним' },
+      { id: 'dribne-kradizhka', nazva: 'Дрібне викрадення чи крадіжка', statti: ['КУпАП 51', 'КК 185'],
+        rozriznyaie: 'вартість викраденого — межа в примітці до ст. 51 КУпАП' },
+      { id: 'dtp-spianinnia', nazva: '124 чи 130 КУпАП: ДТП чи сп’яніння', statti: ['КУпАП 124', 'КУпАП 130'],
+        rozriznyaie: 'що саме порушив водій: правила руху з наслідком чи керування в стані сп’яніння' },
+      { id: 'vodii', nazva: 'Водій: без прав, сп’яніння, правила руху', statti: ['КУпАП 126', 'КУпАП 130', 'КУпАП 122'],
+        rozriznyaie: 'документи й право керування, стан водія чи сам маневр' },
+      { id: 'dtp-naslidky', nazva: 'ДТП: адміністративне чи кримінальне', statti: ['КУпАП 124', 'КУпАП 122-4', 'КК 286', 'КК 286-1'],
+        rozriznyaie: 'наслідки для людей, стан водія, чи поїхав з місця' },
+      { id: 'narkotyky', nazva: 'Наркотики: 44 КУпАП, 309 чи 307 КК', statti: ['КУпАП 44', 'КК 309', 'КК 307', 'КК 311'],
+        rozriznyaie: 'розмір і мета: для себе чи для збуту' },
+      { id: 'khuliganstvo', nazva: 'Хуліганство: дрібне чи кримінальне', statti: ['КУпАП 173', 'КК 296'],
+        rozriznyaie: 'наскільки грубо порушено порядок і чи були особливі обставини' },
+      { id: 'poriadok', nazva: 'Громадський порядок і алкоголь', statti: ['КУпАП 173', 'КУпАП 178', 'КУпАП 185'],
+        rozriznyaie: 'лайка й чіпляння, розпивання чи непокора поліцейському' },
+      { id: 'politsiia', nazva: 'Непокора чи опір поліцейському', statti: ['КУпАП 185', 'КК 342', 'КК 345'],
+        rozriznyaie: 'не виконав вимогу, чинив опір чи застосував насильство' },
+      { id: 'tilesni', nazva: 'Тілесні ушкодження: легкі, середні, тяжкі', statti: ['КК 125', 'КК 122', 'КК 121'],
+        rozriznyaie: 'ступінь тяжкості за висновком експерта, як його описує суд' },
+      { id: 'shakhraistvo', nazva: 'Шахрайство чи крадіжка', statti: ['КК 190', 'КК 185'],
+        rozriznyaie: 'обман або зловживання довірою чи таємне викрадення' }
+    ]
   };
 
   // ---------- сталий генератор: та сама дата чи код → ті самі справи для всіх ----------
@@ -247,15 +274,84 @@
     return String(kod || '').split('.').map(function (c) { return poDocu[String(parseInt(c, 36))]; })
       .filter(function (x) { return x; });
   }
-  // Код результату студента: «7/10-k3f» — бал і коротка контрольна сума відповідей (викладач бачить, що код не вигаданий).
+  // ---------- теми занять (ZAVDANNYA-152) ----------
+  function temy(D) {
+    var ye = {};
+    D.spravy.forEach(function (x) { ye[x.stattia] = (ye[x.stattia] || 0) + 1; });
+    var min = D.zrazok ? 1 : 2;
+    return N.temy.map(function (t) {
+      var st = t.statti.filter(function (k) { return ye[k]; });
+      return { id: t.id, nazva: t.nazva, rozriznyaie: t.rozriznyaie, statti: st, vsi: t.statti,
+        spraw: st.reduce(function (a, k) { return a + ye[k]; }, 0) };
+    }).filter(function (t) { return t.statti.length >= min; });
+  }
+
+  // ---------- код результату студента ----------
+  // Крок, на якому студент розійшовся із судом, по кожній справі: 0 — усе як суд, 1 — кодекс, 2 — стаття, 3 — частина.
+  function krokPomylky(o) { return o.vse ? 0 : !o.kodeks ? 1 : !o.stattia ? 2 : 3; }
+  // Код «7/10-3a0f2c-k3f»: бал; кроки по справах (по 5 справ у двох знаках 36-кової системи); контрольна сума, прив'язана
+  // до набору (викладач бачить, що код не вигаданий і саме з цього заняття). Відповіді — числа 0–3 або true/false.
   function kodRezultatu(kodNab, vidpovidi) {
-    var pr = vidpovidi.filter(function (x) { return x; }).length;
-    return pr + '/' + vidpovidi.length + '-' + (khesh(kodNab + ':' + vidpovidi.map(function (x) { return x ? 1 : 0; }).join('')) % 46656).toString(36);
+    var kroky = vidpovidi.map(function (x) { return x === true ? 0 : x === false ? 2 : Number(x) || 0; });
+    var pr = kroky.filter(function (x) { return x === 0; }).length;
+    var upak = '';
+    for (var i = 0; i < kroky.length; i += 5) {
+      var v = 0;
+      for (var j = 0; j < 5; j++) v = v * 4 + (kroky[i + j] || 0);
+      upak += ('0' + v.toString(36)).slice(-2);
+    }
+    var sum = (khesh(kodNab + ':' + kroky.join('')) % 46656).toString(36);
+    return pr + '/' + kroky.length + '-' + upak + '-' + ('00' + sum).slice(-3);
+  }
+  // Розібрати код студента для таблиці групи. -> {pravylno, n, kroky[], dijsnyi} або null, якщо це не код.
+  // dijsnyi=false — код з іншого набору, змінений вручну чи з помилкою при переписуванні.
+  function rozibratyRezultat(kodNab, kod) {
+    var m = /^(\d+)\/(\d+)-([0-9a-z]+)-([0-9a-z]{1,3})$/i.exec(String(kod || '').trim());
+    if (!m) return null;
+    var n = Number(m[2]), upak = m[3].toLowerCase(), kroky = [];
+    if (upak.length !== Math.ceil(n / 5) * 2) return { pravylno: Number(m[1]), n: n, kroky: null, dijsnyi: false };
+    for (var i = 0; i < upak.length; i += 2) {
+      var v = parseInt(upak.slice(i, i + 2), 36), gr = [];
+      for (var j = 0; j < 5; j++) { gr.unshift(v % 4); v = Math.floor(v / 4); }
+      kroky = kroky.concat(gr);
+    }
+    kroky = kroky.slice(0, n);
+    var dijsnyi = kodRezultatu(kodNab, kroky) === m[0].toLowerCase();
+    return { pravylno: Number(m[1]), n: n, kroky: kroky, dijsnyi: dijsnyi };
+  }
+  // Таблиця групи: рядки «Ім'я Прізвище 7/10-…» (як студенти надіслали; ім'я — що стоїть перед кодом).
+  // -> {studenty:[{imia, kod, r}], spravy:[{sprava, pravylno, z, kroky:{1,2,3}}], statti:[{stattia, pravylno, z}], nevirni}
+  function tablytsiaHrupy(D, kodNab, tekst) {
+    var spravy = rozibratyKod(D, kodNab);
+    var studenty = [], nevirni = 0;
+    String(tekst || '').split(/\n+/).forEach(function (r) {
+      r = r.trim(); if (!r) return;
+      var m = /(\d+\/\d+-[0-9a-z]+-[0-9a-z]{1,3})\s*$/i.exec(r);
+      if (!m) { nevirni += 1; return; }
+      var rr = rozibratyRezultat(kodNab, m[1]);
+      if (!rr || !rr.dijsnyi || rr.n !== spravy.length) { nevirni += 1; studenty.push({ imia: r.slice(0, m.index).replace(/[\s:;,—–-]+$/, ''), kod: m[1], r: null }); return; }
+      studenty.push({ imia: r.slice(0, m.index).replace(/[\s:;,—–-]+$/, '') || 'без імені', kod: m[1], r: rr });
+    });
+    var dobri = studenty.filter(function (s) { return s.r; });
+    var poSpravakh = spravy.map(function (x, i) {
+      var k = { 1: 0, 2: 0, 3: 0 }, pr = 0;
+      dobri.forEach(function (s) { var v = s.r.kroky[i]; if (v === 0) pr += 1; else k[v] += 1; });
+      return { sprava: x, pravylno: pr, z: dobri.length, kroky: k };
+    });
+    var poStattiakh = {};
+    poSpravakh.forEach(function (p) {
+      var z = poStattiakh[p.sprava.stattia] || (poStattiakh[p.sprava.stattia] = { stattia: p.sprava.stattia, pravylno: 0, z: 0 });
+      z.pravylno += p.pravylno; z.z += p.z;
+    });
+    var statti = Object.keys(poStattiakh).map(function (k) { return poStattiakh[k]; })
+      .sort(function (a, b) { return a.pravylno / (a.z || 1) - b.pravylno / (b.z || 1); });
+    return { studenty: studenty, spravy: poSpravakh, statti: statti, nevirni: nevirni };
   }
 
   return { N: N, khesh: khesh, generator: generator, peremishaty: peremishaty, pidhotuvaty: pidhotuvaty, novyi: novyi,
     riven: riven, den: den, dodatyDni: dodatyDni, spravyDnia: spravyDnia, nastupna: nastupna, variantyStatti: variantyStatti,
     variantyChastyny: variantyChastyny, otsinyty: otsinyty, vidpovisty: vidpovisty, povna: povna, zakrytyDen: zakrytyDen,
     stanDnia: stanDnia, statystyka: statystyka, nabir: nabir, kodNaboru: kodNaboru, rozibratyKod: rozibratyKod,
-    kodRezultatu: kodRezultatu };
+    kodRezultatu: kodRezultatu, krokPomylky: krokPomylky, rozibratyRezultat: rozibratyRezultat, temy: temy,
+    tablytsiaHrupy: tablytsiaHrupy };
 });

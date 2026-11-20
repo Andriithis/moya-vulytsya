@@ -140,9 +140,43 @@ class Yadro(unittest.TestCase):
                  "return [n.map(x=>x.doc),z,n.map(x=>x.stattia),c,Y.kodRezultatu(k,[true,true,true,false]),Y.rozibratyKod(D,'zzz.!!').length]")
         self.assertEqual(r[0], r[1], 'посилання відкриває той самий набір у тому самому порядку')
         self.assertEqual(sorted(r[2]), ['КК 309', 'КК 309', 'КУпАП 130', 'КУпАП 130'], 'рівно між статтями')
-        self.assertRegex(r[3], r'^3/4-[0-9a-z]+$')
+        self.assertRegex(r[3], r'^3/4-[0-9a-z]{2}-[0-9a-z]{3}$')
         self.assertNotEqual(r[3], r[4], 'код залежить від того, які саме відповіді правильні')
         self.assertEqual(r[5], 0)
+
+    def test_kod_rezultatu_z_krokamy(self):
+        """ZAVDANNYA-152: код несе крок помилки по кожній справі; чужий чи переписаний з помилкою — не дійсний."""
+        r = node("const n=Y.nabir(D,{kilkist:7,zerno:'z'});const k=Y.kodNaboru(n);const v=[0,1,0,2,3,0,0];"
+                 "const c=Y.kodRezultatu(k,v);const x=Y.rozibratyRezultat(k,c);"
+                 "const chuzhyi=Y.rozibratyRezultat(Y.kodNaboru(n.slice(1)),c).dijsnyi;"
+                 "const zipsovanyi=Y.rozibratyRezultat(k,c.replace(/^4/,'5')).dijsnyi;"
+                 "return [c,x,chuzhyi,zipsovanyi,Y.rozibratyRezultat(k,'привіт'),Y.krokPomylky({vse:false,kodeks:true,stattia:false})]")
+        self.assertRegex(r[0], r'^4/7-[0-9a-z]{4}-[0-9a-z]{3}$')
+        self.assertEqual(r[1], {'pravylno': 4, 'n': 7, 'kroky': [0, 1, 0, 2, 3, 0, 0], 'dijsnyi': True})
+        self.assertFalse(r[2], 'код з іншого набору')
+        self.assertFalse(r[3], 'бал переписано вручну')
+        self.assertIsNone(r[4])
+        self.assertEqual(r[5], 2)
+
+    def test_tablytsia_hrupy(self):
+        r = node("const n=Y.nabir(D,{statti:['КУпАП 130','КК 309'],kilkist:4,zerno:'h'});const k=Y.kodNaboru(n);"
+                 "const t=Y.tablytsiaHrupy(D,k,'Іваненко Оля '+Y.kodRezultatu(k,[0,0,2,0])+'\\nПетренко: '+Y.kodRezultatu(k,[1,0,2,3])+"
+                 "'\\nСидоренко 4/4-0000-abc\\nпросто текст');"
+                 "return [t.studenty.map(s=>[s.imia,!!s.r]),t.spravy.map(s=>[s.pravylno,s.z,s.kroky]),t.nevirni,t.statti.length]")
+        self.assertEqual(r[0], [['Іваненко Оля', True], ['Петренко', True], ['Сидоренко', False]])
+        self.assertEqual(r[1][2], [0, 2, {'1': 0, '2': 2, '3': 0}], 'третю справу обоє — інша стаття')
+        self.assertEqual(r[1][0], [1, 2, {'1': 1, '2': 0, '3': 0}])
+        self.assertEqual(r[2], 2, 'вигаданий код і рядок без коду')
+        self.assertEqual(r[3], 2)
+
+    def test_temy_zaniat(self):
+        r = node("return [Y.N.temy.length,Y.temy(D).map(t=>[t.id,t.statti]),Y.N.temy.every(t=>t.rozriznyaie&&t.statti.length>=2)]")
+        self.assertGreaterEqual(r[0], 8)
+        self.assertLessEqual(r[0], 12)
+        self.assertTrue(r[2])
+        ids = dict((a, b) for a, b in r[1])
+        self.assertEqual(ids.get('dtp-spianinnia'), ['КУпАП 124', 'КУпАП 130'])
+        self.assertNotIn('tilesni', ids, 'тема без справ щонайменше двох статей — не показується')
 
     def test_zachatok_kvalifikuy(self):
         skrypt = (f"const Y=require({json.dumps(str(KAR / 'kariera-yadro.js'))});"
@@ -220,7 +254,7 @@ class Henerator(unittest.TestCase):
             with lzma.open(tmp / 't' / '2025-05.jsonl.xz', 'wt', encoding='utf-8') as fh:
                 for doc in ('1', '2', '3'):
                     fh.write(json.dumps({'doc_id': doc, 'tekst': TEKST_130}, ensure_ascii=False) + '\n')
-            d = K.zibraty(tmp / 'events.db', [tmp / 't' / '2025-05.jsonl.xz'])
+            d = K.zibraty(tmp / 'events.db', [tmp / 't' / '2025-05.jsonl.xz'], log=lambda *a: None)
         self.assertEqual(d['vypusk'], 'events-2026-11-08')
         self.assertEqual([s[0] for s in d['spravy']], ['1'], 'домашнє насильство й справа з неповнолітнім — поза грою')
         s = dict(zip(d['pole'], d['spravy'][0]))
