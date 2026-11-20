@@ -85,7 +85,33 @@
     return true;
   }
   if (!pidkliuchyty()) { var t0 = setInterval(function () { if (pidkliuchyty()) clearInterval(t0); }, 300); }
-  function rezhym(f, pidkaz) { REZHYM = f; ekran.classList.toggle('ihry-tsil', !!f); if (f && pidkaz) toast(pidkaz); }
+  // Без дотику й миші (ZAVDANNYA-176; ZVIT-168 №10, ZVIT-171 №4): поки гра чекає точку, у центрі карти — приціл, поруч —
+  // клавіша «Тут». Карту рухають стрілками (фокус на карті), наближають «+»/«−»; «Тут» ставить точку в центр.
+  var PRYTSIL = null;
+  function prytsil(uvim) {
+    if (!PRYTSIL) {
+      PRYTSIL = document.createElement('div'); PRYTSIL.className = 'ihry-prytsil'; PRYTSIL.hidden = true;
+      PRYTSIL.innerHTML = '<i aria-hidden="true"></i><button type="button" class="knopka klav knopka--holovna">Тут — центр карти</button>';
+      var kl = PRYTSIL.querySelector('button');
+      kl.setAttribute('aria-describedby', 'ihry-prytsil-pidk');
+      PRYTSIL.insertAdjacentHTML('beforeend', '<span id="ihry-prytsil-pidk" class="prykhovano">Стрілки рухають карту, плюс і мінус — масштаб, Enter ставить точку в центр.</span>');
+      kl.addEventListener('click', function () {
+        var m = karta(); if (!m || !REZHYM) return; var c = m.getCenter(); REZHYM({ lat: c.lat, lng: c.lng });
+      });
+      kl.addEventListener('keydown', function (e) {
+        var m = karta(); if (!m) return;
+        var krok = { ArrowLeft: [-120, 0], ArrowRight: [120, 0], ArrowUp: [0, -120], ArrowDown: [0, 120] }[e.key];
+        if (krok) { e.preventDefault(); m.panBy(krok, { duration: MV.tykho ? 0 : 200 }); }
+        else if (e.key === '+' || e.key === '=') { e.preventDefault(); m.zoomIn({ duration: MV.tykho ? 0 : 200 }); }
+        else if (e.key === '-' || e.key === '_') { e.preventDefault(); m.zoomOut({ duration: MV.tykho ? 0 : 200 }); }
+      });
+      ekran.appendChild(PRYTSIL);
+    }
+    PRYTSIL.hidden = !uvim;
+    // Фокус — одразу на «Тут»: з клавіатури можна грати без Tab через усю карту; після дотику рамки не видно (:focus-visible).
+    if (uvim) PRYTSIL.querySelector('button').focus({ preventScroll: true });
+  }
+  function rezhym(f, pidkaz) { REZHYM = f; ekran.classList.toggle('ihry-tsil', !!f); prytsil(!!f); if (f && pidkaz) toast(pidkaz); }
 
   // ---------- панель ----------
   var ZARAZ = 'menyu';
@@ -117,6 +143,13 @@
     knopka.focus();
   }
   knopka.addEventListener('click', function () { if (panel.hidden) vidkryty(); else zakryty(); });
+  // Escape: спершу скасовує «покажіть на карті», далі закриває панель ігор (фокус — на кнопку «Ігри»).
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape' || panel.hidden || e.defaultPrevented) return;
+    if (e.target && e.target.id === 'i-vul' && e.target.getAttribute('aria-expanded') === 'true') return;   // спершу закрити підказки
+    if (REZHYM && ZARAZ !== 'litopys') { rezhym(null); panel.classList.remove('zghornuta', 'z-opysom'); var h = $('.i-shap h2'); if (h) { h.tabIndex = -1; h.focus(); } return; }
+    zakryty();
+  });
   panel.addEventListener('click', function (e) {
     if (panel.classList.contains('zghornuta') && e.target.closest('.i-shap') && !e.target.closest('[data-i]')) { panel.classList.remove('zghornuta'); return; }
     var t = e.target.closest('[data-i]'); if (!t) return;
@@ -131,8 +164,12 @@
       '<h2>' + esc(nazva) + '</h2><button type="button" class="i-x" data-i="x" aria-label="Закрити ігри">×</button></div>' +
       '<div class="i-tilo">' + tilo + '</div>';
     panel.scrollTop = 0;
+    // Фокус — на назву гри після відкриття панелі чи переходу між іграми (читалка називає, де людина), не після кожного кроку.
+    if (FOKUS) { FOKUS = false; var h2 = $('.i-shap h2'); if (h2) { h2.tabIndex = -1; h2.focus({ preventScroll: true }); } }
   }
+  var FOKUS = false;
   function pokazaty(gra) {
+    FOKUS = true;
     if (gra !== 'litopys') zupynytyLitopys();
     if (gra !== 'kariera') zupynytyKarieru();
     ZARAZ = gra;
@@ -450,10 +487,14 @@
       var krim = {}; st.sproby.forEach(function (s) { krim[s] = true; });
       znaid = V.shukaty(VD.vul, inp.value, krim, 6);
       ul.innerHTML = znaid.map(function (v) { return '<li role="option"><button type="button" data-slug="' + esc(v.slug) + '">' + esc(v.nazva) + (v.stara ? ' (кол. ' + esc(v.stara) + ')' : '') + ' <small>' + esc(v.rayon) + '</small></button></li>'; }).join('') +
-        (!znaid.length && inp.value.trim().length > 1 ? '<li class="i-pidk-0">Такої вулиці в грі немає — у грі вулиці, де в даних щонайменше 5 подій.</li>' : '');
-      inp.setAttribute('aria-expanded', znaid.length ? 'true' : 'false');
+        (!znaid.length && inp.value.trim().length > 1 ? '<li class="i-pidk-0" role="option" aria-disabled="true" aria-selected="false">Такої вулиці в грі немає — у грі вулиці, де в даних щонайменше 5 подій.</li>' : '');
+      inp.setAttribute('aria-expanded', ul.children.length ? 'true' : 'false');
     });
-    inp.addEventListener('keydown', function (e) { if (e.key === 'Enter' && znaid.length) { e.preventDefault(); vSproba(znaid[0].slug); } });
+    inp.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && znaid.length) { e.preventDefault(); vSproba(znaid[0].slug); }
+      else if (e.key === 'Escape' && ul.children.length) { e.preventDefault(); ul.innerHTML = ''; inp.setAttribute('aria-expanded', 'false'); }
+    });
+    if (VD.fokusPoshuk) { VD.fokusPoshuk = false; inp.focus(); }
     ul.addEventListener('click', function (e) { var b = e.target.closest('[data-slug]'); if (b) vSproba(b.getAttribute('data-slug')); });
   }
   function vSproba(slug) {
@@ -471,7 +512,7 @@
       toast('Ні, загадана — за ' + H.vidstanTekstom(p.vidstanM) + ' ' + p.napryamPovnyi);
       var v = VD.za[slug]; letity(v.lat, v.lon, 12.5);
     }
-    pysaty(VD.kl, st); vMalyuvaty();
+    pysaty(VD.kl, st); VD.fokusPoshuk = !st.kin; vMalyuvaty();
   }
   function vPodilytysia() {
     var por = VD.st.sproby.map(function (s) { return V.porivnyaty(VD.za[s], VD.tsil); });
