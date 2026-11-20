@@ -29,6 +29,7 @@
 from __future__ import annotations
 
 import argparse
+import datetime
 import functools
 import html
 import json
@@ -981,6 +982,9 @@ def zibraty_ihry(dn: D.Dani, vykhid: Path, koloda: Path | None, baza: Path | Non
             raise SystemExit(f'Справа детектива не проходить перевірку: {pomylka}') from pomylka
         spravy.append(DT.dlia_saitu(s))
     zapysaty(tsil / 'detektyv.json', json.dumps({'spravy': spravy}, ensure_ascii=False, separators=(',', ':')))
+    if spravy:   # ZAVDANNYA-176: після останнього тижня картки «Детектива» немає — кажемо вголос, до якого дня є справи
+        ost = max(datetime.date.fromisoformat(x['tyzhden']) for x in spravy) + datetime.timedelta(days=6)
+        print(f'Детектив тижня: справ {len(spravy)}, остання — до {ost.isoformat()}; далі картку гри сховано, доки не буде нової справи')
     IHRY_DANI['spravy'] = '/ihry/detektyv.json'
     kv = json.loads((DZHERELO / 'ihry' / 'kvalifikuy.json').read_text(encoding='utf-8'))
     for s in kv['spravy']:

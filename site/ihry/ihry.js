@@ -126,7 +126,7 @@
       };
       ramka('Ігри', '<p class="i-bal"><span>' + chyslo(s.bali) + '</span> ' + slovoBaly(s.bali) + ' на цьому пристрої <button type="button" class="i-lnk" data-i="hra" data-gra="bali">Бали й спроби</button></p>' +
         '<div class="i-sitka">' +
-        kart('detektyv', 'Детектив тижня', 'щодня слід на карті, у неділю — розкриття', det, !st) +
+        (st ? kart('detektyv', 'Детектив тижня', 'щодня слід на карті, у неділю — розкриття', det) : '') +
         kart('vgadai', 'Вгадай, де це було', 'опис події — ваша точка на карті', DZH.koloda ? (den.podiia ? 'подія дня зіграна' : 'подія дня чекає') : 'скоро', !DZH.koloda) +
         (DZH.vulytsia ? kart('vulytsia', 'Вулиця дня', 'одна вулиця на добу — вгадайте за 7 спроб', den.vulytsia ? 'сьогодні зіграно' : 'сьогодні не зіграно') : '') +
         (DZH.litopys && window.MvLitopys ? kart('litopys', 'Літопис міста', 'читайте справи, відкривайте вулиці й райони — гра без кінця', stanLitopysu()) : '') +
@@ -179,7 +179,7 @@
 
   // ---------- «Детектив тижня» ----------
   var SPRAVA = null;
-  function stanSpravy(s) { return chytaty('mv-ihry-detektyv-' + s.id, { znaideni: [], versii: [], vatson: '', vykresleno: {}, naraxovano: false }); }
+  function stanSpravy(s) { return chytaty(Y.kliuchSpravy(s), { znaideni: [], versii: [], vatson: '', vykresleno: {}, naraxovano: false }); }
   function detektyv() {
     zavantazhyty('spravy').then(function (d) {
       var c = chas();
@@ -232,7 +232,7 @@
   }
   function rozkryttia(s, ss) {
     var o = Y.ochkyDetektyva(s, ss.versii);
-    if (!ss.naraxovano && ss.versii.length) { ss.naraxovano = true; ss.bali = narakhuvaty(o.razom); pysaty('mv-ihry-detektyv-' + s.id, ss); }
+    if (!ss.naraxovano && ss.versii.length) { ss.naraxovano = true; ss.bali = narakhuvaty(o.razom); pysaty(Y.kliuchSpravy(s), ss); }
     var vidp = Y.POLIA.map(function (p) { var k = s.polia[p].kandydaty.filter(function (x) { return x.id === s.polia[p].vidpovid; })[0]; return esc(s.polia[p].pytannia) + ' <b>' + esc(k.nazva) + '</b>'; }).join('<br>');
     return '<section class="i-rozkr"><h3>Розкриття</h3><p>' + vidp + '</p><h4>Що було насправді (з рішення суду)</h4><p>' + esc(s.rozkryttia.spravzhnie) +
       ' <a href="' + esc(s.rishennia.url) + '" target="_blank" rel="noopener noreferrer">Рішення суду</a></p><h4>Що вигадано</h4><p>' + esc(s.rozkryttia.vyhadka) + '</p>' +
@@ -245,18 +245,18 @@
       if (window.matchMedia('(max-width: 700px)').matches) panel.classList.add('zghornuta');
       rezhym(function (ll) {
         if (!Y.znaideno(sl, ll.lat, ll.lng)) { toast('Тут сліду немає. Спробуйте ще.'); return true; }
-        var ss = stanSpravy(s); if (ss.znaideni.indexOf(n) === -1) ss.znaideni.push(n); pysaty('mv-ihry-detektyv-' + s.id, ss);
+        var ss = stanSpravy(s); if (ss.znaideni.indexOf(n) === -1) ss.znaideni.push(n); pysaty(Y.kliuchSpravy(s), ss);
         marker(sl.tsil.lat, sl.tsil.lon, 'slid', 'Слід ' + n); rezhym(null); panel.classList.remove('zghornuta');
         toast('Слід ' + n + ' знайдено'); detektyv(); return true;
       }, 'Торкніться карти там, де, на вашу думку, слід ' + n);
     },
     vatson: function (t) {
       var n = Number(t.getAttribute('data-n')), sl = SPRAVA.slidy[n - 1], ss = stanSpravy(SPRAVA);
-      ss.vatson = chas().data; pysaty('mv-ihry-detektyv-' + SPRAVA.id, ss);
+      ss.vatson = chas().data; pysaty(Y.kliuchSpravy(SPRAVA), ss);
       // Показує район (≈ 3 км), а не саме місце: центр зсунуто на сталу відстань.
       letity(sl.tsil.lat + 0.008, sl.tsil.lon - 0.012, 12.6); toast('Ватсон: слід десь у цій частині міста'); detektyv();
     },
-    vykreslyty: function (t) { var ss = stanSpravy(SPRAVA), k = t.getAttribute('data-k'); ss.vykresleno[k] = !ss.vykresleno[k]; pysaty('mv-ihry-detektyv-' + SPRAVA.id, ss); t.classList.toggle('vykr'); },
+    vykreslyty: function (t) { var ss = stanSpravy(SPRAVA), k = t.getAttribute('data-k'); ss.vykresleno[k] = !ss.vykresleno[k]; pysaty(Y.kliuchSpravy(SPRAVA), ss); t.classList.toggle('vykr'); },
     'pokazaty-mistsia': function () {
       prybratyMitky(); var ss = stanSpravy(SPRAVA);
       SPRAVA.polia.de.kandydaty.forEach(function (k) { marker(k.lat, k.lon, 'stantsiia' + (ss.vykresleno[k.id] ? ' vykr' : ''), k.nazva.replace(/[«»]/g, '')); });
@@ -269,7 +269,7 @@
       var v = { data: chas().data, den: chas().den };
       panel.querySelectorAll('[data-pole]').forEach(function (x) { v[x.getAttribute('data-pole')] = x.value; });
       if (Y.POLIA.some(function (p) { return !v[p]; })) { toast('Заповніть усі чотири поля'); return; }
-      var ss = stanSpravy(SPRAVA); ss.versii.push(v); pysaty('mv-ihry-detektyv-' + SPRAVA.id, ss); detektyv();
+      var ss = stanSpravy(SPRAVA); ss.versii.push(v); pysaty(Y.kliuchSpravy(SPRAVA), ss); detektyv();
     },
     'vgadai-start': function (t) { vgadaiStart(t.getAttribute('data-typ')); },
     'vgadai-dali': function () { vgadaiKrok(); },

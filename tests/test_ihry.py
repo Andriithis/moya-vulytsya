@@ -163,11 +163,16 @@ class Yadro(unittest.TestCase):
 
     def test_sprava_tyzhnia(self):
         r = js(f'''const s = [require({json.dumps(str(SPRAVY[0]))}), require({json.dumps(str(SPRAVY[1]))})];
-                  return [Y.spravaTyzhnia(s, '2026-11-18'), Y.spravaTyzhnia(s, '2026-11-25'), Y.spravaTyzhnia(s, '2027-03-03').demo];''')
+                  return [Y.spravaTyzhnia(s, '2026-11-18'), Y.spravaTyzhnia(s, '2026-11-25'), Y.spravaTyzhnia(s, '2027-03-03'),
+                          Y.spravaTyzhnia(s, '2026-11-04'), Y.spravaTyzhnia(s, '2026-12-11'), Y.kliuchSpravy(s[0])];''')
         self.assertEqual(r[0]['sprava']['tyzhden'], '2026-11-16')
         self.assertFalse(r[0]['demo'])
         self.assertEqual(r[1]['sprava']['tyzhden'], '2026-11-23')
-        self.assertTrue(r[2])
+        # ZAVDANNYA-176: після останньої справи — нічого (не коло зразків), до першої — перша як зразок
+        self.assertIsNone(r[2])
+        self.assertIsNone(r[4], '11.12 — не «Справа сірого кота» вдруге, вже розв’язана')
+        self.assertTrue(r[3]['demo'])
+        self.assertEqual(r[5], 'mv-ihry-detektyv-zrazok-1-sirvi-kit@2026-11-16', 'прогрес — за справою й тижнем')
 
     def test_vidhuk_bez_pereboru(self):
         """Відгук лише про поля, чий розкривальний слід уже відкрито: у понеділок про «поле справи» — нічого."""
