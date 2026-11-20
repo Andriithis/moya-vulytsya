@@ -998,6 +998,10 @@ console.log(JSON.stringify(out));
         self.assertIn('/budynok/nevidoma/1/', (self.sait / 'rayony' / 'index.html').read_text(encoding='utf-8'))
         red = (self.sait / '_redirects').read_text(encoding='utf-8')
         self.assertIn('/vulytsia/chervonoarmiiska/ /vulytsia/velyka-vasylkivska/ 301', red)
+        self.assertIn('/oferta.html /zahlushka/oferta.html 301', red)      # ZAVDANNYA-172: коротка адреса оферти не 404
+        oferta = (self.sait / 'zahlushka' / 'oferta.html').read_text(encoding='utf-8')
+        self.assertIn('href="/dostupnist/">Доступність', oferta)          # правові сторінки — у вигляді сайту
+        self.assertNotIn('Передзамовлення', oferta)
 
     def test_zaholovky_vmishchuiutsia(self):
         """ZAVDANNYA-154: довгі адреси — коротший хвіст, а не обрізаний Google заголовок."""

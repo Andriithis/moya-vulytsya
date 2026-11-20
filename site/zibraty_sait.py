@@ -350,7 +350,7 @@ def storinka(*, shlyakh: str, title: str, opys: str, tilo: str, adresa_saitu: st
 <p>Дані — з рішень судів у Єдиному державному реєстрі судових рішень. Це лише те, що дійшло до суду, а не всі події на вулиці.</p>
 <p>Колір і числа показують лише кількість подій у даних — це не оцінка вулиці, будинку чи району. Ми не стверджуємо причин і не прогнозуємо.</p>
 <p><a href="/miy-budynok/">Мій будинок</a> · <a href="/osbb/">Для ОСББ</a> · <a href="/sudova-praktyka/">Судова практика</a> · <a href="/biznes/">Для бізнесу</a> · <a href="/rayony/">Райони</a> · <a href="/karta/?ihry">Ігри</a></p>
-<p><a href="/pro-dani/">Як ми працюємо з даними</a> · <a href="/doslidnykam/">Дані для дослідників</a> · <a href="/vydalyty/">Видалити або виправити подію</a> · <a href="/zahlushka/polityka.html">Політика конфіденційності</a> · <a href="/zahlushka/oferta.html">Оферта</a> · Карта: <a href="https://www.openstreetmap.org/copyright">© учасники OpenStreetMap</a></p>
+<p><a href="/pro-dani/">Як ми працюємо з даними</a> · <a href="/doslidnykam/">Дані для дослідників</a> · <a href="/vydalyty/">Видалити або виправити подію</a> · <a href="/zahlushka/polityka.html">Політика конфіденційності</a> · <a href="/zahlushka/oferta.html">Оферта</a> · <a href="/zahlushka/umovy.html">Умови</a> · <a href="/zahlushka/pro-nas.html">Хто ми</a> · <a href="/dostupnist/">Доступність</a> · Карта: <a href="https://www.openstreetmap.org/copyright">© учасники OpenStreetMap</a></p>
 </div>
 </footer>
 {js}{ANALITYKA}</body>
@@ -1031,7 +1031,7 @@ def kopiyuvaty_spilne(vykhid: Path) -> None:
     sait = vykhid / 'sait'
     (sait / 'shryfty').mkdir(parents=True, exist_ok=True)
     for f in ('karta.js', 'poshuk.js', 'tema.js', 'oplata.js', 'sp.js', 'sp.css', 'budynok-pole.js', 'vkhid.js', 'vkhid.css',
-              'biznes.js', 'biznes.css'):
+              'biznes.js', 'biznes.css', 'pravo.css'):
         shutil.copyfile(DZHERELO / 'sait' / f, sait / f)
     for f in ('hra-yadro.js', 'vulytsia-yadro.js'):          # спільне ядро ігор (ZAVDANNYA-117)
         shutil.copyfile(DZHERELO / 'hra' / f, sait / f)
@@ -1285,6 +1285,9 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
         f.write_text(tekst.replace('</title>\n', f'</title>\n<link rel="canonical" href="{e(adresa_saitu + shl)}">\n', 1),
                      encoding='utf-8')
     adresy.append('/zahlushka/')
+    # ZAVDANNYA-172: оферта, політика, умови, «Хто ми» й форма звернення — у вигляді сайту (шапка, меню, тема, підвал)
+    import storinky_pravo
+    storinky_pravo.zibraty(vykhid / 'zahlushka', adresa_saitu)
     # Стара сторінка гри — переадресація на гру в карті (ZAVDANNYA-117, MV-129).
     for stara, tsil in (('index.html', '/karta/?hra=vgadai'), ('vulytsia.html', '/karta/?hra=vulytsia')):
         if (vykhid / 'zahlushka' / 'hra' / stara).exists():
@@ -1316,11 +1319,12 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
                  + ''.join(f'<sitemap><loc>{html.escape(adresa_saitu)}/{n}</loc>{lm}</sitemap>\n' for n in nazvy) + '</sitemapindex>\n')
     zapysaty(vykhid / 'robots.txt', robots_txt(adresa_saitu))
     # ZAVDANNYA-154: старі назви вулиць — 301 на нові (Cloudflare Pages і Workers читають `_redirects`; межа — 2 000 правил)
-    if perenapravlennia:
-        ryadky = []
-        for z, na in sorted(perenapravlennia)[:MEZHA_PERENAPRAVLEN // 2]:
-            ryadky += [f'{z} {na} 301', f'{z.rstrip("/")} {na} 301']
-        zapysaty(vykhid / '_redirects', '# Старі назви вулиць → нові (зібрано site/zibraty_sait.py)\n' + '\n'.join(ryadky) + '\n')
+    # ZAVDANNYA-172 (ZVIT-169, п. 5): короткі адреси оферти, умов і політики («…/oferta.html») — 301 на чинні /zahlushka/…
+    ryadky = [f'{z} {na} 301' for z, na in storinky_pravo.PERENAPRAVLENNIA]
+    for z, na in sorted(perenapravlennia or [])[:(MEZHA_PERENAPRAVLEN - len(ryadky)) // 2]:
+        ryadky += [f'{z} {na} 301', f'{z.rstrip("/")} {na} 301']
+    zapysaty(vykhid / '_redirects', '# Короткі адреси правових сторінок і старі назви вулиць (зібрано site/zibraty_sait.py)\n'
+             + '\n'.join(ryadky) + '\n')
 
     failiv = sum(1 for p in vykhid.rglob('*') if p.is_file())
     zv = dn.zvedennia

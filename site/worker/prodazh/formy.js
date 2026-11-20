@@ -76,20 +76,21 @@ export async function forma(request, env, tablytsia) {
   if (tablytsia === 'zvernennya') {
     const posylannya = tekst(d.posylannya, 300);
     if (!posylannya || !SHCHO_NE_TAK.includes(d.shcho_ne_tak)) return new Response('polia', { status: 400 });
-    await L.zrobyty(env, 'INSERT INTO zvernennya (posylannya, shcho_ne_tak, poyasnennya, kontakt, stvoreno) VALUES (?, ?, ?, ?, ?)',
-      posylannya, d.shcho_ne_tak, tekst(d.poyasnennya, 2000), kontakt, t);
+    // ZAVDANNYA-172 (ZVIT-169, п. 10): номер звернення — людині одразу після надсилання (RETURNING id)
+    const nomer = (await L.odyn(env, 'INSERT INTO zvernennya (posylannya, shcho_ne_tak, poyasnennya, kontakt, stvoreno) VALUES (?, ?, ?, ?, ?) RETURNING id',
+      posylannya, d.shcho_ne_tak, tekst(d.poyasnennya, 2000), kontakt, t))?.id;
     // Строк — 10 робочих днів (AGENTS.md, розд. 7): партнер має дізнатися одразу, а не з вивантаження.
     // Не більше LYSTIV_ZVERNEN листів на годину (ZAVDANNYA-156): потік підроблених звернень не завалить пошту партнера
     // й не вичерпає ліміт сервісу листів; самі звернення однаково записано — партнер побачить їх у вивантаженні.
     const zaHodynu = (await L.odyn(env, 'SELECT COUNT(*) AS n FROM zvernennya WHERE stvoreno > ?', t - 3600)).n;
     if (env.POSHTA_PARTNERA && zaHodynu <= LYSTIV_ZVERNEN) {
       try {
-        await nadislaty(env, { komu: env.POSHTA_PARTNERA, tema: 'Нове звернення: виправити або прибрати подію',
-          tekst: `Надійшло звернення (${d.shcho_ne_tak}). Відповісти — протягом 10 робочих днів.\n` +
+        await nadislaty(env, { komu: env.POSHTA_PARTNERA, tema: `Нове звернення №${nomer}: виправити або прибрати подію`,
+          tekst: `Надійшло звернення №${nomer} (${d.shcho_ne_tak}). Відповісти — протягом 10 робочих днів.\n` +
             'Подробиці — у вивантаженні звернень (docs/ZAPUSK-SAITU.md, «Де читати форми»). Контакт людини в листі не пишемо.' });
       } catch (err) { console.log(`звернення: лист партнеру не пішов: ${err.message}`); }
     }
-    return new Response(null, { status: 201 });
+    return Response.json({ nomer }, { status: 201, headers: { 'cache-control': 'no-store' } });
   }
   return new Response('ні', { status: 404 });
 }

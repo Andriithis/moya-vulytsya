@@ -526,7 +526,7 @@ test('стирання за строками: звернення — рік пі
   // до запуску продажу (жодної справжньої оплати) — заявки не стираються
   env.krok(200 * 86400);
   let v = await styratyZaStrokom(env);
-  assert.deepEqual(v, { korystuvachi: 0, zvernennya: 0, skoro: 1, zayavka: 0 }, 'лише «скоро», кому вже написали про запуск');
+  assert.deepEqual(v, { korystuvachi: 0, zvernennya: 0, skoro: 1, zayavka: 0, biznes: 0 }, 'лише «скоро», кому вже написали про запуск');
   // запуск — DATA_ZAPUSKU; минуло пів року — Київ і товари в продажу стерто; інше місто й «Судова» — ні
   env.DATA_ZAPUSKU = new Date((t0 + 10 * 86400) * 1000).toISOString().slice(0, 10);
   env.krok(170 * 86400);

@@ -265,3 +265,34 @@ test('«скоро» довідки СП: стаття, суд і частина
     assert.doesNotMatch(csv, /@/, 'без пошти');
   }
 });
+
+// ---------------------------------------------------------------- звернення (ZVIT-169, п. 10)
+
+test('звернення: людина одразу отримує номер; партнер — лист з тим самим номером, без контакту людини', async () => {
+  for (const PRODAZH of ['skoro', 'tak']) {
+    const env = seredovyshche({ PRODAZH });
+    const tilo = JSON.stringify({ posylannya: 'Адреса: вулиця Жилянська, 5', shcho_ne_tak: 'vydalyty', kontakt: 'a@b.ua', zghoda: true });
+    const v = await zapyt(env, 'POST', '/api/forma/zvernennya', { tilo, zaholovky: { 'content-type': 'application/json' } });
+    assert.equal(v.r.status, 201);
+    const { nomer } = JSON.parse(v.text);
+    assert.equal(nomer, sql(env, 'SELECT id FROM zvernennya')[0].id);
+    const lyst = env.__LYSTY.find((l) => l.komu === 'partner@mv.test');
+    assert.match(lyst.tema, new RegExp(`№${nomer}`));
+    assert.doesNotMatch(lyst.tekst, /a@b\.ua/);
+  }
+});
+
+test('стирання за строками: запит «Для бізнесу» і журнал завантажень копії — через рік (політика, розд. 5)', async () => {
+  const { styratyZaStrokom } = await import('../prodazh/logika.js');
+  const env = seredovyshche();
+  const t0 = env.__CHAS();
+  const db = env.BAZA.db;
+  db.prepare(`INSERT INTO biznes_zapyty (kompaniia, kontakt, meta, strok, kanal, stvoreno) VALUES ('Стара', '+380', 'м', 'misiats', 'priamo', ?)`).run(t0);
+  db.prepare(`INSERT INTO biznes_zavantazhennia (posylannia_hash, klient_id, fail, chas) VALUES ('h', 1, 'f', ?)`).run(t0);
+  env.krok(200 * 86400);
+  db.prepare(`INSERT INTO biznes_zapyty (kompaniia, kontakt, meta, strok, kanal, stvoreno) VALUES ('Нова', 'a@b.ua', 'м', 'rik', 'priamo', ?)`).run(env.__CHAS());
+  assert.equal((await styratyZaStrokom(env)).biznes, 0, 'пів року — ще рано');
+  env.krok(170 * 86400);
+  assert.equal((await styratyZaStrokom(env)).biznes, 2);
+  assert.deepEqual(sql(env, 'SELECT kompaniia FROM biznes_zapyty').map((x) => x.kompaniia), ['Нова']);
+});

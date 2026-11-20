@@ -490,6 +490,7 @@ export async function prybraty(env) {
 export const NEZAVERSHENE_S = 30 * 86400;       // пошта без жодної покупки (лише незавершені замовлення) — 30 днів
 export const ZVERNENNIA_S = 365 * 86400;        // звернення — 1 рік після відповіді (політика, розд. 5)
 export const ZAIAVKY_S = 183 * 86400;           // передзамовлення й «скоро» — пів року після запуску (політика, розд. 5)
+export const BIZNES_S = 365 * 86400;            // запит «Для бізнесу» і журнал завантажень копії — рік (політика, розд. 5; ZAVDANNYA-172)
 const KYIV = /ки[їі]в|kyiv|kiev/i;
 
 /**
@@ -531,6 +532,9 @@ export async function styratyZaStrokom(env) {
   }
   v.zvernennya = (await zrobyty(env, 'DELETE FROM zvernennya WHERE zakryto IS NOT NULL AND zakryto < ?', t - ZVERNENNIA_S)).meta?.changes ?? 0;
   v.skoro = (await zrobyty(env, 'DELETE FROM skoro WHERE napysano IS NOT NULL AND napysano < ?', t - ZAIAVKY_S)).meta?.changes ?? 0;
+  // ZAVDANNYA-172 (ZVIT-169, п. 7; політика, розд. 5): запит «Для бізнесу» — рік від запиту; журнал завантажень копії — рік
+  v.biznes = (await zrobytyNovu(env, 'DELETE FROM biznes_zapyty WHERE stvoreno < ?', t - BIZNES_S)).meta?.changes ?? 0;
+  v.biznes += (await zrobytyNovu(env, 'DELETE FROM biznes_zavantazhennia WHERE chas < ?', t - BIZNES_S)).meta?.changes ?? 0;
   const zapusk = await chasZapusku(env);
   if (zapusk !== null && t - zapusk > ZAIAVKY_S) {
     const tovary = TS.prodaietsia;
@@ -541,7 +545,7 @@ export async function styratyZaStrokom(env) {
       v.zayavka += (await zrobyty(env, 'DELETE FROM zayavka WHERE id = ?', z.id)).meta?.changes ?? 0;
     }
   }
-  if (v.korystuvachi + v.zvernennya + v.skoro + v.zayavka) console.log(`стерто за строком: ${JSON.stringify(v)}`);
+  if (v.korystuvachi + v.zvernennya + v.skoro + v.zayavka + v.biznes) console.log(`стерто за строком: ${JSON.stringify(v)}`);
   return v;
 }
 
