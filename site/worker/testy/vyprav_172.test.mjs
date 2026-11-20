@@ -193,3 +193,28 @@ test('той самий будинок за добу — спершу питає
   ({ text } = await zapyt(env, 'POST', '/kabinet/dovidka', { kuka: kr, forma: { budynok: '/budynok/zhylianska/5/' } }));
   assert.match(text, /готуємо/, 'наступного дня — без питання');
 });
+
+// ---------------------------------------------------------------- листи (ZVIT-167, п. 9)
+
+test('листи: у листі довідки — перший висновок; рієлтору — «лишилось» на момент кожної довідки; лист оплати рієлтору — «Мої об\'єкти»', async () => {
+  const env = seredovyshche();
+  await oplatyty(env, await zamovyty(env, 'rieltor', null, 'r@b.ua'));
+  const oplata = env.__LYSTY.find((l) => l.komu === 'r@b.ua' && l.tema.startsWith('Оплату отримано'));
+  assert.match(oplata.tekst, /5 довідок про будинки на місяць/);
+  assert.match(oplata.tekst, /Мої об'єкти/);
+  const kr = await uviity(env, 'r@b.ua');
+  for (const b of ['/budynok/zhylianska/5/', '/budynok/obolonskyi/16/', '/budynok/zhylianska/5/']) {
+    await zapyt(env, 'POST', '/kabinet/dovidka', { kuka: kr, forma: { budynok: b, shche: 'tak' } });
+  }
+  // видавач віддає всі три разом — уже після того, як узято всі три
+  const { text } = await zapyt(env, 'GET', '/api/vnutr/cherha?n=10', { zaholovky: AVT });
+  for (const d of JSON.parse(text).dovidky) {
+    await zapyt(env, 'PUT', `/api/vnutr/dovidka/${d.id}`, { zaholovky: AVT,
+      tilo: '<!doctype html><h2>Головне — 3 висновки</h2><ol class="holovne"><li><b>226</b> скарг до 1551 &mdash; найчастіше <b>вода</b> (21; у сусідніх — 15).</li><li>друге</li></ol>' });
+  }
+  const lysty = env.__LYSTY.filter((l) => l.komu === 'r@b.ua' && l.tema.startsWith('Довідка'));
+  assert.equal(lysty.length, 3);
+  assert.deepEqual(lysty.map((l) => l.tekst.match(/лишилось довідок: (\d) з 5/)[1]).sort(), ['2', '3', '4']);
+  assert.match(lysty[0].tekst, /Головне: 226 скарг до 1551 — найчастіше вода \(21; у сусідніх — 15\)\./);
+  assert.doesNotMatch(lysty[0].tekst, /<b>|друге/);
+});

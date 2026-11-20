@@ -54,7 +54,7 @@ export async function perevirytyBudynok(env, budynok, url) {
   if (!r || !r.ok) return null;
   const m = (await r.text()).match(/<h1>([^<]{1,200})<\/h1>/);
   if (!m) return null;
-  return m[1].replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+  return m[1].replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&mdash;/g, '—').replace(/&ndash;/g, '–').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 }
 
 export async function korystuvach(env, poshta) {
@@ -361,6 +361,18 @@ export async function vziatyZCherhy(env, n) {
   return vziato;
 }
 
+/**
+ * ZAVDANNYA-172 (ZVIT-167, п. 9): перший висновок довідки («Головне», <ol class="holovne"> генератора dani-edrsr/src/zvit/)
+ * одним рядком для листа — щоб у листі було головне число, а не лише посилання. Немає блоку — порожньо (лист як раніше).
+ */
+export function holovneZDovidky(html) {
+  const m = String(html || '').match(/<ol class="holovne">\s*<li>([\s\S]*?)<\/li>/);
+  if (!m) return '';
+  const t = m[1].replace(/<[^>]*>/g, ' ').replace(/&nbsp;|&#160;/g, '\u00a0').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#39;|&#x27;/g, "'").replace(/&amp;/g, '&').replace(/\s+/g, ' ').replace(/\s([.,;:])/g, '$1').trim();
+  return t.length > 300 ? `${t.slice(0, t.lastIndexOf(' ', 297))}…` : t;
+}
+
 export async function dovidkaHotova(env, id, html, adresaSaitu) {
   const d = await odyn(env, `SELECT d.*, k.poshta FROM dovidky d LEFT JOIN korystuvachi k ON k.id = d.korystuvach_id WHERE d.id = ?`, id);
   if (!d || d.status !== 'hotuietsia') return false;
@@ -388,10 +400,20 @@ export async function dovidkaHotova(env, id, html, adresaSaitu) {
     });
   } else if (d.poshta) {
     const r = d.pidpyska_id ? (await stanPidpysok(env, d.korystuvach_id)).find((p) => p.id === d.pidpyska_id && p.tovar === 'rieltor') : null;
-    const zalyshok = r ? `З підписки рієлтора цього місяця лишилось довідок: ${r.zalyshok} з ${r.dovidok} (нові — з ${dataT(r.misiats_do)}).\n` : '';
+    // ZAVDANNYA-172 (ZVIT-167, п. 9): лічильник — на момент ЦІЄЇ довідки (довідки місяця, взяті не пізніше за неї), а не на
+    // момент надсилання листа: інакше три листи поспіль казали «лишилось 1».
+    let zalyshok = '';
+    if (r) {
+      const do_ = (await odyn(env, `SELECT COUNT(*) AS n FROM dovidky WHERE pidpyska_id = ? AND stvoreno >= ? AND status != 'pomylka'
+        AND (stvoreno < ? OR (stvoreno = ? AND rowid <= (SELECT rowid FROM dovidky WHERE id = ?)))`, r.id, r.misiats_vid, d.stvoreno, d.stvoreno, d.id)).n;
+      zalyshok = `З підписки рієлтора цього місяця лишилось довідок: ${Math.max(0, r.dovidok - do_)} з ${r.dovidok} (нові — з ${dataT(r.misiats_do)}). ` +
+        `Усі ваші об'єкти — у кабінеті, «Мої об'єкти».\n`;
+    }
+    const holovne = holovneZDovidky(html);
     await nadislaty(env, {
       komu: d.poshta, tema: `${d.rezhym === 'povnyi' ? 'Повний звіт' : 'Довідка'}: ${d.adresa}`,
       tekst: `Готово: ${d.rezhym === 'povnyi' ? 'повний звіт' : 'довідка'} про будинок ${d.adresa}.\n\n` +
+        (holovne ? `Головне: ${holovne}\n\n` : '') +
         `Відкрити: ${adresaSaitu}/dovidka/${d.id}/?k=${kliuch}\n\n` +
         `Посилання особисте — не пересилайте його. Усі довідки — також у кабінеті: ${adresaSaitu}/kabinet/\n` + zalyshok +
         'Це не оцінка безпеки: лише скарги мешканців і події з рішень судів, як їх записано.',
