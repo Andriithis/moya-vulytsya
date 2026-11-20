@@ -52,7 +52,7 @@ PACHKA = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6']
 
 ROZMYTTIA = r"""
 (() => {
-  const RX = /([А-ЯІЇЄҐа-яіїєґ'’.»])(\s*,\s*)(\d{1,4}(?:[-\/][0-9А-ЯІЇЄа-яіїє]{1,4}|[А-ЯІЇЄа-яіїє](?![а-яіїє]))?)(?![\d,.]|\s*(?:%|грн|под|звер|скарг|м\b|хв|раз|рок))/g;
+  const RX = /([А-ЯІЇЄҐа-яіїєґ'’.»])(\s*,\s*)(\d{1,4}(?:[-\/][0-9А-ЯІЇЄа-яіїє]{1,4}|[А-ЯІЇЄа-яіїє](?![а-яіїє]))?)(?![\d,]|\.\d|\s*(?:%|грн|под|звер|скарг|м\b|хв|раз|рок))/g;
   const KARTY = '.leaflet-container, .maplibregl-map, .mapa, #mapa, .karta-zvitu, .zvit-karta, figure.karta, .karta';
   function obrobyty(korin) {
     const w = document.createTreeWalker(korin, NodeFilter.SHOW_TEXT);
