@@ -180,6 +180,7 @@ def zamok_sudiv(st: Stattia) -> str:
     return f'''<section class="rozdil" id="po-sudakh"><h2>По кожному суду Києва</h2>
 <p class="rozdil__pidpys">Таблиця по {len(st.sudy)} районних судах, частини статті ({ch}), кожен рік і фільтри — у платній частині.
 Імен суддів немає. Суди між собою не оцінюємо: різні суди отримують різні справи.</p>
+<p class="sp-filtry__zamok">{Z.ZAMOK_SVG} Фільтри працюють у платній частині — тут лише показ, як вони виглядають.</p>
 <div class="sp-filtry sp-filtry--zamk" aria-label="Фільтри платної частини">{filtry}</div>
 <div class="sp-tablytsia-ramka"><table class="sp-tablytsia sp-tablytsia--zamk"><thead><tr>{shapka}</tr></thead><tbody>{ryady}</tbody></table></div>
 {knopky_kupity(st)}
@@ -261,8 +262,8 @@ def storinka_statti(st: Stattia, vsi: dict, dani: dict, adresa_saitu: str) -> st
 {strok_slovamy(p["dni"])}, решта — довше ({period}, {sprav(p["dni_n"])} з датою події). Дати надходження справи до суду в текстах майже
 немає, тож це не строк розгляду в самому суді.</p></section>''')
     ch.append(f'''<section class="rozdil"><h2>Справи за роками</h2>
-<p class="rozdil__pidpys">Скільки справ за {e(st.st)} дійшло до рішення в наших даних. Тексти рішень ще докачуються: старші роки
-неповні, тож порівнювати роки між собою поки не можна.</p>
+<p class="rozdil__pidpys">Скільки справ за {e(st.st)} дійшло до рішення в наших даних. Старші роки в даних неповні, тож
+порівнювати роки між собою поки не можна.</p>
 {roky_html(st, p['poroku'], dani.get('roky_vid', '2016'))}</section>''')
     ch.append(zamok_sudiv(st))
     ch.append(f'''<section class="rozdil"><h2>Як ми рахуємо</h2>
@@ -283,7 +284,7 @@ def storinka_statti(st: Stattia, vsi: dict, dani: dict, adresa_saitu: str) -> st
     if skhozhi:
         ch.append('<section class="rozdil"><h2>Схожі статті</h2><ul class="spysok-vulyts">' + ''.join(
             f'<li><a href="{s.slug}">Ст.{NBSP}{e(s.nomer)} {e(s.kodeks)} — {e(s.nazva)}</a></li>' for s in skhozhi) + '</ul></section>')
-    ch.append(f'<p class="prymitka">Дані на {e(dani.get("versiia", ""))}. Тексти рішень ще докачуються.</p>')
+    ch.append(f'<p class="prymitka">Дані на {e(Z.data_slovamy(dani.get("versiia", "")))}.</p>')
 
     adresa = adresa_saitu + st.slug
     ld = [{'@context': 'https://schema.org', '@type': 'Dataset', 'name': f'Стаття {st.nomer} {st.kodeks}: рішення судів Києва',
@@ -333,7 +334,7 @@ def storinka_rozdilu(statti: list, dani: dict, adresa_saitu: str) -> str:
 <p class="tovar__pidpys">Для юристів і адвокатів</p><ul><li>усі статті й суди Києва</li><li>частини статті, кожен рік, фільтри</li>
 <li>вивантаження таблиць (CSV)</li><li>3 довідки на місяць для клієнтів</li></ul>
 {T.knopka_oplaty('/oplata/?tovar=spyurist&amp;dzherelo=sudova-praktyka', 'Замовити')}</div></div>
-<p class="prymitka">Числа — справи за {period} у наших даних (тексти ще докачуються).</p></section>''')
+<p class="prymitka">Числа — справи за {period} у наших даних.</p></section>''')
     return Z.storinka(shlyakh='/sudova-praktyka/', title='Судова практика Києва за статтями: чим закінчуються справи | Моя вулиця',
                       opys='Як суди Києва вирішують справи за статтями КУпАП і КК: частки результатів і покарань, строки, роки. Без імен суддів.',
                       tilo='\n'.join(ch), adresa_saitu=adresa_saitu, aktyvne='sudova-praktyka/',

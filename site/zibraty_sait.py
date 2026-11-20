@@ -267,6 +267,18 @@ MISIATSI = ('січень', 'лютий', 'березень', 'квітень', 
             'жовтень', 'листопад', 'грудень')
 
 
+MISIATSI_RODOVYI_D = ('січня', 'лютого', 'березня', 'квітня', 'травня', 'червня', 'липня', 'серпня', 'вересня', 'жовтня',
+                      'листопада', 'грудня')
+
+
+def data_slovamy(d: str) -> str:
+    """«2026-11-17» → «17 листопада 2026» (ZAVDANNYA-172, ZVIT-169: дата людською мовою); не дата — як є."""
+    m = re.match(r'^(\d{4})-(\d{2})-(\d{2})', d or '')
+    if not m or not 1 <= int(m.group(2)) <= 12:
+        return d or ''
+    return f'{int(m.group(3))}{NBSP}{MISIATSI_RODOVYI_D[int(m.group(2)) - 1]} {m.group(1)}'
+
+
 def onovleno(versiia: str) -> str:
     """Рядок «Оновлено: листопад 2026» з дати випуску (ZAVDANNYA-88, п. 3); дата не розпізнана — порожньо."""
     m = re.match(r'^(\d{4})-(\d{2})', versiia or '')
@@ -282,6 +294,10 @@ def og_kartynka(adresa_saitu: str, url: str, alt: str) -> str:
             '<meta property="og:image:width" content="1200">\n<meta property="og:image:height" content="630">\n'
             f'<meta property="og:image:alt" content="{e(alt)}">\n'
             '<meta name="twitter:card" content="summary_large_image">\n')
+
+
+# Сторінки без карти й кольорів (ZVIT-169, п. 10): речення підвалу про колір сот там ні до чого
+BEZ_KOLORU = ('/sudova-praktyka/', '/biznes/', '/zahlushka/', '/doslidnykam/', '/dostupnist/')
 
 
 def storinka(*, shlyakh: str, title: str, opys: str, tilo: str, adresa_saitu: str, aktyvne: str = '',
@@ -348,7 +364,7 @@ def storinka(*, shlyakh: str, title: str, opys: str, tilo: str, adresa_saitu: st
 <footer class="pidval">
 <div class="pidval__vnutri">
 <p>Дані — з рішень судів у Єдиному державному реєстрі судових рішень. Це лише те, що дійшло до суду, а не всі події на вулиці.</p>
-<p>Колір і числа показують лише кількість подій у даних — це не оцінка вулиці, будинку чи району. Ми не стверджуємо причин і не прогнозуємо.</p>
+{'' if shlyakh.startswith(BEZ_KOLORU) else '<p>Колір і числа показують лише кількість подій у даних — це не оцінка вулиці, будинку чи району. Ми не стверджуємо причин і не прогнозуємо.</p>'}
 <p><a href="/miy-budynok/">Мій будинок</a> · <a href="/osbb/">Для ОСББ</a> · <a href="/sudova-praktyka/">Судова практика</a> · <a href="/biznes/">Для бізнесу</a> · <a href="/rayony/">Райони</a> · <a href="/karta/?ihry">Ігри</a></p>
 <p><a href="/pro-dani/">Як ми працюємо з даними</a> · <a href="/doslidnykam/">Дані для дослідників</a> · <a href="/vydalyty/">Видалити або виправити подію</a> · <a href="/zahlushka/polityka.html">Політика конфіденційності</a> · <a href="/zahlushka/oferta.html">Оферта</a> · <a href="/zahlushka/umovy.html">Умови</a> · <a href="/zahlushka/pro-nas.html">Хто ми</a> · <a href="/dostupnist/">Доступність</a> · Карта: <a href="https://www.openstreetmap.org/copyright">© учасники OpenStreetMap</a></p>
 </div>

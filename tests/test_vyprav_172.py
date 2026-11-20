@@ -103,3 +103,26 @@ class DliaBiznesu(unittest.TestCase):
         self.assertIn('з точною адресою й точкою', st)
         self.assertIn('href="/biznes/zrazok-podii.csv"', st)
         self.assertIn('href="#zapyt">Запит на доступ', st)
+
+
+class DribneZvit169(unittest.TestCase):
+    """ZVIT-169, п. 10: людські дати, без «докачуються» й «після повного Києва», «11 статей» — з даних."""
+
+    def test_data_slovamy(self):
+        import zibraty_sait as Z
+        self.assertEqual(Z.data_slovamy('2026-11-17'), '17 листопада 2026')
+        self.assertEqual(Z.data_slovamy('2026-11'), '2026-11')
+
+    def test_bez_kukhni_v_tekstakh(self):
+        sp = (KORIN / 'site' / 'storinky_sp.py').read_text(encoding='utf-8')
+        self.assertNotIn('докачуються', sp)
+        self.assertNotIn('після повного Києва', (KORIN / 'site' / 'zahlushka' / 'oferta.html').read_text(encoding='utf-8'))
+        js = (KORIN / 'site' / 'sait' / 'sp.js').read_text(encoding='utf-8')
+        self.assertNotIn('11 найчастіших', js)
+        self.assertIn("querySelectorAll('.sp-stattia').length", js)
+
+    def test_pidval_bez_koloru_na_storinkakh_bez_karty(self):
+        import zibraty_sait as Z
+        for shl, ye in (('/biznes/', False), ('/sudova-praktyka/kupap-130/', False), ('/vulytsi/', True)):
+            st = Z.storinka(shlyakh=shl, title='т', opys='о', tilo='', adresa_saitu='https://mv.test')
+            self.assertEqual('Колір і числа показують' in st, ye, shl)

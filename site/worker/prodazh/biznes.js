@@ -176,12 +176,17 @@ export async function admin(request, env, url, shliakh) {
 
 // ---------------------------------------------------------------- сторінка й файли клієнта
 
+const MISIATSI = ['січня', 'лютого', 'березня', 'квітня', 'травня', 'червня', 'липня', 'серпня', 'вересня', 'жовтня', 'листопада', 'грудня'];
+/** «2026-11-08» → «8 листопада 2026» (ZVIT-169: дата людською мовою); не дата — як є. */
+const dataSlovamy = (d) => { const m = String(d || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? `${Number(m[3])}\u00a0${MISIATSI[Number(m[2]) - 1]} ${m[1]}` : String(d || ''); };
+
 const PRYVATNO = { 'cache-control': 'private, no-store', 'x-robots-tag': 'noindex, nofollow', 'referrer-policy': 'no-referrer',
   'x-content-type-options': 'nosniff', 'x-frame-options': 'DENY' };
 
 const neDiie = () => {
   const r = S.povidomlennia('Посилання не діє', 'Посилання не діє: строк минув, його вимкнено або в адресі помилка. ' +
-    'Напишіть партнеру проєкту — надішле нове.', 404, '', false);
+    'Напишіть партнеру проєкту — надішле нове.', 404,
+    '<div class="diyi"><a class="knopka" href="/zahlushka/pro-nas.html">Як написати партнеру</a></div>', false);
   r.headers.set('referrer-policy', 'no-referrer');
   r.headers.set('x-robots-tag', 'noindex, nofollow');
   return r;
@@ -213,7 +218,7 @@ export async function kopiia(request, env, url) {
     const ryadky = (man.fajly || []).filter((f) => FAJLY[f.imia]).map((f) => `<li><a class="knopka${f.imia === 'csv.zip' ? ' knopka--holovna' : ''}" href="${S.e(f.imia)}" download>${S.e(f.imia)}</a> ${S.e(FAJLY[f.imia][1])} · ${rozmir(f.bait)}</li>`).join('');
     const r = S.storinka('Копія бази для компанії', `<section class="zaholovok"><span class="mitka">Для бізнесу</span>
 <h1>Копія бази для «${S.e(p.nazva)}»</h1>
-<p>Випуск від ${S.e(man.versiia)}. Посилання діє до ${S.data(p.do_)} включно; завантажень лишилось: ${zalyshok}.</p></section>
+<p>Випуск від ${S.e(dataSlovamy(man.versiia))}. Посилання діє до ${S.data(p.do_)} включно; завантажень лишилось: ${zalyshok}.</p></section>
 <section class="rozdil"><h2>Файли</h2><ul class="spysok-fajliv">${ryadky}</ul>
 <p class="prymitka">Що в кожному полі й чого в копії немає — у файлі OPYS.md (він є й в архіві CSV).</p></section>
 <section class="rozdil"><h2>Умови коротко</h2><div class="kartka"><ul class="spysok-tekst">
