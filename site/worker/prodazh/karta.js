@@ -28,8 +28,11 @@ export const KOREN = '/pidpysnyk/';
 const POTOCHNA = 'karta/potochna.json';
 const R_TOCHKY_M = 30;                 // «події адреси»: найближча точка покажчика не далі за це
 export const OPYSIV_NA_DEN = 300;      // запитів описів (клітинка або «події адреси») на людину на добу, UTC; KARTA_NA_DEN — інше число
-const TYPY = {
+// mjs — модулі бібліотеки карти (vendor/maplibre-gl-*/*.mjs): без типу JavaScript браузер не виконує модуль і показує
+// «Карта не завантажилася» (ZVIT-166, З-1; виправлено ZAVDANNYA-172).
+export const TYPY = {
   html: 'text/html; charset=utf-8', json: 'application/json; charset=utf-8', js: 'text/javascript; charset=utf-8',
+  mjs: 'text/javascript; charset=utf-8', wasm: 'application/wasm', webp: 'image/webp', ico: 'image/x-icon',
   css: 'text/css; charset=utf-8', woff2: 'font/woff2', woff: 'font/woff', png: 'image/png', svg: 'image/svg+xml',
   txt: 'text/plain; charset=utf-8', pbf: 'application/x-protobuf',
 };
@@ -126,7 +129,8 @@ export async function zarakhuvatyOpys(env, ja) {
 }
 
 const LIMIT_VYCHERPANO = (env) => Response.json({ pomylka: 'limit',
-  tekst: `За добу можна відкрити до ${limitOpysiv(env)} адрес і клітинок з описами. Завтра — знову.` },
+  // текст показує сама карта (dani-edrsr site_src/core.js, docsFor; ZAVDANNYA-172) — тож людськими словами
+  tekst: `Сьогодні ви вже відкрили ${limitOpysiv(env)} адрес з описами — це межа на добу. Завтра — знову.` },
 { status: 429, headers: { ...PRYVATNO, 'cache-control': 'private, no-store' } });
 
 const MAKS_STEZHU = 50;                 // адрес «Стежу» на людину — запобіжник від скрипта, не обмеження для людини

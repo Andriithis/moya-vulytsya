@@ -30,7 +30,7 @@ P = modul('vau_perevirka', 'perevirka.py')
 HT = modul('vau_holos_tekst', 'holos_tekst.py')
 D = modul('vau_dani', 'dani.py')
 
-META = {'nazva': 'Проба', 'hachok': 'гачок', 'meta': 'перевірка', 'kudy': '/karta/', 'kintsivka': 'посилання в профілі'}
+META = {'nazva': 'Проба', 'hachok': 'гачок', 'meta': 'перевірка', 'kudy': '/vulytsia/tyraspolska/', 'kintsivka': 'посилання в профілі'}
 CHYSTYI = {
     'id': 'proba', 'tryvalist': 10, 'tema': 'temna',
     'kamera': [{'t': 0, 'c': [30.5234, 50.4501], 'z': 11}],
@@ -185,7 +185,7 @@ if __name__ == '__main__':
 META129 = dict(META, pravyla=129)
 CHYSTYI129 = {
     'id': 'proba129', 'tryvalist': 6, 'tema': 'temna',
-    'kamera': [{'t': 0, 'c': [30.5234, 50.4501], 'z': 11}, {'t': 6, 'c': [30.5234, 50.4501], 'z': 11}],
+    'kamera': [{'t': 0, 'c': [30.5234, 50.4501], 'z': 11}, {'t': 6, 'c': [30.5234, 50.4501], 'z': 11.6}],   # рух з кадру 0 (ZAVDANNYA-175)
     'tochky': [{'dani': {'x': [3052340], 'y': [5045010], 'g': [0], 't': [0.0]}}],
     'tekst': [{'t0': 0, 't1': 2, 'styl': 'hook', 'tekst': 'Кожна точка — *подія*'},
               {'t0': 1.8, 't1': 4, 'styl': 'lich', 'do': 10, 'pidpys': '{f} у даних', 'formy': ['подія', 'події', 'подій']},

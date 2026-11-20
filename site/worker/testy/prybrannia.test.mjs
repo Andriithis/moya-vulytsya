@@ -215,7 +215,7 @@ test('стара база без нових таблиць (не виконан�
   // людина без підписки (у підписника спершу скасовується підписка в платіжному сервісі — тут його немає)
   env.BAZA.db.prepare('INSERT INTO korystuvachi (id, poshta, stvoreno) VALUES (2, ?, ?)').run('bo@poshta.ua', T0);
   env.BAZA.db.prepare('INSERT INTO sesii (hash, korystuvach_id, do_) VALUES (?, 2, ?)').run(sha256('sesiia-bo'), T0 + 3600);
-  const { r, text } = await zapyt(env, 'POST', '/kabinet/vydalyty', { kuka: 'mv_sesiia=sesiia-bo', forma: { pidtverdzhuiu: 'tak' } });
+  const { r, text } = await zapyt(env, 'POST', '/kabinet/vydalyty', { kuka: 'mv_sesiia=sesiia-bo', forma: { pidtverdzhuiu: 'tak', rozumiiu: 'tak' } });
   assert.equal(r.status, 200);
   assert.match(text, /Дані видалено/);
   assert.equal(env.BAZA.db.prepare(`SELECT COUNT(*) AS n FROM korystuvachi WHERE poshta = 'bo@poshta.ua'`).get().n, 0);

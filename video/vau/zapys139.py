@@ -22,6 +22,7 @@ from pathlib import Path
 TUT = Path(__file__).resolve().parent
 sys.path.insert(0, str(TUT))
 from rushii import ffmpeg  # noqa: E402
+from zapys_saitu import ZNIMOK  # noqa: E402
 from zapys_saitu import VIRTUALNYI_CHAS, Obrobnyk  # noqa: E402
 
 FPS = 30
@@ -76,7 +77,7 @@ def zapysaty(brauzer, port, tema, kadry, vykhid: Path):
         vykhid.mkdir(parents=True, exist_ok=True)
         mp4 = vykhid / f'{imia}.mp4'
         p = subprocess.Popen([ffmpeg(), '-y', '-loglevel', 'error', '-f', 'image2pipe', '-framerate', str(FPS), '-c:v', 'mjpeg', '-i', '-',
-                              '-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', str(mp4)],
+                              '-vf', 'scale=1080:1920', '-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', str(mp4)],
                              stdin=subprocess.PIPE)
         cdp = kont.new_cdp_session(s)
     for k in range(n):
@@ -90,7 +91,7 @@ def zapysaty(brauzer, port, tema, kadry, vykhid: Path):
             teka.mkdir(parents=True, exist_ok=True)
             s.screenshot(path=str(teka / f'{imia}-{t:05.2f}.png'))
             continue
-        r = cdp.send('Page.captureScreenshot', {'format': 'jpeg', 'quality': 93})
+        r = cdp.send('Page.captureScreenshot', ZNIMOK)
         p.stdin.write(base64.b64decode(r['data']))
         if k % (FPS * 2) == 0:
             print(f'  {imia}: {k}/{n}', flush=True)

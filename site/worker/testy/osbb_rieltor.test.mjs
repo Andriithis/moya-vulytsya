@@ -123,7 +123,7 @@ test('ОСББ наскрізно: оплата → перша довідка �
   assert.match(text, /Мій будинок \(ОСББ\)/);
   assert.match(text, /приходить сама/);
   assert.match(text, /наступна — \d\d\.\d\d\.\d{4}/);
-  assert.match(text, /щомісячна довідка ОСББ/);
+  assert.doesNotMatch(text, /<h2>Мої довідки/, 'довідки ОСББ — лише в «Мій будинок», без другого списку (ZAVDANNYA-172)');
 
   // 11 місяців поспіль — щомісяця одна довідка, сама, без жодної дії правління
   for (let m = 2; m <= 12; m++) {
@@ -196,7 +196,7 @@ test('рієлтор наскрізно: «Мої об\'єкти», 5 на мі�
   const lyst = env.__LYSTY.filter((l) => l.komu === poshta && l.tema.startsWith('Довідка')).at(-1);
   assert.match(lyst.tekst, /лишилось довідок: 4 з 5/);
   for (const b of ['/budynok/obolonskyi/16/', '/budynok/zhylianska/5/', '/budynok/zhylianska/5/', '/budynok/obolonskyi/16/']) {
-    assert.match((await zapyt(env, 'POST', '/kabinet/dovidka', { kuka, forma: { budynok: b } })).text, /готуємо/);
+    assert.match((await zapyt(env, 'POST', '/kabinet/dovidka', { kuka, forma: { budynok: b, shche: 'tak' } })).text, /готуємо/);
   }
   await vydavach(env);
   ({ text } = await zapyt(env, 'GET', '/kabinet/', { kuka }));
@@ -207,10 +207,10 @@ test('рієлтор наскрізно: «Мої об\'єкти», 5 на мі�
   assert.equal((obiekty.match(/Нова довідка/g) || []).length, 2, 'по кнопці на об\'єкт');
 
   // 6-та — спершу питаємо (П6), потім оплата 99 і довідка поза лічильником
-  ({ text } = await zapyt(env, 'POST', '/kabinet/dovidka', { kuka, forma: { budynok: '/budynok/zhylianska/5/' } }));
+  ({ text } = await zapyt(env, 'POST', '/kabinet/dovidka', { kuka, forma: { budynok: '/budynok/zhylianska/5/', shche: 'tak' } }));
   assert.match(text, /Додаткова довідка/);
   assert.match(text, /99\sгрн/);
-  const { kudy } = await zapyt(env, 'POST', '/kabinet/dovidka', { kuka, forma: { budynok: '/budynok/zhylianska/5/', odrazu: 'tak' } });
+  const { kudy } = await zapyt(env, 'POST', '/kabinet/dovidka', { kuka, forma: { budynok: '/budynok/zhylianska/5/', odrazu: 'tak', shche: 'tak' } });
   await oplatyty(env, new URL(kudy).pathname.match(/(z[a-z2-7]+)/)[1]);
   assert.equal((await vydavach(env)).length, 1);
   assert.equal(sql(env, `SELECT suma FROM zamovlennia WHERE tovar = 'dodatkova'`)[0].suma, TS.tsiny.dodatkova);

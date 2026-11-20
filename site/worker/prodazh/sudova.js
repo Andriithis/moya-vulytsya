@@ -21,6 +21,15 @@ const MIN_N = 20;
 const SLUG = /^(kupap|kk)-\d{1,4}(?:-\d{1,2})?$/;
 const SUD = /^[\p{L}\p{M}'’ʼ -]{2,60}$/u;
 const CHASTYNA = /^\d{1,2}$/;
+// Роки відкритої сторінки статті (site/storinky_sp.py, ROKY_VIDKRYTI): кабінет юриста за замовчуванням показує ті самі,
+// щоб «усього» на одну статтю не розходилось (ZVIT-169, п. 8). Старші роки — вибором «З року: усі».
+export const ROKY_VIDKRYTI = ['2024', '2025', '2026'];
+const MISIATSI = ['січня', 'лютого', 'березня', 'квітня', 'травня', 'червня', 'липня', 'серпня', 'вересня', 'жовтня', 'листопада', 'грудня'];
+/** «2026-11-17» → «17 листопада 2026» (ZVIT-169: дата людською мовою, а не машинним записом). */
+export function dataLiudska(d) {
+  const m = String(d || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${Number(m[3])}${NBSP}${MISIATSI[Number(m[2]) - 1]} ${m[1]}` : String(d || '');
+}
 const ZASTEREZHENNIA = 'Це статистика минулих рішень, а не юридична допомога і не відповідь, чим закінчиться конкретна справа.';
 
 // ---------------------------------------------------------------- довідник статей (публічний файл сайту)
@@ -159,10 +168,17 @@ export function filtr(ryadky, f) {
     && (!f.z || r[1] >= f.z) && (!f.do_ || r[1] <= f.do_));
 }
 
+const rokyObrano = (url) => url.searchParams.has('z') || url.searchParams.has('do');      // роки обрала людина
+
 function chytatyFiltr(url, st) {
   const q = url.searchParams;
   const roky = [...new Set(st.ryadky.map((r) => r[1]))].sort();
   const f = { sud: q.get('sud') || '', chastyna: q.get('chastyna') || '', z: q.get('z') || '', do_: q.get('do') || '' };
+  // перший показ (роки не обирали) — роки відкритої сторінки статті; «усі» — порожнє значення, обране людиною
+  if (!q.has('z') && !q.has('do')) {
+    const vidkryti = roky.filter((r) => ROKY_VIDKRYTI.includes(r));
+    if (vidkryti.length) { f.z = vidkryti[0]; f.do_ = vidkryti.at(-1); }
+  }
   if (!st.ryadky.some((r) => r[0] === f.sud)) f.sud = '';
   if (!st.ryadky.some((r) => r[2] === f.chastyna)) f.chastyna = '';
   if (!roky.includes(f.z)) f.z = '';
@@ -204,7 +220,8 @@ function tablytsiaHtml(t, pershyi, ryady) {
     if (t.shapka[i] === 'Половина справ — до') return `<td class="ch">${dniv(v)}</td>`;
     return `<td class="ch">${vids(v)}</td>`;
   };
-  return `<div class="sp-tablytsia-ramka"><table class="sp-tablytsia"><thead><tr><th scope="col">${e(pershyi)}</th>${t.shapka.map((h) => `<th scope="col">${e(h)}</th>`).join('')}</tr></thead>
+  // ramka прокручується вбік на телефоні: фокус клавіатурою (tabindex), підпис для читалки, знак «гортайте» (ZVIT-169, пп. 2, 8)
+  return `<p class="sp-gortaite" aria-hidden="true">Таблицю можна гортати вбік →</p><div class="sp-tablytsia-ramka" tabindex="0" role="region" aria-label="${e(pershyi === 'Суд' ? 'Таблиця по судах' : 'Таблиця по роках')}"><table class="sp-tablytsia"><thead><tr><th scope="col">${e(pershyi)}</th>${t.shapka.map((h) => `<th scope="col">${e(h)}</th>`).join('')}</tr></thead>
 <tbody>${ryady.map(([n, ...x]) => `<tr><th scope="row">${e(n)}</th>${x.map(kom).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
 
@@ -260,7 +277,7 @@ export async function praktyka(request, env, url, ja) {
   const qs = new URLSearchParams({ stattia: slug, ...(f.sud && { sud: f.sud }), ...(f.chastyna && { chastyna: f.chastyna }), ...(f.z && { z: f.z }), ...(f.do_ && { do: f.do_ }) });
   const dovidka = new URLSearchParams({ stattia: slug, ...(f.sud && { sud: f.sud }), ...(f.chastyna && { chastyna: f.chastyna }) });
   return S.storinka(`Практика — ${st.stattia}`, `<section class="zaholovok"><span class="mitka">Підписка юриста</span>
-<h1>${e(st.stattia)} — ${e(st.nazva)}</h1><p class="prymitka">Дані на ${e(st.versiia)}. Імен суддів немає; суди між собою не оцінюємо: різні суди отримують різні справи.</p></section>
+<h1>${e(st.stattia)} — ${e(st.nazva)}</h1><p class="prymitka">Дані на ${e(dataLiudska(st.versiia))}. Імен суддів немає; суди між собою не оцінюємо: різні суди отримують різні справи.</p></section>
 <section class="rozdil"><form class="sp-filtry" method="get" action="${KOREN}">
 <label>Стаття<select name="stattia">${opts(statti, slug)}</select></label>
 <label>Суд<select name="sud"><option value="">усі суди</option>${opts(sudy, f.sud)}</select></label>
@@ -269,11 +286,12 @@ export async function praktyka(request, env, url, ja) {
 <label>До року<select name="do"><option value="">усі</option>${opts(roky.map((r) => [r, r]), f.do_)}</select></label>
 <button class="knopka knopka--holovna" type="submit">Показати</button></form></section>
 <section class="rozdil"><h2>Разом: ${chyslo(t.razom[1])} справ</h2>
+${f.z || f.do_ ? `<p class="prymitka">Роки: ${e(f.z || 'усі')}–${e(f.do_ || 'усі')}${f.z === ROKY_VIDKRYTI[0] && !rokyObrano(url) ? ' — як на відкритій сторінці статті; старші роки — у полі «З року»' : ''}.</p>` : ''}
 <div class="diyi"><a class="knopka" href="${KOREN}csv?${e(qs.toString())}">Вивантажити CSV</a>
 <a class="knopka" href="${KOREN}dovidka/?${e(dovidka.toString())}">Довідка для клієнта за цим вибором (лишилось: ${p.zalyshok})</a></div>
 <h3>По судах</h3>${tablytsiaHtml(t, 'Суд', [t.razom, ...t.sudy])}
 <h3>По роках</h3>${tablytsiaHtml(t, 'Рік', t.roky)}
 <p class="prymitka">Частки — від справ з рішенням по суті в першій інстанції; менше ${MIN_N} справ — «замало». Апеляцію не враховано.${st.kodeks === 'КК' ? ' Справи КК, закриті ухвалою, ще не входять — частки серед вироків.' : ''}
-Старші роки неповні (тексти рішень ще докачуються). Строк від події до рішення — лише за 2024–2026 і лише де дата події точна.
+Старші роки в даних неповні — порівнюйте роки обережно. Строк від події до рішення — лише за 2024–2026 і лише де дата події точна.
 Вивантажень на добу — до ${VYVANTAZHEN_NA_DEN}. ${e(ZASTEREZHENNIA)}</p></section>`, { css: ['/sait/sp.css'] });
 }

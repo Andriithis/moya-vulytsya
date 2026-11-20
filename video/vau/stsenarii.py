@@ -111,6 +111,26 @@ class Rolyk:
         self.S.setdefault('pidpys_publikatsii', []).extend(riady)
         self.meta['pidpys'] = ' '.join(self.S['pidpys_publikatsii'])
 
+    # -- ZAVDANNYA-175: правда гачка й база відсотка (perevirka.pravda)
+    def fakt(self, **kw):
+        """Число з бази, яке ролик стверджує (у гачку чи в кадрі): perevirka пускає в гачок лише такі числа."""
+        self.meta.setdefault('fakty', {}).update(kw)
+        return next(iter(kw.values())) if len(kw) == 1 else None
+
+    def pidsumok(self, kliuch: str, n: int) -> int:
+        """Підсумок з одного джерела (Vypusk.pidsumky, lich_vulytsi): 'vsi', 'rik:2025', 'vulytsia'. Лічильник з ним — pidsumok=kliuch."""
+        self.meta.setdefault('pidsumky', {})[kliuch] = n
+        self.fakt(**{'pidsumok_' + kliuch.replace(':', '_'): n})
+        return n
+
+    def vidsotok(self, k: int, n: int) -> int | None:
+        """Відсоток — лише з базою >= perevirka.VIDSOTOK_BAZA подій; менше — None (тоді показувати «k з n»)."""
+        if n < perevirka.VIDSOTOK_BAZA:
+            return None
+        v = round(k / n * 100)
+        self.meta.setdefault('vidsotky', []).append({'v': v, 'k': k, 'n': n})
+        return v
+
     # -- звук
     def muzyka(self, styl, **kw):
         self.S['zvuk']['muzyka'] = dict({'styl': styl}, **kw)
@@ -142,14 +162,28 @@ class Rolyk:
         teka.mkdir(parents=True, exist_ok=True)
         S = self.S
         S['kamera'].sort(key=lambda k: k['t'])
-        if S['zvuk']['holos']:          # MV-150: синтезований голос — завжди з позначкою в кадрі
-            S['holos_poznaka'] = 'Голос згенеровано'
+        if S['zvuk']['holos']:          # голос — завжди з позначкою в кадрі: чий голос, така й позначка (MV-150, MV-171)
+            import holos_servis
+            S['holos_poznaka'] = holos_servis.poznaka()
             self.meta['holos'] = True
         zauv = perevirka.pereviryty(S, self.meta)
+        if (self.meta.get('pravyla') or 0) >= 129:      # заклик веде на сторінку, що існує (ZAVDANNYA-175)
+            zauv += perevirka.posylannia(self.meta, sait())
         if zauv:
             raise SystemExit(f"{S['id']}: " + '; '.join(zauv))
         (teka / f"{S['id']}.json").write_text(json.dumps(S, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
         return self.meta
+
+
+def karta_tut(c, z=15) -> str:
+    """Заклик на карту, відкриту на цьому самому місці (karta.js читає #зум/широта/довгота), — не на карту загалом."""
+    return f'/karta/#{z}/{c[1]:.5f}/{c[0]:.5f}'
+
+
+def sait():
+    """Зібраний сайт (site/zibraty_sait.py) для перевірки закликів: --sait у командах сценаріїв або змінна MV_SAIT."""
+    import os
+    return os.environ.get('MV_SAIT') or None
 
 
 # ------------------------------------------------------------------ розклади появи точок
@@ -1033,7 +1067,11 @@ def main():
     a.add_argument('baza', type=Path)
     a.add_argument('--koloda', type=Path)
     a.add_argument('--lyshe')
+    a.add_argument('--sait', type=Path, help='зібраний сайт (site/zibraty_sait.py) — перевірка, що заклик веде на сторінку, яка існує; або MV_SAIT')
     arg = a.parse_args()
+    if arg.sait:
+        import os
+        os.environ['MV_SAIT'] = str(arg.sait)
     B = Baza(arg)
     vybir = arg.lyshe.split(',') if arg.lyshe else sorted(SCENARII)
     katalog = []

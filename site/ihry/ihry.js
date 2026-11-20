@@ -20,6 +20,13 @@
     nalashtuvannia: panel.getAttribute('data-nalashtuvannia'), litopys: panel.getAttribute('data-litopys'),
     kariera: panel.getAttribute('data-kariera')
   };
+  var BALY_U_BRAUZERI = 'Бали — лише в цьому браузері: очистите браузер чи зайдете з іншого телефона — їх там не буде.';
+  // Один шлях з гри до покупки — як у «Вулиці дня» (ZAVDANNYA-176, ZVIT-168 №6): сторінка вулиці й підписка, без обіцянок.
+  function shliakhDoVulytsi(dzherelo, vulytsia) {
+    return '<h3>А що на вашій вулиці?</h3><p>Сторінка кожної вулиці — числа безкоштовно; <a href="/oplata/?tovar=pidpyska&amp;dzherelo=' + dzherelo + '">підписка</a> показує події з адресами і нове біля дому.</p>' +
+      '<p class="i-ryad">' + (vulytsia ? '<a class="knopka klav" href="/vulytsia/' + encodeURIComponent(vulytsia) + '/?dzherelo=' + dzherelo + '">Сторінка цієї вулиці</a>' : '') +
+      '<a class="knopka klav' + (vulytsia ? ' i-druh' : '') + '" href="/vulytsi/?dzherelo=' + dzherelo + '">Знайти свою вулицю</a></p>';
+  }
   var MITKY = { rishennia: 'з рішення суду', vyhadka: 'вигадка', karta: 'з карти', pidkazka: 'підказка гри', dovidnyk: 'з довідника' };
   var NAZVY_DNIV = ['', 'понеділок', 'вівторок', 'середа', 'четвер', "п'ятниця", 'субота', 'неділя'];
 
@@ -78,18 +85,71 @@
     return true;
   }
   if (!pidkliuchyty()) { var t0 = setInterval(function () { if (pidkliuchyty()) clearInterval(t0); }, 300); }
-  function rezhym(f, pidkaz) { REZHYM = f; ekran.classList.toggle('ihry-tsil', !!f); if (f && pidkaz) toast(pidkaz); }
+  // Без дотику й миші (ZAVDANNYA-176; ZVIT-168 №10, ZVIT-171 №4): поки гра чекає точку, у центрі карти — приціл, поруч —
+  // клавіша «Тут». Карту рухають стрілками (фокус на карті), наближають «+»/«−»; «Тут» ставить точку в центр.
+  var PRYTSIL = null;
+  function prytsil(uvim) {
+    if (!PRYTSIL) {
+      PRYTSIL = document.createElement('div'); PRYTSIL.className = 'ihry-prytsil'; PRYTSIL.hidden = true;
+      PRYTSIL.innerHTML = '<i aria-hidden="true"></i><button type="button" class="knopka klav knopka--holovna">Тут — центр карти</button>';
+      var kl = PRYTSIL.querySelector('button');
+      kl.setAttribute('aria-describedby', 'ihry-prytsil-pidk');
+      PRYTSIL.insertAdjacentHTML('beforeend', '<span id="ihry-prytsil-pidk" class="prykhovano">Стрілки рухають карту, плюс і мінус — масштаб, Enter ставить точку в центр.</span>');
+      kl.addEventListener('click', function () {
+        var m = karta(); if (!m || !REZHYM) return; var c = m.getCenter(); REZHYM({ lat: c.lat, lng: c.lng });
+      });
+      kl.addEventListener('keydown', function (e) {
+        var m = karta(); if (!m) return;
+        var krok = { ArrowLeft: [-120, 0], ArrowRight: [120, 0], ArrowUp: [0, -120], ArrowDown: [0, 120] }[e.key];
+        if (krok) { e.preventDefault(); m.panBy(krok, { duration: MV.tykho ? 0 : 200 }); }
+        else if (e.key === '+' || e.key === '=') { e.preventDefault(); m.zoomIn({ duration: MV.tykho ? 0 : 200 }); }
+        else if (e.key === '-' || e.key === '_') { e.preventDefault(); m.zoomOut({ duration: MV.tykho ? 0 : 200 }); }
+      });
+      ekran.appendChild(PRYTSIL);
+    }
+    PRYTSIL.hidden = !uvim;
+    // Фокус — одразу на «Тут»: з клавіатури можна грати без Tab через усю карту; після дотику рамки не видно (:focus-visible).
+    if (uvim) PRYTSIL.querySelector('button').focus({ preventScroll: true });
+  }
+  function rezhym(f, pidkaz) { REZHYM = f; ekran.classList.toggle('ihry-tsil', !!f); prytsil(!!f); if (f && pidkaz) toast(pidkaz); }
 
   // ---------- панель ----------
   var ZARAZ = 'menyu';
+  // Під час гри — без стовпчиків 3D сот і нахилу: карта для гри, а не «кричить» сама (ZVIT-168, №8). Після — як було.
+  var BEZ3D = null;
+  function vymknuty3d() {
+    var m = karta(); if (!m || BEZ3D || !m.getStyle) return;
+    var shari = ((m.getStyle() || {}).layers || []).filter(function (l) { return l.type === 'fill-extrusion' && m.getLayoutProperty(l.id, 'visibility') !== 'none'; }).map(function (l) { return l.id; });
+    BEZ3D = { pitch: m.getPitch(), shari: shari };
+    shari.forEach(function (id) { m.setLayoutProperty(id, 'visibility', 'none'); });
+    if (BEZ3D.pitch > 0) m.easeTo({ pitch: 0, duration: MV.tykho ? 0 : 500 });
+  }
+  function povernuty3d() {
+    var m = karta(), b = BEZ3D; BEZ3D = null; if (!m || !b) return;
+    b.shari.forEach(function (id) { if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', 'visible'); });
+    if (b.pitch > 0) m.easeTo({ pitch: b.pitch, duration: MV.tykho ? 0 : 500 });
+  }
   function vidkryty(gra) {
     panel.hidden = false; knopka.setAttribute('aria-expanded', 'true'); ekran.classList.add('ihry-vidkryto');
+    try { vymknuty3d(); } catch (e) { /* карта ще не готова — гра й так працює */ }
     if (window.MvKarta && window.MvKarta.zakryty) window.MvKarta.zakryty();
     hovatyZaproshennia(false);
     pokazaty(gra || 'menyu');
   }
-  function zakryty() { panel.hidden = true; knopka.setAttribute('aria-expanded', 'false'); ekran.classList.remove('ihry-vidkryto'); rezhym(null); prybratyMitky(); zupynytyLitopys(); zupynytyKarieru(); }
+  function zakryty() {
+    panel.hidden = true; knopka.setAttribute('aria-expanded', 'false'); ekran.classList.remove('ihry-vidkryto'); panel.classList.remove('zghornuta', 'z-opysom', 'vysoka');
+    rezhym(null); prybratyMitky(); zupynytyLitopys(); zupynytyKarieru();
+    try { povernuty3d(); } catch (e) { /* без карти */ }
+    knopka.focus();
+  }
   knopka.addEventListener('click', function () { if (panel.hidden) vidkryty(); else zakryty(); });
+  // Escape: спершу скасовує «покажіть на карті», далі закриває панель ігор (фокус — на кнопку «Ігри»).
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape' || panel.hidden || e.defaultPrevented) return;
+    if (e.target && e.target.id === 'i-vul' && e.target.getAttribute('aria-expanded') === 'true') return;   // спершу закрити підказки
+    if (REZHYM && ZARAZ !== 'litopys') { rezhym(null); panel.classList.remove('zghornuta', 'z-opysom'); var h = $('.i-shap h2'); if (h) { h.tabIndex = -1; h.focus(); } return; }
+    zakryty();
+  });
   panel.addEventListener('click', function (e) {
     if (panel.classList.contains('zghornuta') && e.target.closest('.i-shap') && !e.target.closest('[data-i]')) { panel.classList.remove('zghornuta'); return; }
     var t = e.target.closest('[data-i]'); if (!t) return;
@@ -104,8 +164,13 @@
       '<h2>' + esc(nazva) + '</h2><button type="button" class="i-x" data-i="x" aria-label="Закрити ігри">×</button></div>' +
       '<div class="i-tilo">' + tilo + '</div>';
     panel.scrollTop = 0;
+    // Фокус — на назву гри після відкриття панелі чи переходу між іграми (читалка називає, де людина), не після кожного кроку.
+    if (FOKUS) { FOKUS = false; var h2 = $('.i-shap h2'); if (h2) { h2.tabIndex = -1; h2.focus({ preventScroll: true }); } }
   }
+  var FOKUS = false;
   function pokazaty(gra) {
+    FOKUS = true;
+    panel.classList.remove('vysoka');
     if (gra !== 'litopys') zupynytyLitopys();
     if (gra !== 'kariera') zupynytyKarieru();
     ZARAZ = gra;
@@ -124,14 +189,15 @@
         return '<button type="button" class="i-gra klav" data-i="hra" data-gra="' + gra + '"' + (vymk ? ' disabled' : '') + '><b>' + nazva +
           '</b><span>' + opys + '</span><small>' + stan + '</small></button>';
       };
-      ramka('Ігри', '<p class="i-bal"><span>' + chyslo(s.bali) + '</span> ' + slovoBaly(s.bali) + ' на цьому пристрої <button type="button" class="i-lnk" data-i="hra" data-gra="bali">Бали й спроби</button></p>' +
+      ramka('Ігри', '<p class="i-bal"><span>' + chyslo(s.bali) + '</span> ' + slovoBaly(s.bali) + ' <small class="i-prym">лише в цьому браузері</small> <button type="button" class="i-lnk" data-i="hra" data-gra="bali">Бали й спроби</button></p>' +
         '<div class="i-sitka">' +
-        kart('detektyv', 'Детектив тижня', 'щодня слід на карті, у неділю — розкриття', det, !st) +
+        (st ? kart('detektyv', 'Детектив тижня', 'щодня слід на карті, у неділю — розкриття', det) : '') +
         kart('vgadai', 'Вгадай, де це було', 'опис події — ваша точка на карті', DZH.koloda ? (den.podiia ? 'подія дня зіграна' : 'подія дня чекає') : 'скоро', !DZH.koloda) +
         (DZH.vulytsia ? kart('vulytsia', 'Вулиця дня', 'одна вулиця на добу — вгадайте за 7 спроб', den.vulytsia ? 'сьогодні зіграно' : 'сьогодні не зіграно') : '') +
         (DZH.litopys && window.MvLitopys ? kart('litopys', 'Літопис міста', 'читайте справи, відкривайте вулиці й райони — гра без кінця', stanLitopysu()) : '') +
-        (window.MvKariera && (DZH.kariera || r[1]) ? kart('kariera', 'Кваліфікуй: кар’єра', 'кодекс → стаття → частина, як вирішив суд; рівні, справи дня, режим викладача', stanKariery()) : '') +
-        kart('kvalifikuy', 'Кваліфікуй', 'фабула → стаття → як вирішують суди; для студентів і курсантів', r[1] ? Y.sproby(s, 'kvalifikuy', K, c.data).bezkoshtovnykh + ' безкоштовні справи сьогодні' : 'скоро', !r[1]) +
+        // ZAVDANNYA-176 (ZVIT-168, №7): одна картка «Кваліфікуй» — «кар’єра»; стара гра лишається лише запасною, коли модуля немає
+        (window.MvKariera && (DZH.kariera || r[1]) ? kart('kariera', 'Кваліфікуй', 'справжня справа → кодекс, стаття, частина — як вирішив суд; рівні, справи дня, режим викладача', stanKariery())
+          : kart('kvalifikuy', 'Кваліфікуй', 'фабула → стаття → як вирішують суди; для студентів і курсантів', r[1] ? Y.sproby(s, 'kvalifikuy', K, c.data).bezkoshtovnykh + ' справи сьогодні' : 'скоро', !r[1])) +
         '</div><p class="i-prym">Справи дня однакові для всіх; очки — лише за точність. <button type="button" class="i-lnk" data-i="hra" data-gra="nalashtuvannia">Налаштування</button></p>', true);
     });
   }
@@ -169,6 +235,7 @@
     if (!window.MvKariera) { menyu(); return; }
     zupynytyKarieru();
     ramka('Кваліфікуй: кар’єра', '<div class="i-kariera"></div>');
+    panel.classList.add('vysoka');   // карта цій грі не потрібна: на телефоні шторка майже на весь екран — справа видна одразу
     KARIERA = window.MvKariera.zapustyty({ korin: $('.i-kariera'), dani: DZH.kariera || DZH.kvalifikuy, zapasni: DZH.kvalifikuy,
       bali: function (ochky) { return narakhuvaty(ochky); }, ochky: K && K.kariera_ochky,
       tost: function (t, ms) { toastDovgyi(t, ms); }, prokrutka: function () { panel.scrollTop = 0; },
@@ -179,7 +246,7 @@
 
   // ---------- «Детектив тижня» ----------
   var SPRAVA = null;
-  function stanSpravy(s) { return chytaty('mv-ihry-detektyv-' + s.id, { znaideni: [], versii: [], vatson: '', vykresleno: {}, naraxovano: false }); }
+  function stanSpravy(s) { return chytaty(Y.kliuchSpravy(s), { znaideni: [], versii: [], vatson: '', vykresleno: {}, naraxovano: false }); }
   function detektyv() {
     zavantazhyty('spravy').then(function (d) {
       var c = chas();
@@ -232,11 +299,11 @@
   }
   function rozkryttia(s, ss) {
     var o = Y.ochkyDetektyva(s, ss.versii);
-    if (!ss.naraxovano && ss.versii.length) { ss.naraxovano = true; ss.bali = narakhuvaty(o.razom); pysaty('mv-ihry-detektyv-' + s.id, ss); }
+    if (!ss.naraxovano && ss.versii.length) { ss.naraxovano = true; ss.bali = narakhuvaty(o.razom); pysaty(Y.kliuchSpravy(s), ss); }
     var vidp = Y.POLIA.map(function (p) { var k = s.polia[p].kandydaty.filter(function (x) { return x.id === s.polia[p].vidpovid; })[0]; return esc(s.polia[p].pytannia) + ' <b>' + esc(k.nazva) + '</b>'; }).join('<br>');
     return '<section class="i-rozkr"><h3>Розкриття</h3><p>' + vidp + '</p><h4>Що було насправді (з рішення суду)</h4><p>' + esc(s.rozkryttia.spravzhnie) +
       ' <a href="' + esc(s.rishennia.url) + '" target="_blank" rel="noopener noreferrer">Рішення суду</a></p><h4>Що вигадано</h4><p>' + esc(s.rozkryttia.vyhadka) + '</p>' +
-      '<p class="i-ochky">' + chyslo(o.razom) + ' ' + H.slovoOchky(o.razom) + ' · Холмс розкрив після сліду ' + s.kholms + '</p></section>';
+      '<p class="i-ochky">' + chyslo(o.razom) + ' ' + H.slovoOchky(o.razom) + ' · Холмс розкрив після сліду ' + s.kholms + '</p></section>' + shliakhDoVulytsi('hra-detektyv');
   }
   var DII = {
     hra: function (t) { pokazaty(t.getAttribute('data-gra')); },
@@ -245,18 +312,18 @@
       if (window.matchMedia('(max-width: 700px)').matches) panel.classList.add('zghornuta');
       rezhym(function (ll) {
         if (!Y.znaideno(sl, ll.lat, ll.lng)) { toast('Тут сліду немає. Спробуйте ще.'); return true; }
-        var ss = stanSpravy(s); if (ss.znaideni.indexOf(n) === -1) ss.znaideni.push(n); pysaty('mv-ihry-detektyv-' + s.id, ss);
+        var ss = stanSpravy(s); if (ss.znaideni.indexOf(n) === -1) ss.znaideni.push(n); pysaty(Y.kliuchSpravy(s), ss);
         marker(sl.tsil.lat, sl.tsil.lon, 'slid', 'Слід ' + n); rezhym(null); panel.classList.remove('zghornuta');
         toast('Слід ' + n + ' знайдено'); detektyv(); return true;
       }, 'Торкніться карти там, де, на вашу думку, слід ' + n);
     },
     vatson: function (t) {
       var n = Number(t.getAttribute('data-n')), sl = SPRAVA.slidy[n - 1], ss = stanSpravy(SPRAVA);
-      ss.vatson = chas().data; pysaty('mv-ihry-detektyv-' + SPRAVA.id, ss);
+      ss.vatson = chas().data; pysaty(Y.kliuchSpravy(SPRAVA), ss);
       // Показує район (≈ 3 км), а не саме місце: центр зсунуто на сталу відстань.
       letity(sl.tsil.lat + 0.008, sl.tsil.lon - 0.012, 12.6); toast('Ватсон: слід десь у цій частині міста'); detektyv();
     },
-    vykreslyty: function (t) { var ss = stanSpravy(SPRAVA), k = t.getAttribute('data-k'); ss.vykresleno[k] = !ss.vykresleno[k]; pysaty('mv-ihry-detektyv-' + SPRAVA.id, ss); t.classList.toggle('vykr'); },
+    vykreslyty: function (t) { var ss = stanSpravy(SPRAVA), k = t.getAttribute('data-k'); ss.vykresleno[k] = !ss.vykresleno[k]; pysaty(Y.kliuchSpravy(SPRAVA), ss); t.classList.toggle('vykr'); },
     'pokazaty-mistsia': function () {
       prybratyMitky(); var ss = stanSpravy(SPRAVA);
       SPRAVA.polia.de.kandydaty.forEach(function (k) { marker(k.lat, k.lon, 'stantsiia' + (ss.vykresleno[k.id] ? ' vykr' : ''), k.nazva.replace(/[«»]/g, '')); });
@@ -269,7 +336,7 @@
       var v = { data: chas().data, den: chas().den };
       panel.querySelectorAll('[data-pole]').forEach(function (x) { v[x.getAttribute('data-pole')] = x.value; });
       if (Y.POLIA.some(function (p) { return !v[p]; })) { toast('Заповніть усі чотири поля'); return; }
-      var ss = stanSpravy(SPRAVA); ss.versii.push(v); pysaty('mv-ihry-detektyv-' + SPRAVA.id, ss); detektyv();
+      var ss = stanSpravy(SPRAVA); ss.versii.push(v); pysaty(Y.kliuchSpravy(SPRAVA), ss); detektyv();
     },
     'vgadai-start': function (t) { vgadaiStart(t.getAttribute('data-typ')); },
     'vgadai-dali': function () { vgadaiKrok(); },
@@ -278,8 +345,6 @@
     'kv-vidpovid': function () { kvVidpovid(); },
     'kv-karta': function (t) { var la = Number(t.getAttribute('data-lat')), lo = Number(t.getAttribute('data-lon')); prybratyMitky(); marker(la, lo, 'kv'); letity(la, lo, 14.5); },
     'v-podilytysia': function () { vPodilytysia(); },
-    paket: function () { toast(K.oplata_chomu_ni); },
-    obmin: function (t) { var r = Y.obminMozhlyvyi(bali(), K.obmin.filter(function (x) { return x.id === t.getAttribute('data-t'); })[0], K, chas().data); toast(r.mozhna ? 'Обмін — через кабінет.' : r.chomu); },
     skynuty: function () {
       if (!window.confirm('Стерти очки, бали й прогрес ігор на цьому пристрої?')) return;
       Object.keys(localStorage).forEach(function (k) { if (k.indexOf('mv-ihry-') === 0 || k.indexOf('mv-kariera-') === 0) localStorage.removeItem(k); });
@@ -300,7 +365,7 @@
         (kol.demo ? '<p class="i-prym">Демо-колода: події узагальнені, місця — площі й станції метро.</p>' : '') +
         '<button type="button" class="knopka klav knopka--holovna" data-i="vgadai-start" data-typ="den"' + (den.podiia ? ' disabled' : '') + '>' + (den.podiia ? 'Подію дня зіграно' : 'Подія дня — та сама для всіх') + '</button>' +
         '<button type="button" class="knopka klav" data-i="vgadai-start" data-typ="sproba"' + (p.mozhna ? '' : ' disabled') + '>Спроба: ' + K.vgadai_podii_v_sprobi + ' подій</button>' +
-        '<p class="i-prym">Безкоштовних спроб сьогодні: ' + p.bezkoshtovnykh + ' з ' + K.bezkoshtovno_na_den.vgadai + (p.kuplenykh ? ' · куплених: ' + p.kuplenykh : '') + '. Події кожної спроби однакові для всіх у цей день.</p>');
+        '<p class="i-prym">Спроб сьогодні: ' + p.bezkoshtovnykh + ' з ' + K.bezkoshtovno_na_den.vgadai + '. Події кожної спроби однакові для всіх у цей день.</p>');
     });
   }
   function vgadaiStart(typ) {
@@ -313,25 +378,27 @@
         spysok = Y.sprobaVgadai(podii, c.data, nomer, K.vgadai_podii_v_sprobi);
       }
       VG = { typ: typ, podii: spysok, i: -1, ochky: 0 };
-      if (window.matchMedia('(max-width: 700px)').matches) panel.classList.add('zghornuta');
+      if (window.matchMedia('(max-width: 700px)').matches) panel.classList.add('zghornuta', 'z-opysom');
       vgadaiKrok();
     });
   }
   function vgadaiKrok() {
     prybratyMitky(); VG.i++;
     if (VG.i >= VG.podii.length) {
-      panel.classList.remove('zghornuta'); rezhym(null);
+      panel.classList.remove('zghornuta', 'z-opysom'); rezhym(null);
       var b = narakhuvaty(VG.ochky);
       if (VG.typ === 'den') { var c = chas(), den = chytaty('mv-ihry-den-' + c.data, {}); den.podiia = true; pysaty('mv-ihry-den-' + c.data, den); }
-      ramka('Вгадай, де це було', '<p class="i-ochky">' + chyslo(VG.ochky) + ' ' + H.slovoOchky(VG.ochky) + (b ? ' · +' + b + ' ' + slovoBaly(b) : '') + '</p><button type="button" class="knopka klav" data-i="hra" data-gra="vgadai">Ще раз</button>');
+      ramka('Вгадай, де це було', '<p class="i-ochky">' + chyslo(VG.ochky) + ' ' + H.slovoOchky(VG.ochky) + (b ? ' · +' + b + ' ' + slovoBaly(b) : '') + '</p>' +
+        (VG.typ === 'den' && !PROBA ? '<p class="i-prym">Нова подія дня — завтра.</p>' : '') +
+        '<button type="button" class="knopka klav" data-i="hra" data-gra="vgadai">Ще раз</button>' + shliakhDoVulytsi('hra-vgadai'));
       return;
     }
     var p = VG.podii[VG.i];
-    ramka('Вгадай, де це було', '<p class="i-den">Подія ' + (VG.i + 1) + ' з ' + VG.podii.length + ' · ' + esc(p.vyd) + ', ' + esc(p.rik) + '</p><p class="i-opys">' + esc(p.opys_korotkyi) + '</p><p class="i-prym">Торкніться карти там, де, на вашу думку, це сталося.</p>');
+    ramka('Вгадай, де це було', '<p class="i-den">Подія ' + (VG.i + 1) + ' з ' + VG.podii.length + ' · ' + esc(p.vyd) + ', ' + esc(p.rik) + '</p><p class="i-opys">' + esc(p.opys_korotkyi) + '</p><p class="i-prym">Торкніться карти там, де, на вашу думку, це сталося, або наведіть приціл (стрілки, «+» і «−») і натисніть «Тут».</p>');
     rezhym(function (ll) {
       var m = H.vidstan(ll.lat, ll.lng, p.lat, p.lon), o = H.ochky(m); VG.ochky += o;
       marker(ll.lat, ll.lng, 'sproba'); marker(p.lat, p.lon, 'pravda', 'тут');
-      rezhym(null); panel.classList.remove('zghornuta');
+      rezhym(null); panel.classList.remove('zghornuta', 'z-opysom');
       ramka('Вгадай, де це було', '<p class="i-den">Подія ' + (VG.i + 1) + ' з ' + VG.podii.length + '</p><p class="i-ochky">' + H.vidstanTekstom(m) + ' · ' + chyslo(o) + ' ' + H.slovoOchky(o) + '</p><p>' + esc(p.opys_povnyi) + '</p>' +
         (/^https:\/\//.test(p.rishennya_url || '') ? '<p><a href="' + esc(p.rishennya_url) + '" target="_blank" rel="noopener noreferrer">Рішення суду</a></p>' : '') +
         '<button type="button" class="knopka klav knopka--holovna" data-i="vgadai-dali">' + (VG.i + 1 < VG.podii.length ? 'Далі' : 'Підсумок') + '</button>');
@@ -422,10 +489,14 @@
       var krim = {}; st.sproby.forEach(function (s) { krim[s] = true; });
       znaid = V.shukaty(VD.vul, inp.value, krim, 6);
       ul.innerHTML = znaid.map(function (v) { return '<li role="option"><button type="button" data-slug="' + esc(v.slug) + '">' + esc(v.nazva) + (v.stara ? ' (кол. ' + esc(v.stara) + ')' : '') + ' <small>' + esc(v.rayon) + '</small></button></li>'; }).join('') +
-        (!znaid.length && inp.value.trim().length > 1 ? '<li class="i-pidk-0">Такої вулиці в грі немає — у грі вулиці, де в даних щонайменше 5 подій.</li>' : '');
-      inp.setAttribute('aria-expanded', znaid.length ? 'true' : 'false');
+        (!znaid.length && inp.value.trim().length > 1 ? '<li class="i-pidk-0" role="option" aria-disabled="true" aria-selected="false">Такої вулиці в грі немає — у грі вулиці, де в даних щонайменше 5 подій.</li>' : '');
+      inp.setAttribute('aria-expanded', ul.children.length ? 'true' : 'false');
     });
-    inp.addEventListener('keydown', function (e) { if (e.key === 'Enter' && znaid.length) { e.preventDefault(); vSproba(znaid[0].slug); } });
+    inp.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && znaid.length) { e.preventDefault(); vSproba(znaid[0].slug); }
+      else if (e.key === 'Escape' && ul.children.length) { e.preventDefault(); ul.innerHTML = ''; inp.setAttribute('aria-expanded', 'false'); }
+    });
+    if (VD.fokusPoshuk) { VD.fokusPoshuk = false; inp.focus(); }
     ul.addEventListener('click', function (e) { var b = e.target.closest('[data-slug]'); if (b) vSproba(b.getAttribute('data-slug')); });
   }
   function vSproba(slug) {
@@ -443,7 +514,7 @@
       toast('Ні, загадана — за ' + H.vidstanTekstom(p.vidstanM) + ' ' + p.napryamPovnyi);
       var v = VD.za[slug]; letity(v.lat, v.lon, 12.5);
     }
-    pysaty(VD.kl, st); vMalyuvaty();
+    pysaty(VD.kl, st); VD.fokusPoshuk = !st.kin; vMalyuvaty();
   }
   function vPodilytysia() {
     var por = VD.st.sproby.map(function (s) { return V.porivnyaty(VD.za[s], VD.tsil); });
@@ -469,7 +540,7 @@
         '<div class="i-seg" role="group" aria-label="Режим"><button type="button" data-i="kv-rezhym" data-r="zvychainyi" aria-pressed="' + (r === 'zvychainyi') + '">Звичайний</button><button type="button" data-i="kv-rezhym" data-r="student" aria-pressed="' + (r === 'student') + '">Для студентів і курсантів</button></div>' +
         '<p class="i-prym">' + (r === 'student' ? 'Лише номери статей, без назв; після відповіді — чому саме ця кваліфікація.' : 'Назви статей простими словами.') + '</p>' +
         (dali ? '<button type="button" class="knopka klav knopka--holovna" data-i="kv-start"' + (p.mozhna ? '' : ' disabled') + '>Наступна справа</button>' : '<p>Справи на сьогодні закінчились — завтра нові.</p>') +
-        '<p class="i-prym">Безкоштовних справ сьогодні: ' + p.bezkoshtovnykh + ' з ' + K.bezkoshtovno_na_den.kvalifikuy + (p.kuplenykh ? ' · куплених спроб: ' + p.kuplenykh : '') + '. Справи дня — однакові для всіх.</p>' +
+        '<p class="i-prym">Справ сьогодні: ' + p.bezkoshtovnykh + ' з ' + K.bezkoshtovno_na_den.kvalifikuy + '. Справи дня — однакові для всіх.</p>' +
         (d.zrazok ? '<p class="i-prym">Прототип: 7 справ із перевіреної вибірки рішень.</p>' : ''));
     });
   }
@@ -507,20 +578,20 @@
   }
 
   // ---------- Бали й спроби (MV-130) ----------
+  // ZAVDANNYA-176 (ZVIT-168, №5 і №9): без цін платних спроб і кнопок їх купівлі (MV-155 П8: купівлю спроб не вмикаємо — азартна
+  // гра); обмін вимкнений (MV-138) — сірі кнопки «скоро», а не робочі з тостом; бали — лише в цьому браузері, кажемо вголос.
   function baliEkran() {
     var c = chas(), s = bali();
     var h = '<p class="i-bal"><span>' + chyslo(s.bali) + '</span> ' + slovoBaly(s.bali) + ' · сьогодні +' + s.baliSohodni + ' з ' + K.stelia_baliv_na_den + '</p>' +
-      '<p class="i-prym">' + K.ochok_za_bal + ' очок = 1 бал — з безкоштовних і куплених спроб однаково. Бали не передаються й не виводяться в гроші; очки — лише за точність; справи дня однакові для всіх.</p>' +
-      '<h3>Обміняти на</h3>' + K.obmin.map(function (t) {
+      '<p class="i-uvaha">' + BALY_U_BRAUZERI + '</p>' +
+      '<p class="i-prym">' + K.ochok_za_bal + ' очок = 1 бал. Бали не передаються й не виводяться в гроші; очки — лише за точність; справи дня однакові для всіх.</p>' +
+      '<h3>Обміняти на — скоро</h3>' + K.obmin.map(function (t) {
         var pr = Math.min(100, Math.round(100 * s.bali / t.baliv));
-        return '<div class="i-obmin"><div><b>' + esc(t.nazva) + '</b> <span>' + chyslo(t.baliv) + ' балів (замість ' + t.tsina + ' грн)</span></div><div class="i-prohres"><i data-shyr="' + pr + '"></i></div><button type="button" class="knopka klav" data-i="obmin" data-t="' + t.id + '">Обміняти</button></div>';
+        return '<div class="i-obmin"><div><b>' + esc(t.nazva) + '</b> <span>' + chyslo(t.baliv) + ' балів</span></div><div class="i-prohres"><i data-shyr="' + pr + '"></i></div><button type="button" class="knopka klav" disabled>Скоро</button></div>';
       }).join('') + '<p class="i-prym">' + esc(K.obmin_chomu_ni) + '</p>' +
       '<h3>Спроби сьогодні</h3><ul class="i-spr">' + ['vgadai', 'kvalifikuy'].map(function (g) {
-        var p = Y.sproby(s, g, K, c.data); return '<li>' + (g === 'vgadai' ? 'Вгадай, де це було' : 'Кваліфікуй') + ': безкоштовних ' + p.bezkoshtovnykh + ' з ' + K.bezkoshtovno_na_den[g] + '</li>'; }).join('') +
-      '<li>Куплених: ' + (s.kupleni || 0) + '</li></ul>' +
-      '<h3>Докупити спроби</h3><div class="i-pakety">' + K.pakety.map(function (p) {
-        return '<button type="button" class="i-paket klav' + (p.holovnyi ? ' holovnyi' : '') + '" data-i="paket"' + (K.oplata_uvimknena ? '' : ' aria-disabled="true"') + '><b>' + p.sprob + ' спроб</b><span>' + p.tsina + ' грн</span></button>'; }).join('') +
-      '</div><p class="i-prym">' + esc(K.oplata_chomu_ni) + '</p>';
+        var p = Y.sproby(s, g, K, c.data); return '<li>' + (g === 'vgadai' ? 'Вгадай, де це було' : 'Кваліфікуй') + ': ' + p.bezkoshtovnykh + ' з ' + K.bezkoshtovno_na_den[g] + '</li>'; }).join('') +
+      '</ul><p class="i-prym">Нові спроби — щодня; купувати їх не треба.</p>';
     ramka('Бали й спроби', h);
     panel.querySelectorAll('[data-shyr]').forEach(function (e) { e.style.width = Number(e.getAttribute('data-shyr')) + '%'; });
   }

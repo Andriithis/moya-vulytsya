@@ -88,6 +88,8 @@ site/hra/vulytsia-dnia.json
 !site/storinky_mistsia.py
 !site/storinky_vkhodiv.py
 !site/storinka_doslidnykam.py
+!site/storinky_pravo.py
+!site/storinka_dostupnist.py
 !site/doslidnykam.json
 !site/tsiny.py
 !site/khostynh.py

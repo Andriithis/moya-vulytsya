@@ -19,6 +19,7 @@
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 import base64
 import http.client
 import http.server
@@ -34,13 +35,14 @@ TUT = Path(__file__).resolve().parent
 KORIN = TUT.parents[1]
 sys.path.insert(0, str(TUT))
 import dani as D  # noqa: E402
+import holos_servis  # noqa: E402
 import perevirka  # noqa: E402
 import zapys_saitu as ZS  # noqa: E402
 from laboratoriia139 import mistsia  # noqa: E402
 from rushii import ARG_CPU, ARG_GPU, arkush, ffmpeg, lehka  # noqa: E402
 from rushii import rendery as rendery_rushiia  # noqa: E402
 from rushii import server as server_rushiia  # noqa: E402
-from stsenarii import PROFIL, Rolyk, fp  # noqa: E402
+from stsenarii import PROFIL, Rolyk, fp, sait  # noqa: E402
 
 VYHID = KORIN / 'video' / 'vyhid' / '155'
 KESH = KORIN / 'video' / 'vyhid' / 'kesh' / 'stsenarii'
@@ -165,18 +167,22 @@ def vstup(id_, tema, styl, c, z, p, b, hook, P, radius=1500, maks=None, poriadok
     return R
 
 
+PIDSUMKY: dict = {}        # Vypusk.pidsumky — одне джерело чисел з сайтом і роликами 138 (ZAVDANNYA-175); ставить main()
+
+
 def kalendar_2025(P):
     from datetime import date
     d0 = date(2025, 1, 1)
     dni = [0] * 365
-    for x in P:
-        if (x.data or '').startswith('2025'):
+    dzherelo = PIDSUMKY.get('dni') or dict(Counter(x.data for x in P if x.data))
+    for dd, k in dzherelo.items():
+        if dd.startswith('2025'):
             try:
-                i = (date.fromisoformat(x.data) - d0).days
+                i = (date.fromisoformat(dd) - d0).days
             except ValueError:
                 continue
             if 0 <= i < 365:
-                dni[i] += 1
+                dni[i] += k
     nenul = sorted(v for v in dni if v)
     return dni, [nenul[int(len(nenul) * q)] for q in (0.0, 0.25, 0.5, 0.8)]
 
@@ -300,7 +306,8 @@ def p3(stan, P, ix):
         'meta': dict(nazva='Повний звіт перед купівлею', typ='Хтось читає звіт — і вау', hrupa='Потреба → продукт',
                      meta='потреба (велика покупка) → повний звіт «перед купівлею», 299 грн',
                      hachok='«Квартира — за 2 мільйони. А що було на вулиці?» над 3D-шпилями', liniia='Повний звіт',
-                     kudy='/miy-budynok/', shar='zvit', vyhliad='shpyli (139), світла'),
+                     kudy='/miy-budynok/', shar='zvit', vyhliad='shpyli (139), світла',
+                     chysla_ne_z_bazy=['2']),          # «за 2 мільйони» — приклад ціни квартири, не твердження про дані
         'tekst': [
             {'t0': 3.5, 't1': 5.8, 'styl': 'velykyi', 'tekst': 'Повний звіт —\n*перед купівлею*', 'y': 330},
             {'t0': 5.9, 't1': 8.2, 'styl': 'velykyi', 'tekst': f'Рік за роком:\n*{roky[0]}–{roky[-1]}*', 'y': 330},
@@ -484,7 +491,7 @@ def S_rolyka(R: Rolyk, Z: dict) -> tuple[dict, dict]:
     zv['efekty'] = list(R.S['zvuk'].get('efekty', [])) + zv.get('efekty', [])
     S['zvuk'] = zv
     S['pidpys_publikatsii'] = Z['pidpys']
-    S['holos_poznaka'] = 'Голос згенеровано' if zv.get('holos') else None
+    S['holos_poznaka'] = holos_servis.poznaka() if zv.get('holos') else None
     meta = dict(Z['meta'], id=Z['id'], pravyla=138, kintsivka=PROFIL, pidpys=' '.join(Z['pidpys']))
     meta.pop('sudova_tekst', None)
     return S, meta
@@ -492,7 +499,7 @@ def S_rolyka(R: Rolyk, Z: dict) -> tuple[dict, dict]:
 
 def perevir(R, Z) -> list[str]:
     S, meta = S_rolyka(R, Z)
-    z = perevirka.pereviryty(S, meta)
+    z = perevirka.pereviryty(S, meta) + perevirka.posylannia(meta, sait())
     from laboratoriia139 import perevirty_styl
     z += perevirty_styl(S, meta)
     for it in Z['tekst']:
@@ -528,8 +535,8 @@ def zapysaty(brauzer, port, stan, R, Z, kadry=None, vykhid=VYHID, cpu=False):
         srv_r.shutdown()
     # 2) запис сторінок
     holos = bool(Z['zvuk'].get('holos'))
-    S_ov = {'tekst': Z['tekst'], 'dzherelo': 'Справжній сайт · тестова оплата · дані — рішення судів',
-            'holos_poznaka': 'Голос згенеровано' if holos else None, 'paltsi': []}
+    S_ov = {'tekst': Z['tekst'], 'dzherelo': 'Справжній сайт · тестова оплата · рішення судів',
+            'holos_poznaka': holos_servis.poznaka() if holos else None, 'paltsi': []}
     svitla = Z['tema'] == 'svitla'
     kont = brauzer.new_context(viewport={'width': 540, 'height': 960}, device_scale_factor=2,
                                color_scheme='light' if svitla else 'dark')
@@ -665,11 +672,17 @@ def main():
     a.add_argument('--pachka', action='store_true', help='лише перевірки всіх роликів і чергування В2')
     a.add_argument('--vykhid', type=Path, default=VYHID)
     a.add_argument('--cpu', action='store_true')
+    a.add_argument('--sait', type=Path, help='зібраний сайт — перевірити, що заклик веде на сторінку, яка існує (або MV_SAIT)')
     arg = a.parse_args()
+    if arg.sait:
+        import os
+        os.environ['MV_SAIT'] = str(arg.sait)
     stan = json.loads(arg.stan.read_text(encoding='utf-8'))
     Proksi.prodazh = stan['server']
     ix = {b['u']: b for b in json.loads(arg.indeks.read_text(encoding='utf-8'))['budynky']}
-    P = D.Vypusk(arg.baza).podii
+    V = D.Vypusk(arg.baza)
+    P = V.podii
+    PIDSUMKY.update(V.pidsumky)
     vybir = arg.lyshe.split(',') if arg.lyshe else PACHKA
     zibrani = {k: ROLYKY[k](stan, P, ix) for k in (PACHKA if arg.pachka else vybir)}
     if 'p2' in zibrani:                     # лист «Стежу» — у рамці як сторінка пошти (той самий HTML, що піде підписнику)

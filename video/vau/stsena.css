@@ -36,19 +36,26 @@ body { font-family: Plex, system-ui, sans-serif; color: var(--ink); -webkit-font
 [data-t="svitla"] #zat-f { background: rgba(244,245,251,.94); }
 #spalakh { background: #fff; opacity: 0; mix-blend-mode: screen; }
 
-#znak { position: absolute; left: 56px; top: 150px; display: flex; align-items: center; gap: 16px; font: 700 38px/1 Plex;
-  color: var(--ink); text-shadow: 0 2px 12px var(--ten); opacity: .92; }
+/* логотип — на власній плашці кольору теми: читається на будь-якому кадрі (темна картка у світлій темі, м'ятний кадр,
+   карта). Критик ZVIT-170: у 05 і 07 темний напис на темному кадрі — контраст ≈ 1,3 : 1 (ZAVDANNYA-175) */
+#znak { position: absolute; left: 44px; top: 140px; display: flex; align-items: center; gap: 16px; font: 700 38px/1 Plex;
+  color: #F0F1FA; background: rgba(17, 20, 42, .88); padding: 10px 22px 10px 12px; border-radius: 18px; }
+[data-t="svitla"] #znak { color: #1C1E2D; background: rgba(255, 255, 255, .92); box-shadow: 0 0 0 2px rgba(28, 30, 45, .12); }
 #znak svg { width: 60px; height: 60px; }
 #znak .z1 { fill: var(--accent2); } #znak .z2 { fill: var(--accent); }
 [data-t="svitla"] #znak .z1 { fill: #4447A6; } [data-t="svitla"] #znak .z2 { fill: #DFE3FC; }
 /* С5 (ZAVDANNYA-129): джерело й «Голос згенеровано» — під логотипом, великі й контрастні; верх 150–330 px вільний від
    кнопок TikTok (вкладки — вище 150, кнопки праворуч — нижче 900, підпис — нижче 1500) */
 #dzherelo { position: absolute; left: 56px; top: 228px; max-width: 968px; display: flex; flex-wrap: wrap; gap: 8px 10px; }
-#dzherelo span { font: 600 30px/1.2 Plex; color: var(--ink); background: rgba(10, 12, 32, .66); padding: 8px 16px; border-radius: 14px; }
-#dzherelo span.hp { color: #11142A; background: #66E6BA; box-shadow: 0 0 0 3px #11142A; }
+#dzherelo span { font: 600 34px/1.2 Plex; white-space: nowrap; color: var(--ink); background: rgba(10, 12, 32, .66); padding: 8px 16px; border-radius: 14px; }
+#dzherelo span.hp { font-size: 40px; color: #11142A; background: #66E6BA; box-shadow: 0 0 0 3px #11142A; }
 [data-t="svitla"] #dzherelo span { background: rgba(255, 255, 255, .85); }
 
 /* ---------- кінетичний текст ---------- */
+/* Читабельність (критик ZVIT-170, топ-10 №8; ZAVDANNYA-175): усе, що глядач має прочитати в кадрі, — не менше 40 px з 1080
+   (≈ 14 pt на телефоні): позначка голосу, «посилання в профілі», підписи карток, мітки на карті. Рядок джерела — 34 px
+   в один рядок (≤ 50 знаків, perevirka): на 40 px він переносився й налазив на гачок. Тест — tests/test_rolyky175.py.
+   Дрібніше лишились лише макети сайту (.ui.*) — вони показують сайт, як він є. */
 .t { position: absolute; left: 60px; right: 150px; text-align: left; will-change: transform, opacity; }
 .t.c { text-align: center; left: 60px; right: 60px; }
 .t .w { display: inline-block; white-space: pre; will-change: transform, opacity, filter; }
@@ -58,6 +65,7 @@ body { font-family: Plex, system-ui, sans-serif; color: var(--ink); -webkit-font
 .t.velykyi { font: 800 84px/1.08 Plex; letter-spacing: -1px; color: #fff; text-shadow: 0 0 36px rgba(10, 12, 40, .85), 0 4px 0 rgba(0,0,0,.2); }
 [data-t="svitla"] .t.velykyi { color: var(--ink); text-shadow: 0 0 26px #fff, 0 0 50px #fff; }
 .t.akcent .w.a, .t .w.a { color: var(--accent); }
+.t.tsil .w.a { color: #FFE45C; text-shadow: 0 0 2px #11142A, 0 3px 0 #11142A; }   /* «жовту» — тим самим кольором, що й ціль (n3) */
 .t.pidpys { font: 700 54px/1.18 Plex; }
 .t.pidpys span.ramka { display: inline; background: var(--surface); color: var(--ink); padding: 6px 18px; border-radius: 18px;
   box-decoration-break: clone; -webkit-box-decoration-break: clone; box-shadow: 0 8px 0 var(--ten); line-height: 1.5; }
@@ -70,9 +78,9 @@ body { font-family: Plex, system-ui, sans-serif; color: var(--ink); -webkit-font
 .t.mala { font: 600 40px/1.25 Plex; color: var(--ink2); text-shadow: 0 0 18px var(--ground), 0 0 4px var(--ground); }
 .t.kartka { left: 70px; right: 70px; background: var(--surface); color: var(--ink); border-radius: 36px; padding: 44px 48px 40px;
   box-shadow: 0 14px 0 var(--ten), 0 30px 80px rgba(0,0,0,.35); font: 500 50px/1.3 Plex; }
-.t.kartka b.zag { display: block; font: 700 32px/1.2 Plex; color: var(--accent2); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 18px; }
+.t.kartka b.zag { display: block; font: 700 40px/1.2 Plex; color: var(--accent2); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 18px; }
 [data-t="svitla"] .t.kartka b.zag { color: var(--accent); }
-.t.kartka i.dz { display: block; font: 400 28px/1.3 Plex; color: var(--muted); margin-top: 22px; font-style: normal; }
+.t.kartka i.dz { display: block; font: 500 40px/1.3 Plex; color: var(--muted); margin-top: 22px; font-style: normal; }
 .t.fin { text-align: center; left: 60px; right: 60px; }
 .t.fin .logo { width: 170px; height: 170px; margin: 0 auto 30px; display: block; }
 .t.fin .logo .z1 { fill: var(--accent2); } .t.fin .logo .z2 { fill: var(--accent); }
@@ -99,12 +107,13 @@ body { font-family: Plex, system-ui, sans-serif; color: var(--ink); -webkit-font
 .t.godynnyk small { display: block; font: 700 50px/1.2 Plex; color: var(--accent); letter-spacing: 1px; }
 
 /* ---------- мітки на карті ---------- */
-.m { position: absolute; transform: translate(-50%, -100%); white-space: nowrap; font: 700 34px/1 Plex; padding: 12px 18px 12px 16px;
+.m { position: absolute; transform: translate(-50%, -100%); white-space: nowrap; font: 700 40px/1 Plex; padding: 12px 18px 12px 16px;
   border-radius: 16px; background: var(--surface); color: var(--ink); box-shadow: 0 6px 0 var(--ten), 0 10px 30px rgba(0,0,0,.35); }
 .m::after { content: ''; position: absolute; left: 50%; bottom: -14px; width: 3px; height: 14px; margin-left: -1.5px; background: var(--surface); }
 .m i { display: inline-block; width: 18px; height: 18px; border-radius: 50%; margin-right: 12px; vertical-align: 1px; }
 .m.velyka { font: 800 46px/1 Plex; padding: 18px 26px; }
 .m.tsyfra b { color: var(--accent2); margin-left: 10px; }
+.m b.lich { display: block; margin: 0 0 8px; font-size: .78em; color: var(--accent); }   /* «45 подій» над назвою (ZAVDANNYA-175) */
 [data-t="svitla"] .m.tsyfra b { color: var(--accent); }
 
 /* ---------- макети інтерфейсу сайту (не скріншоти, а намальовані за STYL.md) ---------- */
@@ -160,7 +169,7 @@ body { font-family: Plex, system-ui, sans-serif; color: var(--ink); -webkit-font
   padding: 24px 30px; box-shadow: 0 12px 0 var(--ten), 0 24px 60px rgba(0,0,0,.45); }
 .t.baner .logo { width: 96px; height: 96px; flex: none; } .t.baner .logo .z1 { fill: var(--accent2); } .t.baner .logo .z2 { fill: var(--accent); }
 .t.baner b { display: block; font: 800 48px/1.08 Plex; color: var(--ink); }
-.t.baner span { display: block; font: 700 36px/1.2 Plex; color: var(--accent); margin-top: 8px; }
+.t.baner span { display: block; font: 700 40px/1.2 Plex; color: var(--accent); margin-top: 8px; }
 .t.slovo { left: 0; right: 0; top: 0 !important; height: 1920px; display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
   align-content: center; text-align: center; padding: 0 70px; background: #66E6BA; color: #11142A; font: 900 190px/0.98 Plex; letter-spacing: -6px; }
 .t.slovo .w.a { color: #3C3CA1; }
@@ -170,18 +179,18 @@ body { font-family: Plex, system-ui, sans-serif; color: var(--ink); -webkit-font
 .t.split { left: 0; right: 0; display: flex; height: 820px; }
 .t.split .pol { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 40px 40px; background: rgba(102,230,186,.95); color: #11142A; }
 .t.split .pol + .pol { background: rgba(68,71,166,.96); color: #fff; }
-.t.split .zag { font: 700 32px/1.2 Plex; text-transform: uppercase; letter-spacing: 2px; opacity: .8; margin-bottom: 18px; }
+.t.split .zag { font: 700 40px/1.2 Plex; text-transform: uppercase; letter-spacing: 2px; opacity: .8; margin-bottom: 18px; }
 .t.split .n { font: 900 140px/1 Plex; letter-spacing: -4px; font-variant-numeric: tabular-nums; }
 .t.split .nz { font: 700 52px/1.12 Plex; margin-top: 16px; }
 .t.komentar { left: 70px; right: 170px; background: #fff; color: #161823; border-radius: 30px; padding: 30px 36px; font: 600 54px/1.22 Plex;
   box-shadow: 0 16px 50px rgba(0,0,0,.5); }
-.t.komentar .khto { display: flex; align-items: center; gap: 16px; font: 600 32px/1 Plex; color: #7A7B82; margin-bottom: 16px; }
+.t.komentar .khto { display: flex; align-items: center; gap: 16px; font: 600 40px/1 Plex; color: #7A7B82; margin-bottom: 16px; }
 .t.komentar .av { width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, #9C9DF0, #66E6BA); flex: none; }
 .t.kolony { left: 46px; right: 46px; height: 640px; display: flex; align-items: flex-end; gap: 8px; }
 .t.kolony .k { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; min-width: 0; }
 .t.kolony .s { width: 100%; border-radius: 10px 10px 4px 4px; background: #6066C1; }
 .t.kolony .k.akc .s { background: #66E6BA; box-shadow: 0 0 40px rgba(102,230,186,.55); }
-.t.kolony .nz { font: 700 26px/1 Plex; color: var(--ink2); margin-top: 12px; white-space: nowrap; }
+.t.kolony .nz { font: 700 40px/1 Plex; color: var(--ink2); margin-top: 12px; white-space: nowrap; }
 .t.kolony .k.akc .nz { color: var(--accent); }
 .t.kolony .n { font: 900 60px/1 Plex; color: var(--accent); margin-bottom: 14px; white-space: nowrap; font-variant-numeric: tabular-nums;
   text-shadow: 0 0 24px var(--ground); }
@@ -203,7 +212,7 @@ body { font-family: Plex, system-ui, sans-serif; color: var(--ink); -webkit-font
 .bez-nakladok #znak, .bez-nakladok #dzherelo, .bez-nakladok #vinietka, .bez-nakladok .maplibregl-ctrl-attrib { display: none; }
 /* «Календар року» (не карта): 12 місяців по 3 в ряд, клітинка = день, колір = скільки подій у даних того дня */
 .t.kalendar { left: 40px; right: 40px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 30px 26px; }
-.t.kalendar .mis b { display: block; font: 800 30px/1 Plex; color: var(--ink2); margin: 0 0 10px 4px; text-transform: uppercase; letter-spacing: 2px; }
+.t.kalendar .mis b { display: block; font: 800 40px/1 Plex; color: var(--ink2); margin: 0 0 10px 4px; text-transform: uppercase; letter-spacing: 2px; }
 .t.kalendar .sitka { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
 .t.kalendar .d { aspect-ratio: 1; border-radius: 7px; background: var(--tint); opacity: .35; transform: scale(.6); }
 .t.kalendar .d.pust { visibility: hidden; }

@@ -361,6 +361,18 @@ export async function vziatyZCherhy(env, n) {
   return vziato;
 }
 
+/**
+ * ZAVDANNYA-172 (ZVIT-167, п. 9): перший висновок довідки («Головне», <ol class="holovne"> генератора dani-edrsr/src/zvit/)
+ * одним рядком для листа — щоб у листі було головне число, а не лише посилання. Немає блоку — порожньо (лист як раніше).
+ */
+export function holovneZDovidky(html) {
+  const m = String(html || '').match(/<ol class="holovne">\s*<li>([\s\S]*?)<\/li>/);
+  if (!m) return '';
+  const t = m[1].replace(/<[^>]*>/g, ' ').replace(/&nbsp;|&#160;/g, '\u00a0').replace(/&mdash;/g, '—').replace(/&ndash;/g, '–').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#39;|&#x27;/g, "'").replace(/&amp;/g, '&').replace(/\s+/g, ' ').replace(/\s([.,;:])/g, '$1').trim();
+  return t.length > 300 ? `${t.slice(0, t.lastIndexOf(' ', 297))}…` : t;
+}
+
 export async function dovidkaHotova(env, id, html, adresaSaitu) {
   const d = await odyn(env, `SELECT d.*, k.poshta FROM dovidky d LEFT JOIN korystuvachi k ON k.id = d.korystuvach_id WHERE d.id = ?`, id);
   if (!d || d.status !== 'hotuietsia') return false;
@@ -388,10 +400,20 @@ export async function dovidkaHotova(env, id, html, adresaSaitu) {
     });
   } else if (d.poshta) {
     const r = d.pidpyska_id ? (await stanPidpysok(env, d.korystuvach_id)).find((p) => p.id === d.pidpyska_id && p.tovar === 'rieltor') : null;
-    const zalyshok = r ? `З підписки рієлтора цього місяця лишилось довідок: ${r.zalyshok} з ${r.dovidok} (нові — з ${dataT(r.misiats_do)}).\n` : '';
+    // ZAVDANNYA-172 (ZVIT-167, п. 9): лічильник — на момент ЦІЄЇ довідки (довідки місяця, взяті не пізніше за неї), а не на
+    // момент надсилання листа: інакше три листи поспіль казали «лишилось 1».
+    let zalyshok = '';
+    if (r) {
+      const do_ = (await odyn(env, `SELECT COUNT(*) AS n FROM dovidky WHERE pidpyska_id = ? AND stvoreno >= ? AND status != 'pomylka'
+        AND (stvoreno < ? OR (stvoreno = ? AND rowid <= (SELECT rowid FROM dovidky WHERE id = ?)))`, r.id, r.misiats_vid, d.stvoreno, d.stvoreno, d.id)).n;
+      zalyshok = `З підписки рієлтора цього місяця лишилось довідок: ${Math.max(0, r.dovidok - do_)} з ${r.dovidok} (нові — з ${dataT(r.misiats_do)}). ` +
+        `Усі ваші об'єкти — у кабінеті, «Мої об'єкти».\n`;
+    }
+    const holovne = holovneZDovidky(html);
     await nadislaty(env, {
       komu: d.poshta, tema: `${d.rezhym === 'povnyi' ? 'Повний звіт' : 'Довідка'}: ${d.adresa}`,
       tekst: `Готово: ${d.rezhym === 'povnyi' ? 'повний звіт' : 'довідка'} про будинок ${d.adresa}.\n\n` +
+        (holovne ? `Головне: ${holovne}\n\n` : '') +
         `Відкрити: ${adresaSaitu}/dovidka/${d.id}/?k=${kliuch}\n\n` +
         `Посилання особисте — не пересилайте його. Усі довідки — також у кабінеті: ${adresaSaitu}/kabinet/\n` + zalyshok +
         'Це не оцінка безпеки: лише скарги мешканців і події з рішень судів, як їх записано.',
@@ -420,6 +442,8 @@ export async function dovidkaPomylka(env, id) {
 export async function vydalytyDani(env, korystuvach_id) {
   const faily = await vsi(env, 'SELECT fail FROM dovidky WHERE korystuvach_id = ? AND fail IS NOT NULL', korystuvach_id);
   for (const f of faily) await env.DOVIDKY.delete(f.fail);
+  // ZAVDANNYA-172 (ZVIT-167): довідки в черзі знімаються — без адреси видавач падав на них тричі, а партнер отримував лист про невдачу
+  await zrobyty(env, `UPDATE dovidky SET status = 'vydaleno' WHERE korystuvach_id = ? AND status IN ('v_cherzi', 'hotuietsia')`, korystuvach_id);
   await zrobyty(env, `UPDATE dovidky SET korystuvach_id = NULL, fail = NULL, kliuch_hash = NULL, adresa = '', budynok = '' WHERE korystuvach_id = ?`, korystuvach_id);
   await zrobyty(env, 'UPDATE zamovlennia SET korystuvach_id = NULL, budynok = NULL, adresa = NULL WHERE korystuvach_id = ?', korystuvach_id);
   await zrobyty(env, 'UPDATE pidpysky SET korystuvach_id = NULL, budynok = NULL, adresa = NULL WHERE korystuvach_id = ?', korystuvach_id);
@@ -431,6 +455,17 @@ export async function vydalytyDani(env, korystuvach_id) {
   await zrobyty(env, 'DELETE FROM sesii WHERE korystuvach_id = ?', korystuvach_id);
   await zrobyty(env, 'DELETE FROM vkhody WHERE korystuvach_id = ?', korystuvach_id);
   await zrobyty(env, 'DELETE FROM korystuvachi WHERE id = ?', korystuvach_id);
+}
+
+/** Що зникне, якщо людина видалить дані (ZAVDANNYA-172, ZVIT-167 п. 1): для сторінки підтвердження. */
+export async function shchoZnykne(env, korystuvach_id) {
+  const n = async (q) => (await odyn(env, q, korystuvach_id)).n;
+  const dovidok = await n(`SELECT COUNT(*) AS n FROM dovidky WHERE korystuvach_id = ? AND status != 'vydaleno'`);
+  const vCherzi = await n(`SELECT COUNT(*) AS n FROM dovidky WHERE korystuvach_id = ? AND status IN ('v_cherzi', 'hotuietsia')`);
+  const stezhu = await n('SELECT COUNT(*) AS n FROM stezhu WHERE korystuvach_id = ?');
+  const { ps, pakety } = await dostupno(env, korystuvach_id);
+  const pidpysky = (await stanPidpysok(env, korystuvach_id)).filter((p) => p.diie);
+  return { dovidok, vCherzi, stezhu, pidpysky, zalyshok: ps.reduce((x, p) => x + p.zalyshok, 0) + pakety.reduce((x, z) => x + z.zalyshok, 0) };
 }
 
 /** Щоденне прибирання (Cron Trigger): прострочені сесії й посилання входу; файли довідок старші за строк зберігання. */
@@ -455,6 +490,7 @@ export async function prybraty(env) {
 export const NEZAVERSHENE_S = 30 * 86400;       // пошта без жодної покупки (лише незавершені замовлення) — 30 днів
 export const ZVERNENNIA_S = 365 * 86400;        // звернення — 1 рік після відповіді (політика, розд. 5)
 export const ZAIAVKY_S = 183 * 86400;           // передзамовлення й «скоро» — пів року після запуску (політика, розд. 5)
+export const BIZNES_S = 365 * 86400;            // запит «Для бізнесу» і журнал завантажень копії — рік (політика, розд. 5; ZAVDANNYA-172)
 const KYIV = /ки[їі]в|kyiv|kiev/i;
 
 /**
@@ -496,6 +532,9 @@ export async function styratyZaStrokom(env) {
   }
   v.zvernennya = (await zrobyty(env, 'DELETE FROM zvernennya WHERE zakryto IS NOT NULL AND zakryto < ?', t - ZVERNENNIA_S)).meta?.changes ?? 0;
   v.skoro = (await zrobyty(env, 'DELETE FROM skoro WHERE napysano IS NOT NULL AND napysano < ?', t - ZAIAVKY_S)).meta?.changes ?? 0;
+  // ZAVDANNYA-172 (ZVIT-169, п. 7; політика, розд. 5): запит «Для бізнесу» — рік від запиту; журнал завантажень копії — рік
+  v.biznes = (await zrobytyNovu(env, 'DELETE FROM biznes_zapyty WHERE stvoreno < ?', t - BIZNES_S)).meta?.changes ?? 0;
+  v.biznes += (await zrobytyNovu(env, 'DELETE FROM biznes_zavantazhennia WHERE chas < ?', t - BIZNES_S)).meta?.changes ?? 0;
   const zapusk = await chasZapusku(env);
   if (zapusk !== null && t - zapusk > ZAIAVKY_S) {
     const tovary = TS.prodaietsia;
@@ -506,7 +545,7 @@ export async function styratyZaStrokom(env) {
       v.zayavka += (await zrobyty(env, 'DELETE FROM zayavka WHERE id = ?', z.id)).meta?.changes ?? 0;
     }
   }
-  if (v.korystuvachi + v.zvernennya + v.skoro + v.zayavka) console.log(`стерто за строком: ${JSON.stringify(v)}`);
+  if (v.korystuvachi + v.zvernennya + v.skoro + v.zayavka + v.biznes) console.log(`стерто за строком: ${JSON.stringify(v)}`);
   return v;
 }
 

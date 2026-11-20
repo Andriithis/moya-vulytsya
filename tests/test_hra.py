@@ -47,7 +47,7 @@ def demo():
 
 def podiya(id_, kategoriia='dtp', **inshe):
     p = {'id': id_, 'vyd': 'ДТП', 'kategoriia': kategoriia, 'rik': 2024,
-         'opys_korotkyi': 'Умовний опис події для перевірки гри.', 'opys_povnyi': 'Умовний повний опис події для перевірки.',
+         'opys_korotkyi': 'Умовний опис події біля станції метро для перевірки гри.', 'opys_povnyi': 'Умовний повний опис події для перевірки.',
          'adresa': 'умовна адреса', 'lat': 50.45, 'lon': 30.52, 'rishennya_nomer': '', 'rishennya_url': ''}
     p.update(inshe)
     return p
@@ -179,6 +179,34 @@ class KolodaTests(unittest.TestCase):
         gotova = koloda.pidhotuvaty(fail)
         self.assertEqual(len(gotova['podii']), 12)
         self.assertFalse(any(koloda.zaboronena(p) for p in gotova['podii']))
+
+
+class Vgadai176Tests(unittest.TestCase):
+    """ZAVDANNYA-176 (ZVIT-168, №3): у «Вгадай» — лише події з ознакою місця, цілими реченнями, без потерпілих."""
+
+    def test_lyshe_z_oznakoiu_mistsia(self):
+        fail = {'podii': [podiya('1-1', opys_korotkyi='Особа о 15:10 курив біля зупинки громадського транспорту.'),
+                          podiya('2-1', opys_korotkyi='Особа під час перевірки документів чинив опір.'),
+                          podiya('3-1', kategoriia='tilesni', opys_korotkyi='Біля магазину вдарив знайомого.'),
+                          podiya('4-1', opys_korotkyi='Особа в обідню пору біля входу до магазину взяла з лотка товар. Потім пішла з полиць, не заплативши і…'),
+                          podiya('5-1', opys_korotkyi='Особа в магазині взяла товар з полиць, не заплативши за нього і вийшла через…'),
+                          podiya('6-1', opys_korotkyi='Відносно особа складено. Біля метро продавав.')]}
+        g = koloda.pidhotuvaty(fail)
+        self.assertEqual([p['id'] for p in g['podii']], ['1-1', '4-1'])
+        self.assertEqual(g['podii'][1]['opys_korotkyi'], 'Особа в обідню пору біля входу до магазину взяла з лотка товар.', 'лише ціле речення')
+
+    def test_povnyi_bez_protokolu_i_kvalifikatsii(self):
+        p = koloda.dlia_vgadai(podiya('1-1', opys_korotkyi='Біля метро курив тютюн.',
+                                      opys_povnyi='Згідно протоколу серії ВАВ № 956180 водій особа біля метро курив тютюн, чим вчинив '
+                                                  'адміністративне правопорушення, передбачене ст. 175-1 КУпАП.'))
+        self.assertNotRegex(p['opys_povnyi'], r'956180|ВАВ|175-1|передбачен')
+        self.assertTrue(p['opys_povnyi'].endswith('.'))
+        self.assertIn('водій біля метро', koloda.ochystyty('водій ОСОБА_1 біля метро').lower())
+
+    def test_poterpili_yak_u_litopysi(self):
+        sys.path.insert(0, str(HRA.parent / 'ihry' / 'litopys'))
+        import litopys
+        self.assertEqual(set(koloda.Z_POTERPILYMY), set(litopys.Z_POTERPILYMY))
 
 
 class ZbyrannyaHryTests(unittest.TestCase):

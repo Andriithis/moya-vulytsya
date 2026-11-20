@@ -28,6 +28,7 @@
 .panel-ihor .knopka { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 44px; margin: 8px 0 0; }
 .panel-ihor .knopka[disabled] { opacity: .55; cursor: default; }
 .i-prym { font-size: 12px; line-height: 17px; color: var(--muted); }
+.i-uvaha { padding: 6px 10px; border-left: 3px solid var(--accent); background: var(--surface-tint); font-size: 13px; line-height: 18px; color: var(--ink); }
 .i-lnk { padding: 0; border: 0; background: none; font: inherit; color: var(--accent); text-decoration: underline; cursor: pointer; }
 .i-bal { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 6px; }
 .i-bal span { font: 800 26px/32px var(--sans); color: var(--ink); font-variant-numeric: tabular-nums; }
@@ -138,6 +139,12 @@
   .i-shap { top: -1px; }
   /* Під час пошуку на карті шторка згортається до рядка з назвою — карта вільна. */
   .panel-ihor.zghornuta { height: 64px; overflow: hidden; }
+  .panel-ihor.vysoka { height: calc(100% - 16px); }
+  /* «Вгадай» (ZAVDANNYA-176): згорнута шторка лишає видимим сам опис — без нього нема що вгадувати. */
+  .panel-ihor.zghornuta.z-opysom { height: auto; max-height: 40%; overflow-y: auto; }
+  .panel-ihor.zghornuta.z-opysom .i-tilo > :not(.i-opys):not(.i-den) { display: none; }
+  /* Поки відкрита шторка гри, сторінка під нею не гортається. */
+  body:has(.ekran-karty.ihry-vidkryto) { overflow: hidden; }
   .i-sitka { grid-template-columns: 1fr 1fr; }
   .i-gra { min-height: 104px; }
 }
@@ -163,3 +170,22 @@
 
 /* Панель гри відкрита — смуга «Де ви живете?» не лізе під неї (одна плашка за раз, ZAVDANNYA-123) */
 .ekran-karty.ihry-vidkryto .vau-rayony { display: none; }
+
+/* Під час гри карта — лише для гри (ZAVDANNYA-176, ZVIT-168 №8): без плашки «Що болить вашому будинку?» і смуги часу,
+   що «оживає» сама; стовпчики 3D сот ховає ihry.js. */
+.ekran-karty.ihry-vidkryto .haslo-karty, .ekran-karty.ihry-vidkryto .chas, .ekran-karty.ihry-vidkryto .vau-lich { display: none; }
+/* Назва гри отримує фокус програмно (читалка називає гру) — рамки клавіші їй не треба. */
+.i-shap h2:focus { outline: none; }
+
+/* Приціл для гри без дотику (ZAVDANNYA-176): хрестик у центрі карти й клавіша «Тут» під ним. */
+.ihry-prytsil { position: absolute; inset: 0; z-index: 5; pointer-events: none; }
+.ihry-prytsil[hidden] { display: none; }
+.ihry-prytsil i { display: none; position: absolute; left: 50%; top: 50%; width: 28px; height: 28px; margin: -14px 0 0 -14px; border: 2px solid var(--ink);
+  border-radius: 50%; box-shadow: 0 0 0 2px var(--surface); }
+.ihry-prytsil i::before, .ihry-prytsil i::after { content: ''; position: absolute; background: var(--ink); }
+.ihry-prytsil i::before { left: 12px; top: -8px; width: 2px; height: 40px; }
+.ihry-prytsil i::after { top: 12px; left: -8px; height: 2px; width: 40px; }
+.ihry-prytsil .knopka { position: absolute; left: 50%; top: calc(50% + 28px); transform: translateX(-50%); width: auto; min-height: 44px;
+  padding: 0 16px; pointer-events: auto; opacity: 0; }
+.ihry-prytsil .knopka:focus-visible { opacity: 1; }
+.ihry-prytsil:has(.knopka:focus-visible) i { display: block; }

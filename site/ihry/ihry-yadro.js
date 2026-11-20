@@ -41,14 +41,18 @@
   var ROZKRYTTIA_HODYNA = 20;   // неділя, 20:00 за Києвом
 
   // Справа тижня: та, чий тиждень — цей. Немає — зразки по колу за номером тижня (позначка demo).
+  // ZAVDANNYA-176 (ZVIT-168, №2): справи по колу не крутимо — після останньої справи гри немає (картку сховано), доки
+  // хтось не покладе нову справу на свій тиждень. До першої справи — перша як «зразок» (перегляд до запуску).
   function spravaTyzhnia(spravy, data) {
     if (!spravy || !spravy.length) return null;
     var pn = ponedilok(data);
     for (var i = 0; i < spravy.length; i++) if (spravy[i].tyzhden === pn) return { sprava: spravy[i], demo: false };
-    var tyzh = Math.floor((denNomer(pn) - 4) / 7);
     var por = spravy.slice().sort(function (a, b) { return a.tyzhden < b.tyzhden ? -1 : a.tyzhden > b.tyzhden ? 1 : 0; });
-    return { sprava: por[((tyzh % por.length) + por.length) % por.length], demo: true };
+    if (pn < por[0].tyzhden) return { sprava: por[0], demo: true };
+    return null;
   }
+  // Прогрес — за справою й тижнем: та сама справа на іншому тижні починається спочатку, а не «вже розв'язаною».
+  function kliuchSpravy(sprava) { return 'mv-ihry-detektyv-' + sprava.id + '@' + sprava.tyzhden; }
 
   // День справи: 1..7; сліди відкриваються по одному на день (пн — слід 1 … сб — слід 6); нд 20:00 — розкриття.
   function stanTyzhnia(chas) {
@@ -219,7 +223,7 @@
 
   var Yadro = {
     chasKyiv: chasKyiv, denNomer: denNomer, ponedilok: ponedilok, dodatyDni: dodatyDni,
-    POLIA: POLIA, OCHKY: OCHKY, BONUS: BONUS, spravaTyzhnia: spravaTyzhnia, stanTyzhnia: stanTyzhnia,
+    POLIA: POLIA, OCHKY: OCHKY, BONUS: BONUS, spravaTyzhnia: spravaTyzhnia, kliuchSpravy: kliuchSpravy, stanTyzhnia: stanTyzhnia,
     zvuzhennia: zvuzhennia, znaideno: znaideno, vidhuk: vidhuk, ochkyDetektyva: ochkyDetektyva,
     sprobaVgadai: sprobaVgadai, spravyKvalifikuy: spravyKvalifikuy, ochkyKvalifikuy: ochkyKvalifikuy,
     novyiStan: novyiStan, naDen: naDen, sproby: sproby, vytratyty: vytratyty, zarakhuvaty: zarakhuvaty,

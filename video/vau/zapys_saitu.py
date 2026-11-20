@@ -26,12 +26,15 @@ from pathlib import Path
 
 TUT = Path(__file__).resolve().parent
 sys.path.insert(0, str(TUT))
+import holos_servis  # noqa: E402
 import perevirka  # noqa: E402
 from rushii import arkush, ffmpeg, lehka  # noqa: E402
 from stsenarii import KYIV, PROFIL  # noqa: E402
 
 VYHID = TUT.parents[1] / 'video' / 'vyhid' / '129'
 FPS = 30
+# кадр 1080×1920: вікно 540×960 × 2. Без clip зі scale браузер знімає 540×960 (перевірено 20.11.2026, ZVIT-155 розд. 4 п. 2)
+ZNIMOK = {'format': 'jpeg', 'quality': 93, 'clip': {'x': 0, 'y': 0, 'width': 540, 'height': 960, 'scale': 2}}
 
 VIRTUALNYI_CHAS = r"""
 (() => {
@@ -126,7 +129,7 @@ def z2():
     return {
         'id': '129-z2-zapys-karta-soty', 'tryvalist': 12,
         'meta': dict(nazva='Запис екрана: карта — наближ, і соти розкриються', hrupa='Як це працює', meta='спосіб користування картою',
-                     hachok='«Це справжня карта. Наближ — і соти розкриються»', liniia='Безкоштовна карта', kudy='/karta/'),
+                     hachok='«Це справжня карта. Наближ — і соти розкриються»', liniia='Безкоштовна карта', kudy='/karta/', pro_misto=True),
         'start': '/',
         'tekst': [
             {'t0': 0, 't1': 1.8, 'styl': 'velykyi', 'tekst': 'Це справжня карта\n*судових рішень Києва*', 'y': 340},
@@ -154,10 +157,9 @@ def z3():
     Сторінки будинків у хмарі не збираються (потрібне зведення будинків з dani-edrsr) — тож ролик веде на сторінку вулиці."""
     sait = Obrobnyk.sait if str(Obrobnyk.sait) != '.' else TUT.parents[1] / 'video' / 'vyhid' / 'sait'
     storinka = (Path(sait) / 'vulytsia' / 'teremkivska' / 'index.html').read_text(encoding='utf-8')
-    vsi = re.search(r'за 2024–2026 у даних судів — (\d+) поді', storinka).group(1)
-    # числа — зі сторінки сайту, не з голови
-    chystyi = re.sub(r'<[^>]+>', ' ', storinka)
-    tut, kyiv = re.search(r'Залишення місця ДТП\s+ця вулиця\s+([\d,]+%)\s+Київ\s+([\d,]+%)', chystyi).groups()
+    vsi = re.search(r'за 2024–2026 у даних судів — (\d+) поді', storinka).group(1)   # число — зі сторінки сайту, не з голови
+    # ZAVDANNYA-175 (критик ZVIT-170, z3): «втечі з місця ДТП 18 % проти 4,1 %» — не про житло, і відсоток з 10 випадків.
+    # Орендарю показуємо те, що є на сторінці вулиці для всіх: скільки подій і що найчастіше, — без відсотків.
     return {
         'id': '138-z3-pov-zastava-zavtra', 'tryvalist': 17,
         'meta': dict(nazva='POV: застава завтра', hrupa='Потреба → продукт', typ='POV: застава завтра',
@@ -170,7 +172,7 @@ def z3():
             {'t0': 2.7, 't1': 4.6, 'styl': 'velykyi', 'tekst': 'Перш ніж платити —\n*одна перевірка*', 'y': 330},
             {'t0': 4.7, 't1': 6.6, 'styl': 'velykyi', 'tekst': 'Вулиця —\n*за два дотики*', 'y': 330},
             {'t0': 6.7, 't1': 8.7, 'styl': 'velykyi', 'tekst': f'*{vsi} подій*\nу рішеннях судів', 'y': 330},
-            {'t0': 8.8, 't1': 11.4, 'styl': 'velykyi', 'tekst': f'Втечі з місця ДТП:\n*{tut} проти {kyiv}*', 'y': 330},
+            {'t0': 8.8, 't1': 11.4, 'styl': 'velykyi', 'tekst': 'Що тут найчастіше —\n*видно одразу*', 'y': 330},
             {'t0': 11.5, 't1': 13.6, 'styl': 'velykyi', 'tekst': 'Дні й години —\n*коли саме*', 'y': 330},
             {'t0': 13.7, 't1': 15.8, 'styl': 'velykyi', 'tekst': '*Перевір.*\nДо застави.', 'y': 330},
             {'t0': 15.9, 't1': 16.9, 'styl': 'baner', 'zag': 'Перевір свою вулицю', 'knopka': 'Безкоштовно · ' + PROFIL, 'y': 1180},
@@ -194,9 +196,9 @@ def z3():
                  # Piper — тимчасово (MV-156: голос — Андрій сам, перетворений); тексти для запису — docs/HOLOS-TEKSTY.md
                  'holos': [{'t': 0.2, 'tekst': 'Квартира мрії. Застава — завтра.', 'holos': 'tetiana'},
                            {'t': 2.8, 'tekst': 'Перш ніж платити — одна перевірка.', 'holos': 'tetiana'},
-                           {'t': 8.9, 'tekst': f'Втечі з місця ДТП: {tut.rstrip("%")} відсотків. По Києву — {kyiv.split(",")[0].rstrip("%")}.', 'holos': 'tetiana'},
+                           {'t': 8.9, 'tekst': 'Що тут найчастіше — видно одразу.', 'holos': 'tetiana'},
                            {'t': 13.8, 'tekst': 'Перевір. До застави.', 'holos': 'tetiana'}]},
-        'pidpys': ['Запис екрана справжнього сайту «Моя вулиця». Числа вулиці — безкоштовно; це порівняння часток у даних, а не оцінка вулиці.',
+        'pidpys': ['Запис екрана справжнього сайту «Моя вулиця». Числа вулиці — безкоштовно; це кількість подій у даних, а не оцінка вулиці.',
                    'Лише те, що дійшло до суду. Перевір свою вулицю — посилання в профілі.'],
         'karta': [(0, 6.6)],
     }
@@ -208,12 +210,14 @@ ZAPYSY = {'z1': z1, 'z2': z2, 'z3': z3}
 def perevir(Z: dict) -> list[str]:
     """Ті самі правила, що й у рушія: слова, банер ≤ 1 с, гачок у кадрі 0, нове кожні ≤ 2 с, голос з позначкою."""
     S = {'id': Z['id'], 'tryvalist': Z['tryvalist'], 'tema': 'temna', 'tekst': Z['tekst'], 'kamera': [{'t': 0, 'c': list(KYIV), 'z': 11}],
-         'zvuk': Z['zvuk'], 'pidpys_publikatsii': Z['pidpys'], 'holos_poznaka': 'Голос згенеровано' if Z['zvuk'].get('holos') else None,
+         'zvuk': Z['zvuk'], 'pidpys_publikatsii': Z['pidpys'], 'holos_poznaka': holos_servis.poznaka() if Z['zvuk'].get('holos') else None,
          'ui': [{'t0': 0, 't1': Z['tryvalist'], 'typ': 'sait'}, {'t0': 0, 't1': Z['tryvalist'], 'typ': 'ramka'}],
+         # рух на старті (perevirka.rukh_na_starti): дія на сторінці до 1,5 с або жива карта сайту з кадру 0
+         'zapys_rukh': any(d['t'] <= 1.5 for d in Z['dii']) or any(a <= 0 for a, _ in Z.get('karta', [])),
          'novynky': [d['t'] for d in Z['dii']] + [d['t'] + x * 1.5 for d in Z['dii'] if d.get('tryv')
                                                    for x in range(1, int(d['tryv'] / 1.5) + 1)]}   # наближення/прокрутка — рух сайту
     meta = dict(Z['meta'], pravyla=129, kintsivka=PROFIL, pidpys=' '.join(Z['pidpys']))
-    return perevirka.pereviryty(S, meta)
+    return perevirka.pereviryty(S, meta) + perevirka.posylannia(meta, Obrobnyk.sait if str(Obrobnyk.sait) != '.' else None)
 
 
 def zapysaty(brauzer, port, Z: dict, kadry=None, vykhid=VYHID):
@@ -221,7 +225,7 @@ def zapysaty(brauzer, port, Z: dict, kadry=None, vykhid=VYHID):
     if zauv:
         raise SystemExit(f"{Z['id']}: " + '; '.join(zauv))
     holos = bool(Z['zvuk'].get('holos'))
-    S_ov = {'tekst': Z['tekst'], 'dzherelo': 'Справжній сайт · дані — рішення судів (ЄДРСР)', 'holos_poznaka': 'Голос згенеровано' if holos else None,
+    S_ov = {'tekst': Z['tekst'], 'dzherelo': 'Справжній сайт · дані — рішення судів (ЄДРСР)', 'holos_poznaka': holos_servis.poznaka() if holos else None,
             'paltsi': []}
     kont = brauzer.new_context(viewport={'width': 540, 'height': 960}, device_scale_factor=2, color_scheme='dark')
     kont.add_init_script(VIRTUALNYI_CHAS)
@@ -250,7 +254,7 @@ def zapysaty(brauzer, port, Z: dict, kadry=None, vykhid=VYHID):
         vykhid.mkdir(parents=True, exist_ok=True)
         tykho = vykhid / f"{Z['id']}-bez-zvuku.mp4"
         p = subprocess.Popen([ffmpeg(), '-y', '-loglevel', 'error', '-f', 'image2pipe', '-framerate', str(FPS), '-c:v', 'mjpeg', '-i', '-',
-                              '-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', str(tykho)],
+                              '-vf', 'scale=1080:1920', '-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', str(tykho)],
                              stdin=subprocess.PIPE)
     cdp = kont.new_cdp_session(s)
     dii = sorted(Z['dii'], key=lambda d: d['t'])
@@ -283,7 +287,7 @@ def zapysaty(brauzer, port, Z: dict, kadry=None, vykhid=VYHID):
                 teka_z.mkdir(parents=True, exist_ok=True)
                 s.screenshot(path=str(teka_z / f"{Z['id']}-{t:05.2f}.png"))
             continue
-        r = cdp.send('Page.captureScreenshot', {'format': 'jpeg', 'quality': 93})
+        r = cdp.send('Page.captureScreenshot', ZNIMOK)
         p.stdin.write(base64.b64decode(r['data']))
         if k % (FPS * 5) == 0:
             print(f"  {Z['id']}: {k}/{n}", flush=True)
