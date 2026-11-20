@@ -322,10 +322,13 @@ const posyl = (t) => (/^https:\/\/[^\s"<>]+$/.test(t || '') ? `<a href="${e(t)}"
 const den = (t) => (t ? data(t) : '—');
 
 function formaPrybraty(z = null) {
+  const id = z ? `zv${e(z.id)}` : 'zv0';
   return `<form class="forma" method="post" action="/kabinet/zvernennia/prybraty">
 ${z ? `<input type="hidden" name="zvernennya" value="${e(z.id)}">` : ''}
-<label>Посилання на рішення суду або його номер<input name="posylannia" required maxlength="500" value="${e(z && /reyestr\.court\.gov\.ua|^\d{5,12}$/.test(z.posylannya) ? z.posylannya : '')}" placeholder="https://reyestr.court.gov.ua/Review/…"></label>
-<label>Чому<select name="prychyna">${PRYCHYNY.map(([k, n]) => `<option value="${k}"${(z ? 'zvernennya' : 'skasovano') === k ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
+<label for="${id}-p">Посилання на рішення суду або його номер</label>
+<input id="${id}-p" name="posylannia" required maxlength="500" value="${e(z && /reyestr\.court\.gov\.ua|^\d{5,12}$/.test(z.posylannya) ? z.posylannya : '')}" placeholder="https://reyestr.court.gov.ua/Review/…">
+<label for="${id}-ch">Чому</label>
+<select id="${id}-ch" name="prychyna">${PRYCHYNY.map(([k, n]) => `<option value="${k}"${(z ? 'zvernennya' : 'skasovano') === k ? ' selected' : ''}>${n}</option>`).join('')}</select>
 <button class="knopka knopka--holovna" type="submit">Прибрати подію зараз</button></form>`;
 }
 

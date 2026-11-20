@@ -19,6 +19,7 @@ const env = {
   PRODAZH: process.env.PRODAZH || 'tak', ADMIN_KLIUCH: process.env.ADMIN_KLIUCH || 'mistsevyi-admin', PLATIZHNYI_SERVIS: 'test', TESTOVA_OPLATA: 'tak', ADRESA_SAITU: ADRESA,
   TEST_KLIUCH: process.env.TEST_KLIUCH || 'mistsevyi-test', VYDACHA_KLIUCH: process.env.VYDACHA_KLIUCH || 'mistsevyi-vydavach',
   BAZA: d1(), DOVIDKY: r2(), __LYSTY: [],
+  PARTNERY: process.env.PARTNERY || 'partner@mistsevyi.test',   // кабінет звернень /kabinet/zvernennia/ (ZAVDANNYA-161)
   // Вхід через Google (ZAVDANNYA-142): з цими змінними видно кнопку; справжній вхід — лише з клієнтом Google на домені
   GOOGLE_KLIIENT_ID: process.env.GOOGLE_KLIIENT_ID || '', GOOGLE_SEKRET: process.env.GOOGLE_SEKRET || '',
   ASSETS: {
