@@ -56,7 +56,7 @@ Lighthouse 12, профіль телефону (повільний 4G, проц�
 
 ## Перевірки
 
-- Усі тести репозиторію: **618, зелені** (`python -m unittest discover -s tests`), пропущено 2 (немає `scipy` і
+- Усі тести репозиторію після злиття з `main`: **616, зелені** (`python -m unittest discover -s tests`), пропущено 2 (немає `scipy` і
   зібраного `litopys.json` — як і раніше). Цього разу з Playwright для Python — тож браузерні перевірки головної, «вау»,
   пошуку й ігор (`test_holovna_lehka`, `test_vau`, `test_sait`, `test_vkhody`, `test_ihry`) справді пройшли, а не були пропущені.
 - Тести сервера (`site/worker/testy/*.test.mjs`) — 12 файлів, усі зелені.
