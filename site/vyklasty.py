@@ -83,6 +83,13 @@ def zminni(suho: bool) -> dict:
         pomylky.append(f'MV_OPLATA={z["oplata"]!r}: має бути skoro або tak')
     if z['oplata'] == 'tak' and z['servis'] not in ('liqpay', 'mono', 'test'):
         pomylky.append('MV_OPLATA=tak: потрібен MV_PLATIZHNYI_SERVIS (liqpay | mono | test)')
+    # ZAVDANNYA-150, п. 4: підписка обіцяє карту підписника й щомісячний лист «Стежу» (site/tsiny.py, PIDPYSKA_DAIE) —
+    # без них продаж не вмикаємо, щоб не продати того, чого немає.
+    if z['oplata'] == 'tak' and not z['karta']:
+        pomylky.append('MV_OPLATA=tak: підписка обіцяє карту підписника — спершу викладіть її (site/prodazh/karta_r2.py) і MV_KARTA_R2=tak')
+    if z['oplata'] == 'tak' and e.get('MV_LYST_STEZHU', '').strip() != 'tak':
+        pomylky.append('MV_OPLATA=tak: підписка обіцяє щомісячний лист «Стежу» — налаштуйте запуск site/prodazh/lyst_stezhu.py '
+                       '(шаблон site/prodazh/github/lyst_stezhu.yml) і MV_LYST_STEZHU=tak')
     if z['poshta'] not in ('zahlushka', 'http-json'):
         pomylky.append('MV_POSHTA_SERVIS: zahlushka або http-json')
     if z['domen'] and not DOMEN.match(z['domen']):

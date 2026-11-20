@@ -220,6 +220,15 @@ class Zapusk(unittest.TestCase):
             os.environ.update(MV_OPLATA='tak')
             with self.assertRaisesRegex(V.Zupynka, 'MV_PLATIZHNYI_SERVIS'):
                 V.zminni(suho=True)
+            # ZAVDANNYA-150, п. 4: продаж підписки — лише з картою підписника й щомісячним листом
+            os.environ.update(MV_PLATIZHNYI_SERVIS='test')
+            with self.assertRaisesRegex(V.Zupynka, 'MV_KARTA_R2=tak'):
+                V.zminni(suho=True)
+            os.environ.update(MV_KARTA_R2='tak')
+            with self.assertRaisesRegex(V.Zupynka, 'MV_LYST_STEZHU=tak'):
+                V.zminni(suho=True)
+            os.environ.update(MV_LYST_STEZHU='tak')
+            self.assertEqual(V.zminni(suho=True)['oplata'], 'tak')
             os.environ.update(MV_OPLATA='skoro', MV_DOMEN='https://evil.test/шлях')
             with self.assertRaisesRegex(V.Zupynka, 'MV_DOMEN'):
                 V.zminni(suho=True)

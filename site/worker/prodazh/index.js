@@ -32,6 +32,7 @@ import * as F from './formy.js';
 import * as K from './karta.js';
 import * as SP from './sudova.js';
 import * as G from './google.js';
+import * as ST from './stezhu.js';
 
 export const MARSHRUTY = ['/oplata/*', '/api/*', '/kabinet/*', '/dovidka/*', '/prodazh/*', '/pidpysnyk/*'];
 const SESIIA_S = 30 * 86400, VKHID_S = 30 * 60, LYSTIV_NA_HODYNU = 5;
@@ -75,12 +76,15 @@ async function formaZamovlennia(request, env, url) {
   }
   const budynok = url.searchParams.get('budynok');
   const adresa = budynok ? await L.perevirytyBudynok(env, budynok, url) : null;
-  return S.formaZamovlennia({ tovar, budynok: adresa ? budynok : null, adresa, ...(await vkhidGoogle(request, env)) });
+  // ZAVDANNYA-150, п. 3: увійшли з пакетом «3 довідки» чи підпискою — спершу «Використати залишок», а не нова оплата
+  const ja = await sesiia(request, env);
+  const zalyshok = ja && adresa && tovar === 'dovidka' ? await L.zalyshokNaBudynok(env, ja.id, budynok) : 0;
+  return S.formaZamovlennia({ tovar, budynok: adresa ? budynok : null, adresa, zalyshok, ...(await vkhidGoogle(request, env, ja)) });
 }
 
 /** Для форми замовлення (ZAVDANNYA-142): пошта з сесії (після входу через Google) і чи показувати кнопку Google. */
-async function vkhidGoogle(request, env) {
-  const ja = await sesiia(request, env);
+async function vkhidGoogle(request, env, ja = undefined) {
+  if (ja === undefined) ja = await sesiia(request, env);
   return { poshtaSesii: ja?.poshta || '', google: G.uvimkneno(env) && !ja };
 }
 
@@ -101,10 +105,12 @@ async function stvorytyZamovlennia(request, env, url) {
     if (f.odrazu !== 'tak') return znovu('Позначте: «Прошу надіслати одразу…» — без цього оплатити не можна.');
     return doOplaty(env, url, { tovar, budynok: null, adresa: v.opys, poshta, parametry: v.parametry });
   }
-  let budynok = f.budynok ? L.shliakhBudynku(f.budynok) : null, adresa = null;
-  if (budynok) {
-    adresa = await L.perevirytyBudynok(env, budynok, url);
-    if (!adresa) return S.formaZamovlennia({ tovar, budynok: null, adresa: null, pomylka: 'Такого будинку на сайті немає. Вставте посилання на сторінку будинку з нашого сайту.' });
+  let budynok = null, adresa = null;
+  if (f.budynok) {
+    // ZAVDANNYA-150, п. 6: адреса словами або посилання на сторінку будинку
+    const v = await L.znaityBudynok(env, url, f.budynok);
+    if (!v.budynok) return S.formaZamovlennia({ tovar, budynok: null, adresa: null, pomylka: L.chomuNeZnaideno(v), vvedeno: String(f.budynok).slice(0, 200), poshtaSesii: L.chystaPoshta(f.poshta) || '' });
+    ({ budynok, adresa } = v);
   } else if (L.potribenBudynok(tovar)) {
     return S.formaZamovlennia({ tovar, budynok: null, adresa: null });
   }
@@ -257,15 +263,18 @@ async function kabinet(env, ja, povidomlennia = '') {
   const pidpysky = (await L.stanPidpysok(env, ja.id)).filter((p) => p.diie);
   for (const p of pidpysky) p.zaBali = (await L.odyn(env, 'SELECT servis FROM zamovlennia WHERE id = ?', p.zamovlennia_id))?.servis === 'bali';
   const bali = B.uvimkneno(env) ? { balans: await B.balans(env, ja.id), kurs: B.KURS, zapyt: vypadkovyi(16) } : null;
-  return S.kabinet({ poshta: ja.poshta, dovidky, stezhu, pidpysky, dostupno: d, povidomlennia, bali });
+  const lyst = { pidpyska: pidpysky.some((p) => ['pidpyska', 'rieltor'].includes(p.tovar)), vymkneno: await ST.vymknenyi(env, ja.id) };
+  return S.kabinet({ poshta: ja.poshta, dovidky, stezhu, pidpysky, dostupno: d, povidomlennia, bali, lyst });
 }
 
 async function diiaKabinetu(request, env, url, ja, dia) {
   const f = await forma(request);
-  if (f.budynok) f.budynok = L.shliakhBudynku(f.budynok);      // ZAVDANNYA-143: можна вставити й повне посилання на сторінку
   if (dia === 'stezhu' || dia === 'dovidka') {
-    const adresa = await L.perevirytyBudynok(env, f.budynok, url);
-    if (!adresa) return kabinet(env, ja, 'Такого будинку на сайті немає. Скопіюйте адресу його сторінки: /budynok/…/…/');
+    // ZAVDANNYA-150, п. 6: адреса словами («Деміївська 45») або посилання на сторінку будинку
+    const z = await L.znaityBudynok(env, url, f.budynok);
+    if (!z.budynok) return kabinet(env, ja, L.chomuNeZnaideno(z));
+    f.budynok = z.budynok;
+    const adresa = z.adresa;
     if (dia === 'stezhu') {
       await L.zrobyty(env, 'INSERT OR IGNORE INTO stezhu (korystuvach_id, budynok, adresa, stvoreno) VALUES (?, ?, ?, ?)', ja.id, f.budynok, adresa, L.teper(env));
       return kabinet(env, ja, `Стежите: ${adresa}.`);
@@ -289,6 +298,10 @@ async function diiaKabinetu(request, env, url, ja, dia) {
     if (!v.ok) return kabinet(env, ja, v.chomu);
     if (v.povtor) return kabinet(env, ja, 'Цей обмін уже зроблено.');
     return kabinet(env, ja, v.dovidka ? `Обміняно: довідку на ${adresa} готуємо — посилання прийде на пошту.` : 'Обміняно: місяць підписки діє з сьогодні.');
+  }
+  if (dia === 'stezhu/lyst') {
+    await ST.peremknuty(env, ja.id, f.lyst === 'tak');
+    return kabinet(env, ja, f.lyst === 'tak' ? 'Лист «Нове біля дому» знову надсилатимемо раз на місяць.' : 'Лист «Нове біля дому» більше не надсилатимемо.');
   }
   if (dia === 'stezhu/prybraty') {
     await L.zrobyty(env, 'DELETE FROM stezhu WHERE korystuvach_id = ? AND budynok = ?', ja.id, String(f.budynok || ''));
@@ -350,6 +363,17 @@ async function vnutr(request, env, url, shliakh) {
     const html = await request.text();
     if (!html.startsWith('<!') || html.length > 30 * 1024 * 1024) return new Response('ne html', { status: 400 });
     return new Response(null, { status: (await L.dovidkaHotova(env, m[1], html, adresaSaitu(env, url))) ? 204 : 409 });
+  }
+  // ZAVDANNYA-150, п. 4: щомісячний лист «Стежу» — черга й надсилання (скрипт site/prodazh/lyst_stezhu.py)
+  if (shliakh === 'stezhu' && request.method === 'GET') {
+    const v = await ST.cherha(env, url.searchParams.get('period') || '');
+    return v ? Response.json({ pidpysnyky: v }) : new Response('period', { status: 400 });
+  }
+  m = shliakh.match(/^lyst-stezhu\/(k\d+)$/);
+  if (m && request.method === 'POST') {
+    let tilo = {};
+    try { tilo = await request.json(); } catch { tilo = {}; }
+    return new Response(null, { status: (await ST.nadislatyLyst(env, m[1], tilo)).status });
   }
   m = shliakh.match(/^pomylka\/(d[a-z2-7]+)$/);
   if (m && request.method === 'POST') return new Response(null, { status: (await L.dovidkaPomylka(env, m[1])) ? 204 : 409 });

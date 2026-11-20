@@ -275,6 +275,18 @@ class ZvedenniaNazv(unittest.TestCase):
                          ['Хрещатик', 'Прорізна'])
         self.assertEqual([x[1] for x in D.vulytsi_mistsia('вулиця В. Гетьмана - вул. Індустріальна', 'cross')],
                          ['В. Гетьмана', 'Індустріальна'])
+        # ZAVDANNYA-150, п. 15: сміття з покажчика вулиць
+        for t, tr in (('площа Києві Деміївська', ('площа', 'Деміївська')), ('Деміївська площа у м. Києві', ('площа', 'Деміївська')),
+                      ('вулиця Ів.Пулюя', ('вулиця', 'Ів. Пулюя')), ('вул. Київська', ('вулиця', 'Київська')),
+                      ('вулиця Києво-Святошинська', ('вулиця', 'Києво-Святошинська'))):
+            self.assertEqual(D.rozibraty_vulytsiu(t), tr, t)
+        kanon = {('бульвар', D.kliuch('Лесі Українки')): ('бульвар', 'Лесі Українки', 'бульвар Лесі Українки'),
+                 ('площа', D.kliuch('Лесі Українки')): ('площа', 'Лесі Українки', 'площа Лесі Українки'),
+                 ('вулиця', D.kliuch('Івана Пулюя')): ('вулиця', 'Івана Пулюя', 'вулиця Івана Пулюя')}
+        z, _s, n = D.zvesty_nazvy(Counter({('вулиця', 'Лесі Українки'): 1, ('вулиця', 'Ів. Пулюя'): 1}), kanon, [])
+        self.assertEqual(z[('вулиця', 'Лесі Українки')][2], 'бульвар Лесі Українки')
+        self.assertEqual(z[('вулиця', 'Ів. Пулюя')][2], 'вулиця Івана Пулюя')
+        self.assertEqual(n, [])
         kanon = {('вулиця', D.kliuch('Набережно-Хрещатицька')): ('вулиця', 'Набережно-Хрещатицька', 'Набережно-Хрещатицька вулиця')}
         z, _s, _n = D.zvesty_nazvy(Counter({('вулиця', 'Набержно-Хрещатицька'): 1}), kanon, [])
         self.assertEqual(z[('вулиця', 'Набержно-Хрещатицька')][1], 'Набережно-Хрещатицька')
@@ -465,6 +477,32 @@ class Sait(unittest.TestCase):
             if m:
                 znaideno.append((str(p.relative_to(self.sait)), m.group(0)))
         self.assertEqual(znaideno, [])
+
+    def test_zavd150_bez_sluzhbovykh_sliv(self):
+        """ZAVDANNYA-150, п. 12 (AGENTS.md, розд. 4): на відкритих сторінках немає «медіана», номерів рішень, назв файлів
+        документації й «Ціну бере сервер…»; ціни в описах — лише з таблиці (599 → 299)."""
+        sluzhbovi = re.compile(r'медіан|\bMV-\d|docs/|[A-Z-]+\.md\b|Ціну бере сервер|повний звіт — 599', re.I)
+        znaideno = []
+        for p in self.nashi_storinky():
+            t = re.sub(r'<script\b[^>]*>.*?</script>|<!--.*?-->', '', p.read_text(encoding='utf-8'), flags=re.S)
+            m = sluzhbovi.search(t)
+            if m:
+                znaideno.append((str(p.relative_to(self.sait)), m.group(0)))
+        self.assertEqual(znaideno, [])
+
+    def test_zavd150_oplata_ne_pratsiuie_lyshe_skoro(self):
+        """ZAVDANNYA-150, п. 2: «Оплата ще не працює» — лише в режимі «скоро»; з увімкненою оплатою рядка немає."""
+        import storinky_mv100 as M
+        import tsiny as T
+        t = (self.sait / 'miy-budynok' / 'index.html').read_text(encoding='utf-8')
+        self.assertIn('Оплата ще не працює', t)          # збірка тестів — режим «скоро»
+        stare = T.OPLATA['rezhym']
+        try:
+            T.OPLATA['rezhym'] = 'tak'
+            self.assertEqual(M.prymitka_oplaty('Кнопка …'), '')
+            self.assertNotIn('ще не працює', M.vitryna_miy_budynok('https://mv.test', []))
+        finally:
+            T.OPLATA['rezhym'] = stare
 
     def test_failiv_menshe_mezhi_cloudflare(self):
         if self.spravzhnii and self.budynky:
@@ -723,7 +761,7 @@ class Sait(unittest.TestCase):
             roky = D.roky_danykh(con)
             con.close()
             period = f'{roky[0]}–{roky[1]}' if roky[0] != roky[1] else str(roky[0])
-            self.assertIn(f'події за {period} з описами', mb)
+            self.assertIn(f'події за {period} зі стислим описом з рішення', mb)
             self.assertIn(f'Київ, {period}', (self.sait / 'biznes' / 'index.html').read_text(encoding='utf-8'))
         for shl in ('miy-budynok', 'biznes'):
             self.assertNotIn('10 років', (self.sait / shl / 'index.html').read_text(encoding='utf-8'), shl)
@@ -1073,7 +1111,9 @@ class KartaUBrauzeri(unittest.TestCase):
         tmp = Path(cls.tmp.name)
         stvoryty_bazu(tmp / 'events.db')
         stvoryty_pereimenuvannya(tmp / 'pereim.csv')
-        zibraty_sait.zibraty_sait(tmp / 'events.db', tmp / 'sait', tmp / 'pereim.csv', KORIN / 'data' / 'borders.json')
+        (tmp / 'budynky.json').write_text(json.dumps(BUDYNKY, ensure_ascii=False), encoding='utf-8')
+        zibraty_sait.zibraty_sait(tmp / 'events.db', tmp / 'sait', tmp / 'pereim.csv', KORIN / 'data' / 'borders.json',
+                                  budynky=tmp / 'budynky.json')
         http.server.SimpleHTTPRequestHandler.log_message = lambda *a: None
         cls.server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), functools.partial(
             http.server.SimpleHTTPRequestHandler, directory=str(tmp / 'sait')))
@@ -1153,6 +1193,20 @@ class KartaUBrauzeri(unittest.TestCase):
         s.mouse.click(640, 500)
         s.wait_for_timeout(300)
         self.assertEqual(s.inner_text('#pidkazka'), 'Тут немає подій у даних')
+
+    def test_poshuk_budynku_na_holovnii(self):
+        """ZAVDANNYA-150, п. 1: «вулиця + номер» на головній → сторінка будинку, як у «Мій будинок»."""
+        s, pomylky = self.storinka()
+        znaideno = s.evaluate("() => MvKarta.poshuk('Хрещатик, буд. 22')")
+        self.assertTrue(znaideno[0].endswith('/budynok/khreshchatyk/22/'), znaideno)
+        s.fill('#poshuk-karty', '')
+        s.click('#poshuk-karty')
+        s.keyboard.type('хрещатик 24а')
+        s.wait_for_selector('#pidkazky li[data-j]')
+        self.assertIn('будинок', s.inner_text('#pidkazky li[data-j="0"]'))
+        s.keyboard.press('Enter')
+        s.wait_for_url('**/budynok/khreshchatyk/24-a/', timeout=10000)
+        self.assertEqual(pomylky, [])
 
 
 if __name__ == '__main__':

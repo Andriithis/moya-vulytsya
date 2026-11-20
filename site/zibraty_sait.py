@@ -793,6 +793,7 @@ def ekran_karty(dn: D.Dani) -> str:
     """Карта на весь екран у вигляді макета М7 (MV-58): угорі ліворуч — рядок пошуку зі значками 3D/2D, день/ніч і «ⓘ»,
     під ним — фільтр «Усі події ▾»; картка соти — «в повітрі» праворуч (телефон — шторка); джерела — правий нижній кут
     (телефон — у «ⓘ»). Легенди й «+/−» немає. Поведінка зуму — як у карті Києва (S-К.4, S-К.6, S-К.13, S-К.18, S-К.21)."""
+    import tsiny as T
     hrupy = ''.join(
         f'<li><label><input type="checkbox" data-hrupa="{k}" checked>{svg_html(IK_HRUP[k])}<span>{e(n)}</span></label></li>'
         for k, n in D.HRUPY)
@@ -807,8 +808,8 @@ def ekran_karty(dn: D.Dani) -> str:
 <p class="karta__zboi" hidden>Підкладка карти не завантажилася — видно соти й межу Києва.</p>
 <div class="verkh-ryad">
 <form class="plashka verkh" role="search" action="/vulytsi/"><span class="znak">{znak}</span>
-<label class="prykhovano" for="poshuk-karty">Вулиця або район</label>
-<input id="poshuk-karty" type="search" autocomplete="off" spellcheck="false" placeholder="Вулиця або район" aria-controls="pidkazky" aria-autocomplete="list" aria-expanded="false" role="combobox">
+<label class="prykhovano" for="poshuk-karty">Вулиця, будинок або район</label>
+<input id="poshuk-karty" type="search" autocomplete="off" spellcheck="false" placeholder="Вулиця, будинок або район" aria-controls="pidkazky" aria-autocomplete="list" aria-expanded="false" role="combobox">
 </form>
 <button id="f3d" class="znachok klav" type="button" aria-label="Зараз 3D (об’ємно). Натисніть — пласка карта 2D"><span class="zn-v">{kub}<small>3D</small></span></button>
 <button id="ftema" class="znachok klav" type="button" data-tema-perem aria-label="Нічна тема">{MISYATS}{SONTSE}</button>
@@ -816,6 +817,7 @@ def ekran_karty(dn: D.Dani) -> str:
 <button id="finfo" class="znachok klav" type="button" aria-label="Як читати карту" title="Як читати карту" aria-expanded="false" aria-controls="info">{info_ik}</button>
 </div>
 <ul id="pidkazky" class="plashka" role="listbox" aria-label="Знайдені місця" hidden></ul>
+<a class="haslo-karty plashka klav" href="/miy-budynok/?dzherelo=holovna"><b>Що болить вашому будинку?</b><span>Довідка — {T.tsina("dovidka")}</span></a>
 <div id="filtr" class="filtr">
 <button type="button" class="f-knopka klav" aria-expanded="false" aria-controls="f-spysok">{filtr_ik}<span id="f-pidpys">Усі події</span><span aria-hidden="true">▾</span></button>
 <div id="f-spysok" class="f-spysok plashka" hidden>
@@ -970,7 +972,7 @@ def zapysaty(shlyakh: Path, tekst: str) -> None:
 def kopiyuvaty_spilne(vykhid: Path) -> None:
     sait = vykhid / 'sait'
     (sait / 'shryfty').mkdir(parents=True, exist_ok=True)
-    for f in ('karta.js', 'poshuk.js', 'tema.js', 'oplata.js', 'sp.js', 'sp.css'):
+    for f in ('karta.js', 'poshuk.js', 'tema.js', 'oplata.js', 'sp.js', 'sp.css', 'budynok-pole.js'):
         shutil.copyfile(DZHERELO / 'sait' / f, sait / f)
     for f in ('hra-yadro.js', 'vulytsia-yadro.js'):          # спільне ядро ігор (ZAVDANNYA-117)
         shutil.copyfile(DZHERELO / 'hra' / f, sait / f)
