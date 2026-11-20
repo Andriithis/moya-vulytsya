@@ -25,6 +25,7 @@ sys.path.insert(0, str(KORIN / 'avtopostynh'))
 import cherha as C  # noqa: E402
 import cherha_rolykiv as CR  # noqa: E402
 import khmara as K  # noqa: E402
+import kliuchi as KL  # noqa: E402
 import merezhi as M  # noqa: E402
 import pravyla as P  # noqa: E402
 import servis as SV  # noqa: E402
@@ -483,6 +484,35 @@ class Pidsumok(unittest.TestCase):
         z = [{'data': '2026-11-24'}, {'data': '2026-11-30'}, {'data': '2026-12-10'}]
         self.assertEqual(Z.na_den(z, '2026-11-23T16:00')['data'], '2026-11-30')
         self.assertEqual(Z.na_den(z[2:], '2026-11-23T16:00')['data'], '2026-12-10')
+
+
+# ==================================================================== ключі для Микити
+class Kliuchi(unittest.TestCase):
+    def test_google_dozvoly_i_obmin(self):
+        u = KL.google_adresa('cid', 'http://127.0.0.1:5000/', 'st')
+        q = parse_qs(urlsplit(u).query)
+        self.assertEqual(q['access_type'], ['offline'])
+        self.assertEqual(set(q['scope'][0].split()), set(KL.GOOGLE_DOZVOLY))
+        self.assertIn('https://www.googleapis.com/auth/yt-analytics.readonly', KL.GOOGLE_DOZVOLY)
+        s = Sitka([(r'oauth2', 200, {'refresh_token': 'RT', 'scope': ' '.join(KL.GOOGLE_DOZVOLY)})])
+        self.assertEqual(KL.google_obmin('kod', 'cid', 'sek', 'http://127.0.0.1:5000/', s)['refresh_token'], 'RT')
+        self.assertIn('grant_type=authorization_code', s.zapyty[0][3].decode())
+        with self.assertRaises(SystemExit):
+            KL.google_obmin('kod', 'cid', 'sek', 'x', Sitka([(r'oauth2', 400, {'error': 'invalid_grant'})]))
+
+    def test_meta_storinka_i_instagram(self):
+        s = Sitka([(r'oauth/access_token', 200, {'access_token': 'DOVHYI'}),
+                   (r'me/accounts', 200, {'data': [{'id': 'P1', 'name': 'Моя вулиця', 'access_token': 'PT',
+                                                    'instagram_business_account': {'id': 'IG1'}}]})])
+        r = KL.meta_kliuchi('app', 'sek', 'korotkyi', http_=s)
+        self.assertEqual(r, [{'nazva': 'Моя вулиця', 'MV_META_PAGE_ID': 'P1', 'MV_META_PAGE_TOKEN': 'PT',
+                              'MV_INSTAGRAM_ID': 'IG1'}])
+        self.assertIn('fb_exchange_token=korotkyi', s.zapyty[0][1])
+        self.assertIn('access_token=DOVHYI', s.zapyty[1][1])
+        s = Sitka([(r'oauth/access_token', 400, {'error': {'code': 190, 'message': 'bad korotkyi'}})])
+        with self.assertRaises(SystemExit) as e:
+            KL.meta_kliuchi('app', 'sek', 'korotkyi', http_=s)
+        self.assertNotIn('korotkyi', str(e.exception))                         # ключ не друкується в помилці
 
 
 # ==================================================================== робочі процеси
