@@ -151,7 +151,7 @@ class Vydavach(unittest.TestCase):
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
         self.assertIn('видано за запуск: 2', p.stdout)
         lysty = json.loads(urllib.request.urlopen(self.adresa + '/__lysty').read())
-        self.assertEqual(sum(1 for l in lysty if l['komu'] == 'bo@poshta.ua' and 'Довідка' in l['tema']), 2)
+        self.assertEqual(sum(1 for l in lysty if l['komu'] == 'bo@poshta.ua' and l['tema'].startswith('Довідка')), 2)
 
     def test_naskrizno(self):
         st, h, _ = self.vidkryty('/api/zamovlennia', {'tovar': 'zvit', 'budynok': '/budynok/obolonskyi/16/',
@@ -169,7 +169,7 @@ class Vydavach(unittest.TestCase):
         vziato = vydavach.odyn_obkhid(self.adresa, 'kliuch-vydavacha', self.generator, shi=False, n=5)
         self.assertEqual(vziato, 1)
         lysty = json.loads(urllib.request.urlopen(self.adresa + '/__lysty').read())
-        lyst = next(l for l in lysty if l['komu'] == 'ana@poshta.ua' and 'Повний звіт' in l['tema'])
+        lyst = next(l for l in lysty if l['komu'] == 'ana@poshta.ua' and l['tema'].startswith('Повний звіт'))
         shliakh = re.search(r'https?://[^/]+(/dovidka/\S+)', lyst['tekst']).group(1)
         st, h, html = self.vidkryty(shliakh)
         self.assertEqual(st, 200)

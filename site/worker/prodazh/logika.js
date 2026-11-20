@@ -5,7 +5,7 @@ import TS from './tsiny.js';
 import { vypadkovyi, sha256 } from './bezpeka.js';
 import { nadislaty } from './poshta.js';
 import { budynok as zPachky } from '../budynky.js';
-import { nahaduvanniaOsbb } from './lysty.js';
+import { nahaduvanniaOsbb, oplatuOtrymano } from './lysty.js';
 
 const dataT = (t) => { const d = new Date(t * 1000); return `${String(d.getUTCDate()).padStart(2, '0')}.${String(d.getUTCMonth() + 1).padStart(2, '0')}.${d.getUTCFullYear()}`; };
 
@@ -15,6 +15,14 @@ const q = (env, sql, ...p) => env.BAZA.prepare(sql).bind(...p);
 export const odyn = (env, sql, ...p) => q(env, sql, ...p).first();
 export const vsi = async (env, sql, ...p) => (await q(env, sql, ...p).all()).results;
 export const zrobyty = (env, sql, ...p) => q(env, sql, ...p).run();
+/** Те саме, але таблиці, якої ще немає в старій базі (оновлення skhema-<N>.sql не виконано), не зупиняє дію. */
+export async function zrobytyNovu(env, sql, ...p) {
+  try { return await zrobyty(env, sql, ...p); } catch (err) {
+    if (!/no such table/i.test(err.message)) throw err;
+    console.log(`стара база без нової таблиці: ${err.message}`);
+    return { meta: { changes: 0 } };
+  }
+}
 
 export const PIDPYSKY = Object.keys(TS.period_misiatsiv);           // pidpyska, rieltor, osbb
 const BEZ_BUDYNKU = ['pidpyska', 'rieltor', ...TS.sudova];          // будинок необов'язковий («Судова практика» — без будинку)
@@ -264,6 +272,7 @@ export async function obrobytyPodiiu(env, servis, p) {
       // перша змінила статус; друга нічого не видає (раніше — дві довідки або подвійний початок підписки).
       if (!r.meta?.changes) return { ok: true, prychyna: 'vzhe_oplacheno' };
       await vydaty(env, zam, pidpyska, t);
+      await lystOplaty(env, zam, pidpyska ? await odyn(env, 'SELECT diie_do FROM pidpysky WHERE id = ?', pidpyska.id) : null, t, false);
       return { ok: true, prychyna: 'oplacheno' };
     }
     if (pidpyska && zam.status === 'oplacheno' && pidpyska.status !== 'skasovana') { // чергове списання підписки
@@ -282,6 +291,7 @@ export async function obrobytyPodiiu(env, servis, p) {
       const dodo = dodatyMisiatsi(Math.max(pidpyska.diie_do || t, t), period);
       const r = await zrobyty(env, `UPDATE pidpysky SET status = 'aktyvna', pochatok = ?, diie_do = ? WHERE id = ? AND COALESCE(diie_do, 0) = ?`,
         t, dodo, pidpyska.id, pidpyska.diie_do || 0);
+      if (r.meta?.changes) await lystOplaty(env, zam, { diie_do: dodo }, t, true);
       return { ok: true, prychyna: r.meta?.changes ? 'prodovzheno' : 'vzhe_prodovzheno' };
     }
     return { ok: true, prychyna: 'vzhe_oplacheno' };
@@ -300,6 +310,16 @@ export async function obrobytyPodiiu(env, servis, p) {
     return { ok: true, prychyna: 'skasovano' };
   }
   return { ok: true, prychyna: 'ignor' };
+}
+
+/** Лист «Оплату отримано» (ZAVDANNYA-161, п. 3). Не вдалося надіслати — оплату однаково зараховано, видачу не зупиняємо. */
+async function lystOplaty(env, zam, pidpyska, t, prodovzhennia) {
+  const k = zam.korystuvach_id ? await odyn(env, 'SELECT poshta FROM korystuvachi WHERE id = ?', zam.korystuvach_id) : null;
+  if (!k?.poshta) return;
+  try {
+    await nadislaty(env, { komu: k.poshta, ...oplatuOtrymano({ zam, chas: t, diie_do: pidpyska?.diie_do ?? null, prodovzhennia,
+      adresaSaitu: (env.ADRESA_SAITU || '').replace(/\/$/, ''), kontakt: env.POSHTA_KONTAKT || '' }) });
+  } catch (err) { console.log(`лист «Оплату отримано» не пішов: ${err.message}`); }
 }
 
 /** Оплачено → довідка в чергу генератора (і/або підписка активна). «Судова практика»: довідка без будинку — з параметрами. */
@@ -406,6 +426,8 @@ export async function vydalytyDani(env, korystuvach_id) {
   await zrobyty(env, 'DELETE FROM stezhu WHERE korystuvach_id = ?', korystuvach_id);
   await zrobyty(env, 'DELETE FROM lysty_stezhu WHERE korystuvach_id = ?', korystuvach_id);   // щомісячний лист «Стежу» (ZAVDANNYA-150)
   await zrobyty(env, 'DELETE FROM bali_rukh WHERE korystuvach_id = ?', korystuvach_id);   // бали ігор (ZAVDANNYA-123)
+  await zrobytyNovu(env, 'DELETE FROM karta_zavantazhennia WHERE korystuvach_id = ?', korystuvach_id);   // ліміт карти (ZAVDANNYA-161)
+  await zrobyty(env, 'DELETE FROM sp_vyvantazhennia WHERE korystuvach_id = ?', korystuvach_id);
   await zrobyty(env, 'DELETE FROM sesii WHERE korystuvach_id = ?', korystuvach_id);
   await zrobyty(env, 'DELETE FROM vkhody WHERE korystuvach_id = ?', korystuvach_id);
   await zrobyty(env, 'DELETE FROM korystuvachi WHERE id = ?', korystuvach_id);
@@ -416,6 +438,9 @@ export async function prybraty(env) {
   const t = teper(env);
   await zrobyty(env, 'DELETE FROM sesii WHERE do_ < ?', t);
   await zrobyty(env, 'DELETE FROM vkhody WHERE do_ < ?', t - 86400);
+  const tyzhdenTomu = new Date((t - 7 * 86400) * 1000).toISOString().slice(0, 10);   // лічильники лімітів — лише свіжі
+  await zrobytyNovu(env, 'DELETE FROM karta_zavantazhennia WHERE den < ?', tyzhdenTomu);
+  await zrobyty(env, 'DELETE FROM sp_vyvantazhennia WHERE den < ?', tyzhdenTomu);
   const dniv = parseInt(env.DOVIDKY_DNIV || '365', 10);
   const stari = await vsi(env, 'SELECT id, fail FROM dovidky WHERE fail IS NOT NULL AND hotovo < ?', t - dniv * 86400);
   for (const d of stari) {
@@ -423,6 +448,66 @@ export async function prybraty(env) {
     await zrobyty(env, `UPDATE dovidky SET fail = NULL, kliuch_hash = NULL, status = 'vydaleno' WHERE id = ?`, d.id);
   }
   return stari.length;
+}
+
+// ---------------------------------------------------------------- стирання за строками (ZAVDANNYA-161, п. 4; MV-173)
+
+export const NEZAVERSHENE_S = 30 * 86400;       // пошта без жодної покупки (лише незавершені замовлення) — 30 днів
+export const ZVERNENNIA_S = 365 * 86400;        // звернення — 1 рік після відповіді (політика, розд. 5)
+export const ZAIAVKY_S = 183 * 86400;           // передзамовлення й «скоро» — пів року після запуску (політика, розд. 5)
+const KYIV = /ки[їі]в|kyiv|kiev/i;
+
+/**
+ * Коли запущено продаж: змінна DATA_ZAPUSKU (РРРР-ММ-ДД) або, без неї, перша справжня оплата (не тестова й не за бали).
+ * null — продажу ще не було (режим «скоро»): тоді заявки до запуску не стираються.
+ */
+export async function chasZapusku(env) {
+  const z = String(env.DATA_ZAPUSKU || '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(z)) return Math.floor(Date.parse(`${z}T00:00:00Z`) / 1000);
+  const r = await odyn(env, `SELECT MIN(oplacheno) AS t FROM zamovlennia WHERE oplacheno IS NOT NULL AND servis NOT IN ('test', 'bali')`);
+  return r?.t ?? null;
+}
+
+/**
+ * Щодня (той самий розклад, що й prybraty; і в режимі «скоро», бо форми пишуться й тоді). Повертає, скільки стерто.
+ *  • пошта людини, яка нічого не купила: усі її замовлення незавершені й старші за 30 днів, немає підписки, довідок,
+ *    «Стежу», балів і входу за 30 днів — людину стираємо як «Видалити мої дані»; незавершені замовлення лишаються без пошти;
+ *  • звернення — через рік після відповіді (zakryto); без відповіді не стираються — партнер ще має відповісти;
+ *  • «скоро» — через пів року після листа про запуск (napysano) або після запуску продажу, якщо товар уже продається;
+ *  • передзамовлення із заглушки (Київ) — через пів року після запуску; інше місто — лише вручну, коли запустимо там.
+ *  Що створено вже після запуску — пів року від створення.
+ */
+export async function styratyZaStrokom(env) {
+  const t = teper(env);
+  const v = { korystuvachi: 0, zvernennya: 0, skoro: 0, zayavka: 0 };
+  if (env.PRODAZH === 'tak') {
+    const mezha = t - NEZAVERSHENE_S;
+    const ludy = await vsi(env, `SELECT k.id FROM korystuvachi k WHERE k.stvoreno < ?
+      AND NOT EXISTS (SELECT 1 FROM zamovlennia z WHERE z.korystuvach_id = k.id AND (z.status IN ('oplacheno', 'povernuto') OR z.stvoreno >= ?))
+      AND NOT EXISTS (SELECT 1 FROM pidpysky p WHERE p.korystuvach_id = k.id AND p.status <> 'ochikuie')
+      AND NOT EXISTS (SELECT 1 FROM dovidky d WHERE d.korystuvach_id = k.id)
+      AND NOT EXISTS (SELECT 1 FROM stezhu s WHERE s.korystuvach_id = k.id)
+      AND NOT EXISTS (SELECT 1 FROM bali_rukh b WHERE b.korystuvach_id = k.id)
+      AND NOT EXISTS (SELECT 1 FROM sesii s WHERE s.korystuvach_id = k.id AND s.do_ > ?)
+      AND NOT EXISTS (SELECT 1 FROM vkhody x WHERE x.korystuvach_id = k.id AND x.do_ >= ?)
+      ORDER BY k.id LIMIT 500`, mezha, mezha, t, mezha);
+    for (const k of ludy) await vydalytyDani(env, k.id);
+    v.korystuvachi = ludy.length;
+  }
+  v.zvernennya = (await zrobyty(env, 'DELETE FROM zvernennya WHERE zakryto IS NOT NULL AND zakryto < ?', t - ZVERNENNIA_S)).meta?.changes ?? 0;
+  v.skoro = (await zrobyty(env, 'DELETE FROM skoro WHERE napysano IS NOT NULL AND napysano < ?', t - ZAIAVKY_S)).meta?.changes ?? 0;
+  const zapusk = await chasZapusku(env);
+  if (zapusk !== null && t - zapusk > ZAIAVKY_S) {
+    const tovary = TS.prodaietsia;
+    v.skoro += (await zrobyty(env, `DELETE FROM skoro WHERE tovar IN (${tovary.map(() => '?').join(', ')}) AND MAX(stvoreno, ?) < ?`,
+      ...tovary, zapusk, t - ZAIAVKY_S)).meta?.changes ?? 0;
+    const kyiv = await vsi(env, 'SELECT id, misto FROM zayavka WHERE MAX(stvoreno, ?) < ?', zapusk, t - ZAIAVKY_S);
+    for (const z of kyiv.filter((x) => KYIV.test(x.misto))) {
+      v.zayavka += (await zrobyty(env, 'DELETE FROM zayavka WHERE id = ?', z.id)).meta?.changes ?? 0;
+    }
+  }
+  if (v.korystuvachi + v.zvernennya + v.skoro + v.zayavka) console.log(`стерто за строком: ${JSON.stringify(v)}`);
+  return v;
 }
 
 // ---------------------------------------------------------------- нагадування ОСББ (MV-155, П7; ZAVDANNYA-132)

@@ -186,6 +186,29 @@ CREATE TABLE IF NOT EXISTS lysty_stezhu (
   PRIMARY KEY (korystuvach_id, period)
 );
 
+-- ZAVDANNYA-161, п. 2 (MV-173): скільки описів карти підписника (клітинки spravy/ і «події адреси») людина відкрила за добу.
+-- Ліміт — prodazh/karta.js, OPYSIV_NA_DEN (змінна KARTA_NA_DEN). Старші за тиждень рядки стирає щоденне прибирання.
+CREATE TABLE IF NOT EXISTS karta_zavantazhennia (
+  korystuvach_id INTEGER NOT NULL,
+  den            TEXT NOT NULL,              -- РРРР-ММ-ДД (UTC)
+  n              INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (korystuvach_id, den)
+);
+
+-- ZAVDANNYA-161, п. 5 (MV-173): позачергово прибрані події — список, який сервер застосовує одразу (карта підписника,
+-- колоди ігор; prodazh/prybrannia.js), і водночас журнал: коли, хто з партнерів, за яким зверненням, чи повернуто.
+-- Людських даних тут немає: лише рішення суду (ключ і посилання) і номер звернення. Журнал не стирається.
+CREATE TABLE IF NOT EXISTS prybrani_podii (
+  id             INTEGER PRIMARY KEY,
+  kliuch         TEXT NOT NULL UNIQUE,       -- h:<відбиток файла рішення> | n:<номер рішення в реєстрі>
+  posylannia     TEXT NOT NULL,              -- що вставив партнер
+  zvernennya_id  INTEGER,                    -- звернення, за яким прибрано (NULL — за листом чи з власної ініціативи)
+  prychyna       TEXT,
+  khto           TEXT,                       -- пошта партнера з кабінету або «admin» (ключ ADMIN_KLIUCH)
+  prybrano       INTEGER NOT NULL,
+  povernuto      INTEGER                     -- NULL — діє; інакше коли повернули
+);
+
 -- ZAVDANNYA-157: «Для бізнесу» — запити зі сторінки /biznes/, клієнти за договором, особисті посилання на копію бази
 -- (prodazh/biznes.js). У посиланнях — лише хеш ключа; ключ бачить один раз партнер, який його видав.
 CREATE TABLE IF NOT EXISTS biznes_zapyty (
