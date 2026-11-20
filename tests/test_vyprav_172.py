@@ -68,3 +68,38 @@ class PravoviStorinky(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class DliaBiznesu(unittest.TestCase):
+    """ZVIT-169, пп. 2–3: числа сторінки = числа копії; зразок CSV — лише формат; ціна не вигадана."""
+
+    def test_zrazok_csv_lyshe_format_i_stovptsi_kopii(self):
+        import storinky_mv100 as M
+        t = M.zrazok_csv()
+        self.assertTrue(t.startswith('﻿'))
+        ryadky = t.lstrip('﻿').splitlines()
+        self.assertEqual(ryadky[1].split(','), M.STOVPTSI_KOPII)
+        self.assertNotIn('reyestr.court.gov.ua/files', t)          # Б-1: жодного справжнього посилання
+        for r in M.ZRAZOK_CSV:
+            self.assertTrue(r['opys'] == '' or r['opys'].startswith('‹'), 'опис — лише заглушка (MV-99)')
+            self.assertTrue(r['adresa'] == '' or r['adresa'].startswith('‹'), 'адреса — лише заглушка')
+
+    def test_stovptsi_yak_u_kopii_dani_edrsr(self):
+        """Якщо поруч є dani-edrsr з копією для компанії — стовпці зразка ті самі (на CI — пропуск)."""
+        kopiia = KORIN.parent / 'dani-edrsr' / 'src' / 'kopiia_biznesu.py'
+        if not kopiia.exists():
+            self.skipTest('немає dani-edrsr/src/kopiia_biznesu.py поруч')
+        import storinky_mv100 as M
+        t = kopiia.read_text(encoding='utf-8')
+        blok = t[t.index("'podii': ["):t.index("'problemy': [")]
+        self.assertEqual(re.findall(r"\('([a-z_]+)', '", blok), M.STOVPTSI_KOPII)
+
+    def test_tsina_ne_vyhadana(self):
+        import storinky_mv100 as M
+        st = M.vitryna_biznes('https://mv.test', None, '', [], {'vsi': 10, 'z_mistsem': 7, 'rik_vid': 2019, 'rik_do': 2026, 'vidkryti': 6})
+        self.assertIn('Ціну називаємо після запиту', st)
+        self.assertNotRegex(st, r'від\s*\d[\d\s]*\s*грн')
+        self.assertIn('у копії, роки подій 2019–2026', st)
+        self.assertIn('з точною адресою й точкою', st)
+        self.assertIn('href="/biznes/zrazok-podii.csv"', st)
+        self.assertIn('href="#zapyt">Запит на доступ', st)
