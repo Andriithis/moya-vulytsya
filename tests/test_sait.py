@@ -707,6 +707,9 @@ class Sait(unittest.TestCase):
         daie = ' '.join(T.pidpyska_daie())
         self.assertIn(f'з {T.PIDPYSKA_VID} року', daie)
         self.assertNotIn('усі роки', daie)
+        oferta = (KORIN / 'site' / 'zahlushka' / 'oferta.html').read_text(encoding='utf-8')
+        self.assertIn(f'з {T.PIDPYSKA_VID} року', oferta)
+        self.assertNotIn('усі роки даних', oferta)
         d = json.loads((self.sait / 'karta' / 'soty-9.json').read_text(encoding='utf-8'))
         self.assertEqual(d['roky'], D.STARI_ROKY + D.VIDKRYTI_ROKY)
         for f in self.nashi_storinky():
