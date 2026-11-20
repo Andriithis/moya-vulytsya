@@ -323,6 +323,76 @@
     var KAM = chytatyKameru() || kameraMista();
     var D3 = KAM.pitch > 8;
 
+    // ---------- перший екран — картинка; жива карта — коли потрібна (ZAVDANNYA-164, MV-176) ----------
+    // Збирач кладе в екран .zastavka — картинку цієї ж карти з сотами випуску, рівно там, де стане жива карта, але
+    // пласку (без нахилу). Бібліотеку карти (≈ 1,4 МБ), стилі, плитки й соти вантажимо після першого дотику до карти,
+    // прокрутки або ≈ 3 с простою (з увімкненою «економією трафіку» — лише після дотику). Пошук працює одразу.
+    // Коли жива карта намалювалась, картинка тане, а карта плавно нахиляється в 3D, як була б на старті.
+    // Одразу живу карту беремо, коли картинки немає, у посиланні є камера (#зум/…), гра (?ihry, ?hra=) або ?zhyva.
+    var ZASTAVKA = ekran.querySelector('.zastavka');
+    var ODRAZU = !ZASTAVKA || !!chytatyKameru() || /[?&](zhyva|ihry|hra)\b/.test(location.search);
+    if (ODRAZU && ZASTAVKA) { ZASTAVKA.remove(); ZASTAVKA = null; }
+    if (ZASTAVKA) KAM.pitch = 0;
+    var ZAPUSK = null, PRYCHYNA = '', CHERGA = [], ZASTAVKU_PRYBRANO = !ZASTAVKA;
+    function zapustyty(prychyna) {
+      if (ZAPUSK) return ZAPUSK;
+      PRYCHYNA = prychyna; MV.stan.zapusk = prychyna;
+      if (ZASTAVKA) ZASTAVKA.style.pointerEvents = 'none';   // далі дотики — живій карті
+      ihry();
+      ZAPUSK = bibliotekaKarty().then(pobuduvaty, function () { pokazatyZbii(konteiner, false); });
+      return ZAPUSK;
+    }
+    MV.zapustyty = zapustyty;
+    // Ігри на карті — окремі скрипти (data-ihry): після завантаження сторінки, з живою картою або з натиском «Ігри».
+    var IHRY_SKR = (ekran.getAttribute('data-ihry') || '').split(' ').filter(Boolean), IHRY = false, IHRY_KLIK = false;
+    function ihry() {
+      if (IHRY || !IHRY_SKR.length) return; IHRY = true;
+      IHRY_SKR.forEach(function (src, i) {
+        var s = document.createElement('script'); s.src = src; s.async = false;   // порядок виконання — як у списку
+        if (i === IHRY_SKR.length - 1) s.onload = function () { if (IHRY_KLIK && window.MvIhry) window.MvIhry.vidkryty(); };
+        document.body.appendChild(s);
+      });
+    }
+    var knIhry = $('#fihry');
+    if (knIhry) knIhry.addEventListener('click', function () { if (!window.MvIhry) { IHRY_KLIK = true; ihry(); } });
+    if (document.readyState === 'complete') ihry(); else window.addEventListener('load', ihry, { once: true });
+    if (ODRAZU) zapustyty('odrazu');
+    else {
+      var dotyk = function (e) { if (!(e.target.closest && e.target.closest('form.verkh, #pidkazky'))) zapustyty('dotyk'); };
+      ekran.addEventListener('pointerdown', dotyk, true);
+      ekran.addEventListener('keydown', dotyk, true);
+      ekran.addEventListener('wheel', function () { zapustyty('dotyk'); }, { passive: true, once: true });
+      window.addEventListener('scroll', function () { zapustyty('prokrutka'); }, { passive: true, once: true });
+      var spokii = function () {
+        if (navigator.connection && navigator.connection.saveData) return;
+        setTimeout(function () {
+          if (window.requestIdleCallback) requestIdleCallback(function () { zapustyty('spokii'); }, { timeout: 1500 });
+          else zapustyty('spokii');
+        }, 3000);
+      };
+      if (document.readyState === 'complete') spokii(); else window.addEventListener('load', spokii, { once: true });
+    }
+    // Жива карта готова: картинка тане (коли намальовано плитки), далі — нахил у 3D, черга пошуку й «вау».
+    function pislyaGotovo() {
+      if (ZASTAVKU_PRYBRANO) { vykonatyChergu(); return; }
+      ZASTAVKU_PRYBRANO = true;
+      koly_hotova(function () {
+        ZASTAVKA.classList.add('zastavka--hasne');
+        setTimeout(function () { ZASTAVKA.remove(); }, 600);
+        if (CHERGA.length) { vykonatyChergu(); return; }
+        if (D3 && map.getPitch() < 8) {
+          map.once('moveend', function () { pochatyVau(PRYCHYNA !== 'spokii'); });
+          map.easeTo({ pitch: PITCH, duration: TYKHO ? 600 : 1100, essential: true });
+        } else pochatyVau(PRYCHYNA !== 'spokii');
+      });
+    }
+    // Людина вже щось обрала (пошук) — «оживання» не показуємо: одразу її місце.
+    function vykonatyChergu() {
+      var c = CHERGA.splice(0);
+      c.forEach(function (f) { f(); });
+      pochatyVau(c.length > 0 || PRYCHYNA !== 'spokii' && PRYCHYNA !== 'odrazu');
+    }
+
     // ---------- шари даних ----------
     function dodatyShary() {
       if (map.getSource('k-hex-L')) return;   // уже додано (style.load міг настати до підписки)
@@ -459,11 +529,14 @@
         pererakhuvaty(); zafarbuvaty(); if (map && !$('#info').hidden) namalyuvatyInfo();
       });
     }
-    var dani = Promise.all(RIVNI.filter(function (G) { return G.id !== 'S' || KAM.zoom >= ZUM_S; }).map(zavantazhyty))
-      .then(function () { pererakhuvaty(); });
-    dani.catch(function () { pidkazka('Дані карти не завантажилися. Оновіть сторінку.'); });
+    var dani = null;
 
     // ---------- карта ----------
+    function pobuduvaty() {
+    if (!chytatyKameru()) { KAM = kameraMista(); if (ZASTAVKA) KAM.pitch = 0; }   // екран міг повернутися, поки чекали
+    dani = Promise.all(RIVNI.filter(function (G) { return G.id !== 'S' || KAM.zoom >= ZUM_S; }).map(zavantazhyty))
+      .then(function () { pererakhuvaty(); });
+    dani.catch(function () { pidkazka('Дані карти не завантажилися. Оновіть сторінку.'); });
     styl(K).then(function (r) {
       PIDKLADKA_OK = r.ok; pokazatyZbii(konteiner, r.ok);
       maplibregl.setWorkerUrl(KOREN + 'sait/biblioteka/maplibre-gl-csp-worker.js');
@@ -481,7 +554,7 @@
           zafarbuvaty(); namalyuvatyInfo(); pidpysZumu();
           if (ZARAZ) vydilyty(ZARAZ.G, ZARAZ.b, false);
           MV.gotovo = true;
-          pochatyVau();
+          pislyaGotovo();
         });
       };
       map.on('style.load', naStyl);
@@ -511,6 +584,7 @@
       map.on('mouseout', function () { TIP.remove(); navesty(null); });
       TIP = new maplibregl.Popup({ closeButton: false, closeOnClick: false, className: 'k-tip', offset: 14, maxWidth: '320px' });
     });
+    }
     var TIP = null;
 
     function zapysatyKameru() {
@@ -667,7 +741,15 @@
     function vybraty(j) {
       var x = PIDK[j]; if (!x) return;
       if (x.m.url) { window.location.href = x.m.url; return; }   // будинок — його сторінка
-      if (!map) return;
+      vybratyMistse(x);
+    }
+    function vybratyMistse(x) {
+      if (!MV.gotovo) {   // жива карта ще не готова — вантажимо й летимо, щойно буде (ZAVDANNYA-164)
+        ul.hidden = true; pole.value = x.m.nazva; pole.blur(); ekran.classList.remove('shukayu');
+        CHERGA = [function () { vybratyMistse(x); }];
+        zapustyty('poshuk'); pidkazka('Відкриваю карту…');
+        return;
+      }
       var m = x.m; ul.hidden = true; pole.value = m.nazva; pole.blur(); ekran.classList.remove('shukayu'); zakryty();
       var pt = D3 ? PITCH : 0;
       if (m.mezhi) {
@@ -1082,8 +1164,10 @@
 
     // «Вау» за MV-120: за замовчуванням — «Роки оживають», після нього — запрошення «Де ви живете?».
     // ?vau=0 — без «вау»; ?vau=1|2|3 — окремі варіанти (для перевірок і знімків).
+    // lyshRayony — людина вже діяла (дотик, прокрутка, пошук), поки вантажилась карта: «оживання» не показуємо
+    // (дотик і так його зупиняє), лише запрошення «Де ви живете?». Після ≈ 3 с простою — повне «вау».
     var VAU_ZROBLENO = false;
-    function pochatyVau() {
+    function pochatyVau(lyshRayony) {
       if (VAU_ZROBLENO) return; VAU_ZROBLENO = true;
       CHAS.ost = ostanniiMisiats(); CHAS.cm = Math.max(0, CHAS.ost);
       zbuduvatySmuhu();
@@ -1092,6 +1176,7 @@
       if (v === '1') vauProstupaie();
       else if (v === '2') vauOzhyvannia();
       else if (v === '3') vauProstupaie(vauRayony);
+      else if (lyshRayony) vauRayony();
       else vauOzhyvannia(vauRayony);
     }
     MV.chas = function (krok, cm) { CHAS.krok = krok; if (cm != null) CHAS.cm = cm; zastosuvatyChas(); return nazvaPeriodu(); };
@@ -1164,6 +1249,26 @@
     document.addEventListener('mv-tema', function () { pobuduvaty(paleta()); });
   }
 
+  // Бібліотека карти й її стилі — один раз, коли вперше потрібні (сторінка вулиці, головна, /karta/).
+  var BIBLIOTEKA = null;
+  function bibliotekaKarty() {
+    if (BIBLIOTEKA) return BIBLIOTEKA;
+    BIBLIOTEKA = new Promise(function (hotovo, zbii) {
+      if (window.maplibregl) { hotovo(); return; }
+      // Стилі бібліотеки — ПЕРЕД стилями сайту, як колись у <head>: інакше .maplibregl-map {position: relative}
+      // перебиває .karta-povna {position: absolute} і карта на весь екран отримує висоту 0.
+      var css = document.createElement('link');
+      css.rel = 'stylesheet'; css.href = KOREN + 'sait/biblioteka/maplibre-gl.css';
+      document.head.insertBefore(css, document.querySelector('link[rel="stylesheet"]'));
+      var s = document.createElement('script');
+      s.src = KOREN + 'sait/biblioteka/maplibre-gl-csp.js';
+      s.onload = function () { hotovo(); };
+      s.onerror = function () { BIBLIOTEKA = null; zbii(); };
+      document.head.appendChild(s);
+    });
+    return BIBLIOTEKA;
+  }
+
   zastosuvatyStyli(document);
   var m = document.getElementById('karta-mista');
   if (m) kartaMista(m);
@@ -1177,15 +1282,7 @@
     function zavantazhyty() {
       if (pochato) return;
       pochato = true;
-      if (window.maplibregl) { pochaty(konteiner); return; }
-      var css = document.createElement('link');
-      css.rel = 'stylesheet'; css.href = KOREN + 'sait/biblioteka/maplibre-gl.css';
-      document.head.appendChild(css);
-      var s = document.createElement('script');
-      s.src = KOREN + 'sait/biblioteka/maplibre-gl-csp.js';
-      s.onload = function () { pochaty(konteiner); };
-      s.onerror = function () { pokazatyZbii(konteiner, false); };
-      document.head.appendChild(s);
+      bibliotekaKarty().then(function () { pochaty(konteiner); }, function () { pokazatyZbii(konteiner, false); });
     }
     if (!('IntersectionObserver' in window)) { zavantazhyty(); return; }
     var sposterihach = new IntersectionObserver(function (zapysy) {
