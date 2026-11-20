@@ -738,8 +738,8 @@ def holovna(dn: D.Dani, vulytsi: list, rayony: list, adresa_saitu: str, sudova_p
                       'logo': adresa_saitu + '/zahlushka/ikony/ikona-192.png'})
     return storinka(shlyakh='/', title='Моя вулиця — що відбувається під боком: вулиці й будинки Києва', dodatkovo_head=ld,
                     opys='Що відбувається під боком: скарги мешканців і події з рішень судів — на кожній вулиці й по кожному будинку Києва. Карта, покажчик вулиць, гра.',
-                    tilo=tilo, adresa_saitu=adresa_saitu, mapa=True, pered_main=ekran_karty(dn),
-                    skrypty=('/sait/biblioteka/maplibre-gl-csp.js', '/sait/karta.js') + SKRYPTY_IHOR)
+                    tilo=tilo, adresa_saitu=adresa_saitu, pered_main=ekran_karty(dn),
+                    skrypty=('/sait/karta.js',) + SKRYPTY_IHOR)
 
 
 def soty_geojson(dn: D.Dani, riven: int) -> dict:
@@ -839,6 +839,7 @@ def ekran_karty(dn: D.Dani) -> str:
     kub = svg_html('<path d="M12 3 20 7.5V16.5L12 21 4 16.5V7.5Z"/><path d="M4 7.5 12 12 20 7.5M12 12V21"/>', 20)
     return f'''<section class="ekran-karty" aria-label="Карта Києва">
 <div id="karta-mista" class="karta-povna" data-soty-7="/karta/soty-7.json" data-soty-8="/karta/soty-8.json" data-soty-9="/karta/soty-9.json" data-soty-8-m="/karta/soty-8-m.json" data-soty-9-m="/karta/soty-9-m.json" data-poshuk="/karta/poshuk.json" data-versiia="{e(dn.versiia)}"></div>
+<div class="zastavka" aria-hidden="true"></div>
 <noscript><p class="karta-bez-js">Щоб побачити карту, увімкніть JavaScript. Без нього — <a href="/vulytsi/">покажчик вулиць</a>.</p></noscript>
 <p class="karta__zboi" hidden>Підкладка карти не завантажилася — видно соти й межу Києва.</p>
 <div class="verkh-ryad">
@@ -922,8 +923,8 @@ def storinka_karty(dn: D.Dani, adresa_saitu: str) -> str:
 ''' + D.HR.NAZVA['nas'] + ''' показуємо лише числом. Дані — це те, що дійшло до суду, а не всі події.</p></section>'''
     return storinka(shlyakh='/karta/', title='Карта Києва — події з судових рішень | Моя вулиця',
                     opys='Карта Києва шестикутниками: скільки подій із судових рішень у кожній частині міста, яких видів і коли.',
-                    tilo=tilo, adresa_saitu=adresa_saitu, aktyvne='karta/', mapa=True, pered_main=ekran_karty(dn),
-                    skrypty=('/sait/biblioteka/maplibre-gl-csp.js', '/sait/karta.js') + SKRYPTY_IHOR)
+                    tilo=tilo, adresa_saitu=adresa_saitu, aktyvne='karta/', pered_main=ekran_karty(dn),
+                    skrypty=('/sait/karta.js',) + SKRYPTY_IHOR)
 
 
 def storinka_404(adresa_saitu: str) -> str:
@@ -1187,8 +1188,10 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
     # Карта і головна.
     if D.h3 is None:
         raise SystemExit('Немає бібліотеки h3 (pip install h3) — карту шестикутників не зібрати.')
+    soty_rivniv = {}
     for riven in (7, 8, 9):
         soty = soty_geojson(dn, riven)
+        soty_rivniv[riven] = soty
         # Т-12 (ZAVDANNYA-125): місяці («Роки оживають», смуга «рік · місяць») рівнів 8 і 9 — окремим файлом: сторінка бере
         # їх лише тоді, коли вони потрібні (видно цей рівень під час «оживання» чи людина обрала рік або місяць).
         # Рівень 7 лишає місяці в собі: з нього рахується лічильник подій і останній місяць смуги.
@@ -1200,6 +1203,11 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
         zapysaty(vykhid / 'karta' / f'soty-{riven}.json',
                  json.dumps({'versiia': dn.versiia, 'riven': riven, 'roky': D.ROKY, 'soty': soty},
                             ensure_ascii=False, separators=(',', ':'), sort_keys=True))
+    # Перший екран головної й /karta/ — картинка карти з сотами цього випуску (ZAVDANNYA-164, MV-176); її стилі — у sait.css.
+    import zastavka as Z
+    css_zastavky = Z.zibraty(soty_rivniv, kolory_tem(), vykhid / 'karta')
+    with open(vykhid / 'sait' / 'sait.css', 'a', encoding='utf-8') as f:
+        f.write('\n' + css_zastavky)
     zapysaty(vykhid / 'karta' / 'poshuk.json', json.dumps(poshuk_karty(dn, vulytsi, tsentry_vulyts), ensure_ascii=False,
                                                           separators=(',', ':')))
     zapysaty(vykhid / 'karta' / 'index.html', storinka_karty(dn, adresa_saitu))

@@ -94,6 +94,7 @@ site/hra/vulytsia-dnia.json
 !site/kartynky.py
 !site/perevirka_google.py
 !site/zaholovky.py
+!site/zastavka.py
 !site/worker/
 !site/sait/
 # === ІГРИ В КАРТІ (ZAVDANNYA-117) ===
