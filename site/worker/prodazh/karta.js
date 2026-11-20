@@ -28,8 +28,11 @@ export const KOREN = '/pidpysnyk/';
 const POTOCHNA = 'karta/potochna.json';
 const R_TOCHKY_M = 30;                 // «події адреси»: найближча точка покажчика не далі за це
 export const OPYSIV_NA_DEN = 300;      // запитів описів (клітинка або «події адреси») на людину на добу, UTC; KARTA_NA_DEN — інше число
-const TYPY = {
+// mjs — модулі бібліотеки карти (vendor/maplibre-gl-*/*.mjs): без типу JavaScript браузер не виконує модуль і показує
+// «Карта не завантажилася» (ZVIT-166, З-1; виправлено ZAVDANNYA-172).
+export const TYPY = {
   html: 'text/html; charset=utf-8', json: 'application/json; charset=utf-8', js: 'text/javascript; charset=utf-8',
+  mjs: 'text/javascript; charset=utf-8', wasm: 'application/wasm', webp: 'image/webp', ico: 'image/x-icon',
   css: 'text/css; charset=utf-8', woff2: 'font/woff2', woff: 'font/woff', png: 'image/png', svg: 'image/svg+xml',
   txt: 'text/plain; charset=utf-8', pbf: 'application/x-protobuf',
 };

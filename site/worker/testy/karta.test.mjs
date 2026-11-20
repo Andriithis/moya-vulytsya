@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import worker from '../index.js';
-import { klitynka, KLITYNKA } from '../prodazh/karta.js';
+import { klitynka, KLITYNKA, TYPY } from '../prodazh/karta.js';
 import { sha256 } from '../prodazh/bezpeka.js';
 import { d1, r2 } from './pidminy.mjs';
 
@@ -25,6 +25,9 @@ function seredovyshche({ karta = true } = {}) {
     const p = (k, v) => env.KARTA.m.set(`karta/${VERSIIA}/${k}`, typeof v === 'string' ? v : JSON.stringify(v));
     env.KARTA.m.set('karta/potochna.json', JSON.stringify({ versiia: VERSIIA, kategorii: ['Крадіжка', 'Грабіж'] }));
     p('index.html', '<!doctype html><title>Карта підписника</title>');
+    p('vendor/maplibre-gl-6.10.0/maplibre-gl.mjs', 'export default 1;');      // як у справжній теці карти (site_src/vendor)
+    p('vendor/maplibre-gl-6.10.0/maplibre-gl.css', '.maplibregl-map{}');
+    p('vendor/fonts/commissioner-400-cyrillic.woff2', 'w');
     p(`indeks/${kl}.json`, [[A[0], A[1], 0, 'вулиця Вигадана, 1'], [B[0], B[1], 1, 'вулиця Вигадана, 3']]);
     p(`spravy/${kl}.json`, {
       0: [[1, '2025-03-02', 21, '1/1/25', ['ab0123456789abcdef0123456789abcdef'], 'Особа 1 вигаданий опис А']],
@@ -96,6 +99,21 @@ test('підписник: карта, файли й «події адреси» 
   assert.equal(r.status, 404);
   ({ r } = await zapyt(env, '/pidpysnyk/api/podii?la=abc&lo=1', kuka));
   assert.equal(r.status, 400);
+});
+
+test('файли бібліотеки карти мають свій тип: .mjs — JavaScript, інакше браузер не виконає модуль (ZVIT-166, З-1)', async () => {
+  const env = seredovyshche();
+  const kuka = pidpysnyk(env);
+  let { r } = await zapyt(env, '/pidpysnyk/vendor/maplibre-gl-6.10.0/maplibre-gl.mjs', kuka);
+  assert.equal(r.status, 200);
+  assert.equal(r.headers.get('content-type'), 'text/javascript; charset=utf-8');
+  assert.equal(r.headers.get('x-content-type-options'), 'nosniff');
+  ({ r } = await zapyt(env, '/pidpysnyk/vendor/maplibre-gl-6.10.0/maplibre-gl.css', kuka));
+  assert.match(r.headers.get('content-type'), /^text\/css/);
+  ({ r } = await zapyt(env, '/pidpysnyk/vendor/fonts/commissioner-400-cyrillic.woff2', kuka));
+  assert.equal(r.headers.get('content-type'), 'font/woff2');
+  // усі розширення, які кладе в теку карти dani-edrsr/src/karta_pidpysnyka.py (site_src, vendor, dani, spravy)
+  for (const x of ['html', 'json', 'js', 'mjs', 'css', 'woff2', 'txt', 'pbf', 'png', 'svg']) assert.ok(TYPY[x], `немає типу для .${x}`);
 });
 
 test('шляхи поза картою не відкриваються (../, маніфест, інші ключі сховища)', async () => {
