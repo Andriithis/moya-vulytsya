@@ -26,6 +26,8 @@ NOMER_RISHENNIA = re.compile(r'рішенн\w*\s+(?:суду\s+)?№', re.I)
 KOMPONUVANNIA = {'hook', 'velykyi', 'pytannia', 'lich', 'kartka', 'stovpchyky', 'variant', 'vidlik', 'godynnyk', 'slovo', 'split',
                  'komentar', 'kolony', 'shtamp', 'taimer', 'kalendar'}
 ZASTARILI = {'fin'}         # нерухома кінцева картка 3–5 с (С1) — заборонено
+# ZAVDANNYA-175: позначка — за тим, чий голос (video/vau/holos_servis.py, poznaka())
+POZNAKY_HOLOSU = ('Голос змінено програмою', 'Голос згенеровано')
 LICH_PODII = re.compile(r'\bподі[яйї]', re.I)
 
 
@@ -161,8 +163,11 @@ def pereviryty(S: dict, meta: dict | None = None) -> list[str]:
         m = NOMER_BUDYNKU.search(t)
         if m and not any(p in t for p in dozvoleni_nomery):
             z.append(f'номер будинку (MV-25): «{m.group()}»')
-    if (S.get('zvuk') or {}).get('holos') and not S.get('holos_poznaka'):
-        z.append('голос без позначки «голос згенеровано» (MV-150)')
+    if (S.get('zvuk') or {}).get('holos'):
+        if not S.get('holos_poznaka'):
+            z.append('голос без позначки (MV-150, MV-171)')
+        elif S['holos_poznaka'] not in POZNAKY_HOLOSU:
+            z.append(f"позначка голосу «{S['holos_poznaka']}» — лише {' або '.join(POZNAKY_HOLOSU)} (MV-171)")
     tryv = S.get('tryvalist', 0)
     if not 5 <= tryv <= 65:
         z.append(f'довжина {tryv} с поза 5–65 с')
@@ -191,6 +196,10 @@ def pereviryty(S: dict, meta: dict | None = None) -> list[str]:
             z += montazh(S, meta)
     if (meta.get('pravyla') or 0) >= 138:
         z += pravyla_138(S, meta)
+    if (meta.get('pravyla') or 0) >= 129:
+        z += pravda(S, meta) + kudy(meta)
+        if not meta.get('dovhyi'):
+            z += rukh_na_starti(S)
     return z
 
 
@@ -249,6 +258,9 @@ def osi(S: dict, meta: dict) -> dict:
 def pereviryty_pachku(rolyky: list[tuple[dict, dict]]) -> list[str]:
     """В2 (Андрій: «всі відео однотипні»): два ролики поспіль різняться щонайменше за двома осями з трьох."""
     z = []
+    vsi = {(m.get('pidsumky') or {}).get('vsi') for _, m in rolyky} - {None}
+    if len(vsi) > 1:      # критик ZVIT-170: 71 420 / 71 417 / 71 428 у сусідніх роликах
+        z.append(f'одне «усього подій» на пачку — зараз різні: {", ".join(str(x) for x in sorted(vsi))} (зібрати з одного випуску)')
     oo = [(m.get('id', S.get('id')), osi(S, m)) for S, m in rolyky]
     for (ia, a), (ib, b) in zip(oo, oo[1:]):
         rizni = [k for k in ('tema', 'shar', 'riven') if a[k] != b[k]]
@@ -256,3 +268,212 @@ def pereviryty_pachku(rolyky: list[tuple[dict, dict]]) -> list[str]:
             z.append(f'В2: {ia} → {ib} різні лише за {len(rizni)} осями ({", ".join(rizni) or "жодною"}): '
                      f'{a} / {b}')
     return z
+
+
+# ------------------------------------------------------------------ ZAVDANNYA-175 (критик ZVIT-170, топ-10 №2, №3, №5)
+# Гачок — правда, яку перевіряє програма: число в гачку — з бази (meta['fakty'], рахує сценарій у момент збирання) або
+# з опису самої події (meta['fabula'], ролик з однією подією); «одне й те саме» — лише коли вид один; «в судах» — не
+# підміна «у наших даних»; відсоток — лише з базою >= VIDSOTOK_BAZA подій (AGENTS.md розд. 6: сигнал без бази не існує).
+
+VULYTSIA = re.compile(r'вул\.|просп\.|бульв\.|пров\.|пл\.|узвіз|шосе|вулиця|проспект|набережна', re.I)
+HACHOK_STYLI = {'hook', 'velykyi', 'pytannia', 'slovo', 'split', 'komentar', 'shtamp'}
+HACHOK_DO = 1.5               # гачок — те, що в кадрі до 1,5 с
+VIDSOTOK_BAZA = 50
+DZHERELO_MAKS = 50            # рядок джерела 34 px в один рядок (stsena.css)
+ODNE_I_TE_SAME = re.compile(r'одне й те саме|одне і те саме|те саме\b|однаков\w*|той самий|та сама', re.I)
+V_SUDAKH = re.compile(r'\b(?:в|у) судах\b|\bсуди Києва\b|\bсудів Києва\b', re.I)
+NAI = re.compile(r'найчаст|найбільш|найменш|найрідш|найпоширен', re.I)
+CHYSLO = re.compile(r'\d+(?:[,.:]\d+)?')
+VIDSOTOK = re.compile(r'(\d+(?:[,.]\d+)?)\s?%|(\d+(?:[,.]\d+)?)\s+відсот', re.I)
+NE_DANI = re.compile(r'^(?:19|20)\d\d$|^1551$')          # рік і номер служби 1551 — не твердження про дані
+
+
+def _norm(t: str) -> str:
+    """«71 428» → «71428», «00 год. 46 хв.» → «00:46», зірочки розмітки геть."""
+    t = str(t).replace('*', '')
+    t = re.sub(r'(?<=\d)[    ](?=\d{3}\b)', '', t)
+    t = re.sub(r'\b(\d{1,2})\s*год\.?\s*(\d{2})\s*хв\.?', lambda m: f'{int(m.group(1)):02d}:{m.group(2)}', t)
+    return t
+
+
+def _chysla(t: str) -> list[str]:
+    t = _norm(t)
+    t = re.sub(r'\d+(?:[,.]\d+)?\s*(?:с|сек\w*|секунд\w*)\b', ' ', t)     # «за 9 секунд», «за 3 с» — тривалість ролика
+    return [x for x in CHYSLO.findall(t) if not NE_DANI.match(x)]
+
+
+def _rivni(a: str, b: str) -> bool:
+    if a == b:
+        return True
+    try:
+        return abs(float(a.replace(',', '.').replace(':', '.')) - float(b.replace(',', '.').replace(':', '.'))) < 1e-9
+    except ValueError:
+        return False
+
+
+def hachok(S: dict) -> list[str]:
+    """Тексти, які глядач бачить або чує в перші HACHOK_DO с."""
+    out = []
+    for it in S.get('tekst', []):
+        if it['t0'] <= 1e-6 and it.get('styl') in HACHOK_STYLI:      # С2: гачок стоїть повністю з кадру 0
+            out += [str(it.get(k)) for k in ('tekst', 'pid', 'zag') if it.get(k)]
+            out += [str(r.get('zag', '')) + ' ' + str(r.get('tekst', '')) for r in it.get('riady', [])]
+    out += [str(h.get('tekst', '')) for h in (S.get('zvuk') or {}).get('holos', []) if h.get('t', 0) <= HACHOK_DO]
+    return out
+
+
+def pravda(S: dict, meta: dict) -> list[str]:
+    z = []
+    fakty = meta.get('fakty') or {}
+    dozv = [_norm(str(v)) for v in fakty.values() if not isinstance(v, (dict, list))]
+    dozv += [str(x) for x in meta.get('chysla_ne_z_bazy', [])]        # «за 2 мільйони» — приклад, не дані; пояснити в сценарії
+    fabula = _norm(meta.get('fabula') or '')
+    opys = [meta['hachok']] if meta.get('hachok') else []      # опис гачка в каталозі: слова перевіряємо, числа — ні («з кадру 0»)
+    for t in hachok(S) + opys:
+        for x in ([] if t in opys else _chysla(t)):
+            if not any(_rivni(x, d) for d in dozv) and not (fabula and re.search(r'(?<![\d,.])' + re.escape(x) + r'(?![\d])', fabula)):
+                z.append(f'гачок: число {x} у «{_norm(t)[:50]}» не підтверджене базою (meta fakty) чи описом події (meta fabula)')
+        if ODNE_I_TE_SAME.search(t) and fakty.get('vydiv') != 1:
+            z.append(f'гачок: «{ODNE_I_TE_SAME.search(t).group()}» — лише коли вид один (meta fakty vydiv = 1, зараз {fakty.get("vydiv")})')
+        if V_SUDAKH.search(t) and (NAI.search(t) or _chysla(t)):
+            z.append(f'гачок: «{V_SUDAKH.search(t).group()}» — ми рахуємо події в наших даних, не всі справи судів; '
+                     f'писати «у наших даних»')
+    # підпис на карті: число одразу після назви вулиці («вул. Вишгородська · 45») читається як номер будинку (MV-25)
+    for m in S.get('mitky', []):
+        n = m.get('n')
+        dvoinyk = isinstance(n, str) and re.match(r'\s*[·,:\-–—]?\s*\d', n)
+        dvoinyk = dvoinyk or re.search(r'(?:вул\.|просп\.|бульв\.|пров\.|пл\.|узвіз|шосе|вулиця)[^\d]{2,40}[·:–—-]\s*\d+\s*$', str(m.get('tekst', '')))
+        if VULYTSIA.search(str(m.get('tekst', ''))) and dvoinyk:
+            z.append(f"підпис «{m.get('tekst')}{n if isinstance(n, str) else ''}» — число після назви вулиці схоже на номер будинку: "
+                     f"n числом (сцена пише «N подій» окремим рядком)")
+    if len(str(S.get('dzherelo') or '')) > DZHERELO_MAKS:
+        z.append(f"рядок джерела задовгий ({len(S['dzherelo'])} > {DZHERELO_MAKS} знаків) — не влазить в один рядок над гачком")
+    # ролик-відповідь — лише на справжній коментар (критик ZVIT-170, n6; реєстр ROLYKY-TYPY): посилання на нього в meta
+    if any(it.get('styl') == 'komentar' for it in S.get('tekst', [])) and not meta.get('komentar_dzherelo'):
+        z.append('відповідь на коментар — лише на справжній: meta komentar_dzherelo (посилання на коментар; MV_KOMENTAR)')
+    # одне «усього подій» (топ-10 №6): лічильник з підсумком несе pidsumok і показує саме число з meta['pidsumky']
+    pids = meta.get('pidsumky') or {}
+    for it in S.get('tekst', []):
+        if it.get('styl') not in ('lich', 'slovo', 'velykyi'):
+            continue
+        k = it.get('pidsumok')
+        kin = kinets_lich(it)
+        if k:
+            if k not in pids:
+                z.append(f'підсумок «{k}» без числа з одного джерела (Rolyk.pidsumok)')
+            elif kin is not None and kin != pids[k]:
+                z.append(f'підсумок «{k}»: у кадрі {kin}, у джерелі {pids[k]}')
+        elif it.get('styl') == 'lich' and NA_KARTI_MISTA.search(str(it.get('pidpys', ''))):
+            z.append(f"лічильник «{it.get('pidpys')}» — усього подій: лише з одного джерела (pidsumok='vsi')")
+    # відсоток — лише з базою: кожне «N %» має запис meta['vidsotky'] = [{'v': N, 'k': k, 'n': n}] з n >= VIDSOTOK_BAZA
+    vs = meta.get('vidsotky') or []
+    vsi = list(teksty(S))
+    for it in S.get('tekst', []):
+        for r in it.get('riady', []):
+            if '%' in str(r.get('pislia', '')) and r.get('n') is not None:
+                vsi.append(f"{r['n']} %")
+        if '%' in str(it.get('pislia', '')) and it.get('do') is not None:
+            vsi.append(f"{it['do']} %")
+    for t in vsi:
+        for m in VIDSOTOK.finditer(_norm(t)):
+            v = float((m.group(1) or m.group(2)).replace(',', '.'))
+            ok = [x for x in vs if abs(float(x['v']) - v) < 1e-9 and x['n'] >= VIDSOTOK_BAZA and abs(x['k'] / x['n'] * 100 - v) < 1]
+            if not ok:
+                z.append(f'відсоток {m.group().strip()} без бази >= {VIDSOTOK_BAZA} подій (meta vidsotky) — писати «k з n»')
+    return z
+
+
+# Компас (docs/KOMPAS.md, розд. 0): заклик веде на сторінку того самого місця. Карта загалом — лише для ролика про все місто.
+KUDY_MISTSE = re.compile(r'^/(?:vulytsia|rayon|budynok|mistse)/[^/?#]+/')
+KUDY_PRODUKT = re.compile(r'^/(?:miy-budynok|osbb|sudova-praktyka|biznes|dlia|pidpyska|oplata)/')
+KUDY_HRA = re.compile(r'^/(?:karta/\?ihry|hra/|ihry/)')
+KUDY_KARTA_MISTSE = re.compile(r'^/karta/#\d+(?:\.\d+)?/\d+\.\d+/\d+\.\d+')     # карта, відкрита на цьому місці
+
+
+NA_KARTI_MISTA = re.compile(r'на карті(?: Києва)?\s*$|усього подій|подій у Києві', re.I)
+
+
+def kinets_lich(it: dict):
+    """Число, на якому лічильник зупиняється (останній ключ або do)."""
+    if it.get('kluchi'):
+        return it['kluchi'][-1][1]
+    return it.get('do')
+
+
+def kudy(meta: dict) -> list[str]:
+    k = meta.get('kudy') or ''
+    if meta.get('obryv') and k == '/':
+        return []                       # вступ продуктового ролика: заклик — у записі сторінки
+    if KUDY_MISTSE.match(k) or KUDY_PRODUKT.match(k) or KUDY_HRA.match(k) or KUDY_KARTA_MISTSE.match(k):
+        return []
+    if k.split('?')[0].split('#')[0] == '/karta/' and (meta.get('pro_misto') or meta.get('riven') == 'misto'):
+        return []                       # ролик про все місто → карта міста
+    return [f'заклик «{k}» — не конкретне місце (KOMPAS розд. 0): сторінка вулиці, району, місця, будинку, продукту, '
+            f'гри або /karta/#зум/широта/довгота; карта загалом — лише для ролика про все місто (meta pro_misto)']
+
+
+def storinka_isnuie(kudy_: str, sait) -> bool:
+    """Чи є сторінка заклику в зібраному сайті (site/zibraty_sait.py): /vulytsia/x/ → <сайт>/vulytsia/x/index.html."""
+    from pathlib import Path as _P
+    shliakh = kudy_.split('#')[0].split('?')[0].strip('/')
+    f = _P(sait) / shliakh / 'index.html' if shliakh else _P(sait) / 'index.html'
+    return f.is_file()
+
+
+def posylannia(meta: dict, sait) -> list[str]:
+    """Перевірка під час збирання ролика: заклик веде на сторінку, яка існує (критик ZVIT-170: n7 → 404)."""
+    if not sait:
+        return ['не перевірено посилання: немає зібраного сайту (--sait або MV_SAIT) — ролик без перевірки заклику не збираємо']
+    k = meta.get('kudy') or ''
+    if meta.get('obryv') and k == '/':
+        return []
+    if not storinka_isnuie(k, sait):
+        return [f'заклик «{k}»: такої сторінки в зібраному сайті {sait} немає (404)']
+    return []
+
+
+# Топ-10 №4 (критик ZVIT-170): у 22 з 29 роликів перші 1,5–2 с — нерухомий текст над нерухомою картою; у TikTok гортають
+# далі приблизно за секунду. Правило: до START_RUKH с щось рухається — камера помітно (зум, поворот, нахил, зсув), точки
+# з'являються, лічильник біжить, лінія малюється, сота розпадається, вигляд 139 анімується або запис сайту вже діє.
+START_RUKH = 1.5
+RUKH_Z, RUKH_KUT, RUKH_ZSUV = 0.12, 5.0, 0.001     # зум, градуси повороту чи нахилу, градуси широти/довготи (≈ 100 м)
+RUKH_STYLI = {'lich', 'godynnyk', 'taimer', 'vidlik', 'kalendar', 'kolony', 'stovpchyky', 'split'}
+
+
+def kamera_u_chasi(S: dict, t: float) -> dict:
+    K = sorted(S.get('kamera', []), key=lambda k: k['t'])
+    if not K:
+        return {}
+    if t <= K[0]['t']:
+        return K[0]
+    for a, b in zip(K, K[1:]):
+        if t <= b['t']:
+            k = (t - a['t']) / max(1e-6, b['t'] - a['t'])
+            return {x: (a.get(x, 0) + (b.get(x, 0) - a.get(x, 0)) * k) for x in ('z', 'p', 'b')} | {
+                'c': [a['c'][i] + (b['c'][i] - a['c'][i]) * k for i in (0, 1)]}
+    return K[-1]
+
+
+def rukh_na_starti(S: dict) -> list[str]:
+    T = START_RUKH
+    a, b = kamera_u_chasi(S, 0.0), kamera_u_chasi(S, T)
+    if a and b and (abs(b['z'] - a['z']) >= RUKH_Z or abs(b.get('b', 0) - a.get('b', 0)) >= RUKH_KUT
+                    or abs(b.get('p', 0) - a.get('p', 0)) >= RUKH_KUT
+                    or max(abs(b['c'][0] - a['c'][0]), abs(b['c'][1] - a['c'][1])) >= RUKH_ZSUV):
+        return []
+    for sh in S.get('tochky', []):
+        if any(0 < t <= T for t in sh['dani'].get('t', [])):
+            return []
+    for sh in S.get('adresy', []):
+        if any(0 < f['properties'].get('t', -1) <= T for f in sh['dani'].get('features', [])):
+            return []
+    for sh in S.get('soty', []):
+        if any(r['t'] <= T for r in sh.get('rozpad', [])):
+            return []
+    if any(it.get('styl') in RUKH_STYLI and it['t0'] <= T for it in S.get('tekst', [])):
+        return []
+    if any(l['t0'] <= T for l in S.get('lini', [])) or any(k['t'] <= T for k in S.get('kiltsia', [])):
+        return []
+    if S.get('styl') or S.get('zapys_rukh'):
+        return []
+    return [f'рух у перші {T} с: камера майже стоїть і нічого не з\'являється — кадр 0…{T} с нерухомий (критик ZVIT-170, №4)']

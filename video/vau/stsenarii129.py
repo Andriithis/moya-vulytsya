@@ -27,13 +27,13 @@ TUT = Path(__file__).resolve().parent
 sys.path.insert(0, str(TUT))
 import dani as D  # noqa: E402
 from stsenarii import (FORMY, KYIV, PROFIL, TSIL, VYHID, Baza, Rolyk, blyzko, fp, hrupa_kol,  # noqa: E402,F401
-                       khronolohiia, khvylia, tsentr)
+                       karta_tut, khronolohiia, khvylia, tsentr)
 
 SOTY = dict(min_chastka=0.35, min_n=3)       # «менше сот» (MV-151)
 MISIATSI = ['січ', 'лют', 'бер', 'кві', 'тра', 'чер', 'лип', 'сер', 'вер', 'жов', 'лис', 'гру']
 MISIATSI_R = ['січня', 'лютого', 'березня', 'квітня', 'травня', 'червня', 'липня', 'серпня', 'вересня', 'жовтня', 'листопада',
               'грудня']
-DZHERELO_1551 = 'Звернення до 1551 (відкриті дані Києва) · 08.2025–10.2026'
+DZHERELO_1551 = 'Звернення в 1551 (дані Києва) · 08.2025–10.2026'     # ≤ 50 знаків — один рядок
 
 
 def R129(id_, tryv, **meta):
@@ -54,7 +54,7 @@ def t1(B):
     c = KYIV
     R = R129('t1-sota-rozpadaietsia', 13, nazva='Сота розпадається', hrupa='Місто згори',
              hachok='«Що всередині однієї соти?» — і вона вибухає на сотні подій', meta='«вау», знайомить із картою',
-             liniia='Безкоштовна карта', kudy='/karta/?z=15')
+             liniia='Безкоштовна карта', kudy=karta_tut(KYIV, 15))
     R.muzyka('epik', drop=1.2)
     sh = R.soty(P, 8, vysota=((0, 0.9), (1.0, 1.0)), prozorist=((0, 1),), maks_vysota=1600, zalyvka=0.12, lyshe_rozpad=True, vershyny=False, **SOTY)
     by = D.soty_z_podiiamy(P, 8)
@@ -103,10 +103,9 @@ def t1(B):
 def t5(B):
     """Топ-5 «Усе місто за 9 секунд» (чернетка 01 → К-01): петля, точки вискакують з кадру 0, рік — великий."""
     P = sorted(B.P, key=lambda p: p.data or '9')
-    n = len(P)
     R = R129('t5-misto-za-9-sekund', 9, nazva='Усе місто за 9 секунд', hrupa='Місто згори',
              hachok='«Кожна точка — справжня подія з рішення суду»', meta='охоплення, повтори → карта', liniia='Безкоштовна карта',
-             kudy='/karta/')
+             kudy='/karta/', pro_misto=True)
     R.muzyka('puls', drop=0.0, bpm=126)
     rng = random.Random(4)
     chasy = [t + rng.uniform(0, 0.2) for t in khronolohiia(P, -1.2, 5.4)]   # С3: частина точок уже світиться в кадрі 0
@@ -117,7 +116,8 @@ def t5(B):
     R.efekt(0.0, 'udar', v=0.7)
     R.zvuk_tochok(chasy, maks=14, h0=0.8, h1=1.9, v=0.45)
     R.tekst(0, 2.2, 'hook', 'Кожна точка —\n*справжня подія*\nз рішення суду', y='verkh')
-    R.tekst(2.3, 5.6, 'lich', kluchi=[[0, 0], [5.4, n, 'io']], pidpys='{f} на карті Києва', formy=FORMY, y='verkh')
+    vsi = R.pidsumok('vsi', B.V.pidsumky['vsi'])     # те саме число, що на сайті й в інших роликах (ZAVDANNYA-175)
+    R.tekst(2.3, 5.6, 'lich', kluchi=[[0, 0], [5.4, vsi, 'io']], pidpys='{f} на карті Києва', formy=FORMY, y='verkh', pidsumok='vsi')
     for i, (rik, t) in enumerate([('2023', 0.0), ('2024', 1.4), ('2025', 2.9), ('2026', 4.3)]):
         R.tekst(t, t + 1.45 if i < 3 else 5.6, 'velykyi', f'*{rik}*', y=1300, c=True, anim='pop')
         R.efekt(t, 'tik', h=1.2)
@@ -138,11 +138,11 @@ def t2(B):
     c = (p.lon, p.lat)
     R = R129('t2-vgadai-sosny', 12, nazva='Вгадай, де це було: 23 сосни', hrupa='Ігри',
              hachok='«Вгадай, де це було» + картка «23 сосни без бирок» з кадру 0', meta='коментарі, гра → «Де це було?» щодня',
-             liniia='Гра', kudy='/hra/', odna_podiia=True)
+             liniia='Гра', kudy='/karta/?ihry', odna_podiia=True)
     R.muzyka('hra', bpm=120)
     tlo = [x for x in B.P if x.id != p.id]
     R.tochky(tlo, [-1] * len(tlo), rozmir=((0, 5),), yaskr=((0, 0.45), (5.8, 0.45), (6.6, 0.15)), glow=0.15, kiltse=False)
-    R.kam(0, KYIV, 10.2, 20, 0).kam(6.0, KYIV, 10.5, 30, 8, e='l').kam(8.0, (c[0], c[1] - 0.0022), 15.0, 55, -25, e='io', luk=0.9)
+    R.kam(0, KYIV, 10.2, 14, -8).kam(1.5, KYIV, 10.36, 22, 0, e='o').kam(6.0, KYIV, 10.5, 30, 8, e='l')   # рух з кадру 0.kam(8.0, (c[0], c[1] - 0.0022), 15.0, 55, -25, e='io', luk=0.9)
     R.kam(12, (c[0], c[1] - 0.0018), 15.2, 60, -55, e='l')
     R.tochky([p], [7.6], rozmir=((0, 60),), glow=0.7)
     R.tekst(0, 6.0, 'hook', 'Вгадай,\n*де це було*', y='verkh')
@@ -185,6 +185,7 @@ def t3(B):
     chasy = sorted(4.5 + 1.6 * ((i + 1) / len(inshi)) ** 0.6 + rng.uniform(0, 0.05) for i in range(len(inshi)))
     R.tochky(inshi, chasy, rozmir=((0, 10),), glow=0.5)
     R.zvuk_tochok(chasy, maks=14, h0=1.0, h1=1.9, v=0.4)
+    R.meta['fabula'] = p.fabula          # 00:46 і 1,68 мають бути в описі самої події (perevirka.pravda)
     R.tekst(0, 2.3, 'hook', 'Самокат.\n00:46.\n*1,68 проміле.*', y='verkh')
     for t, s in ((0.02, 0.2), (0.75, 0.15), (1.5, 0.25)):        # три удари поверх повного гачка
         R.udar(t, s, 16)
@@ -226,6 +227,7 @@ def t4(B):
     R.S['dzherelo'] = DZHERELO_1551
     R.muzyka('napruha', bpm=100)
     R.kam(0, KYIV, 10.6, 45, -20).kam(15, (30.55, 50.45), 11.2, 55, -80, e='l')
+    R.fakt(sich=sich)
     R.slovo(0, 1.8, D.chyslo(sich), pid='разів кияни написали в 1551\nза один січень')
     R.holos(0.15, 'Стільки разів кияни написали в п\'ятнадцять п\'ятдесят один за один січень.', 'tetiana')
     R.efekt(0.0, 'udar', v=0.8)
@@ -276,7 +278,9 @@ def _dyvna(B, id_, nomer, pod, hook, kartka, slovo_, slovo_pid, kudy, nazva, pid
     for i in range(len(pod)):
         R.kiltse(3.65 + 0.5 * i, c, '#B8E07A', 260)
         R.efekt(3.6 + 0.5 * i, 'pop', h=1.2 + 0.2 * i)
-    R.slovo(6.5, 8.0, slovo_, pid=slovo_pid, klas='fiolet')
+    # критик ZVIT-170: фіолетова заставка на весь кадр посередині — пауза; тепер напис поверх карти (ZAVDANNYA-175)
+    R.tekst(6.5, 8.0, 'velykyi', f'*{slovo_}* —\n{slovo_pid}', y='verkh', anim='slam')
+    R.kiltse(6.5, c, '#B8E07A', 320)
     R.efekt(6.5, 'udar', v=0.7)
     R.mitka(8.1, 12, c, D.vulytsia(pod[0].adresa), styl='velyka')
     R.tekst(8.3, 10.8, 'velykyi', 'А що дивного\n*на твоїй вулиці?*', y='verkh', anim='slam')
@@ -312,16 +316,22 @@ def n3(B):
     P = [x for x in B.P if x.id != p.id]
     R = R129('n3-znaidy-tochku', 11, nazva='Знайди жовту точку за 3 секунди', hrupa='Ігри',
              hachok='«Знайди жовту точку за 3 секунди» поверх завмерлої карти', meta='утримання (перегляд ще раз), коментарі → гра',
-             liniia='Гра', kudy='/hra/', odna_podiia=True)
+             liniia='Гра', kudy='/karta/?ihry', odna_podiia=True)
     R.muzyka('napruha', bpm=124)
-    R.tochky(P, [-1] * len(P), rozmir=((0, 6), (4.0, 6), (5.0, 3)), yaskr=((0, 0.95), (4.0, 0.95), (5.0, 0.3)), glow=0.25, kiltse=False)
-    R.S['tochky'].append({'dani': {'x': [round(p.lon * 1e5)], 'y': [round(p.lat * 1e5)], 'g': [6], 't': [-1]},
-                          'rozmir': [[0, 13], [3.9, 13], [4.3, 30], [11, 46]], 'yaskravist': [[0, 1]], 'glow': 0.9, 'kiltse': False})
+    # критик ZVIT-170: жовтої точки на м'ятному місті не видно навіть у повному кадрі. Тепер (ZAVDANNYA-175): інші точки
+    # дрібніші й тьмяніші, ціль — удвічі більша, з темною обвідкою (видно й тим, хто погано розрізняє кольори) і «дихає»
+    R.tochky(P, [-1] * len(P), rozmir=((0, 5), (4.0, 5), (5.0, 3)), yaskr=((0, 0.6), (4.0, 0.6), (5.0, 0.3)), glow=0.12, kiltse=False, kolory=['#7C7FB8'] * 8)      # інші — одним приглушеним кольором
+    tsil = {'x': [round(p.lon * 1e5)], 'y': [round(p.lat * 1e5)], 'g': [0], 't': [-1]}
+    dykh = [[round(x * 0.5, 2), 34 if i % 2 == 0 else 42] for i, x in enumerate(range(0, 8))]       # 34 ↔ 42 px кожні 0,5 с
+    R.S['tochky'].append({'dani': dict(tsil), 'kolory': ['#0B0D1F'], 'rozmir': [[t, r + 16] for t, r in dykh] + [[4.3, 62], [11, 68]],
+                          'yaskravist': [[0, 1]], 'glow': 0, 'kiltse': False})                                # обвідка
+    R.S['tochky'].append({'dani': dict(tsil, g=[6]), 'rozmir': dykh + [[4.3, 46], [11, 52]], 'yaskravist': [[0, 1]], 'glow': 0.9,
+                          'kiltse': False})
     R.kam(0, KYIV, 10.75, 0, 0).kam(4.0, KYIV, 10.8, 0, 0, e='l').kam(6.4, (c[0], c[1] - 0.0024), 14.9, 52, -20, e='io', luk=0.6)
     R.kam(11, (c[0], c[1] - 0.002), 15.2, 58, -50, e='l')
-    R.tekst(0, 4.0, 'hook', 'Знайди *жовту*\nточку за 3 секунди', y='verkh')
-    R.tekst(0.5, 3.9, 'taimer', y=1500)
-    for t in (0.5, 1.5, 2.5, 3.5):
+    R.tekst(0, 4.0, 'hook', 'Знайди *жовту*\nточку за 3 секунди', y='verkh', klas='tsil')
+    R.tekst(0.9, 3.9, 'taimer', y=1500)      # рівно 3 с: з 0,5 таймер показував «4 с» (ZAVDANNYA-175)
+    for t in (0.9, 1.9, 2.9, 3.9):
         R.efekt(t, 'tik', h=1.3)
     R.udar(4.0, 0.25, 10)
     R.kiltse(4.0, c, TSIL, 340, 1.0)
@@ -340,9 +350,9 @@ def n3(B):
 
 
 def _mif(B, id_, nazva, tverdzhennia, riady, pravda, holos_, kudy, liniia, pidpys_, prepare=None):
-    """Формат «Міф чи факт»: твердження на весь кадр → «МІФ» печаткою → поділений екран з числами → що насправді."""
+    """Формат «Міф чи факт»: твердження на весь кадр → поділений екран з числами → «МІФ» печаткою → що насправді."""
     R = R129(id_, 11, nazva=nazva, hrupa='Міф чи факт', hachok=f'«Міф чи факт: {tverdzhennia.replace(chr(10), " ").replace("*", "")}»',
-             meta='розрив очікувань, коментарі', liniia=liniia, kudy=kudy)
+             meta='розрив очікувань, коментарі', liniia=liniia, kudy=kudy, pro_misto=True)
     R.muzyka('napruha', bpm=110)
     R.kam(0, KYIV, 10.3, 35, -10).kam(11, KYIV, 10.9, 50, -60, e='l')
     if prepare:
@@ -350,13 +360,14 @@ def _mif(B, id_, nazva, tverdzhennia, riady, pravda, holos_, kudy, liniia, pidpy
     R.slovo(0, 2.0, tverdzhennia, pid='Міф чи факт?', klas='temne menshe')
     # голос лише питає: «Міф» у кінці фрази Piper оглушує в «Мів» (перевірено розпізнаванням); «МІФ» — печаткою на екрані
     R.holos(0.2, 'Це правда?', 'tetiana')
-    R.tekst(2.1, 3.9, 'shtamp', 'МІФ')
-    R.udar(2.1, 0.3, 20)
-    R.holos(2.2, holos_, 'tetiana')
-    R.tekst(4.0, 7.6, 'split', riady=riady, y=560)
-    R.efekt(4.0, 'vzhukh')
-    R.efekt(5.6, 'kasa', v=0.5)
-    R.S['novynky'] = [5.9]
+    # критик ZVIT-170: спершу доказ (числа), потім печатка «МІФ» (ZAVDANNYA-175)
+    R.tekst(2.1, 5.6, 'split', riady=riady, y=560)
+    R.efekt(2.1, 'vzhukh')
+    R.efekt(3.8, 'kasa', v=0.5)
+    R.S['novynky'] = [3.8]
+    R.tekst(5.7, 7.6, 'shtamp', 'МІФ')
+    R.udar(5.7, 0.3, 20)
+    R.holos(5.8, holos_, 'tetiana')
     R.tekst(7.7, 9.9, 'velykyi', pravda, y='verkh', anim='slam')
     R.udar(7.7, 0.2, 8)
     R.baner(9.6, 'Перевір свою вулицю', 'Карта подій · посилання в профілі')
@@ -373,7 +384,8 @@ def n4(B):
     def tlo(R):
         P = [p for p in B.P if p.vyd == 'ДТП']
         R.tochky(P, [-1] * len(P), rozmir=((0, 6),), yaskr=((0, 0.7),), glow=0.3, kiltse=False)
-    return _mif(B, 'n4-mif-kradizhka', 'Міф чи факт: найчастіша справа — крадіжка', 'Найчастіша справа\nв судах Києва —\n*крадіжка*',
+    # критик ZVIT-170: питали про «справи в судах Києва», а рахували події з місцем на карті — тепер база та сама в питанні
+    return _mif(B, 'n4-mif-kradizhka', 'Міф чи факт: найчастіша подія — крадіжка', 'Найчастіша подія\nу наших даних —\n*крадіжка*',
                 [{'zag': 'ДТП', 'n': dtp, 'tekst': 'подій у даних'}, {'zag': 'Крадіжки й майно', 'n': mai, 'tekst': 'подій у даних'}],
                 f'ДТП — майже\n*у {round(raz)} разів* більше', f'Ні. ДТП у даних майже у {round(raz)} разів більше, ніж крадіжок.',
                 '/karta/', 'Безкоштовна карта',
@@ -412,15 +424,19 @@ def n6(B):
     vtekly = sum(1 for p in pod if p.mitka == 'поїхав з місця ДТП')
     dtp = sum(1 for p in pod if p.vyd == 'ДТП')
     P24 = [p for p in B.P if (p.rik or 0) >= 2024]
-    misto = sum(1 for p in P24 if p.mitka == 'поїхав з місця ДТП') / len(P24)
     R = R129('n6-vidpovid-na-komentar', 15, nazva='Відповідь на коментар: Кадетський Гай', hrupa='Відповіді на коментарі',
              hachok='наклейка-коментар «а що на Кадетському Гаю?»', meta='серія, що живиться коментарями → сторінка вулиці',
              liniia='Мій будинок', kudy='/vulytsia/kadetskyi-hai/', shablon='підставити справжній коментар перед публікацією')
     R.muzyka('lofi', bpm=96)
     tlo = blyzko(B.P, c, 3000)
     R.tochky(tlo, [-1] * len(tlo), rozmir=((0, 6),), yaskr=((0, 0.5),), glow=0.2, kiltse=False)
-    R.kam(0, (c[0], c[1] - 0.02), 12.0, 35, 10).kam(2.0, (c[0], c[1] - 0.02), 12.1, 35, 10, e='l')
+    R.kam(0, (c[0], c[1] - 0.02), 11.8, 30, 2).kam(2.0, (c[0], c[1] - 0.02), 12.1, 35, 10, e='o')   # рух з кадру 0
     R.kam(4.6, (c[0], c[1] - 0.006), 14.6, 55, -20, e='io', luk=0.5).kam(15, (c[0], c[1] - 0.005), 14.9, 58, -60, e='l')
+    # критик ZVIT-170: коментар вигаданий — за реєстром лише справжній. Без посилання на справжній коментар
+    # (MV_KOMENTAR) перевірка не пускає ролик (perevirka.pravda, ZAVDANNYA-175)
+    import os
+    if os.environ.get('MV_KOMENTAR'):
+        R.meta['komentar_dzherelo'] = os.environ['MV_KOMENTAR']
     R.tekst(0, 2.2, 'komentar', 'а що на Кадетському Гаю?', khto='питання з коментарів', y='verkh')
     R.efekt(0.02, 'klik', h=1.1)
     R.holos(0.3, 'Відповідаємо.', 'tetiana')
@@ -429,15 +445,21 @@ def n6(B):
     R.tochky(pod, chasy, rozmir=((0, 20),), glow=0.5)
     R.zvuk_tochok(chasy, maks=12, h0=1.0, h1=1.7, v=0.45)
     R.tekst(2.0, 4.6, 'velykyi', 'Кадетський Гай.\n*Відповідаємо.*', y='verkh', anim='slam')
-    R.tekst(4.7, 7.4, 'lich', kluchi=[[4.7, 0], [5.9, n, 'o']], pidpys='{f} на вулиці\nза 2024–2026', formy=FORMY, y='verkh')
+    n_s = R.pidsumok('vulytsia', B.V.lich_vulytsi('kadetskyi-hai'))     # як на сторінці вулиці сайту
+    R.tekst(4.7, 7.4, 'lich', kluchi=[[4.7, 0], [5.9, n_s, 'o']], pidpys='{f} на вулиці\nза 2024–2026', formy=FORMY, y='verkh', pidsumok='vulytsia')
     R.udar(5.9, 0.2, 8)
-    R.holos(4.8, f'{n} {fp(n)} на вулиці. З них {dtp} — де-те-пе.', 'tetiana')
-    R.tekst(7.5, 10.4, 'split', riady=[{'zag': 'Тут', 'n': round(vtekly / n * 100), 'pislia': ' %', 'tekst': 'поїхав з місця ДТП'},
-                                        {'zag': 'По Києву', 'n': round(misto * 100), 'pislia': ' %', 'tekst': 'поїхав з місця ДТП'}], y=560)
+    R.holos(4.8, f'{n_s} {fp(n_s)} на вулиці. З них {dtp} — де-те-пе.', 'tetiana')
+    # ZAVDANNYA-175 (критик ZVIT-170): «24 %» з 10 випадків — сигнал без бази. Відсоток — лише від >= 50 подій, інакше «k з n»
+    tut_v = R.vidsotok(vtekly, n_s)          # база — усі події вулиці, як на сайті
+    m_k = sum(1 for p in P24 if p.mitka == 'поїхав з місця ДТП')
+    misto_v = R.vidsotok(m_k, len(P24))
+    tut_riad = ({'zag': 'Тут', 'n': tut_v, 'pislia': ' %', 'tekst': f'поїхав з місця ДТП ({vtekly} з {n_s})'} if tut_v is not None else
+                {'zag': 'Тут', 'n': vtekly, 'pislia': f' з {n_s}', 'tekst': 'поїхав з місця ДТП'})
+    R.tekst(7.5, 10.4, 'split', riady=[tut_riad, {'zag': 'По Києву', 'n': misto_v, 'pislia': ' %', 'tekst': 'поїхав з місця ДТП'}], y=560)
     R.efekt(7.5, 'vzhukh')
     R.efekt(9.0, 'pop', h=1.3)
     R.S['novynky'] = [9.0]
-    R.holos(7.7, f'Тут кожна {"четверта" if 22 <= vtekly / n * 100 <= 28 else ""} подія — водій поїхав з місця де-те-пе.'.replace('кожна  подія', 'така подія —'), 'tetiana')
+    R.holos(7.7, f'Тут {vtekly} з {n_s} — водій поїхав з місця де-те-пе. По Києву — {misto_v} відсотків.', 'tetiana')
     R.tekst(10.5, 13.0, 'velykyi', 'Пиши свою вулицю —\n*наступна відповідь завтра*', y='verkh', anim='slam')
     R.efekt(10.5, 'pop', h=1.4)
     R.efekt(12.0, 'pop', h=1.5)
@@ -450,15 +472,20 @@ def n6(B):
 
 
 def n7(B):
-    """Нове: «Вгадай що» на публічному місці (чернетки 02 + 03 → один ролик 12 с): ТЦ «Глобус», 64 рази одне й те саме."""
+    """Нове: «Вгадай що» на публічному місці (чернетки 02 + 03 → один ролик 12 с): ТЦ «Глобус» — що найчастіше серед подій.
+
+    ZAVDANNYA-175 (критик ZVIT-170): гачок казав «одне й те саме 64 рази», а це 39 + 25 двох різних видів. Тепер гачок —
+    скільки подій і питання «що найчастіше»; число й кількість видів — з бази (perevirka.pravda), заклик — сторінка ТЦ."""
     pr = [p for p in B.V.problemy() if (p['masshtab'] or {}).get('name', '').startswith('Глобус')][0]
     pod = B.V.podii_problemy(pr['id'])
     c = (pr['lon'], pr['lat'])
-    vydy = Counter(p.mitka for p in pod).most_common(3)
+    vsi_vydy = Counter(p.mitka for p in pod)
+    vydy = vsi_vydy.most_common(3)
     n = len(pod)
-    R = R129('n7-vgadai-shcho-tts', 12, nazva='Вгадай що: біля ТЦ — 64 рази одне й те саме', hrupa='Ігри',
-             hachok=f'«Біля цього ТЦ суд розбирав одне й те саме {n} рази. Вгадай що?»', meta='коментарі → сторінка місця',
-             liniia='Мій район', kudy='/mistse/globus/', publichni=['Глобус'])
+    R = R129('n7-vgadai-shcho-tts', 12, nazva='Вгадай що: що найчастіше біля ТЦ', hrupa='Ігри',
+             hachok='«Біля цього ТЦ — N подій у даних. Що найчастіше?»', meta='коментарі → сторінка місця',
+             liniia='Мій район', kudy='/mistse/tts-hlobus/', publichni=['Глобус'])
+    R.fakt(podii=n, vydiv=len(vsi_vydy))
     R.muzyka('napruha', bpm=112)
     R.kam(0, (c[0], c[1] - 0.0016), 16.0, 60, -20).kam(6.0, (c[0], c[1] - 0.0012), 16.4, 62, -50, e='l')
     R.kam(12, (c[0], c[1] - 0.0010), 16.6, 64, -100, e='l')
@@ -467,8 +494,8 @@ def n7(B):
     R.tochky(pod, chasy, rozmir=((0, 24),), glow=0.5)
     R.zvuk_tochok([t for t in chasy if t > 0], maks=12, h0=1.0, h1=1.8, v=0.45)
     R.mitka(0, 12, c, 'ТЦ «Глобус»', styl='velyka')
-    R.tekst(0, 2.8, 'hook', f'Біля цього ТЦ\nсуд розбирав *одне й те саме*\n{n} рази.', y='verkh')
-    R.tekst(2.9, 6.0, 'pytannia', 'Вгадай що?', y=420)
+    R.tekst(0, 2.8, 'hook', f'Біля цього ТЦ —\n*{D.chyslo(n)} {fp(n)}*\nу даних.', y='verkh')
+    R.tekst(2.9, 6.0, 'pytannia', 'Що найчастіше?', y=420)
     vars_ = [('А', 'бійки'), ('Б', vydy[0][0]), ('В', 'торгівля з рук')]
     for i, (b, v) in enumerate(vars_):
         R.tekst(3.0 + 0.2 * i, 7.6, 'variant', v, bukva=b, y=1060 + 130 * i, pravylno=(v == vydy[0][0]), vidpovid=6.0)
@@ -528,7 +555,11 @@ def main():
     a.add_argument('--koloda', type=Path)
     a.add_argument('--dani-1551', type=Path, help='dani-edrsr/docs/1551-DLIA-ZVITU.md — місячні числа й групи 1551')
     a.add_argument('--lyshe')
+    a.add_argument('--sait', type=Path, help='зібраний сайт (site/zibraty_sait.py) — перевірка, що заклик веде на сторінку, яка існує; або MV_SAIT')
     arg = a.parse_args()
+    if arg.sait:
+        import os
+        os.environ['MV_SAIT'] = str(arg.sait)
     B = Baza(arg)
     B.dani_1551 = arg.dani_1551
     vybir = arg.lyshe.split(',') if arg.lyshe else sorted(SCENARII)

@@ -79,6 +79,13 @@ def vidkryty(brauzer, port, shliakh: Path):
 def rendery(brauzer, port, shliakh: Path, fps=30, zvuk_=True, kadry=None, vykhid=VYHID):
     S = json.loads(shliakh.read_text(encoding='utf-8'))
     imia = S['id']
+    if (S.get('zvuk') or {}).get('holos') and zvuk_:
+        # позначка — за голосом, яким ролик озвучується зараз (MV_HOLOS): сценарій могли зібрати з іншим (ZAVDANNYA-175)
+        sys.path.insert(0, str(TUT))
+        import holos_servis
+        if S.get('holos_poznaka') != holos_servis.poznaka():
+            S['holos_poznaka'] = holos_servis.poznaka()
+            shliakh.write_text(json.dumps(S, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
     s, info, pomylky = vidkryty(brauzer, port, shliakh)
     tryv = float(S['tryvalist'])
     if kadry is not None:
