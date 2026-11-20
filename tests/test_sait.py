@@ -572,7 +572,7 @@ class Sait(unittest.TestCase):
         описів подій і посилань на рішення."""
         faily = sorted((self.sait / 'karta').glob('*.json')) + [self.sait / 'vulytsi' / 'pokazhchyk.json']
         self.assertEqual({f.name for f in faily}, {'soty-7.json', 'soty-8.json', 'soty-9.json', 'soty-8-m.json', 'soty-9-m.json',   # місяці — окремо (ZAVDANNYA-125)
-                                                      'poshuk.json', 'pokazhchyk.json'})
+                                                      'poshuk.json', 'pokazhchyk.json', 'rayony.json'})   # rayony — лише межі районів (ZAVDANNYA-174)
         opys = re.compile(r'керуючи|зіткнення|порушив|визнав|reyestr\.court\.gov\.ua/Review|doc_url|fabula', re.I)
         for f in faily:
             tekst = f.read_text(encoding='utf-8')
@@ -1252,9 +1252,12 @@ class KartaUBrauzeri(unittest.TestCase):
             self.assertEqual(pomylky, [])
 
     def test_vau_za_zamovchuvanniam(self):
-        """MV-120: без параметра — «Роки оживають» (лічильник місяців), сторінка без помилок."""
+        """MV-120: без параметра — «вау», сторінка без помилок. Тут «менше руху» в системі — тому одразу кінцевий вигляд і
+        «Де ви живете?», без лічильника місяців (ZAVDANNYA-174, ZVIT-171 №5); «Роки оживають» без «менше руху» —
+        tests/test_holovna_lehka.py і tests/test_karta_174.py."""
         s, pomylky = self.storinka(vau=None)
-        s.wait_for_selector('.vau-lich', timeout=15000)
+        s.wait_for_selector('.vau-rayony', timeout=15000)
+        self.assertFalse(s.evaluate("() => !!document.querySelector('.vau-lich')"))
         self.assertEqual(pomylky, [])
 
     def test_poshuk_vulytsi_z_danykh(self):

@@ -22,6 +22,18 @@
   var OSM = '<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap</a> · ' +
     '<a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a>';
 
+  // Підписи бібліотеки карти для читалки екрана — українською, а не «Map», «Zoom in» (ZAVDANNYA-174; ZVIT-171 №3, ZVIT-166 №6).
+  function lokal(nazva) {
+    return { 'Map.Title': nazva, 'NavigationControl.ZoomIn': 'Ближче', 'NavigationControl.ZoomOut': 'Далі',
+      'NavigationControl.ResetBearing': 'Повернути північ угору', 'AttributionControl.ToggleAttribution': 'Джерела даних',
+      'AttributionControl.MapFeedback': 'Повідомити про помилку карти', 'FullscreenControl.Enter': 'На весь екран',
+      'FullscreenControl.Exit': 'Вийти з повного екрана', 'GeolocateControl.FindMyLocation': 'Де я',
+      'GeolocateControl.LocationNotAvailable': 'Місце недоступне', 'LogoControl.Title': 'Логотип MapLibre', 'Marker.Title': 'Позначка',
+      'Popup.Close': 'Закрити', 'ScaleControl.Meters': 'м', 'ScaleControl.Kilometers': 'км',
+      'CooperativeGesturesHandler.WindowsHelpText': 'Ctrl і коліщатко — наблизити карту',
+      'CooperativeGesturesHandler.MacHelpText': '⌘ і коліщатко — наблизити карту',
+      'CooperativeGesturesHandler.MobileHelpText': 'Рухайте карту двома пальцями' };
+  }
   function zminna(n) { return getComputedStyle(document.documentElement).getPropertyValue('--' + n).trim(); }
   function tema() { return document.documentElement.getAttribute('data-t') === 'temna' ? 'temna' : 'svitla'; }
   function porozhnio() { return { type: 'FeatureCollection', features: [] }; }
@@ -541,7 +553,8 @@
       PIDKLADKA_OK = r.ok; pokazatyZbii(konteiner, r.ok);
       maplibregl.setWorkerUrl(KOREN + 'sait/biblioteka/maplibre-gl-csp-worker.js');
       map = new maplibregl.Map({ container: konteiner, style: r.s, center: KAM.center, zoom: KAM.zoom, bearing: KAM.bearing, pitch: KAM.pitch,
-        minZoom: 8.5, maxZoom: 19, maxPitch: 60, maxBounds: MEZHI_RUKHU, attributionControl: false, renderWorldCopies: false, fadeDuration: 300 });
+        minZoom: 8.5, maxZoom: 19, maxPitch: 60, maxBounds: MEZHI_RUKHU, attributionControl: false, renderWorldCopies: false, fadeDuration: 300,
+        locale: lokal('Карта Києва') });
       MV.karta = map;
       map.touchPitch.enable();
       if (window.ResizeObserver) new ResizeObserver(function () { map.resize(); }).observe(konteiner);
@@ -553,6 +566,7 @@
         dani.then(function () {
           zafarbuvaty(); namalyuvatyInfo(); pidpysZumu();
           if (ZARAZ) vydilyty(ZARAZ.G, ZARAZ.b, false);
+          if (RAYON) mezhaRayonu(RAYON);
           MV.gotovo = true;
           pislyaGotovo();
         });
@@ -610,7 +624,7 @@
       b.title = t; b.setAttribute('aria-label', t); b.setAttribute('aria-pressed', String(D3));
     }
     $('#f3d').addEventListener('click', function () {
-      D3 = !D3; prybraty(); d3Tekst();
+      D3 = !D3; prybraty(); d3Tekst(); skhovatyRayony();
       if (map) map.easeTo({ pitch: D3 ? PITCH : 0, duration: TYKHO ? 300 : 600, essential: true });
     });
     d3Tekst();
@@ -622,7 +636,7 @@
       return a.length === HRUPY.length ? 'Усі події' : a.length === 1 ? a[0][1] : a.length + ' з ' + HRUPY.length + ' видів подій';
     }
     function spysokFiltra(v) { fSpysok.hidden = !v; fKnopka.setAttribute('aria-expanded', String(v)); }
-    fKnopka.addEventListener('click', function () { var v = fSpysok.hidden; vidkrytyInfo(false); spysokFiltra(v); });
+    fKnopka.addEventListener('click', function () { var v = fSpysok.hidden; vidkrytyInfo(false); spysokFiltra(v); skhovatyRayony(); });
     fSpysok.addEventListener('change', function (e) {
       var x = e.target;
       if (x.hasAttribute('data-usi')) {
@@ -646,6 +660,7 @@
       $('#f-pidpys').textContent = pidpysFiltra();
       pererakhuvaty(); zafarbuvaty(); if (!$('#info').hidden) namalyuvatyInfo();
       if (ZARAZ) { if (ZARAZ.b.nf > 0) namalyuvatyKartku(); else zakryty(); }
+      if (RAYON) namalyuvatyRayon();
     }
     document.addEventListener('pointerdown', function (e) { if (!fSpysok.hidden && !e.target.closest('#filtr')) spysokFiltra(false); });
 
@@ -751,8 +766,10 @@
         return;
       }
       var m = x.m; ul.hidden = true; pole.value = m.nazva; pole.blur(); ekran.classList.remove('shukayu'); zakryty();
+      PERED = pole;   // картку відкрив пошук — після закриття фокус повертається в поле
       var pt = D3 ? PITCH : 0;
       if (m.mezhi) {
+        map.once('moveend', function () { vidkrytyRayon(m.nazva.replace(/ район$/, '')); });
         map.fitBounds(m.mezhi, { padding: telefon() ? { top: 130, bottom: 100, left: 20, right: 20 } : { top: 150, bottom: 60, left: 80, right: 420 },
           pitch: TYKHO ? map.getPitch() : pt, bearing: TYKHO ? map.getBearing() : 0, duration: TYKHO ? 600 : 1200, essential: true });
         return;
@@ -772,7 +789,7 @@
       else map.flyTo({ center: [lo, la], zoom: 14.2, pitch: pt, offset: zsuv, duration: 1200, essential: true });
     }
     pole.addEventListener('input', pokazatyPidkazky);
-    pole.addEventListener('focus', function () { ekran.classList.add('shukayu'); vidkrytyInfo(false); spysokFiltra(false); pokazatyPidkazky(); });
+    pole.addEventListener('focus', function () { ekran.classList.add('shukayu'); vidkrytyInfo(false); spysokFiltra(false); skhovatyRayony(); pokazatyPidkazky(); });
     pole.addEventListener('blur', function () { setTimeout(function () { ekran.classList.remove('shukayu'); ul.hidden = true; pole.setAttribute('aria-expanded', 'false'); }, 150); });
     pole.addEventListener('keydown', function (e) {
       var n = PIDK.length;
@@ -831,11 +848,12 @@
       return /^[a-z0-9-]{1,25}$/.test(m) ? m : typove;
     }
     var ZUM_PIDPYSNYKA = { XL: 12, L: 13.6, S: 15.2 };
-    function knopkyPokupky(G, b) {
+    function knopkyPokupky(G, b) { return knopkyMistsia(ZUM_PIDPYSNYKA[G.id], b.cy, b.cx); }
+    function knopkyMistsia(zum, la, lo) {
       var oplata = konteiner.getAttribute('data-oplata') || 'skoro';
       var skoro = oplata === 'tak' ? '' : '<small>Скоро — залиште пошту</small>';
       if (pidpysnyk()) {
-        return '<a class="klav k-dali__holovna" href="' + KOREN + 'pidpysnyk/#z=' + ZUM_PIDPYSNYKA[G.id] + '/' + b.cy.toFixed(5) + '/' + b.cx.toFixed(5) +
+        return '<a class="klav k-dali__holovna" href="' + KOREN + 'pidpysnyk/#z=' + zum + '/' + la.toFixed(5) + '/' + lo.toFixed(5) +
           '">Відкрити це місце в моїй карті</a>';
       }
       var tp = konteiner.getAttribute('data-tsina-pidpysky') || '', td = konteiner.getAttribute('data-tsina-dovidky') || '';
@@ -886,7 +904,7 @@
         (SP_TUT ? '<a class="klav" href="' + KOREN + 'sudova-praktyka/?q=' + SP_TUT + '&amp;dzherelo=sota#poshuk">Як суди вирішують такі справи</a>' : '') + '</nav>';
       var mezha = 'Лише те, що дійшло до суду' + (G.id === 'S' ? ' · статеві злочини й справи щодо дітей — лише у великих сотах' : '') +
         (VERSIIA ? ' · дані станом на ' + esc(VERSIIA) : '');
-      el.innerHTML = '<div class="k-ruchka"></div><div class="k-shap"><div><h2>' + esc(nazva) + '</h2><p>' + esc(pidnazva) + '</p></div>' +
+      el.innerHTML = '<div class="k-ruchka"></div><div class="k-shap"><div><h2 id="kartka-nazva" tabindex="-1">' + esc(nazva) + '</h2><p>' + esc(pidnazva) + '</p></div>' +
         '<button class="k-x" type="button" aria-label="Закрити">×</button></div>' + tilo + '<p class="mezha">' + mezha + '</p>';
       zastosuvatyStyli(el);
     }
@@ -894,13 +912,23 @@
     // «Назад» телефона чи браузера закриває картку: відкриття додає крок в історію.
     var KROK = false, ANIM_SEL = 0, ZASL_SEL = null;
     function prybraty() {
+      if (RAYON) { RAYON = null; var ek = $('#kartka'); ek.hidden = true; ek.classList.remove('vysoka'); mezhaRayonu(null); }
       if (!ZARAZ) return; cancelAnimationFrame(ANIM_SEL);
       ['k-col-', 'k-hex-'].forEach(function (s) { if (map && map.getSource(s + ZARAZ.G.id)) map.setFeatureState({ source: s + ZARAZ.G.id, id: ZARAZ.b.k }, { sel: false }); });
       ['k-hexsel', 'k-hexsel2'].forEach(function (s) { if (map && map.getSource(s)) map.getSource(s).setData(porozhnio()); });
       zaslonaVydilennya(null);
       ZARAZ = null; var el = $('#kartka'); el.hidden = true; el.classList.remove('vysoka');
     }
-    function zakryty() { var bulo = !!ZARAZ; prybraty(); if (bulo && KROK) { KROK = false; history.back(); } }
+    function zakryty() {
+      var bulo = !!ZARAZ || !!RAYON, fokusTut = $('#kartka').contains(document.activeElement);
+      prybraty(); if (bulo && KROK) { KROK = false; history.back(); }
+      // Фокус був у картці — повертаємо туди, звідки її відкрили (поле пошуку, кнопка), інакше — на саму карту.
+      if (bulo && fokusTut) {
+        var k = PERED && document.contains(PERED) && PERED.offsetParent ? PERED : map && map.getCanvas();
+        if (k) k.focus({ preventScroll: true });
+      }
+      PERED = null;
+    }
     window.addEventListener('popstate', function () { if (KROK) { KROK = false; prybraty(); } });
     function zaslonaVydilennya(G, b) {
       ZASL_SEL = G ? { G: G, b: b } : null; var src = map && map.getSource('k-selzasl'); if (!src) return;
@@ -945,11 +973,21 @@
       };
       requestAnimationFrame(krok);
     }
-    function vidkryty(G, b, nazva, slug) {
-      prybraty(); ZARAZ = { G: G, b: b, nazva: nazva || null, slug: slug || null };
-      var el = $('#kartka'); el.hidden = false; el.scrollTop = 0; namalyuvatyKartku();
+    // ZAVDANNYA-174 (ZVIT-171, №3): картка — область сторінки з назвою соти; відкрилась — фокус на її назву (читалка
+    // екрана називає, що відкрилось), закрилась — фокус назад, звідки відкривали.
+    var PERED = null;
+    function pokazatyKartku() {
+      var el = $('#kartka');
+      if (!el.contains(document.activeElement) && document.activeElement !== document.body) PERED = document.activeElement;
+      el.hidden = false; el.scrollTop = 0;
       el.classList.remove('z'); void el.offsetWidth; el.classList.add('z');
       if (!KROK) { history.pushState({ kartka: 1 }, '', location.href); KROK = true; }
+      skhovatyRayony();
+      var h = el.querySelector('#kartka-nazva'); if (h) h.focus({ preventScroll: true });
+    }
+    function vidkryty(G, b, nazva, slug) {
+      prybraty(); ZARAZ = { G: G, b: b, nazva: nazva || null, slug: slug || null };
+      namalyuvatyKartku(); pokazatyKartku();
       vydilyty(G, b, true);   // ні плашки, ні карта не рухаються, коли відкривається картка
     }
     (function () {   // шторка на телефоні: потягнути за ручку чи шапку — вище або нижче
@@ -1138,11 +1176,13 @@
       RIVNI.forEach(function (G) { if (MAJE[G.id]) ETALON[G.id] = etalonRivnia(G); });
       var lich = ekran.querySelector('.vau-lich') || document.createElement('div');
       lich.className = 'vau-lich plashka'; lich.setAttribute('aria-live', 'off'); ekran.appendChild(lich);
-      var i = 0, KROK_MS = (TYKHO ? 60 : 140) * TEMPO;
+      var i = 0, KROK_MS = (TYKHO ? 60 : 140) * TEMPO, kinetsZrobleno = false;
       var kinets = function () {
+        if (kinetsZrobleno) return; kinetsZrobleno = true;
         clearInterval(OZHYVA); OZHYVA = null; ETALON = null; CHAS.krok = 'usi'; zastosuvatyChas();
         lich.classList.add('vau-lich--hasne'); setTimeout(function () { lich.remove(); }, 900);
         konteiner.removeEventListener('pointerdown', kinets);
+        document.removeEventListener('keydown', kinets, true); ekran.removeEventListener('focusin', kinets);
         if (pislia) { var p = pislia; pislia = null; p(); }
       };
       var krok = function () {
@@ -1152,6 +1192,8 @@
         if (++i > CHAS.ost) { clearInterval(OZHYVA); OZHYVA = null; setTimeout(kinets, 1200); }
       };
       konteiner.addEventListener('pointerdown', kinets);   // дотик — одразу звичайна карта
+      // ZAVDANNYA-174 (ZVIT-171, №5; WCAG 2.2.2): і будь-яка клавіша чи фокус на карті — теж
+      document.addEventListener('keydown', kinets, true); ekran.addEventListener('focusin', kinets);
       krok(); koly_hotova(function () { if (!ETALON) return; OZHYVA = setInterval(krok, KROK_MS); });
     }
 
@@ -1165,26 +1207,88 @@
       });
       var imena = Object.keys(rr).sort(function (a, b) { return a.localeCompare(b, 'uk'); });
       if (!imena.length) return;
-      var ryad = document.createElement('div'); ryad.className = 'vau-rayony plashka';
+      if (RAYONY_SKHOVANO) return;
+      var ryad = RYAD = document.createElement('div'); ryad.className = 'vau-rayony plashka';
+      ryad.setAttribute('role', 'group'); ryad.setAttribute('aria-label', 'Де ви живете? Оберіть район');
       ryad.innerHTML = '<span class="vr-pyt">Де ви живете?</span><div class="vr-chipy">' + imena.map(function (r) {
         return '<button type="button" class="seg klav" data-rayon="' + esc(r) + '">' + esc(r) + '</button>'; }).join('') +
         '</div><button type="button" class="vr-x" aria-label="Закрити">×</button>';
       ryad.addEventListener('click', function (e) {
-        if (e.target.closest('.vr-x')) { ryad.remove(); return; }
+        if (e.target.closest('.vr-x')) { skhovatyRayony(); return; }
         var b = e.target.closest('[data-rayon]'); if (!b) return;
         var x = rr[b.getAttribute('data-rayon')];
         ryad.querySelectorAll('[data-rayon]').forEach(function (c) { c.setAttribute('aria-pressed', String(c === b)); });
         var kam = map.cameraForBounds([[x.w, x.s], [x.e, x.n]], { padding: telefon() ? { top: 140, bottom: 160, left: 30, right: 30 } : { top: 150, bottom: 140, left: 120, right: 120 } });
         map.flyTo({ center: kam.center, zoom: Math.min(kam.zoom, 12.2), pitch: TYKHO ? map.getPitch() : 52, bearing: TYKHO ? map.getBearing() : -12,
           duration: (TYKHO ? 600 : 2600) * TEMPO, curve: 1.5, essential: true });
-        // після перельоту вершини району по черзі «натискаються» — район відгукується
+        // після перельоту вершини району по черзі «натискаються» — район відгукується; далі — межа й картка району,
+        // а ряд районів ховається (ZAVDANNYA-174, ZVIT-166 №7)
         map.once('moveend', function () {
+          vidkrytyRayon(b.getAttribute('data-rayon'));
           var G = GI[colG()]; if (!G) return;
           Array.from(HEXB[G.id].values()).filter(function (s) { return s.p.r === b.getAttribute('data-rayon') && vershyna(s); }).slice(0, 40)
             .forEach(function (s, i) { setTimeout(function () { natysnuty(G, s); }, i * 45); });
         });
       });
       ekran.appendChild(ryad);
+    }
+
+    // Ряд «Де ви живете?» — лише до першої дії людини: обрала район, шукає, відкрила картку, 3D чи фільтр — ховаємо назавжди.
+    var RYAD = null, RAYONY_SKHOVANO = false;
+    function skhovatyRayony() {
+      RAYONY_SKHOVANO = true;
+      if (!RYAD) return;
+      var fokus = RYAD.contains(document.activeElement); RYAD.remove(); RYAD = null;
+      if (fokus && map) map.getCanvas().focus({ preventScroll: true });
+    }
+    // Картка району: сума сот району (рівень 0,7 км²) за поточним періодом і видами — і межа району на карті.
+    var RAYON = null, MEZHI_RAYONIV = null;
+    function mezhaRayonu(nazva) {
+      if (!map) return;
+      var dani = function (g) {
+        var f = g ? g.features.filter(function (x) { return x.properties.nazva === nazva; }) : [];
+        var src = map.getSource('k-rayon');
+        if (!src) {
+          if (!f.length) return;
+          map.addSource('k-rayon', { type: 'geojson', data: porozhnio() });
+          map.addLayer({ id: 'k-rayon-h', type: 'line', source: 'k-rayon', paint: { 'line-color': TEMA === 'temna' ? K.ground : '#FFFFFF', 'line-width': 4.5 } });
+          map.addLayer({ id: 'k-rayon', type: 'line', source: 'k-rayon', paint: { 'line-color': K.ink, 'line-width': 2, 'line-dasharray': [2, 1.2] } });
+          src = map.getSource('k-rayon');
+        }
+        src.setData({ type: 'FeatureCollection', features: f });
+      };
+      if (!nazva) { if (map.getSource('k-rayon')) map.getSource('k-rayon').setData(porozhnio()); return; }
+      if (MEZHI_RAYONIV) { dani(MEZHI_RAYONIV); return; }
+      var u = konteiner.getAttribute('data-rayony'); if (!u) return;
+      fetch(u, { credentials: 'omit' }).then(function (v) { return v.ok ? v.json() : null; })
+        .then(function (g) { MEZHI_RAYONIV = g; if (RAYON === nazva) dani(g); }).catch(function () {});
+    }
+    function namalyuvatyRayon() {
+      var nazva = RAYON, n = 0, gr = {}, el = $('#kartka'), filtr = !vsiAktyvni(), sl = '', tsentr = null;
+      HEXB.L.forEach(function (s) {
+        if (s.p.r !== nazva) return;
+        n += s.nf;
+        HRUPY.forEach(function (h) { if (h[0] !== 'nas' && AKTYVNI[h[0]]) gr[h[0]] = (gr[h[0]] || 0) + chysloG(s.p, h[0]); });
+      });
+      (MEZHI_RAYONIV ? MEZHI_RAYONIV.features : []).forEach(function (f) { if (f.properties.nazva === nazva) { sl = f.properties.slug; tsentr = f.properties.c; } });
+      var top = HRUPY.filter(function (h) { return gr[h[0]] > 0; }).map(function (h) { return [gr[h[0]], h[1]]; })
+        .sort(function (x, y) { return y[0] - x[0]; }).slice(0, 3);
+      var c = tsentr || (map ? [map.getCenter().lng, map.getCenter().lat] : [30.52, 50.45]);
+      el.innerHTML = '<div class="k-ruchka"></div><div class="k-shap"><div><h2 id="kartka-nazva" tabindex="-1">' + esc(nazva) + ' район</h2><p>район · межа — пунктиром на карті</p></div>' +
+        '<button class="k-x" type="button" aria-label="Закрити">×</button></div>' +
+        '<div class="k-chyslo"><div class="velyke">' + chyslo(n) + '</div><div class="pid">' + slovo(n, ['подія', 'події', 'подій']) + ' за ' + nazvaPeriodu() +
+        (filtr ? ' · обрані види' : '') + '</div></div>' +
+        (top.length ? '<section class="blok"><h3>Найбільше тут</h3>' + top.map(function (x) { return '<div class="hr"><span>' + esc(x[1]) + '</span><b>' + chyslo(x[0]) + '</b></div>'; }).join('') + '</section>' : '') +
+        (sl ? '<section class="blok"><p class="k-vulytsi"><a href="' + KOREN + 'rayon/' + encodeURIComponent(sl) + '/">Вулиці й будинки району — списком</a></p></section>' : '') +
+        '<nav class="k-dali" aria-label="Більше про район">' + knopkyMistsia(12, c[1], c[0]) + '</nav>' +
+        '<p class="mezha">Лише те, що дійшло до суду' + (VERSIIA ? ' · дані станом на ' + esc(VERSIIA) : '') + '</p>';
+    }
+    function vidkrytyRayon(nazva) {
+      if (!nazva || !map) return;
+      prybraty(); RAYON = nazva;
+      namalyuvatyRayon(); pokazatyKartku(); mezhaRayonu(nazva);
+      // межі ще не прийшли — картку перемалюємо з посиланням на сторінку району, щойно прийдуть
+      if (!MEZHI_RAYONIV) setTimeout(function () { if (RAYON === nazva && MEZHI_RAYONIV) namalyuvatyRayon(); }, 600);
     }
 
     // «Вау» за MV-120: за замовчуванням — «Роки оживають», після нього — запрошення «Де ви живете?».
@@ -1201,7 +1305,8 @@
       if (v === '1') vauProstupaie();
       else if (v === '2') vauOzhyvannia();
       else if (v === '3') vauProstupaie(vauRayony);
-      else if (lyshRayony) vauRayony();
+      // «Менше руху» в системі — одразу кінцевий вигляд, без лічильника місяців (ZAVDANNYA-174, ZVIT-171 №5)
+      else if (lyshRayony || TYKHO) vauRayony();
       else vauOzhyvannia(vauRayony);
     }
     MV.chas = function (krok, cm) { CHAS.krok = krok; if (cm != null) CHAS.cm = cm; zastosuvatyChas(); return nazvaPeriodu(); };
@@ -1260,7 +1365,7 @@
         maplibregl.setWorkerUrl(KOREN + 'sait/biblioteka/maplibre-gl-csp-worker.js');
         map = new maplibregl.Map({ container: konteiner, style: r.s, bounds: ramka || KYIV, fitBoundsOptions: { padding: 24, maxZoom: 15.5 },
           maxBounds: MEZHI_RUKHU, minZoom: 8.5, maxZoom: 18, dragRotate: false, pitchWithRotate: false, touchPitch: false,
-          attributionControl: false, renderWorldCopies: false, fadeDuration: 0 });
+          attributionControl: false, renderWorldCopies: false, fadeDuration: 0, locale: lokal('Карта вулиці') });
         map.touchZoomRotate.disableRotation();
         map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: OSM }), 'bottom-right');
         if (window.ResizeObserver) new ResizeObserver(function () { map.resize(); }).observe(konteiner);

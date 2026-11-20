@@ -327,7 +327,8 @@ def storinka_budynku(b: dict, bud: Budynky, adresa_saitu: str, susidni: list, pe
         for h, n in b['skarhy'].items():
             s = sus.get(h)
             ryady.append(
-                f'<div class="por__ryad"><span class="por__nazva">{e(z_velykoi(h))}</span>'
+                # смуги — лише для очей: читалка екрана читає таблицю нижче, а не рядок чисел (ZAVDANNYA-174, ZVIT-171 №7)
+                f'<div class="por__ryad" aria-hidden="true"><span class="por__nazva">{e(z_velykoi(h))}</span>'
                 f'<span class="por__smuha"><i class="sh-{shyryna(n, maks)} por--tut"></i></span><b>{chyslo(n)}</b>'
                 + (f'<span class="por__smuha"><i class="sh-{shyryna(s, maks)} por--sus"></i></span><b class="por__sus">{chyslo_m(s)}</b>'
                    if s is not None else '<span class="por__smuha"></span><b class="por__sus">—</b>')
@@ -340,7 +341,7 @@ def storinka_budynku(b: dict, bud: Budynky, adresa_saitu: str, susidni: list, pe
 світла чи тепла торкаються багатьох будинків одразу. {pidpys_sus}</p>
 <div class="kartka por"><div class="por__shapka" aria-hidden="true"><span>Тема</span><span>цей будинок</span><span></span><span>сусідні</span><span></span></div>
 {"".join(ryady)}
-<table class="prykhovano"><caption>Звернення 1551 за темами</caption><thead><tr><th>Тема</th><th>Цей будинок</th><th>Сусідні (зазвичай)</th></tr></thead><tbody>
+<table class="prykhovano"><caption>Звернення 1551 за темами</caption><thead><tr><th scope="col">Тема</th><th scope="col">Цей будинок</th><th scope="col">Сусідні (зазвичай)</th></tr></thead><tbody>
 {"".join(f'<tr><th scope="row">{e(h)}</th><td>{n}</td><td>{chyslo_m(sus[h]) if h in sus else "—"}</td></tr>' for h, n in b['skarhy'].items())}
 </tbody></table></div>
 <p class="prymitka">Текстів звернень, дат і статусів тут немає — вони в довідці про будинок.</p></section>''')
@@ -357,7 +358,7 @@ def storinka_budynku(b: dict, bud: Budynky, adresa_saitu: str, susidni: list, pe
         ch.append(f'''<section class="rozdil"><h2>Події з рішень судів — лише числом</h2>
 <p class="rozdil__pidpys">Подія — випадок, який описано в рішенні суду, з адресою цього будинку. Це не всі події: лише те, що дійшло
 до суду. {D.VIDKRYTI_ROKY[-1]} — неповний рік.</p>
-<div class="kartka"><table class="tabl"><thead><tr><th scope="col">Група</th>{shapka}</tr></thead><tbody>{ryady}</tbody></table></div>
+<div class="kartka"><table class="tabl"><caption class="prykhovano">Скільки подій з адресою будинку — за групами й роками</caption><thead><tr><th scope="col">Група</th>{shapka}</tr></thead><tbody>{ryady}</tbody></table></div>
 {stari}<p class="prymitka">Описів подій і посилань на рішення тут немає — вони в довідці й звіті.</p></section>''')
     elif b['stari']:
         ch.append(f'<section class="rozdil"><h2>Події з рішень судів</h2><p class="rozdil__pidpys">За {roky_t} подій з адресою '
