@@ -99,6 +99,9 @@ site/hra/vulytsia-dnia.json
 !site/zastavka.py
 !site/worker/
 !site/sait/
+# Теми вигляду (MV-219, ZAVDANNYA-197): файли тем — у git.
+!site/temy/
+!site/temy/**
 # === ІГРИ В КАРТІ (ZAVDANNYA-117) ===
 # Код ігор, перевірка справ «Детектива тижня», справи-зразки, «Кваліфікуй» і налаштування балів — у git.
 !site/ihry/

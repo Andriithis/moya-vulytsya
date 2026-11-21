@@ -1,0 +1,162 @@
+{
+ "_pro": "Тема «Спокійна й чиста» (MV-218, MV-219; головна з ZAVDANNYA-197). Основа — макет 193 «Спокійна й чиста» (docs/makety-193/spokiyna/, kod/styli.py) з виправленнями 196: сірий текст ≥ 4,5 : 1 (#6B675F), числа не тонкі (600), дві найсвітліші соти притемнено й соти мають тонку межу; найтемніше = найбільше — вершини того самого бірюзового тону, лише темніші (без м'ятних «вершин»); суцільні кнопки купівлі й блок «купити» праворуч на комп'ютері — з «Чіткої»; підписи районів і Дніпро головною лінією (вода темніша) — зі «Свого Києва». Формат — як indygo.json; кольори — #RRGGBB. Четвертий крок шкали притемнено, щоб крапки групи «Насильство й грабежі» карти підписника не зливались із сотою при дейтеранопії (dani-edrsr/src/kolory_hrup.py).",
+ "nazva": "Спокійна й чиста",
+ "kolory": {
+  "svitla": {
+   "ground": "#F5F3EE",
+   "surface": "#FBFAF7",
+   "tint": "#EEEBE3",
+   "ink": "#1C1B19",
+   "ink2": "#3D3B37",
+   "muted": "#6B675F",
+   "line": "#DEDAD2",
+   "lineStrong": "#BDB8AE",
+   "mezha": "#8C877D",
+   "bort": "#8C877D",
+   "accent": "#1F4A44",
+   "accentStrong": "#163631",
+   "accentSoft": "#DCE6E2",
+   "onAccent": "#FFFFFF",
+   "sc": [
+    "#C6D7D1",
+    "#9DBDB4",
+    "#6F9A90",
+    "#33605A",
+    "#1D4842"
+   ],
+   "pk": [
+    "#153A35",
+    "#0F2F2B"
+   ],
+   "bg": "#F2F0EA",
+   "water": "#BFD0D4",
+   "park": "#E5E6DA",
+   "building": "#E4E1D9",
+   "road": null,
+   "label": "#57534B",
+   "halo": "#F5F3EE",
+   "vyd": "#2E2B26"
+  },
+  "temna": {
+   "ground": "#171715",
+   "surface": "#1F1E1B",
+   "tint": "#282722",
+   "ink": "#EFEBE2",
+   "ink2": "#CFCAC0",
+   "muted": "#A39E94",
+   "line": "#33312C",
+   "lineStrong": "#4A4741",
+   "mezha": "#76716A",
+   "bort": "#76716A",
+   "accent": "#9CC8BF",
+   "accentStrong": "#BFDCD4",
+   "accentSoft": "#253330",
+   "onAccent": "#171715",
+   "sc": [
+    "#2C3B37",
+    "#3B5952",
+    "#4B6F67",
+    "#5E877E",
+    "#8DB5AC"
+   ],
+   "pk": [
+    "#A3C8BF",
+    "#B4D4CC"
+   ],
+   "bg": "#171715",
+   "water": "#24363A",
+   "park": "#1C1E19",
+   "building": "#23221F",
+   "road": "#34332E",
+   "label": "#CFCAC0",
+   "halo": "#171715",
+   "vyd": "#F1EDE4"
+  }
+ },
+ "shryfty": [
+  {
+   "simia": "Source Sans 3",
+   "fail": "source-sans-3",
+   "vahy": [
+    400,
+    600,
+    700
+   ],
+   "vaha_css": {
+    "700": "700 800"
+   },
+   "litsenziia": "OFL-Source-Sans-3.txt"
+  },
+  {
+   "simia": "Source Serif 4",
+   "fail": "source-serif-4",
+   "vahy": [
+    400,
+    600
+   ],
+   "vaha_css": {
+    "600": "600 800"
+   },
+   "litsenziia": "OFL-Source-Serif-4.txt"
+  }
+ ],
+ "preload": [
+  "source-sans-3-cyrillic-400-normal.woff2",
+  "source-serif-4-cyrillic-600-normal.woff2"
+ ],
+ "zminni": {
+  "sans": "'Source Sans 3', system-ui, sans-serif",
+  "f-zaholovok": "'Source Serif 4', Georgia, serif",
+  "f-chysla": "'Source Serif 4', Georgia, serif",
+  "vaha-zaholovka": "600",
+  "vaha-chysla": "600",
+  "vaha-knopky": "600",
+  "radius-s": "3px",
+  "radius-m": "6px",
+  "radius-l": "8px",
+  "radius-pill": "999px",
+  "klav-mezha-w": "1px",
+  "klav-ten": "none",
+  "klav-ten-natysk": "none",
+  "klav-ten-mala": "none",
+  "klav-natysk": "none",
+  "klav-natysk-malo": "none",
+  "knopka-holovna-h": "50px",
+  "karta-3d": "0",
+  "karta-pidpys-rayonu": "600 12.5px"
+ },
+ "zminni_tem": {
+  "svitla": {
+   "karta-proz": "0.62 0.92",
+   "karta-mezha-soty": "rgba(33,80,74,.28)",
+   "ten-menyu": "0 6px 18px rgba(28,27,25,.12)",
+   "na-pk": "#FFFFFF",
+   "zatemnennia": "rgba(28,27,25,.45)",
+   "karta-kant": "0"
+  },
+  "temna": {
+   "karta-proz": "0.55 0.9",
+   "karta-mezha-soty": "rgba(0,0,0,.45)",
+   "ten-menyu": "0 6px 18px rgba(0,0,0,.45)",
+   "na-pk": "#171715",
+   "zatemnennia": "rgba(0,0,0,.6)",
+   "karta-kant": "0"
+  }
+ },
+ "ikonka": {
+  "vyd": "soty",
+  "pro": "той самий знак, кольори теми (accent на тлі ground)"
+ },
+ "css": "spokiyna.css",
+ "kolory_serii": [
+  "#1F4A44",
+  "#9A5A6B",
+  "#6E6390",
+  "#8A7A3E",
+  "#4E7458",
+  "#4F6F94",
+  "#9A6A47",
+  "#6B675F"
+ ],
+ "_serii": "kolory_serii — кольори сюжетів (ліній і крапок кількох подій) на карті документа покупця; перший — головний (dani-edrsr/src/zvit/storinka.py)."
+}

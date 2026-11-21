@@ -1,0 +1,50 @@
+/* Тема «Спокійна й чиста» (MV-218, MV-219; ZAVDANNYA-197) — власні правила поверх site/sait/sait.css.
+   Основа — макет 193 «як дорогий журнал»: тло-папір, чорнило, тонкі лінії; заголовки й великі числа — Source Serif 4,
+   текст і кнопки — Source Sans 3. З «Чіткої» — суцільні кнопки купівлі (на телефоні на всю ширину) і блок «купити»
+   праворуч на комп'ютері. Лише розкладка й шрифти: кольори — змінні з spokiyna.json (тут жорстких кольорів немає). */
+
+body { font-size: 17px; }
+.shapka { background: var(--ground); }
+.lohotyp__nazva { font-family: var(--f-zaholovok); font-style: italic; font-weight: 400; font-size: 22px; letter-spacing: -.01em; }
+.menyu { font-weight: 600; font-size: 14px; letter-spacing: .04em; }
+
+/* Заголовки — засічками, спокійно; міток-«пігулок» немає — дрібні великі літери */
+.zaholovok h1 { font-weight: 400; letter-spacing: -.015em; }
+.rozdil > h2, .h-mala, .bukva { letter-spacing: -.01em; }
+.mitka { background: none; padding: 0; border-radius: 0; color: var(--muted); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+.mitka--chernetka { border: 0; }
+.zaholovok p { font-family: var(--f-zaholovok); font-size: 19px; line-height: 1.6; }
+.zaholovok p.onovleno, .zaholovok p.zaholovok__opys { font-family: var(--sans); }
+
+/* Числа: лінія чорнилом згори, тонка — знизу */
+.chysla { border-top: 1px solid var(--ink); border-bottom: 1px solid var(--line); }
+.chyslo, .chyslo-velyke { letter-spacing: -.01em; font-variant-numeric: lining-nums tabular-nums; }
+.tabl thead th, .por__shapka { text-transform: uppercase; letter-spacing: .08em; font-size: 11.5px; }
+
+/* Кнопки: пласкі, тонка рамка; головна (купівля) — суцільна, висока */
+.knopka { font-size: 16px; }
+.knopka:hover { border-color: var(--ink); }
+.knopka--holovna { padding: 14px 26px; font-size: 17px; }
+.knopka--holovna:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
+.k-dali a.k-dali__holovna { padding: 11px 12px; font-size: 14px; }
+.vkhid b { font-family: var(--f-zaholovok); font-weight: 600; }
+.tovar h3 { font-family: var(--f-zaholovok); }
+
+/* Сторінка будинку на комп'ютері: числа й «Довідка про будинок — 199» праворуч, видно без прокрутки («Чітка», ZVIT-196) */
+@media (min-width: 1000px) {
+  .storinka:has(> .rozdil--kupyty) { display: grid; grid-template-columns: minmax(0, 1fr) 340px; column-gap: 56px; row-gap: 32px; align-items: start; }
+  .storinka:has(> .rozdil--kupyty) > * { grid-column: 1; min-width: 0; }
+  .storinka:has(> .rozdil--kupyty) > .kryhty { grid-column: 1 / -1; }
+  .storinka:has(> .rozdil--kupyty) > .rozdil--kupyty { grid-column: 2; grid-row: 2 / span 6; position: sticky; top: 16px;
+    padding: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-l); }
+  .rozdil--kupyty .tsiny--odna .knopka--holovna { align-self: stretch; }
+}
+@media (max-width: 700px) {
+  .tsiny--odna .knopka--holovna, .vstup-holovnoi .knopka, .tovar .knopka--holovna { align-self: stretch; width: 100%; }
+}
+
+/* Карта: плашки спокійні, картка соти — тонка рамка; число — засічками */
+.kartka-soty { border-color: var(--line); }
+.k-shap h2 { letter-spacing: -.01em; }
+.k-chyslo .velyke { letter-spacing: -.01em; }
+.blok h3, #info h3 { text-transform: uppercase; letter-spacing: .08em; font-size: 11.5px; }
