@@ -26,6 +26,8 @@
   MV_POSHTA_PARTNERA     куди писати про нові звернення, невдалі довідки, чужі суми
   MV_POSHTA_VID, MV_POSHTA_URL   відправник і адреса сервісу листів (для http-json)
   MV_CF_ANALITYKA        публічний токен Cloudflare Web Analytics (лічба відвідувань без кукі); порожньо — без лічби
+  MV_TEMA                spokiyna (типово: «Спокійна й чиста») | indygo («Індиго й м'ята») — тема вигляду сайту (MV-219);
+                         перехід = нова викладка. Та сама змінна — для довідок, звітів і карти підписника (dani-edrsr)
   MV_ZAPOVNENNYA         шлях до JSON з даними партнера для оферти й політики ({"ВЛАСНИК": "…", …}); без нього
                          викладка зупиняється (оферта з [ВЛАСНИК] — не публікуємо). У --suho можна без нього.
 """
@@ -77,6 +79,7 @@ def zminni(suho: bool) -> dict:
         'karta': e.get('MV_KARTA_R2', '').strip() == 'tak',   # карта підписника зі сховища R2 (docs/PLATNA-CHASTYNA.md)
         'biznes': e.get('MV_BIZNES_R2', '').strip() == 'tak',  # «Для бізнесу»: копії бази для компаній (docs/BIZNES-DOSTUP.md)
         'zapovnennya': e.get('MV_ZAPOVNENNYA', '').strip(),
+        'tema': e.get('MV_TEMA', '').strip() or None,       # тема вигляду (MV-219); без неї — spokiyna
         'vars': {k: e.get(f'MV_{k}', '').strip() for k in ('POSHTA_PARTNERA', 'POSHTA_VID', 'POSHTA_URL', 'LIQPAY_SANDBOX')},
     }
     pomylky = []
@@ -176,7 +179,9 @@ def zibraty(f: dict, z: dict, robocha: Path) -> dict:
                            adresa_saitu=f'https://{z["domen"]}', koloda=f['koloda'], budynky=f['budynky'],
                            khostynh='workers', perekazy=f['perekazy'], sudova_praktyka=f['sudova_praktyka'],
                            prodazh=prodazh, oplata=z['oplata'], zapovnennya=zapovnennya,
-                           dlya_publikatsiyi=bool(zapovnennya), cf_analityka=z['analityka'], domen=z['domen'])
+                           dlya_publikatsiyi=bool(zapovnennya), cf_analityka=z['analityka'], domen=z['domen'],
+                           tema=z.get('tema'))
+    print(f'   {"тема":18} {ZS.TEMA}', flush=True)
     for k in ('versiia', 'vulyts', 'budynkiv', 'mistsia', 'failiv', 'adres_u_sitemap', 'oplata', 'formy', 'nezapovneno', 'analityka'):
         print(f'   {k:18} {zvit.get(k)}', flush=True)
     return zvit

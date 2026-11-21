@@ -56,7 +56,7 @@ class TestHasla(unittest.TestCase):
         self.assertIn(M.MESEDZH['biznes'], M.vitryna_biznes('https://pryklad.ua'))
         # сторінка будинку: гасло лінії з описом дрібно над блоком довідки
         src = (KORIN / 'site/storinky_mv100.py').read_text(encoding='utf-8')
-        self.assertIn('<section class="rozdil">{haslo_budynku()}<h2>Довідка про будинок</h2>', src)
+        self.assertIn('<section class="rozdil rozdil--kupyty">{haslo_budynku()}<h2>Довідка про будинок</h2>', src)
 
 
 if __name__ == '__main__':
