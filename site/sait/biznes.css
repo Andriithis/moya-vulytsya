@@ -11,7 +11,7 @@
 .biznes-forma label, .biznes-forma legend { display: grid; gap: 6px; font-size: 15px; font-weight: 600; color: var(--ink); }
 .biznes-forma fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 8px; }
 .biznes-forma input:not([type]), .biznes-forma select, .biznes-forma textarea {
-  font: 400 16px/22px var(--sans); color: var(--ink); background: var(--surface); border: 1.5px solid var(--mezha);
+  font: 400 16px/22px var(--sans); color: var(--ink); background: var(--surface); border: var(--klav-mezha-w) solid var(--mezha);
   border-radius: var(--radius-m); padding: 11px 14px; min-height: 48px; width: 100%; box-sizing: border-box; }
 .biznes-forma textarea { resize: vertical; }
 .biznes-forma input:focus-visible, .biznes-forma select:focus-visible, .biznes-forma textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }

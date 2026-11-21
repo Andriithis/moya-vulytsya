@@ -14,10 +14,10 @@
 
 /* ---------- клавіші ---------- */
 .lit .klavisha { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 8px 14px;
-  background: var(--surface); color: var(--ink); border: 1.5px solid var(--mezha); border-radius: var(--radius-m, 12px); box-shadow: 0 3px 0 var(--bort);
+  background: var(--surface); color: var(--ink); border: var(--klav-mezha-w) solid var(--mezha); border-radius: var(--radius-m, 12px); box-shadow: var(--klav-ten);
   font: 600 14px/20px var(--sans); cursor: pointer; transition: transform .06s, box-shadow .06s, background-color .2s, border-color .2s;
   -webkit-tap-highlight-color: transparent; touch-action: manipulation; user-select: none; }
-.lit .klavisha:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 var(--bort); }
+.lit .klavisha:active:not(:disabled) { transform: translateY(2px); box-shadow: var(--klav-ten-natysk); }
 .lit .klavisha:disabled { opacity: .45; cursor: default; }
 .lit .klavisha--holovna { background: var(--accent); color: var(--on-accent); border-color: var(--accent-strong); }
 .lit .klavisha:focus-visible { outline: 2px solid var(--vyd); outline-offset: 2px; }
@@ -95,7 +95,7 @@
 .lit-prohres i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .6s cubic-bezier(.2, .7, .3, 1); }
 
 /* ---------- картка вулиці ---------- */
-.lit-kartka { border: 1.5px solid var(--mezha); border-radius: var(--radius-l, 16px); box-shadow: 0 3px 0 var(--bort); padding: 14px; margin-bottom: 12px; background: var(--surface); }
+.lit-kartka { border: var(--klav-mezha-w) solid var(--mezha); border-radius: var(--radius-l, 16px); box-shadow: var(--klav-ten); padding: 14px; margin-bottom: 12px; background: var(--surface); }
 .lit-kartka--vidkryta { background: var(--surface-tint); }
 .lit-kartka--klych { border-color: var(--pk-2); box-shadow: 0 3px 0 var(--pk-2); }
 .lit-kartka__rayon { color: var(--muted); font-size: 12px; }
@@ -120,7 +120,7 @@
 .lit-sitka { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
 .lit-vyd { border: 1.5px solid var(--line-strong); border-radius: var(--radius-m, 12px); padding: 8px; min-height: 92px; font-size: 12px; line-height: 16px;
   display: flex; flex-direction: column; gap: 4px; }
-.lit-vyd--ie { border-color: var(--mezha); box-shadow: 0 2px 0 var(--bort); background: var(--surface); }
+.lit-vyd--ie { border-color: var(--mezha); box-shadow: var(--klav-ten-natysk); background: var(--surface); }
 .lit-vyd--nema { color: var(--muted); border-style: dashed; }
 .lit-vyd__nazva { font-weight: 600; font-size: 13px; color: var(--ink); }
 .lit-vyd--nema .lit-vyd__nazva { color: var(--muted); }

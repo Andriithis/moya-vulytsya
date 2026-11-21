@@ -1,8 +1,10 @@
 // Карти сайту «Моя вулиця»: карта Києва сотами (головна і /karta/) і карта вулиці.
 //
 // Вигляд і поведінка — макет М7 (ZAVDANNYA-42, MV-58), перенесено в ZAVDANNYA-45:
-//  * напрям «Індиго й м'ята»: кольори — CSS-змінні (site/sait/kolory.json), світла й темна тема (sait/tema.js);
-//  * підкладка OpenFreeMap підфарбована в тон напряму (тло, вода, парки, будинки; у темній — ще й дороги й підписи);
+//  * вигляд — з теми (site/temy/<тема>.json, MV-219): кольори, прозорість і межа сот, «світло» вершин, 2D чи 3D на
+//    старті — CSS-змінні, які пише збирач; світлий і темний режими (sait/tema.js). Жорстких кольорів тут немає;
+//  * підкладка OpenFreeMap підфарбована в тон теми (тло, вода, парки, будинки; у темній — ще й дороги й підписи);
+//  * підписи районів — над сотами з ореолом кольору тла, не під позначками (ZAVDANNYA-197, ZVIT-196 №3);
 //  * шкала частками (MV-55): клас кольору, прозорість і висота рахуються за місцем соти серед сот рівня, тож вигляд
 //    однаковий за будь-якого обсягу даних; стовпчиком — лише вершини (верхні 12 % сот);
 //  * три рівні сот H3 (7 ≈ 5 км², 8 ≈ 0,7 км², 9 ≈ 0,1 км²) і плавний перехід між ними, як у карті Києва;
@@ -59,10 +61,13 @@
     });
   }
 
-  // Кольори поточної теми — з CSS-змінних (їх пише збирач з kolory.json).
+  // Кольори й вигляд поточної теми — з CSS-змінних (їх пише збирач із site/temy/<тема>.json).
+  function chysla(s, zapas) { var a = String(s || '').trim().split(/\s+/).map(Number); return a.length === zapas.length && a.every(isFinite) ? a : zapas; }
   function paleta() {
-    var d = zminna('karta-doroha');
+    var d = zminna('karta-doroha'), tm = tema() === 'temna';
     return {
+      proz: chysla(zminna('karta-proz'), tm ? [0.24, 0.5] : [0.2, 0.62]), mezhaSoty: zminna('karta-mezha-soty') || 'transparent',
+      kant: chysla(zminna('karta-kant'), [tm ? 0.08 : 0.28])[0], d3: zminna('karta-3d') !== '0',
       t: tema(), ground: zminna('ground'), surface: zminna('surface'), ink: zminna('ink'), ink2: zminna('ink-2'),
       muted: zminna('muted'), mezha: zminna('mezha'), accent: zminna('accent'), tlo: zminna('karta-tlo'),
       park: zminna('karta-park'), voda: zminna('karta-voda'), budynky: zminna('karta-budynky'), doroha: d === 'none' ? null : d,
@@ -73,6 +78,7 @@
 
   // ---------- Підкладка: стиль OpenFreeMap, підфарбований у тон напряму (як у М7) ----------
   var UK_NAME = ['coalesce', ['get', 'name:uk'], ['get', 'name']];
+  var SHRYFT_PIDPYSIV = null;   // шрифт підписів підкладки (з її стилю) — ним же підписи районів
   var PK_ID = { background: 'tlo', water: 'voda', landuse_park: 'park', landcover_wood: 'park', park: 'park', building: 'budynky' };
   function nazvaMistsia(l) { return l.type === 'symbol' && (['place', 'water_name', 'mountain_peak'].indexOf(l['source-layer']) !== -1 || /^base-/.test(l.id)); }
   function patchStyle(s, K) {
@@ -84,6 +90,7 @@
       if (tf && JSON.stringify(tf).indexOf('name') !== -1) l.layout['text-field'] = UK_NAME;
       if (!font && l['source-layer'] === 'transportation_name' && l.layout['text-font']) font = l.layout['text-font'];
     });
+    SHRYFT_PIDPYSIV = font;
     var src = Object.keys(s.sources).filter(function (k) { return s.sources[k].type === 'vector'; })[0];
     if (src && font) {
       var txt = function (id, minzoom, filter, extra) {
@@ -270,7 +277,7 @@
     }
     function vershyna(b) { return b.nf > 0 && b.q >= VERSHYNA; }
     function chastkaVysoty(b) { return 0.2 + 0.8 * Math.sqrt(clamp((b.q - VERSHYNA) / (1 - VERSHYNA), 0, 1)); }
-    function prozPlaskoi(b) { var lh = PROZ[TEMA]; return lh[0] + (lh[1] - lh[0]) * b.q * b.q; }
+    function prozPlaskoi(b) { var lh = K.proz || PROZ[TEMA]; return lh[0] + (lh[1] - lh[0]) * b.q * b.q; }
     function hexData(G) {
       return { type: 'FeatureCollection', features: Array.from(HEXB[G.id].values()).filter(function (b) { return b.nf > 0; }).map(function (b) {
         return { type: 'Feature', geometry: { type: 'Polygon', coordinates: [b.kontur] },
@@ -280,8 +287,8 @@
     // Стовпчик = тіло + тонка світла кромка зверху (сусідні вершини не зливаються). «Світло» — лише в темній темі.
     function koloryVershyny(b) {
       var t = Math.sqrt(clamp((b.q - VERSHYNA) / (1 - VERSHYNA), 0, 1)), c = zmishaty(K.pk[0], K.pk[1], t);
-      if (TEMA === 'temna') return { tilo: zmishaty(c, '#000000', 0.45), kant: zmishaty(c, '#FFFFFF', 0.08) };
-      return { tilo: zmishaty(c, '#000000', 0.06), kant: zmishaty(c, '#FFFFFF', 0.28) };
+      if (TEMA === 'temna') return { tilo: zmishaty(c, '#000000', 0.45), kant: zmishaty(c, '#FFFFFF', K.kant) };
+      return { tilo: zmishaty(c, '#000000', 0.06), kant: zmishaty(c, '#FFFFFF', K.kant) };
     }
     function colData(G) {
       var VYSOTA = G.R * G.H, KANT = G.R / 10, f = [];
@@ -330,7 +337,7 @@
       var dx = (e - w) / 360 * 512, dy = (my(n) - my(s)) / (2 * Math.PI) * 512;
       var z = Math.log2(Math.min((W - pad.l - pad.r) / dx, (H - pad.t - pad.b) / dy));
       var cy = (my(n) + my(s)) / 2, la = (2 * Math.atan(Math.exp(cy)) - Math.PI / 2) * 180 / Math.PI;
-      return { zoom: z + (telefon() ? 0.3 : 0.35), center: [(w + e) / 2, la], bearing: 0, pitch: PITCH };
+      return { zoom: z + (telefon() ? 0.3 : 0.35), center: [(w + e) / 2, la], bearing: 0, pitch: K.d3 ? PITCH : 0 };   // 2D чи 3D на старті — з теми
     }
     var KAM = chytatyKameru() || kameraMista();
     var D3 = KAM.pitch > 8;
@@ -418,7 +425,7 @@
         map.addLayer({ id: 'k-hex-' + id, type: 'fill', source: 'k-hex-' + id, minzoom: mz[0], maxzoom: mz[1],
           paint: { 'fill-color': ['case', SEL, ['get', 'cv'], ['get', 'c']], 'fill-opacity': proz2d(id) } }, nadSymbol);
         map.addLayer({ id: 'k-hexl-' + id, type: 'line', source: 'k-hex-' + id, minzoom: mz[0], maxzoom: mz[1],
-          paint: { 'line-color': tem ? 'rgba(0,0,0,.5)' : 'rgba(255,255,255,.45)', 'line-width': 0.6, 'line-opacity': zaZumom(TOCHKY[id], function (z) { return interp(FADE[id], z); }) } }, nadSymbol);
+          paint: { 'line-color': K.mezhaSoty, 'line-width': 0.6, 'line-opacity': zaZumom(TOCHKY[id], function (z) { return interp(FADE[id], z); }) } }, nadSymbol);
         if (OBVID[id]) map.addLayer({ id: 'k-hexo-' + id, type: 'line', source: 'k-hex-' + id, minzoom: 13.5, maxzoom: mz[1],
           paint: { 'line-color': ['get', 'o'], 'line-width': ['interpolate', ['linear'], ['zoom'], 14, 1, 17, 2],
             'line-opacity': ['interpolate', ['linear'], ['zoom']].concat([].concat.apply([], OBVID[id])) } }, nadSymbol);
@@ -428,12 +435,12 @@
           'fill-extrusion-opacity': opStovp(id), 'fill-extrusion-vertical-gradient': tem } }, nadSymbol);
       });
       // «Світло» (тінь на гранях) — лише в темній темі; у світлій — м'яке розсіяне.
-      map.setLight(tem ? { anchor: 'viewport', position: [1.15, 200, 32], intensity: 0.6, color: '#ffffff' }
-        : { anchor: 'viewport', position: [1.3, 200, 30], intensity: 0.18, color: '#ffffff' });
+      map.setLight(tem ? { anchor: 'viewport', position: [1.15, 200, 32], intensity: 0.6, color: 'white' }
+        : { anchor: 'viewport', position: [1.3, 200, 30], intensity: 0.18, color: 'white' });
       // Виділена сота: тонка обвідка + кутики «прицілу» свого кольору.
       map.addSource('k-hexsel', { type: 'geojson', data: porozhnio() });
       map.addSource('k-hexsel2', { type: 'geojson', data: porozhnio() });
-      map.addLayer({ id: 'k-hexselh', type: 'line', source: 'k-hexsel', layout: { 'line-join': 'round' }, paint: { 'line-color': tem ? K.ground : '#FFFFFF', 'line-width': 3.5 } });
+      map.addLayer({ id: 'k-hexselh', type: 'line', source: 'k-hexsel', layout: { 'line-join': 'round' }, paint: { 'line-color': tem ? K.ground : K.oreol, 'line-width': 3.5 } });
       map.addLayer({ id: 'k-hexsel', type: 'line', source: 'k-hexsel', layout: { 'line-join': 'round' }, paint: { 'line-color': K.ink, 'line-width': 1.5 } });
       map.addLayer({ id: 'k-hexsel2', type: 'line', source: 'k-hexsel2', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': K.vyd, 'line-width': 3 } });
       // Невидимі «заслони» над стовпчиками: назви вулиць на них не лягають.
@@ -456,7 +463,30 @@
       map.addLayer({ id: 'k-selzasl', type: 'symbol', source: 'k-selzasl', layout: { 'icon-image': 'k-selzasl', 'icon-anchor': 'bottom', 'icon-offset': [0, 16],
         'icon-allow-overlap': true, 'icon-ignore-placement': false, 'icon-pitch-alignment': 'viewport', 'icon-rotation-alignment': 'viewport', 'icon-size': 1 },
         paint: { 'icon-opacity': 0 } });
+      // Підписи районів (ZAVDANNYA-197, ZVIT-196 №3): у масштабі міста, над сотами й позначками, з ореолом кольору тла —
+      // не зливаються з сотами; ближче (від зуму ≈ 11,5) їх змінюють назви місцевостей підкладки.
+      if (SHRYFT_PIDPYSIV && PIDKLADKA_OK) {
+        map.addSource('k-rayony-nazvy', { type: 'geojson', data: porozhnio() });
+        map.addLayer({ id: 'k-rayony-nazvy', type: 'symbol', source: 'k-rayony-nazvy', maxzoom: 11.6,
+          layout: { 'text-field': ['get', 'n'], 'text-font': SHRYFT_PIDPYSIV, 'text-size': ['interpolate', ['linear'], ['zoom'], 9, 11.5, 11, 14],
+            'text-letter-spacing': 0.03, 'text-padding': 6, 'text-allow-overlap': false, 'text-pitch-alignment': 'viewport' },
+          paint: { 'text-color': K.ink2, 'text-halo-color': K.oreol, 'text-halo-width': 2, 'text-halo-blur': 0.5,
+            'text-opacity': ['interpolate', ['linear'], ['zoom'], 11.1, 1, 11.6, 0] } });
+        nazvyRayoniv();
+      }
       if (!PIDKLADKA_OK) mezhaKyieva(map, K);
+    }
+    function nazvyRayoniv() {
+      var postavyty = function (g) {
+        var src = map && map.getSource('k-rayony-nazvy'); if (!src || !g) return;
+        src.setData({ type: 'FeatureCollection', features: g.features.filter(function (f) { return f.properties.c; }).map(function (f) {
+          return { type: 'Feature', properties: { n: f.properties.nazva }, geometry: { type: 'Point', coordinates: f.properties.c } };
+        }) });
+      };
+      if (MEZHI_RAYONIV) { postavyty(MEZHI_RAYONIV); return; }
+      var u = konteiner.getAttribute('data-rayony'); if (!u) return;
+      fetch(u, { credentials: 'omit' }).then(function (v) { return v.ok ? v.json() : null; })
+        .then(function (g) { if (g) { MEZHI_RAYONIV = g; postavyty(g); } }).catch(function () {});
     }
     function zafarbuvaty() {
       if (!map || !map.getSource('k-hex-L')) return;
@@ -866,8 +896,11 @@
     function namalyuvatyKartku() {
       var G = ZARAZ.G, b = ZARAZ.b, p = b.p, n = b.nf, el = $('#kartka'), filtr = !vsiAktyvni();
       var vul = masyv(p.u), rn = p.r ? p.r + ' район' : '';
-      var nazva = ZARAZ.nazva || (G.id === 'S' && vul.length ? vul[0][1] : '') || rn || 'Київ';
-      var pidnazva = [nazva !== rn ? rn : '', 'сота ' + G.pl].filter(Boolean).join(' · ');
+      // Назва картки — не назва району (ZVIT-196 №4: «Подільський район» над сотою 0,7 км² сприймали за помилку): вулиця
+      // соти (у середній — «і поруч»), інакше «Ділянка ≈… км²»; район — у підпис нижче.
+      var nazva = ZARAZ.nazva || (vul.length && G.id !== 'XL' ? vul[0][1] + (G.id === 'L' && vul.length > 1 ? ' і поруч' : '') : '') ||
+        'Ділянка ' + G.pl.replace('≈', '≈ ');
+      var pidnazva = [rn, /^Ділянка/.test(nazva) ? '' : 'сота ' + G.pl].filter(Boolean).join(' · ') || 'Київ';
       var tilo;
       SP_TUT = null;
       if (n < 5) {
@@ -1252,7 +1285,7 @@
         if (!src) {
           if (!f.length) return;
           map.addSource('k-rayon', { type: 'geojson', data: porozhnio() });
-          map.addLayer({ id: 'k-rayon-h', type: 'line', source: 'k-rayon', paint: { 'line-color': TEMA === 'temna' ? K.ground : '#FFFFFF', 'line-width': 4.5 } });
+          map.addLayer({ id: 'k-rayon-h', type: 'line', source: 'k-rayon', paint: { 'line-color': TEMA === 'temna' ? K.ground : K.oreol, 'line-width': 4.5 } });
           map.addLayer({ id: 'k-rayon', type: 'line', source: 'k-rayon', paint: { 'line-color': K.ink, 'line-width': 2, 'line-dasharray': [2, 1.2] } });
           src = map.getSource('k-rayon');
         }

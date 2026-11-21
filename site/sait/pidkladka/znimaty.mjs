@@ -3,21 +3,23 @@
 // темній темі. Збирач (site/zastavka.py) кладе між ними соти з даних випуску — і так виходить картинка першого екрана.
 //
 // Підкладка — це OpenStreetMap, вона не залежить від випуску: знімати заново треба, лише коли змінився вигляд карти
-// (kolory.json, патч стилю в karta.js) або OpenFreeMap. Потрібні мережа (tiles.openfreemap.org) і Playwright:
-//   python site/zibraty_sait.py <events.db> <тека>          # будь-який випуск
-//   node site/worker/testy/mistsevyi.mjs 8799 <тека> &       # або будь-який інший сервер теки
-//   node site/sait/pidkladka/znimaty.mjs http://127.0.0.1:8799
-// Пише сюди ж: <варіант>-<тема>-tlo.webp, <варіант>-<тема>-pidpysy.webp і meta.json (центр, зум, розмір).
+// (кольори підкладки в site/temy/<тема>.json, патч стилю в karta.js) або OpenFreeMap. У кожної теми вигляду (MV-219) —
+// своя тека. Потрібні мережа (tiles.openfreemap.org) і Playwright:
+//   python site/zibraty_sait.py <events.db> <тека> --tema <тема>   # будь-який випуск, та сама тема
+//   node site/worker/testy/mistsevyi.mjs 8799 <тека> &               # або будь-який інший сервер теки
+//   node site/sait/pidkladka/znimaty.mjs http://127.0.0.1:8799 <тема>
+// Пише в <тема>/: <варіант>-<режим>-tlo.webp, <варіант>-<режим>-pidpysy.webp і meta.json (центр, зум, розмір).
 import { chromium } from 'playwright';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
-import { createHash } from 'node:crypto';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 
-const TEKA = path.dirname(fileURLToPath(import.meta.url));
+const TEMA = process.argv[3] || 'spokiyna';
+const TEKA = path.join(path.dirname(fileURLToPath(import.meta.url)), TEMA);
 const ADRESA = (process.argv[2] || 'http://127.0.0.1:8799').replace(/\/$/, '');
+fs.mkdirSync(TEKA, { recursive: true });
 
 // Охоплення — з запасом під найпоширеніші екрани (розрахунок камери — kameraMista() у karta.js):
 // телефон (до 700 px завширшки) — зум ≈ 9,0–9,3; комп'ютер і планшет — ≈ 9,85–10,4.
@@ -38,10 +40,13 @@ function nazad(x, y, z) {
   return [lon, lat];
 }
 
-const meta = { _pro: 'Підкладка першого екрана: центр [довгота, широта], зум карти (плитки 512), розмір у CSS-пікселях, щільність. ' +
-  'Пише site/sait/pidkladka/znimaty.mjs; читає site/zastavka.py. kolory_sha256 — відбиток site/sait/kolory.json на час знімків: ' +
-  'змінили кольори — перезніміть (тест стереже).', znyato: new Date().toISOString().slice(0, 10),
-  kolory_sha256: createHash('sha256').update(fs.readFileSync(path.join(TEKA, '..', 'kolory.json'))).digest('hex'), varianty: {} };
+const SITE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+const meta = { _pro: `Підкладка першого екрана теми ${TEMA}: центр [довгота, широта], зум карти (плитки 512), розмір у CSS-пікселях, щільність. ` +
+  'Пише site/sait/pidkladka/znimaty.mjs; читає site/zastavka.py. tema_sha256 — відбиток кольорів підкладки теми (zastavka.vidbytok_pidkladky) ' +
+  `на час знімків: змінили їх у site/temy/${TEMA}.json — перезніміть (тест стереже).`, znyato: new Date().toISOString().slice(0, 10),
+  varianty: {},
+  tema_sha256: execFileSync('python3', ['-c', 'import sys; sys.path.insert(0, sys.argv[1]); import zastavka; print(zastavka.vidbytok_pidkladky(sys.argv[2]))',
+    SITE, TEMA]).toString().trim() };
 const tymch = fs.mkdtempSync(path.join(os.tmpdir(), 'pidkladka-'));
 const brauzer = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 try {

@@ -21,14 +21,43 @@ import hashlib
 import io
 import json
 import math
+import re
 from pathlib import Path
 
 from PIL import Image, ImageDraw
 
-PIDKLADKA = Path(__file__).resolve().parent / 'sait' / 'pidkladka'
+PIDKLADKA_TEKA = Path(__file__).resolve().parent / 'sait' / 'pidkladka'
+TEMY_TEKA = Path(__file__).resolve().parent / 'temy'
+# Підкладка своя в кожної теми вигляду (MV-219): sait/pidkladka/<тема>/. Обрану тему ставить збирач (vstanovyty_temu).
+TEMA = 'spokiyna'
+POLIA_PIDKLADKY = ('bg', 'water', 'park', 'building', 'road', 'label', 'halo')   # кольори теми, що видно на знімках підкладки
 
-# Ті самі сталі, що в karta.js (KYIV, RIVNI, KVANT, VERSHYNA, PROZ, kameraMista). Змінили там — змініть тут:
-# тест tests/test_zastavka.py звіряє їх з karta.js.
+
+def pidkladka(tema: str | None = None) -> Path:
+    return PIDKLADKA_TEKA / (tema or TEMA)
+
+
+def vidbytok_pidkladky(tema: str) -> str:
+    """Відбиток кольорів підкладки теми (тло, вода, парки, будинки, дороги, підписи) — пише znimaty.mjs у meta.json;
+    змінили їх у site/temy/<тема>.json — перезніміть підкладку (тест стереже)."""
+    k = json.loads((TEMY_TEKA / f'{tema}.json').read_text(encoding='utf-8'))['kolory']
+    dani = {r: {n: k[r].get(n) for n in POLIA_PIDKLADKY} for r in ('svitla', 'temna')}
+    return hashlib.sha256(json.dumps(dani, sort_keys=True, ensure_ascii=False, separators=(',', ':')).encode('utf-8')).hexdigest()
+
+
+def zminni_karty(tema: str | None = None) -> dict:
+    """Прозорість сот, межа соти й «світло» верху вершини — з теми (zminni_tem: karta-proz, karta-mezha-soty, karta-kant)."""
+    z = json.loads((TEMY_TEKA / f'{tema or TEMA}.json').read_text(encoding='utf-8'))['zminni_tem']
+    out = {}
+    for r in ('svitla', 'temna'):
+        lo, hi = (float(x) for x in z[r]['karta-proz'].split())
+        m = re.fullmatch(r'rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)', z[r]['karta-mezha-soty'].replace(' ', ''))
+        out[r] = {'proz': (lo, hi), 'mezha': (int(m[1]), int(m[2]), int(m[3]), round(float(m[4]) * 255)),
+                  'kant': float(z[r].get('karta-kant', 0.08 if r == 'temna' else 0.28))}
+    return out
+
+# Ті самі сталі, що в karta.js (KYIV, RIVNI, KVANT, VERSHYNA, kameraMista). Змінили там — змініть тут:
+# тест tests/test_zastavka.py звіряє їх з karta.js. PROZ — запасна (тема indygo), якщо в темі немає karta-proz.
 KYIV = ((30.2361, 50.2132), (30.8264, 50.5908))
 KVANT = (0.2, 0.4, 0.6, 0.88)
 VERSHYNA = 0.88
@@ -82,15 +111,17 @@ def _zmishaty(a: str, b: str, k: float) -> str:
     return '#' + ''.join(f'{max(0, min(255, round(x + (y - x) * k))):02X}' for x, y in zip(ra, rb))
 
 
-def _kant(q: float, kolory: dict, tema: str) -> str:
+def _kant(q: float, kolory: dict, tema: str, svitlo: float | None = None) -> str:
     """Колір верху стовпчика-вершини (koloryVershyny у karta.js): згори видно саме його."""
     t = math.sqrt(min(1, max(0, (q - VERSHYNA) / (1 - VERSHYNA))))
     c = _zmishaty(kolory['pk'][0], kolory['pk'][1], t)
-    return _zmishaty(c, '#FFFFFF', 0.08) if tema == 'temna' else _zmishaty(c, '#FFFFFF', 0.28)
+    if svitlo is None:
+        svitlo = 0.08 if tema == 'temna' else 0.28
+    return _zmishaty(c, '#FFFFFF', svitlo)
 
 
-def meta() -> dict:
-    return json.loads((PIDKLADKA / 'meta.json').read_text(encoding='utf-8'))['varianty']
+def meta(tema: str | None = None) -> dict:
+    return json.loads((pidkladka(tema) / 'meta.json').read_text(encoding='utf-8'))['varianty']
 
 
 def kartynka(variant: str, tema: str, soty: list[dict], kolory: dict) -> bytes:
@@ -99,16 +130,17 @@ def kartynka(variant: str, tema: str, soty: list[dict], kolory: dict) -> bytes:
     z, dpr, W, H = m['z'], m['dpr'], m['sirina'], m['vysota']
     cx, cy = merc(*m['tsentr'], z)
     x0, y0 = cx - W / 2, cy - H / 2
-    tlo = Image.open(PIDKLADKA / f'{variant}-{tema}-tlo.webp').convert('RGBA')
-    pidpysy = Image.open(PIDKLADKA / f'{variant}-{tema}-pidpysy.webp').convert('RGBA')
+    tlo = Image.open(pidkladka() / f'{variant}-{tema}-tlo.webp').convert('RGBA')
+    pidpysy = Image.open(pidkladka() / f'{variant}-{tema}-pidpysy.webp').convert('RGBA')
     PW, PH = tlo.size
     S = NADVYBIRKA * PW / W                 # пікселів картинки (з надвибіркою) на CSS-піксель
     zalyvka = Image.new('RGBA', (PW * NADVYBIRKA, PH * NADVYBIRKA), (0, 0, 0, 0))
     liniyi = Image.new('RGBA', zalyvka.size, (0, 0, 0, 0))
     stovpy = Image.new('RGBA', zalyvka.size, (0, 0, 0, 0))
     dz, dl, ds = ImageDraw.Draw(zalyvka), ImageDraw.Draw(liniyi), ImageDraw.Draw(stovpy)
-    lo, hi = PROZ[tema]
-    liniia = (0, 0, 0, round(0.5 * 255)) if tema == 'temna' else (255, 255, 255, round(0.45 * 255))
+    zk = zminni_karty()[tema]
+    lo, hi = zk['proz']
+    liniia = zk['mezha']
     tovshch = max(1, round(0.6 * S))
     op_stovpa = 0.95 if tema == 'temna' else 0.88
     q_kr = chastky(soty)
@@ -135,7 +167,7 @@ def kartynka(variant: str, tema: str, soty: list[dict], kolory: dict) -> bytes:
             mx = sum(p[0] for p in vershyny) / len(vershyny)
             my_ = sum(p[1] for p in vershyny) / len(vershyny)
             menshi = [pt(mx + (lon - mx) * v['k'], my_ + (lat - my_) * v['k']) for lon, lat in kontur]
-            ds.polygon(menshi, fill=(*_rgb(_kant(q, kolory, tema)), round(op_stovpa * 255)))
+            ds.polygon(menshi, fill=(*_rgb(_kant(q, kolory, tema, zk['kant'])), round(op_stovpa * 255)))
     vse = Image.alpha_composite(Image.alpha_composite(zalyvka, liniyi), stovpy)
     vse = vse.resize((PW, PH), Image.LANCZOS)
     rez = Image.alpha_composite(Image.alpha_composite(tlo, vse), pidpysy).convert('RGB')
@@ -175,6 +207,10 @@ def zibraty(soty_rivniv: dict[int, dict], kolory_tem: dict, teka_karty: Path) ->
     """Картинки першого екрана в теку karta/ сайту; повертає стилі для sait.css і адреси картинок {(варіант, тема): url}. Ім'я файла — з відбитком вмісту:
     новий випуск — нова назва, і старий кеш браузера не покаже старих сот під новою живою картою."""
     fayly = {}
+    if not (pidkladka() / 'meta.json').is_file():
+        print(f'Увага: немає знімків підкладки теми {TEMA} (site/sait/pidkladka/{TEMA}/) — перший екран без картинки, '
+              'жива карта одразу. Зняти: site/sait/pidkladka/znimaty.mjs')
+        return '', fayly
     for variant, v in VARIANTY.items():
         soty = soty_rivniv[v['riven']]['features']
         for tema in ('svitla', 'temna'):

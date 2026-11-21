@@ -1,8 +1,9 @@
-"""Один вигляд скрізь (MV-58, ZAVDANNYA-47): бренд, ролики, заглушка й гра — у «Індиго й м'яті»,
-IBM Plex Sans і з кнопками-клавішами, як сайт (docs/STYL.md).
+"""Тема «Індиго й м'ята» поза сайтом (MV-58, ZAVDANNYA-47; з ZAVDANNYA-197 — одна з двох тем, MV-219): бренд, ролики,
+заглушка й гра — у темі indygo, IBM Plex Sans і з кнопками-клавішами (docs/STYL.md). Сайт збирається в обраній темі
+(за замовчуванням spokiyna) — його перевіряє tests/test_temy.py.
 
 Перевіряє: немає старих шрифтів (Manrope, Inter, Fixel) і старих кольорів (бірюза, бежеве тло, помаранчевий);
-змінні CSS збігаються з тими, що збирач сайту рахує з site/sait/kolory.json; шрифти Plex і ліцензія на місці;
+змінні CSS збігаються з тими, що збирач сайту рахує з теми site/temy/indygo.json; шрифти Plex і ліцензія на місці;
 клавіші мають межу mezha і бортик.
 
 Запуск: python -m unittest tests/test_vyhliad_mv58.py
@@ -38,7 +39,7 @@ SPILNI = ['ground', 'surface', 'surface-tint', 'ink', 'ink-2', 'muted', 'line', 
 
 
 def zminni_saitu(tema: str) -> dict:
-    ryadok = zibraty_sait.kolory_css().split('\n')[1 if tema == 'svitla' else 2]
+    ryadok = zibraty_sait.kolory_css('indygo').split('\n')[1 if tema == 'svitla' else 2]
     return dict(re.findall(r'--([\w-]+):(#[0-9A-F]{6})', ryadok))
 
 

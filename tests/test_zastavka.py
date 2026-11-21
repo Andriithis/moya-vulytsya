@@ -41,9 +41,12 @@ class StaliZKartoyu(unittest.TestCase):
         self.assertEqual(self.chysla(kyiv), [*Z.KYIV[0], *Z.KYIV[1]])
         self.assertEqual(self.chysla(re.search(r'KVANT = \[(.*?)\]', KARTA_JS).group(1)), list(Z.KVANT))
         self.assertEqual(float(re.search(r'VERSHYNA = ([\d.]+)', KARTA_JS).group(1)), Z.VERSHYNA)
+        # запасна прозорість у karta.js (немає змінної теми) — та сама, що в zastavka.py і в темі indygo
         proz = re.search(r'var PROZ = \{ svitla: \[(.*?)\], temna: \[(.*?)\] \}', KARTA_JS)
         self.assertEqual(self.chysla(proz.group(1)), list(Z.PROZ['svitla']))
         self.assertEqual(self.chysla(proz.group(2)), list(Z.PROZ['temna']))
+        self.assertEqual(Z.zminni_karty('indygo')['svitla']['proz'], Z.PROZ['svitla'])
+        self.assertEqual(Z.zminni_karty('indygo')['temna']['proz'], Z.PROZ['temna'])
 
     def test_kamera_i_rivni(self):
         pad = re.search(r"var pad = telefon\(\) \? \{ t: (\d+), b: (\d+), l: (\d+), r: (\d+) \} : \{ t: (\d+), b: (\d+), l: (\d+), r: (\d+) \}", KARTA_JS)
@@ -57,17 +60,25 @@ class StaliZKartoyu(unittest.TestCase):
             self.assertEqual(float(k.group(1)), v['k'])
         # стартовий зум комп'ютера — середні соти (рівень 8), телефона — великі (7): межа ZMINA[0] у karta.js
         zmina = float(re.search(r'var ZMINA = \[([\d.]+),', KARTA_JS).group(1))
-        meta = Z.meta()
-        self.assertLess(meta['telefon']['z'], zmina)
-        self.assertGreater(meta['komp']['z'], zmina)
+        for tema in ('spokiyna', 'indygo'):
+            meta = Z.meta(tema)
+            self.assertLess(meta['telefon']['z'], zmina)
+            self.assertGreater(meta['komp']['z'], zmina)
 
     def test_pidkladka_znyata_z_tymy_zh_koloramy(self):
-        """Підкладку знято з поточними кольорами карти; змінили kolory.json — перезніміть (site/sait/pidkladka/znimaty.mjs)."""
-        import hashlib
+        """Підкладку кожної теми знято з її поточними кольорами; змінили їх у site/temy/<тема>.json — перезніміть
+        (site/sait/pidkladka/znimaty.mjs <адреса> <тема>). Немає знімків теми — перший екран без картинки (гірше), тож вимагаємо."""
         import json
-        meta = json.loads((Z.PIDKLADKA / 'meta.json').read_text(encoding='utf-8'))
-        self.assertEqual(meta['kolory_sha256'], hashlib.sha256((KORIN / 'site' / 'sait' / 'kolory.json').read_bytes()).hexdigest(),
-                         'kolory.json змінено після знімків підкладки — перезніміть її')
+        for tema in ('spokiyna', 'indygo'):
+            f = Z.pidkladka(tema) / 'meta.json'
+            self.assertTrue(f.is_file(), f'немає підкладки теми {tema}')
+            meta = json.loads(f.read_text(encoding='utf-8'))
+            self.assertEqual(meta['tema_sha256'], Z.vidbytok_pidkladky(tema),
+                             f'кольори підкладки теми {tema} змінено після знімків — перезніміть її')
+            for v in Z.VARIANTY:
+                for r in ('svitla', 'temna'):
+                    for sh in ('tlo', 'pidpysy'):
+                        self.assertTrue((Z.pidkladka(tema) / f'{v}-{r}-{sh}.webp').is_file(), f'{tema}: {v}-{r}-{sh}')
 
     def test_chastky_yak_u_karti(self):
         soty = [{'properties': {'id': str(i), 'all3': n}} for i, n in enumerate([0, 1, 1, 2, 5, 9])]
@@ -132,7 +143,7 @@ class ZibranyiSait(unittest.TestCase):
         from PIL import Image, ImageChops
         f = next((self.sait / 'karta').glob('zastavka-telefon-svitla-*.webp'))
         z_sotamy = Image.open(f).convert('RGB')
-        tlo = Image.open(Z.PIDKLADKA / 'telefon-svitla-tlo.webp').convert('RGB')
+        tlo = Image.open(Z.pidkladka() / 'telefon-svitla-tlo.webp').convert('RGB')
         rizn = ImageChops.difference(z_sotamy, tlo).convert('L').point(lambda v: 255 if v > 24 else 0)
         self.assertGreater(sum(rizn.histogram()[255:]), 2000)
 
@@ -234,7 +245,12 @@ class UBrauzeri(unittest.TestCase):
         s.wait_for_function('() => MvKarta.gotovo', timeout=60000)
         self.assertEqual(s.evaluate('() => MvKarta.stan.zapusk'), 'dotyk')
         s.wait_for_function("() => !document.querySelector('.zastavka')", timeout=30000)
-        s.wait_for_function('() => MvKarta.karta.getPitch() > 30', timeout=10000)   # нахил у 3D, як на старті
+        import zibraty_sait
+        if zibraty_sait.dani_temy(zibraty_sait.TEMA)['zminni']['karta-3d'] != '0':
+            s.wait_for_function('() => MvKarta.karta.getPitch() > 30', timeout=10000)   # нахил у 3D, як на старті
+        else:   # тема пласка на старті (spokiyna, MV-219): картинка тане, карта лишається 2D
+            s.wait_for_timeout(1500)
+            self.assertLess(s.evaluate('() => MvKarta.karta.getPitch()'), 1)
         self.assertEqual(s.pomylky, [])
 
     def test_hra_v_posylanni_odrazu_zhyva(self):
