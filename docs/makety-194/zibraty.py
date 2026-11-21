@@ -33,13 +33,20 @@ Z, T, D = Z190.Z, Z190.T, Z190.D
 sys.path.insert(0, str(KORIN / 'site'))
 import zaholovky as ZH  # noqa: E402
 
-e, chyslo, vids, NB = Z.e, Z.chyslo, Z190.vids, Z190.NB
+e, chyslo, NB = Z.e, Z.chyslo, Z190.NB
+
+
+def vids(x: float) -> str:
+    """частка → «8 %», без коми; менше 1 % — «менше 1 %»"""
+    return f'{round(100 * x)}{NB}%' if x >= .005 else f'менше 1{NB}%'
 ROKY, BAZA_ROKY, HR = Z190.ROKY, Z190.BAZA_ROKY, Z190.HR
 SL = json.loads((TUT / 'slovnyk-vydiv.json').read_text(encoding='utf-8'))
 VYDY = SL['vydy']
 MIN_REChENNIA = 40          # вид у головному реченні — коли «2016–2018 на рік + останній рік» ≥ 40 подій
 PIZNO: set = set()         # види, яких у 2016–2018 у даних майже немає (справи тоді не доходили до суду) — заповнює головне
 VIKNO_V: dict = {}         # вид → своє «останні 12 повних місяців» (povnota за видом, до 36 місяців назад)
+POLITSIIA = ('<p class="blok__pidpys">«Стали ловити» чи «затримувати частіше» — про справи, які з\'являються, лише коли поліція когось затримала: '
+             'могло стати більше випадків, а могло — більше перевірок. З даних цього не розрізнити.</p>')
 OST_T: dict = {}           # вид → «липня 2026» (кінець його повного року) — для пояснення внизу сторінки
 MIN_RAZ = 1.5               # …і зміна щонайменше в півтора раза (і невипадкова, як у 190: z > 2,5)
 
@@ -131,6 +138,7 @@ def skilky(n: int, lich) -> str:
 
 
 DE = ''                   # «на весь район» / «по всьому Києву» — щоб «щодня п'ять аварій» не читали як «у моєму дворі»
+TYZHDEN = False           # райони: усе «щотижня» — одна мірка, щоб не рахувати в голові (свіжі очі, раунд 2)
 ZA_RIK = False            # місця (коло 300 м): усе — «за рік», щоб рядки можна було порівняти без рахунку в голові
 
 
@@ -138,6 +146,9 @@ def chastota(n12: int, lich) -> str:
     """скільки за останні 12 повних місяців → «щодня в середньому три аварії на весь район»"""
     if ZA_RIK:
         return f'за рік — {skilky(n12, lich)}'
+    if TYZHDEN:
+        x = n12 / 52.18
+        return (f'щотижня в середньому {skilky(round(x), lich)}{DE}' if x >= .75 else f'за рік — {skilky(n12, lich)}{DE}')
     for za, dilnyk in (('щодня', 365), ('щотижня', 52.18), ('щомісяця', 12)):
         x = n12 / dilnyk
         if x >= 1.5:
@@ -299,15 +310,24 @@ def mistse(dn, xs: list, ref: list | None, min_hrupa: int = 0) -> dict:
 
 # ---------------------------------------------------------------- речення
 
+def staryi(v: dict) -> str:
+    """« (рік до листопада 2023 — новіші справи ще в судах)», коли повний рік виду закінчився давно"""
+    kin = VIKNO_V.get(v['vyd'], (None, None))[1]
+    naisv = max(x[1] for x in VIKNO_V.values())
+    if kin and (int(naisv[:4]) * 12 + int(naisv[5:7])) - (int(kin[:4]) * 12 + int(kin[5:7])) > 12:
+        return f' (рік до {OST_T[v["vyd"]]} — новіші справи ще в судах)'
+    return ''
+
+
 def rech_chasto(v: dict, pochatok: str = 'Найчастіше') -> str:
     s = VYDY[v['vyd']]
-    return f'{pochatok} — {s["nazva"]}: {chastota(v["n12"], s["lich"])}.'
+    return f'{pochatok} — {s["nazva"]}: {chastota(v["n12"], s["lich"])}{staryi(v)}.'
 
 
 def rech_zmina(v: dict) -> str:
     s = VYDY[v['vyd']]
     t = s['zrist'] if v['dyn'][0] == 'bilshe' else s['spad']
-    return t.format(raz=raz_sl(v['dyn'][1])) + ', ніж у 2016–2018 роках.'
+    return t.format(raz=raz_sl(v['dyn'][1])) + ', ніж у 2016–2018 роках' + staryi(v) + '.'
 
 
 def holovni(k: dict) -> list:
@@ -436,8 +456,8 @@ def pro_dani(de: str) -> str:
 <p>Усе тут — із рішень судів 2016–2026 років: лише те, що дійшло до суду, а не всі події {de}.</p>
 <p>Водіїв напідпитку, наркотики, розпивання на вулиці суд бачить, лише коли людину затримала поліція. Тому «стали ловити частіше»
 може означати і що такого стало більше, і що поліція стала більше перевіряти — з даних цього не розрізнити.</p>
-<p>Рішення доходять до суду із запізненням: про аварії — за 1–3 місяці, про крадіжки й грабежі — за 1–3 роки. Тому «за рік» —
-це останні 12 місяців, про які рішення вже майже всі: для аварій — до {OST_T['dtp-doroha']}, для крадіжок у людей і грабежів — лише
+<p>Рішення доходять до суду із запізненням: про аварії — за 1–3 місяці, про крадіжки й грабежі — за 1–3 роки. Тому «щотижня» й «за рік» рахуємо за
+останні 12 місяців, про які рішення вже майже всі: для аварій — до {OST_T['dtp-doroha']}, для крадіжок у людей і грабежів — лише
 до {OST_T['nas-hrabizh']}. Свіжіші роки на графіках світлі: там ще буде більше.</p>
 </section>'''
 
@@ -466,7 +486,7 @@ def storinka_ohliad(slug, k, h1, pidzag, kryhty, url_dali, dali_de, dodatok_do, 
             f'{HRM[h]["rozdil"].lower()} — {chyslo(n)} за 10 років' for h, n in k['mali']) + '.</p>')
     tilo = f'''<section class="zaholovok"><h1>{e(h1)}</h1>
 <p class="zaholovok__opys">{pidzag}</p></section>
-<section class="holovne" aria-label="Головне"><ul>{''.join(f'<li>{e(r)}</li>' for r in rech)}</ul></section>
+<section class="holovne" aria-label="Головне"><ul>{''.join(f'<li>{e(r)}</li>' for r in rech)}</ul>{POLITSIIA if any('ловити' in r or 'затримувати' in r for r in rech) else ''}</section>
 {dodatok_do}
 <section class="rozdily"><h2 class="rozdily__zag">Що тут відбувається — по темах</h2>
 <p class="blok__pidpys">Графік — скільки таких випадків щороку, 2016–2026. Світлі стовпчики — роки, за які рішення ще доходять до суду:
@@ -515,7 +535,13 @@ def storinka_vyd(slug, r, nazva_mistsia_v, kryhty, title, opys, url, kyiv_sl, po
         else:
             rech.append(f'{m["rod"]} стало {raz_sl(r["dyn"][1])} {ZMINA_SL[r["dyn"][0]]}, ніж у 2016–2018 роках.')
     elif r['dyn'][0] == 'stabilno':
-        rech.append(f'{m["rod"]} приблизно стільки ж, як у 2016–2018 роках.')
+        t = f'{m["rod"]} загалом приблизно стільки ж, як у 2016–2018 роках'
+        vv = [v for v in holovnyi[:5] if not v['pizno'] and v['dyn'][0] in ('bilshe', 'menshe') and v['chastka'] >= .05]
+        bb = [VYDY[v['vyd']]['nazva'].split(' (')[0] for v in vv if v['dyn'][0] == 'bilshe']
+        mm = [VYDY[v['vyd']]['nazva'].split(' (')[0] for v in vv if v['dyn'][0] == 'menshe']
+        if bb and mm:
+            t += f': {bb[0]} — більше, {mm[0]} — менше'
+        rech.append(t + '.')
     porivn = porivn_rech(r, kyiv_sl) if kyiv_sl else []
     if porivn:
         rech.append(porivn[0][1])
@@ -523,8 +549,10 @@ def storinka_vyd(slug, r, nazva_mistsia_v, kryhty, title, opys, url, kyiv_sl, po
         rech.append(rech_chasto(holovnyi[1], 'Далі'))
     # як змінювалось
     b, n12 = r['baza'], r['n12']
-    dyn_t = {'bilshe': 'Стало більше', 'menshe': 'Стало менше', 'stabilno': 'Приблизно стільки ж — різниця невелика',
+    dyn_t = {'bilshe': 'Стало більше', 'menshe': 'Стало менше', 'stabilno': 'Загалом без великої зміни',
              'malo': 'Замало подій, щоб казати про зміну'}[r['dyn'][0]]
+    if h in Z190.PROAKTYVNI and r['dyn'][0] in ('bilshe', 'menshe'):
+        dyn_t = 'Справ стало ' + ZMINA_SL[r['dyn'][0]]
     if r['dyn'][0] != 'malo':
         dyn_t += f': у 2016–2018 — близько {chyslo(round(b))} на рік, за останній рік — {chyslo(n12)}.'
     pizni = [VYDY[v['vyd']]['nazva'] for v in r['vydy'] if v['vyd'] and v['pizno'] and v['n12'] >= .05 * max(n12, 1)]
@@ -556,7 +584,7 @@ def storinka_vyd(slug, r, nazva_mistsia_v, kryhty, title, opys, url, kyiv_sl, po
         pol.append(f'<div class="pole"><dt>Скільки коштувало вкрадене</dt><dd>у половині випадків — до <b>{chyslo(int(d["shkoda"][0]))}{NB}грн</b>'
                    f' <span class="prym">(вказано в {vids(d["shkoda"][1])} рішень)</span></dd></div>')
     if 'povernuto' in d:
-        pol.append(f'<div class="pole"><dt>Чи повернули вкрадене</dt><dd>так — у <b>{vids(d["povernuto"])}</b> випадків</dd></div>')
+        pol.append(f'<div class="pole"><dt>Чи повернули вкрадене</dt><dd>так — у <b>{vids(d["povernuto"])}</b> випадків <span class="prym">(в інших суд про це не пише або не повернули)</span></dd></div>')
     if 'naslidky' in d:
         tr, zag, n = d['naslidky']
         t = f'травмовані люди — у <b>{vids(tr / n)}</b> аварій'
@@ -589,7 +617,7 @@ def storinka_vyd(slug, r, nazva_mistsia_v, kryhty, title, opys, url, kyiv_sl, po
     v36 = r['vikno36']
     tilo = f'''<section class="zaholovok"><span class="mitka">{krapka(h)}{e(m['rozdil'])}</span><h1>{e(m['h1'])} {e(nazva_mistsia_v)}</h1>
 <p class="zaholovok__opys">За рішеннями судів 2016–2026 років; це те, що дійшло до суду, а не всі випадки.</p></section>
-<section class="holovne" aria-label="Головне"><ul>{''.join(f'<li>{e(t)}</li>' for t in rech)}</ul></section>
+<section class="holovne" aria-label="Головне"><ul>{''.join(f'<li>{e(t)}</li>' for t in rech)}</ul>{POLITSIIA if h in Z190.PROAKTYVNI else ''}</section>
 <section class="blok"><h2>Як змінювалось за 10 років</h2>{svg_roky(r)}<p class="blok__pidpys">Світлі стовпчики — роки, за які
 рішення ще доходять до суду: згодом там буде більше.</p><p class="blok__rech">{dyn_t}</p></section>
 <section class="blok"><h2>Що саме</h2><p class="blok__pidpys">Частка серед усіх таких випадків за останні 3 роки
@@ -650,7 +678,7 @@ if __name__ == '__main__':
 
     # --- огляд районів (район — за судом, MV-210)
     for slug, nazva in (('podilskyi', 'Подільський'), ('darnytskyi', 'Дарницький')):
-        DE, ZA_RIK = ' на весь район', False
+        DE, ZA_RIK, TYZHDEN = ' на весь район', False, True
         xs = za_rayonom[nazva]
         ref = [p for p in P if p['r_sud'] and p['r_sud'] != nazva]
         k = mistse(DN, xs, ref)
@@ -659,7 +687,7 @@ if __name__ == '__main__':
         dodatok = (poshuk_html(f'Ваш будинок {u_rayoni("Ваш будинок", nazva)}', 'Знайдіть свою адресу — числа саме по вашому будинку.', 'rayon')
                    + problemy_html(f'Проблеми району', 'rayon'))
         pislia = stezhyty_html('районом', 'rayon') + f'''<section class="blok plat"><h2>Для ОСББ</h2>
-<p class="blok__pidpys">Щомісяця — довідка вашого будинку порівняно із сусідніми. {chyslo(T.TSINY['osbb'])}{NB}грн на рік за будинок.</p>
+<p class="blok__pidpys">Для об'єднання мешканців будинку. Щомісяця — довідка вашого будинку порівняно із сусідніми. {chyslo(T.TSINY['osbb'])}{NB}грн на рік за будинок.</p>
 <p><a class="knopka plat__knopka knopka--druhorydna" href="/osbb/?dzherelo=rayon">Для ОСББ</a></p></section>'''
         html_, rech = storinka_ohliad(
             slug, k, f'Що відбувається {u_rayoni("відбувається", nazva)}',
@@ -706,8 +734,8 @@ if __name__ == '__main__':
 
     # --- «вид × район» і «вид × Київ»
     def vyd_rayon(slug, h, nazva):
-        global DE, ZA_RIK
-        DE, ZA_RIK = ' на весь район', False
+        global DE, ZA_RIK, TYZHDEN
+        DE, ZA_RIK, TYZHDEN = ' на весь район', False, True
         xs = [p for p in za_rayonom[nazva] if p['hr'] == h]
         ref = [p for p in P if p['r_sud'] and p['r_sud'] != nazva and p['hr'] == h]
         k = mistse(DN, xs, ref)
@@ -722,7 +750,7 @@ if __name__ == '__main__':
 <p class="posylannia">{inshi_vydy}</p>
 <h2>{e(m['h1'])} в інших районах Києва</h2><p class="posylannia">{inshi_rayony} · <a href="/{m['slug']}/">Увесь Київ</a></p></section>'''
         pislia = (poshuk_html(f'Ваш будинок {u_rayoni("Ваш будинок", nazva)}',
-                              f'Що з цього — біля вашого будинку: {m["dali"]} у вашому дворі й на вашій вулиці.', f'{m["slug"]}-rayon')
+                              'Чи було щось таке біля вашого будинку — знайдіть свою адресу.', f'{m["slug"]}-rayon')
                   + problemy_html(f'Де {m["dali"]} повторюються роками', f'{m["slug"]}-rayon')
                   + stezhyty_html(f'темою «{m["rozdil"]}» {u_rayoni("темою", nazva)}', f'{m["slug"]}-rayon'))
         title = ZH.pershyi_shcho_vlize([f'{m["seo"]} {lok} — {nazva} район Києва', f'{m["seo"]} {lok}',
@@ -740,7 +768,7 @@ if __name__ == '__main__':
 
     # Наркотики — увесь Київ: без порівняння; замість нього — посилання на райони (за абеткою, не рейтинг)
     h = 'nar'
-    DE, ZA_RIK = ' по всьому Києву', False
+    DE, ZA_RIK, TYZHDEN = ' по всьому Києву', False, False
     m = HRM[h]
     xs = [p for p in P if p['hr'] == h and p['r_sud']]
     k = mistse(DN, xs, None)
@@ -753,7 +781,7 @@ if __name__ == '__main__':
         f'<a href="/{HRM[x]["slug"]}/">{e(HRM[x]["rozdil"])}</a>' for x in HR.KLIUCHI if x != h) + '</p></section>')
     pislia = (poshuk_html('Ваш будинок', 'Що з цього — біля вашого будинку.', 'narkotyky-kyiv')
               + problemy_html('Де справи про наркотики повторюються роками', 'narkotyky-kyiv')
-              + stezhyty_html('своїм районом', 'narkotyky-kyiv'))
+              + stezhyty_html('своїм районом (оберете на наступному кроці)', 'narkotyky-kyiv'))
     title = 'Наркотики в Києві — справи за районами, 2016–2026'
     opys = ZH.skorotyty('Наркотики в Києві за рішеннями судів 2016–2026: скільки справ щороку, які речовини, де й коли, '
                         'по кожному району. Перевірте свій будинок.')
