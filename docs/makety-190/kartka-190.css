@@ -1,0 +1,80 @@
+
+/* ZAVDANNYA-190 — картка району й публічного місця (макет). Лише змінні сайту (docs/STYL.md); кольори груп — brend/hrupy.json. */
+.maket-190 { margin: 0; align-self: flex-start; font-size: 12px; font-weight: 600; color: var(--vyd); border: 1px dashed var(--vyd); border-radius: var(--radius-pill); padding: 3px 12px; }
+.rozdil__pidpys--holovne { font-size: 15px; color: var(--ink-2); background: var(--surface-tint); border-radius: var(--radius-m); padding: 12px 14px; margin: 0; max-width: none; }
+.storinka { max-width: 980px; }
+.gr { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-l); padding: 18px 20px 16px; display: flex; flex-direction: column; gap: 10px; }
+.gr__shapka { display: flex; flex-direction: column; gap: 4px; }
+.gr h3 { margin: 0; font-size: 20px; line-height: 26px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+.gr__krapka { flex: none; width: 12px; height: 12px; border-radius: 50%; }
+.gr__krapka--dtp { background: #7F82A7; }
+html[data-t="temna"] .gr__krapka--dtp { background: #B0B5D3; }
+.gr__krapka--vod { background: #838F25; }
+html[data-t="temna"] .gr__krapka--vod { background: #9AA841; }
+.gr__krapka--kra { background: #10858A; }
+html[data-t="temna"] .gr__krapka--kra { background: #52A8AD; }
+.gr__krapka--nas { background: #AB366C; }
+html[data-t="temna"] .gr__krapka--nas { background: #CE6992; }
+.gr__krapka--nar { background: #8660A7; }
+html[data-t="temna"] .gr__krapka--nar { background: #D19DFD; }
+.gr__krapka--por { background: #8A6C13; }
+html[data-t="temna"] .gr__krapka--por { background: #DEC26C; }
+.gr__krapka--alk { background: #186938; }
+html[data-t="temna"] .gr__krapka--alk { background: #5C9C6E; }
+.gr__chysla { margin: 0; font-size: 15px; color: var(--ink-2); }
+.gr__chysla b { font-size: 22px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
+.gr__pozn { display: inline-block; font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink); background: var(--accent-soft); border-radius: var(--radius-pill); padding: 1px 10px; }
+.gr__shapka .gr__pozn { align-self: flex-start; }
+.gr__roky { width: 100%; max-width: 420px; height: auto; display: block; }
+.gr__roky .st { fill: var(--sc-4); }
+.gr__roky .st-nep { fill: var(--sc-1); opacity: .55; }
+.gr__roky text { font: 400 10px var(--sans); fill: var(--muted); }
+.gr__nep { margin: -4px 0 0; font-size: 12px; color: var(--muted); }
+.gr__dyn { margin: 0; font-size: 15px; font-weight: 600; }
+.gr__polia { margin: 4px 0 0; display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.gr__period { margin: 8px 0 2px; font-size: 12px; color: var(--muted); }
+.gr__ryad { display: grid; grid-template-columns: 170px 1fr; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 14px; line-height: 20px; }
+.gr__ryad:last-child { border-bottom: 0; }
+.gr__ryad dt { color: var(--muted); font-weight: 600; }
+.gr__ryad dd { margin: 0; color: var(--ink); }
+.gr__ryad dd b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.gr__prym { font-size: 12px; color: var(--muted); }
+.gr__politsiia { margin: 0; }
+.koly { display: flex; flex-wrap: wrap; gap: 12px 28px; }
+.koly__ch { display: flex; flex-direction: column; gap: 4px; }
+.koly__t { font-size: 12px; color: var(--muted); }
+.koly__p { font-size: 13px; }
+.smuzhky { display: flex; gap: 4px; align-items: flex-end; }
+.smuzhky__st { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 26px; }
+.smuzhky__stovp { height: 28px; width: 18px; display: flex; align-items: flex-end; background: var(--surface-tint); border-radius: 3px; overflow: hidden; }
+.smuzhky__stovp i { display: block; width: 100%; background: var(--sc-3); border-radius: 3px 3px 0 0; }
+.vys-0 { height: 0%; } .vys-1 { height: 5%; } .vys-2 { height: 10%; } .vys-3 { height: 15%; } .vys-4 { height: 20%; } .vys-5 { height: 25%; } .vys-6 { height: 30%; } .vys-7 { height: 35%; } .vys-8 { height: 40%; } .vys-9 { height: 45%; } .vys-10 { height: 50%; } .vys-11 { height: 55%; } .vys-12 { height: 60%; } .vys-13 { height: 65%; } .vys-14 { height: 70%; } .vys-15 { height: 75%; } .vys-16 { height: 80%; } .vys-17 { height: 85%; } .vys-18 { height: 90%; } .vys-19 { height: 95%; } .vys-20 { height: 100%; }
+.smuzhky__p { font-size: 11px; color: var(--muted); }
+.plat { background: var(--surface); border: 1.5px solid var(--line-strong); border-radius: var(--radius-l); padding: 18px 20px; gap: 12px; }
+.plat > h2 { font-size: 20px; line-height: 26px; }
+.plat .rozdil__pidpys { margin: -4px 0 0; }
+.plat__poshuk { display: flex; gap: 10px; flex-wrap: wrap; }
+.plat__pole { flex: 1 1 240px; min-height: 48px; padding: 0 14px; font-size: 16px; }
+.plat__knopka { display: inline-flex; align-items: center; min-height: 48px; padding: 0 20px; border-radius: var(--radius-m); background: var(--accent); color: var(--on-accent); font-weight: 600; text-decoration: none; }
+.plat__knopka:hover { color: var(--on-accent); }
+.plat__dali { margin: 0; font-size: 14px; color: var(--ink-2); }
+.problemy-190__ch { display: flex; gap: 12px; flex-wrap: wrap; }
+.problemy-190__kl { display: flex; flex-direction: column; padding: 10px 16px; min-width: 140px; }
+.problemy-190__kl span { font-size: 13px; color: var(--muted); }
+.bude { font-size: 18px; color: var(--muted); font-style: italic; font-weight: 600; }
+.lyst { border: 1px solid var(--line-strong); border-radius: var(--radius-m); background: var(--ground); padding: 14px 16px; max-width: 560px; font-size: 14px; }
+.lyst p { margin: 0 0 6px; }
+.lyst__vid { font-size: 12px; color: var(--muted); font-weight: 600; }
+.lyst__hr { margin: 4px 0 8px; padding-left: 18px; }
+.lyst__zamok { color: var(--ink-2); }
+.lyst__prym { font-size: 12px; color: var(--muted); }
+.zaholovok { max-width: 820px; }
+.zaholovok p { font-size: 17px; }
+@media (max-width: 640px) {
+  .storinka { padding: 20px 14px 40px; gap: 24px; }
+  .zaholovok h1 { font-size: 30px; line-height: 36px; }
+  .zaholovok p { font-size: 16px; }
+  .gr { padding: 14px 14px 12px; }
+  .gr__ryad { grid-template-columns: 1fr; gap: 2px; }
+  .koly { gap: 10px 18px; }
+}
