@@ -1,0 +1,84 @@
+/* ZAVDANNYA-194 — сторінка району й місця людською мовою; сторінка «вид × місце» (макет). Лише змінні сайту (docs/STYL.md);
+   кольори груп — brend/hrupy.json. Розділи — частини сторінки (заголовок і лінія), не картки (MV-211). */
+.maket-194 { margin: 0; align-self: flex-start; font-size: 12px; font-weight: 600; color: var(--vyd); border: 1px dashed var(--vyd); border-radius: var(--radius-pill); padding: 3px 12px; }
+.storinka { max-width: 820px; }
+.zaholovok h1 { font-size: 34px; line-height: 40px; }
+.zaholovok .mitka { display: inline-flex; align-items: center; gap: 8px; }
+.holovne ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.holovne li { font-size: 19px; line-height: 27px; font-weight: 600; color: var(--ink); padding-left: 18px; position: relative; }
+.holovne li::before { content: ""; position: absolute; left: 0; top: 11px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+.blok { display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--line); padding-top: 18px; }
+.blok > h2, .rozdily__zag { margin: 0; font-size: 22px; line-height: 28px; }
+.blok__pidpys { margin: 0; font-size: 14px; color: var(--muted); }
+.blok__rech { margin: 0; font-size: 16px; font-weight: 600; }
+.blok--tykho { font-size: 14px; color: var(--ink-2); }
+.blok--tykho p { margin: 0; }
+.plat { background: var(--surface); border: 1.5px solid var(--line-strong); border-radius: var(--radius-l); padding: 18px 20px; }
+.plat__poshuk { display: flex; gap: 10px; flex-wrap: wrap; }
+.plat__pole { flex: 1 1 240px; min-height: 48px; padding: 0 14px; font-size: 16px; }
+.plat__knopka { display: inline-flex; align-items: center; min-height: 48px; padding: 0 20px; border-radius: var(--radius-m); background: var(--accent); color: var(--on-accent); font-weight: 600; text-decoration: none; }
+.plat__knopka:hover { color: var(--on-accent); }
+.knopka--druhorydna { background: var(--surface); color: var(--ink); }
+.knopka--druhorydna:hover { color: var(--ink); }
+.plat__dali { margin: 0; font-size: 14px; color: var(--ink-2); }
+.bude { margin: 0; font-size: 15px; color: var(--muted); font-style: italic; }
+/* розділи огляд-сторінки */
+.rozdily { display: flex; flex-direction: column; gap: 6px; }
+.rz { display: grid; grid-template-columns: 1fr 250px; grid-template-areas: "n n" "r g" "d g"; gap: 6px 24px; border-top: 1px solid var(--line); padding: 16px 0 12px; }
+.rz__nazva { grid-area: n; margin: 0; font-size: 20px; line-height: 26px; display: flex; align-items: center; gap: 10px; }
+.rz__rech { grid-area: r; margin: 0; font-size: 16px; line-height: 23px; }
+.rz__gr { grid-area: g; display: flex; flex-direction: column; gap: 2px; }
+.rz__zmina { margin: 0; font-size: 13px; color: var(--muted); }
+.rz__zmina b { color: var(--ink); font-weight: 600; }
+.rz__dali { grid-area: d; align-self: end; font-size: 15px; font-weight: 600; }
+.gr__krapka { flex: none; width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+.gr__krapka--dtp { background: #7F82A7; } html[data-t="temna"] .gr__krapka--dtp { background: #B0B5D3; }
+.gr__krapka--vod { background: #838F25; } html[data-t="temna"] .gr__krapka--vod { background: #9AA841; }
+.gr__krapka--kra { background: #10858A; } html[data-t="temna"] .gr__krapka--kra { background: #52A8AD; }
+.gr__krapka--nas { background: #AB366C; } html[data-t="temna"] .gr__krapka--nas { background: #CE6992; }
+.gr__krapka--nar { background: #8660A7; } html[data-t="temna"] .gr__krapka--nar { background: #D19DFD; }
+.gr__krapka--por { background: #8A6C13; } html[data-t="temna"] .gr__krapka--por { background: #DEC26C; }
+.gr__krapka--alk { background: #186938; } html[data-t="temna"] .gr__krapka--alk { background: #5C9C6E; }
+.roky { width: 100%; max-width: 420px; height: auto; display: block; }
+.roky--maly { max-width: 250px; }
+.roky .st { fill: var(--sc-4); }
+.roky .st-nep { fill: var(--sc-1); opacity: .55; }
+.roky .st-nul { fill: var(--line-strong); }
+.roky text { font: 400 10px var(--sans); fill: var(--muted); }
+/* сторінка «вид × місце» */
+.vydy { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.vydy li { display: grid; grid-template-columns: 1fr 120px 48px; grid-template-areas: "n s c" "z z z"; gap: 2px 10px; align-items: center; }
+.vyd__n { grid-area: n; font-size: 15px; }
+.vyd__smuha { grid-area: s; height: 8px; background: var(--surface-tint); border-radius: 4px; overflow: hidden; }
+.vyd__smuha i { display: block; height: 100%; background: var(--sc-4); border-radius: 4px; }
+.vyd__ch { grid-area: c; font-size: 14px; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+.vyd__zm { grid-area: z; font-size: 13px; color: var(--muted); }
+.vydy .prym { grid-column: 1 / -1; }
+.polia { margin: 0; display: flex; flex-direction: column; }
+.pole { display: grid; grid-template-columns: 200px 1fr; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 15px; line-height: 21px; }
+.pole:last-child { border-bottom: 0; }
+.pole dt { color: var(--muted); font-weight: 600; }
+.pole dd { margin: 0; }
+.pole dd b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.prym { font-size: 12px; color: var(--muted); }
+.koly { display: flex; flex-wrap: wrap; gap: 12px 28px; }
+.koly__ch { display: flex; flex-direction: column; gap: 4px; }
+.koly__t { font-size: 12px; color: var(--muted); }
+.smuzhky { display: flex; gap: 4px; align-items: flex-end; }
+.smuzhky__st { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 26px; }
+.smuzhky__stovp { height: 28px; width: 18px; display: flex; align-items: flex-end; background: var(--surface-tint); border-radius: 3px; overflow: hidden; }
+.smuzhky__stovp i { display: block; width: 100%; background: var(--sc-3); border-radius: 3px 3px 0 0; }
+.vys-0 { height: 0%; } .vys-1 { height: 5%; } .vys-2 { height: 10%; } .vys-3 { height: 15%; } .vys-4 { height: 20%; } .vys-5 { height: 25%; } .vys-6 { height: 30%; } .vys-7 { height: 35%; } .vys-8 { height: 40%; } .vys-9 { height: 45%; } .vys-10 { height: 50%; } .vys-11 { height: 55%; } .vys-12 { height: 60%; } .vys-13 { height: 65%; } .vys-14 { height: 70%; } .vys-15 { height: 75%; } .vys-16 { height: 80%; } .vys-17 { height: 85%; } .vys-18 { height: 90%; } .vys-19 { height: 95%; } .vys-20 { height: 100%; }
+.smuzhky__p { font-size: 11px; color: var(--muted); }
+.spysok { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 15px; }
+.posylannia { margin: 0; line-height: 26px; }
+.rayony-sp { margin: 0; padding: 0; list-style: none; columns: 2; column-gap: 24px; font-size: 15px; line-height: 28px; }
+@media (max-width: 640px) {
+  .storinka { padding: 16px 16px 40px; gap: 22px; }
+  .zaholovok h1 { font-size: 28px; line-height: 34px; }
+  .holovne li { font-size: 17px; line-height: 24px; }
+  .rz { grid-template-columns: 1fr; grid-template-areas: "n" "r" "g" "d"; }
+  .pole { grid-template-columns: 1fr; gap: 2px; }
+  .vydy li { grid-template-columns: 1fr 70px 44px; }
+  .rayony-sp { columns: 1; }
+}
