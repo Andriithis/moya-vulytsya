@@ -64,9 +64,19 @@ RIVNI_MISIATSI_OKREMO = (8, 9)   # Т-12: місяці цих рівнів — �
 # MV-32: безкоштовно — останні 3 роки; старші — у підписці (сірі стовпчики з замком, без чисел).
 PERIOD_VIDKRYTYI = f'{D.VIDKRYTI_ROKY[0]}–{D.VIDKRYTI_ROKY[-1]}'
 # Роки «у підписці» — лише ті, що є в карті підписника (D.PIDPYSKA_VID, ZAVDANNYA-174): один рік — без тире.
-PERIOD_ZAMKNENYI = (str(D.STARI_ROKY[0]) if len(D.STARI_ROKY) == 1 else f'{D.STARI_ROKY[0]}–{D.STARI_ROKY[-1]}')
-# Усі роки підписки (замкнені + відкриті) — підпис замкненої кнопки фільтра карти.
-PERIOD_PIDPYSKY = f'{(D.STARI_ROKY or D.VIDKRYTI_ROKY)[0]}–{D.VIDKRYTI_ROKY[-1]}'
+# Усі роки підписки (замкнені + відкриті) — підпис замкненої кнопки фільтра карти. MV-180 (ZAVDANNYA-195): перший рік —
+# з випуску, тож підписи перераховуються, коли D.vstanovyty_pidpysku_vid його поставить.
+PERIOD_ZAMKNENYI = PERIOD_PIDPYSKY = ''
+
+
+def periody_pidpysky() -> None:
+    global PERIOD_ZAMKNENYI, PERIOD_PIDPYSKY
+    PERIOD_ZAMKNENYI = ('' if not D.STARI_ROKY else str(D.STARI_ROKY[0]) if len(D.STARI_ROKY) == 1
+                        else f'{D.STARI_ROKY[0]}–{D.STARI_ROKY[-1]}')
+    PERIOD_PIDPYSKY = f'{(D.STARI_ROKY or D.VIDKRYTI_ROKY)[0]}–{D.VIDKRYTI_ROKY[-1]}'
+
+
+periody_pidpysky()
 VYSOTA_ZAMKNENOHO = 36
 ZAMOK_SVG = ('<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" '
              'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect>'
@@ -839,8 +849,14 @@ def soty_geojson(dn: D.Dani, riven: int) -> dict:
         pik = D.hodyna_pik(s['hodyny'])
         if pik:
             vl['h'] = pik
-        if s['problemy']:
-            vl['p'] = [f'{n} ({st})' if st else n for n, st in s['problemy'][:3]]
+        # p — чинні проблеми («триває», «повернулась», старий формат), pz — згаслі й «дані змінились»: окремо й інакше
+        # підписані (ZAVDANNYA-195, MV-195)
+        chynni = [f'{n} ({st})' if st else n for n, st, ch in s['problemy'] if ch][:3]
+        zhasli = [f'{n} ({st})' if st else n for n, st, ch in s['problemy'] if not ch][:3]
+        if chynni:
+            vl['p'] = chynni
+        if zhasli:
+            vl['pz'] = zhasli
         tsili = {}
         for h, lich in sorted(s['tsili'].items()):
             top = [[nazva, n] for nazva, n in sorted(lich.items(), key=lambda x: (-x[1], x[0])) if n >= 5][:2]
@@ -1121,9 +1137,10 @@ def zibraty_ihry(dn: D.Dani, vykhid: Path, koloda: Path | None, baza: Path | Non
             raise SystemExit(f'Справа детектива не проходить перевірку: {pomylka}') from pomylka
         spravy.append(DT.dlia_saitu(s))
     zapysaty(tsil / 'detektyv.json', json.dumps({'spravy': spravy}, ensure_ascii=False, separators=(',', ':')))
-    if spravy:   # ZAVDANNYA-176: після останнього тижня картки «Детектива» немає — кажемо вголос, до якого дня є справи
+    if spravy:   # ZAVDANNYA-195: після останнього тижня гра показує минулу справу з «нова справа скоро» — кажемо, до якого дня є нові
         ost = max(datetime.date.fromisoformat(x['tyzhden']) for x in spravy) + datetime.timedelta(days=6)
-        print(f'Детектив тижня: справ {len(spravy)}, остання — до {ost.isoformat()}; далі картку гри сховано, доки не буде нової справи')
+        print(f'Детектив тижня: справ {len(spravy)}, остання — до {ost.isoformat()}; далі — минула справа й «нова справа скоро», '
+              f'доки не буде нової справи (пише ПК, dani-edrsr/src/detektyv_spravy.py)')
     IHRY_DANI['spravy'] = '/ihry/detektyv.json'
     kv = json.loads((DZHERELO / 'ihry' / 'kvalifikuy.json').read_text(encoding='utf-8'))
     for s in kv['spravy']:

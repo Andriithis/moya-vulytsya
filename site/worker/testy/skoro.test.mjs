@@ -206,18 +206,12 @@ test('LiqPay: пісочниця (sandbox = 1) лише з LIQPAY_SANDBOX = tak'
   assert.equal((await dani({ ...env, LIQPAY_SANDBOX: 'tak' })).sandbox, '1');
 });
 
-test('оплату ввімкнено — «Судова практика» без даних генератора (ZAVDANNYA-150, п. 11) — «Скоро», не оплата', async () => {
+test('оплату ввімкнено — «Судова практика» з даними Release 21.11 (ZAVDANNYA-195) продається: форма замовлення, не «Скоро»', async () => {
   const env = seredovyshche(PRODAZH);
   for (const tovar of ['spdovidka', 'spyurist']) {
-    assert.ok(!TS.prodaietsia.includes(tovar), `${tovar}: не продається, доки немає генератора й файла даних`);
+    assert.ok(TS.prodaietsia.includes(tovar), `${tovar}: дані генератора є — продається`);
     const { text } = await zapyt(env, 'GET', `/oplata/?tovar=${tovar}&dzherelo=sp`);
-    assert.match(text, /action="\/api\/skoro"/, tovar);
-    const z = await zapyt(env, 'POST', '/api/zamovlennia', { forma: { tovar, stattia: 'kupap-130', poshta: 'a@b.ua', zghoda: 'tak', odrazu: 'tak', ne_dopomoga: 'tak' } });
-    assert.equal(z.r.status, 400, `${tovar}: замовлення без даних не створюється`);
+    assert.doesNotMatch(text, /action="\/api\/skoro"/, tovar);
   }
-  assert.match((await zapyt(env, 'GET', '/oplata/?tovar=sudova&dzherelo=sp')).text, /action="\/api\/skoro"/);
   assert.match((await zapyt(env, 'GET', '/oplata/?tovar=dovidka&budynok=/budynok/zhylianska/5/')).text, /action="\/api\/zamovlennia"/);
-  const v = await zapyt(env, 'POST', '/api/skoro', { forma: { tovar: 'spyurist', poshta: 'yurist@b.ua', zghoda: 'tak' } });
-  assert.equal(v.r.status, 303);
-  assert.equal(sql(env, 'SELECT tovar FROM skoro')[0].tovar, 'spyurist');
 });

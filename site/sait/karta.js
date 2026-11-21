@@ -879,12 +879,13 @@
         var nas = AKTYVNI.nas && chysloG(p, 'nas') > 0 ? '<div class="nas"><span>' + esc(NAZVA_HRUPY.nas) + '</span><b>' + chyslo(chysloG(p, 'nas')) + '</b></div>' : '';
         var pik = p.h ? '<div class="pik"><b>Пік: ' + esc(p.h.replace(/ (\d)/, ', $1')) + ' год</b><span>за ' + nazvaPeriodu() + ', де відомий час</span></div>'
           : '<div class="pik"><span>Мало даних про час</span></div>';
-        var povt = masyv(p.p);
+        var povt = masyv(p.p), zhasli = masyv(p.pz);   // pz — згаслі проблеми, окремим розділом (ZAVDANNYA-195)
         tilo = '<div class="k-chyslo"><div class="velyke">' + chyslo(n) + '</div><div class="pid">' + slovo(n, ['подія', 'події', 'подій']) + ' за ' + nazvaPeriodu() +
           (filtr ? ' · обрані види' : '') + '<br><span class="por">' + porivnyannya(n, G) + '</span></div></div>' +
           '<section class="blok"><h3>Найбільше тут</h3>' + top.map(function (x) { return '<div class="hr"><span>' + esc(x[1]) + '</span><b>' + chyslo(x[0]) + '</b></div>'; }).join('') + nas + '</section>' +
           '<section class="blok"><h3>За роками · усі види</h3>' + stovpchyky(p) + pik + '</section>' +
-          (povt.length ? '<section class="blok"><h3>Повторюється тут</h3><ul class="povt">' + povt.slice(0, 4).map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></section>' : '');
+          (povt.length ? '<section class="blok"><h3>Повторюється тут</h3><ul class="povt">' + povt.slice(0, 4).map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></section>' : '') +
+          (zhasli.length ? '<section class="blok"><h3>Повторювалось раніше</h3><ul class="povt povt--zhasla">' + zhasli.slice(0, 4).map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></section>' : '');
       }
       if (vul.length) {
         tilo += '<section class="blok"><h3>Вулиці в соті</h3><p class="k-vulytsi">' + vul.map(function (v) {

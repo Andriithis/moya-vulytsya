@@ -417,6 +417,47 @@ class SudovaPraktyka135(unittest.TestCase):
             self.assertEqual(st['stattia'], 'ст.130 КУпАП')
             self.assertFalse(json.loads((r / '2026-11-19' / 'kk-185.json').read_text(encoding='utf-8'))['strok'])
 
+    def test_vypusk_z_release_xz(self):
+        """ZAVDANNYA-195: з 21.11 у Release лише .db.xz — видавач і лист «Стежу» беруть вузький, розпаковують і перевіряють,
+        що це база випуску; старий events-*.db — теж; немає нічого чи не база — зупинка, без «готового» файла."""
+        import lzma, sqlite3, tempfile
+        sys.path.insert(0, str(KORIN / 'site' / 'prodazh'))
+        import vypusk_z_release as VR
+        with tempfile.TemporaryDirectory() as t:
+            t = Path(t)
+            def baza(f, versiia):
+                c = sqlite3.connect(f); c.execute('CREATE TABLE release (versiia TEXT)')
+                c.execute('INSERT INTO release VALUES (?)', (versiia,)); c.commit(); c.close()
+            baza(t / 'v.db', 'vuzkyi'); baza(t / 'p.db', 'povnyi')
+            rel = t / 'rel'; rel.mkdir()
+            for src, nazva in (('v.db', 'vuzkyi-events-2026-11-21.db.xz'), ('p.db', 'events-2026-11-21.db.xz')):
+                with open(t / src, 'rb') as f, lzma.open(rel / nazva, 'wb') as g:
+                    g.write(f.read())
+            for argv, treba in (([], 'vuzkyi'), (['--povnyi'], 'povnyi')):
+                self.assertEqual(VR.main([str(rel), str(t / 'out.db'), *argv]), 0)
+                c = sqlite3.connect(t / 'out.db')
+                self.assertEqual(c.execute('SELECT versiia FROM release').fetchone()[0], treba)
+                c.close()
+            stara = t / 'stara'; stara.mkdir()
+            (t / 'p.db').rename(stara / 'events-2026-11-08.db')
+            self.assertEqual(VR.vybraty(stara).name, 'events-2026-11-08.db')
+            pusta = t / 'pusta'; pusta.mkdir()
+            self.assertEqual(VR.main([str(pusta), str(t / 'nema.db')]), 1)
+            (pusta / 'events-2026-11-21.db.xz').write_bytes(lzma.compress(b'not a database' * 100))
+            self.assertEqual(VR.main([str(pusta), str(t / 'nema.db')]), 1)
+            self.assertFalse((t / 'nema.db').exists() or (t / 'nema.db.chast').exists())
+
+    def test_workflows_na_vypusku_21_11(self):
+        """ZAVDANNYA-195: видавач і лист — .db.xz через vypusk_z_release.py; перший лист «Стежу» — без «нового»."""
+        for f in ('vydavach.yml', 'lyst_stezhu.yml'):
+            t = (KORIN / 'site' / 'prodazh' / 'github' / f).read_text(encoding='utf-8')
+            self.assertIn("'vuzkyi-events-*.db.xz'", t, f)
+            self.assertIn('vypusk_z_release.py', t, f)
+            self.assertNotIn("--pattern 'events-*.db' --output", t, f)
+        t = (KORIN / 'site' / 'prodazh' / 'github' / 'lyst_stezhu.yml').read_text(encoding='utf-8')
+        self.assertIn('POR="--pershyi"', t)
+        self.assertIn('!= "${{ vars.VYPUSK }}"', t)
+
     def test_workflow_bere_dani_sudovoi_praktyky(self):
         t = (KORIN / 'site' / 'prodazh' / 'github' / 'vydavach.yml').read_text(encoding='utf-8')
         self.assertIn('SP_DANI:', t)

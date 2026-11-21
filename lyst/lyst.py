@@ -110,6 +110,7 @@ class Lyst:
     vid: str
     do: str
     rozdily: list[Rozdil]
+    pershyi: bool = False       # перший лист на новому випуску: «нового» не рахуємо (ZAVDANNYA-195)
 
     @property
     def tykhyi(self) -> bool:
@@ -134,8 +135,9 @@ def rozdil(strichka: dict, a: Adresa, platno: bool, r_m: int = R_M) -> Rozdil:
             for h, n in b['hrupy'].items():
                 skarhy[h] = skarhy.get(h, 0) + n
     skarhy = dict(sorted(skarhy.items(), key=lambda x: (-x[1], x[0])))
+    # ZAVDANNYA-195 (MV-195): згасла проблема (`chynna: false`) — не «місце, де повторюються»; у листі — лише чинні
     pr = sorted(((metriv(a.lat, a.lon, p['lat'], p['lon']), p['id'], p) for p in strichka.get('problemy', [])
-                 if poruch(p)), key=lambda x: x[:2])
+                 if poruch(p) and p.get('chynna', True)), key=lambda x: x[:2])
     problema = dict(pr[0][2], vidstan=round(pr[0][0] / 10) * 10) if pr else None
     return Rozdil(a, podii, skarhy, budynkiv, problema)
 
@@ -146,7 +148,12 @@ def zibraty(strichka: dict, p: Pidpysnyk, r_m: int = R_M) -> Lyst | None:
     if not adresy:
         return None
     t = strichka['tyzhden']
-    l = Lyst(p.id, p.platno, t['vid'], t['do'], [rozdil(strichka, a, p.platno, r_m) for a in adresy])
+    pershyi = bool(strichka.get('pershyi_lyst'))
+    rr = [rozdil(strichka, a, p.platno, r_m) for a in adresy]
+    if pershyi:                 # перший лист на новому випуску (ZAVDANNYA-195): жодна подія не «нова», навіть якщо стрічка інша
+        for r in rr:
+            r.podii = []
+    l = Lyst(p.id, p.platno, t['vid'], t['do'], rr, pershyi)
     if l.tykhyi and not (p.platno and p.tykhyi_lyst):
         return None
     return l
@@ -249,9 +256,13 @@ def tema(l: Lyst) -> str:
     return f'Нове біля дому · {tyzhden(l)}: ' + ' і '.join(chastyny)
 
 
+PERSHYI = ('Це перший лист «Стежу» на оновлених даних. Нові події з рішень судів рахуємо від наступного оновлення: '
+           'тоді в листі буде те, що з’явилося в даних після цього. Цього разу — звернення до 1551 за місяць.')
+
+
 def tekst(l: Lyst, posylannia: dict) -> str:
     """Простий текст листа (друга частина листа поруч із HTML). posylannia: stezhu, vidpyska."""
-    r_ = [HASLO, '', tema(l), '']
+    r_ = [HASLO, '', tema(l), ''] + ([PERSHYI, ''] if l.pershyi else [])
     if l.tykhyi:
         r_ += [f'{slova_periodu(l)["tsoho"]} в радіусі {R_M}{NBSP}м від ваших адрес нових рішень судів і звернень до 1551 у даних немає.', '']
         r_ += [f'— {zaholovok_adresy(r.adresa)}' for r in l.rozdily] + ['']
@@ -299,6 +310,8 @@ def html_lysta(l: Lyst, posylannia: dict, zrazok: str = '') -> str:
     b.append(f'<p style="margin:0 0 4px;font-size:13px;line-height:18px;font-weight:600;color:{K["accent"]}">Моя вулиця</p>'
              f'<p style="margin:0 0 16px;font-size:13px;color:{K["muted"]}">що відбувається під боком</p>')
     b.append(f'<h1 style="margin:0 0 16px;font-size:24px;line-height:30px;font-weight:700;color:{K["ink"]}">{_e(tema(l))}</h1>')
+    if l.pershyi:
+        b.append(f'<p style="{st_p}">{_e(PERSHYI)}</p>')
     if l.tykhyi:
         b.append(f'<div style="background:{K["surface"]};border:1px solid {K["line"]};border-radius:16px;padding:20px;margin:0 0 16px">'
                  f'<p style="{st_p}">{slova_periodu(l)["tsoho"]} в радіусі {R_M}{NBSP}м від ваших адрес нових рішень судів і звернень до 1551 '

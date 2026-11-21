@@ -230,6 +230,10 @@ class Zapusk(unittest.TestCase):
             with self.assertRaisesRegex(V.Zupynka, 'MV_LYST_STEZHU=tak'):
                 V.zminni(suho=True)
             os.environ.update(MV_LYST_STEZHU='tak')
+            # ZAVDANNYA-195: «Судова практика» в продажу — лише коли видавач знає тег її даних
+            with self.assertRaisesRegex(V.Zupynka, 'MV_SP_VYPUSK'):
+                V.zminni(suho=True)
+            os.environ.update(MV_SP_VYPUSK='vypusk-kyiv-2026-11-21')
             self.assertEqual(V.zminni(suho=True)['oplata'], 'tak')
             os.environ.update(MV_OPLATA='skoro', MV_DOMEN='https://evil.test/шлях')
             with self.assertRaisesRegex(V.Zupynka, 'MV_DOMEN'):

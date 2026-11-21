@@ -91,6 +91,12 @@ def zminni(suho: bool) -> dict:
     if z['oplata'] == 'tak' and e.get('MV_LYST_STEZHU', '').strip() != 'tak':
         pomylky.append('MV_OPLATA=tak: підписка обіцяє щомісячний лист «Стежу» — налаштуйте запуск site/prodazh/lyst_stezhu.py '
                        '(шаблон site/prodazh/github/lyst_stezhu.yml) і MV_LYST_STEZHU=tak')
+    # ZAVDANNYA-195: «Судова практика» в продажу (tsiny.BEZ_DANYKH порожній) — видавач має знати тег з sp-dovidka-*.json
+    import tsiny as T
+    if z['oplata'] == 'tak' and set(T.SUDOVA) & set(T.prodaietsia()) and not e.get('MV_SP_VYPUSK', '').strip():
+        pomylky.append('MV_OPLATA=tak: «Судова практика» в продажу — задайте у видавачі SP_VYPUSK (тег Release з sp-dovidka-*.json, '
+                       'напр. vypusk-kyiv-2026-11-21), викладіть R2 підписки юриста (site/prodazh/praktyka_r2.py) і тут MV_SP_VYPUSK '
+                       '— той самий тег')
     if z['poshta'] not in ('zahlushka', 'http-json'):
         pomylky.append('MV_POSHTA_SERVIS: zahlushka або http-json')
     if z['domen'] and not DOMEN.match(z['domen']):

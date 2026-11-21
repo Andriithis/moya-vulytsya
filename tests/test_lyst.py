@@ -253,6 +253,35 @@ class LystStezhu(unittest.TestCase):
         self.assertNotIn('один дотик', l['tekst'], 'вимикається кнопкою в кабінеті, не одним дотиком')
         self.assertEqual(L.vady_tekstu(l['tekst']), [])
 
+    def test_pershyi_lyst_bez_novoho(self):
+        """ZAVDANNYA-195: перший лист на новому випуску (`nove_tyzhnia.py --pershyi`) — жодна подія не «нова» (інакше проти
+        пробного 08.11 «новим» став би весь Київ), лист каже це словами; скарги 1551 за місяць — як завжди."""
+        import copy
+        t = copy.deepcopy(self.strichka)
+        t['pershyi_lyst'] = True
+        self.assertTrue(t['podii'], 'у зразку стрічки мають бути події — інакше перевірка порожня')
+        vyhid, _ = self.LS.lysty(t, [{'id': 'k4', 'adresy': [{'budynok': '/budynok/zrazkova/5/', 'adresa': 'вулиця Зразкова, 5'}]}],
+                                 self.indeks, SAIT)
+        l = vyhid[0]
+        self.assertIn('перший лист «Стежу»', l['tekst'])
+        self.assertNotIn('Події з рішень судів —', l['tekst'])
+        self.assertNotIn('подій', l['tema'])
+        self.assertEqual(L.vady_tekstu(l['tekst']), [])
+        lyst_ = L.zibraty(t, L.Pidpysnyk('k4', 'pidpyska', [L.Adresa('вулиця Зразкова, 5', Z.LA, Z.LO)]))
+        self.assertIn('перший лист', L.html_lysta(lyst_, self.LS.posylannia(SAIT)))
+
+    def test_zhasla_problema_ne_povtoriuietsia(self):
+        """ZAVDANNYA-195 (MV-195): згасла проблема в листі не стає «місцем, де повторюються»."""
+        import copy
+        t = copy.deepcopy(self.strichka)
+        t['problemy'] = [{'id': 'p1', 'hrupa': 'dtp', 'lat': Z.LA, 'lon': Z.LO, 'podii': 9, 'nazva': '', 'stan': 'згасла',
+                          'roky': '2017–2019', 'chynna': False}]
+        l = L.zibraty(t, L.Pidpysnyk('k5', 'pidpyska', [L.Adresa('вулиця Зразкова, 5', Z.LA, Z.LO)]))
+        self.assertIsNone(l.rozdily[0].problema)
+        t['problemy'][0]['chynna'] = True
+        l = L.zibraty(t, L.Pidpysnyk('k5', 'pidpyska', [L.Adresa('вулиця Зразкова, 5', Z.LA, Z.LO)]))
+        self.assertIsNotNone(l.rozdily[0].problema)
+
     def test_tykhyi_misiats(self):
         t = Z.strichka(tykha=True)
         t['tyzhden'] = {'vid': '2026-10-17', 'do': '2026-11-16'}

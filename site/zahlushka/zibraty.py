@@ -144,6 +144,8 @@ def zibraty(vykhid: Path, adresa: str, klyuch: str, zapovnennya: dict[str, str],
                 tekst = tekst.replace(f'[{mistse}]', html.escape(znachennya))
         for nazva_tsiny, tsina in TSINY.items():
             tekst = tekst.replace('{{tsina.' + nazva_tsiny + '}}', T.suma(tsina))
+        # MV-180 (ZAVDANNYA-195): з якого року карта підписника — одне число site/tsiny.py, не стале в тексті оферти
+        tekst = tekst.replace('{{pidpyska.vid}}', str(T.PIDPYSKA_VID_TYPOVE))   # як у сервера продажу (tsiny.js)
         zalyshky = sorted(set(ZMINNA.findall(tekst)))
         if zalyshky:
             raise PomylkaZbyrannya(f'{nazva}: невідомі змінні {zalyshky}')

@@ -168,9 +168,13 @@ class Yadro(unittest.TestCase):
         self.assertEqual(r[0]['sprava']['tyzhden'], '2026-11-16')
         self.assertFalse(r[0]['demo'])
         self.assertEqual(r[1]['sprava']['tyzhden'], '2026-11-23')
-        # ZAVDANNYA-176: після останньої справи — нічого (не коло зразків), до першої — перша як зразок
-        self.assertIsNone(r[2])
-        self.assertIsNone(r[4], '11.12 — не «Справа сірого кота» вдруге, вже розв’язана')
+        # ZAVDANNYA-176: не коло зразків, до першої — перша як зразок. ZAVDANNYA-195: після останньої — гра не зникає:
+        # остання справа як «минула» (arkhiv), не «Справа сірого кота» вдруге
+        for x in (r[2], r[4]):
+            self.assertTrue(x['arkhiv'])
+            self.assertEqual(x['sprava']['tyzhden'], '2026-11-23')
+            self.assertFalse(x['demo'])
+        self.assertNotIn('arkhiv', r[0])
         self.assertTrue(r[3]['demo'])
         self.assertEqual(r[5], 'mv-ihry-detektyv-zrazok-1-sirvi-kit@2026-11-16', 'прогрес — за справою й тижнем')
 

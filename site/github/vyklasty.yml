@@ -47,6 +47,10 @@ jobs:
       MV_POSHTA_VID: ${{ vars.MV_POSHTA_VID }}
       MV_POSHTA_URL: ${{ vars.MV_POSHTA_URL }}
       MV_CF_ANALITYKA: ${{ vars.MV_CF_ANALITYKA }}
+      # умови продажу (site/vyklasty.py): карта підписника, лист «Стежу», дані «Судової практики» (ZAVDANNYA-195)
+      MV_KARTA_R2: ${{ vars.MV_KARTA_R2 }}
+      MV_LYST_STEZHU: ${{ vars.MV_LYST_STEZHU }}
+      MV_SP_VYPUSK: ${{ vars.MV_SP_VYPUSK }}
     steps:
       - uses: actions/checkout@v4
         with:

@@ -116,12 +116,13 @@ def stvoryty_bazu(shlyakh: Path) -> None:
         con.execute('INSERT INTO location VALUES (?,?,?,?,?,?)', (n, 'вул. Васильківська, 2', 'house', 50.3960, 30.5100, 'osm'))
         con.execute('INSERT INTO event VALUES (?,?,?,?,?,?,?,?,?,?,?)',
                     (f'{n}-1', str(n), 1, '2025-05-05', None, 'НАС', st, 'ОСОБА_8 вдома', chut, '11200:4357', n))
-    # Старші роки (MV-32): 7 подій 2023 року і 1 без дати на Хрещатику, 6 подій 2018 року на вулиці, де нових немає.
+    # Старші роки (MV-32): 7 подій 2023 року і 1 без дати на Хрещатику, 3 події 2018 року на вулиці, де нових немає.
     # На сайті — лише прапорець «у підписці», жодного числа (ZAVDANNYA-46); «у підписці» — лише роки карти підписника
-    # (від 2023, ZAVDANNYA-174): події 2018 року замка не дають.
+    # (ZAVDANNYA-174), перший рік — з випуску (MV-180, ZAVDANNYA-195): 2023 (7 подій ≥ 1/10 від 54 за 2025), а 3 події
+    # 2018 року — менше десятої частини, тож рік не береться і замка не дають.
     for vul, lat, lon, data in ([('вул. Хрещатик', 50.4476, 30.5231, f'2023-05-0{1 + j}') for j in range(7)]
                                 + [('вул. Хрещатик', 50.4476, 30.5231, None)]
-                                + [('вул. Інститутська', 50.4460, 30.5300, f'2018-06-0{1 + j}') for j in range(6)]):
+                                + [('вул. Інститутська', 50.4460, 30.5300, f'2018-06-0{1 + j}') for j in range(3)]):
         n += 1
         con.execute('INSERT INTO document VALUES (?,?,?,?,?,?,?)',
                     (str(n), 'суд', data or '2020-01-01', 'постанова', '41080', f'{n}/19', f'https://reyestr.court.gov.ua/Review/{n}'))
@@ -129,6 +130,19 @@ def stvoryty_bazu(shlyakh: Path) -> None:
         con.execute('INSERT INTO event VALUES (?,?,?,?,?,?,?,?,?,?,?)',
                     (f'{n}-1', str(n), 1, data, '12:30', 'ДТП', 'ст.124 КУпАП · ДТП з пошкодженням майна',
                      FABULA_CHYSTA.format(d='01.05.2023', b='7', v=vul), 0, '11216:4344', n))
+    # ZAVDANNYA-195 (MV-195): проблеми у форматі 188 біля Хрещатика — чинна, згасла й домашнє насильство в будинку
+    # (MV-194: лише в платному — на безкоштовній карті її немає)
+    for pid, mekh, mash in (('ші-tryvaie', 'Зачіпають авто, здаючи назад',
+                             {'status_kartyny': 'триває', 'roky_kartyny': '2024–2026'}),
+                            ('ші-zhasla', 'Б\'ються біля кіоску вночі',
+                             {'status_kartyny': 'згасла', 'roky_kartyny': '2017–2019',
+                              'poznachka_politsiia': 'виявлено переважно перевірками поліції'}),
+                            ('ші-domashnie', 'Сварки й побиття в будинку',
+                             {'status_kartyny': 'триває', 'roky_kartyny': '2023–2026',
+                              'pokaz_domashnie': 'приватний будинок — лише в платному звіті'})):
+        con.execute('INSERT INTO problem VALUES (?,?,?,?,?,?,?,?,?,?)',
+                    (pid, 'точка', 'ГП' if pid != 'ші-tryvaie' else 'ДТП', mekh, 'хронічна', 50.4476, 30.5231, 6,
+                     json.dumps({'stan': 'тут 6 · у схожих 1,1'}, ensure_ascii=False), json.dumps(mash, ensure_ascii=False)))
     con.execute("INSERT INTO release VALUES ('2026-11-08', ?, 'x')", (n,))
     con.commit()
     con.close()
@@ -689,13 +703,38 @@ class Sait(unittest.TestCase):
         self.assertNotIn(ins, za_id)
         vsogo8 = sum(f['properties']['all3'] for f in
                      json.loads((self.sait / 'karta' / 'soty-8.json').read_text(encoding='utf-8'))['soty']['features'])
-        self.assertEqual(vsogo8, 54)        # 48 відкритих + 3 домашніх + 1 домашнє з точкою + статевий і щодо дитини; старих 14 — ні
+        self.assertEqual(vsogo8, 54)        # 48 відкритих + 3 домашніх + 1 домашнє з точкою + статевий і щодо дитини; старих 11 — ні
+        # ZAVDANNYA-195 (MV-195, MV-213): чинна проблема — у «p» зі станом, згасла — окремо в «pz», інакше підписана;
+        # проблема домашнього насильства в будинку на безкоштовну карту не йде
+        sota = za_id[kh]
+        self.assertEqual(sota.get('p'), ['зачіпають авто, здаючи назад (триває, 2024–2026)'])
+        self.assertEqual(sota.get('pz'), ["б'ються біля кіоску вночі (було в 2017–2019, після того — ні)"])
+        self.assertNotIn('Сварки', json.dumps(d9, ensure_ascii=False))
+        for f in self.nashi_storinky():      # і жодна безкоштовна сторінка (будинок, вулиця, район) її не називає
+            self.assertNotIn('Сварки й побиття', f.read_text(encoding='utf-8'), str(f.relative_to(self.sait)))
 
 
     # ---------------------------------------------------------------- ZAVDANNYA-85: будинки, райони, вітрини
 
     def budynok(self, shl):
         return (self.sait / 'budynok' / shl / 'index.html').read_text(encoding='utf-8')
+
+    def test_pershyi_rik_z_vypusku(self):
+        """MV-180 (ZAVDANNYA-195): перший рік карти підписника — з даних випуску: на штучній базі 2023 (3 події 2018 року —
+        менше десятої частини), на повному Києві — 2016 (події 2015 року в рішеннях 2016-го року не дають)."""
+        if self.spravzhnii:
+            self.skipTest('лише для штучної бази')
+        self.assertEqual(D.PIDPYSKA_VID, 2023)
+        self.assertEqual(D.STARI_ROKY, [2023])
+        con = sqlite3.connect(':memory:')
+        con.executescript('CREATE TABLE event (data_podii TEXT); CREATE TABLE release (versiia TEXT);')
+        con.execute("INSERT INTO release VALUES ('2026-11-21')")
+        con.executemany('INSERT INTO event VALUES (?)', [(f'{r}-05-01',) for r, n in
+                        ((2014, 3), (2015, 40), (2016, 90), (2019, 100), (2025, 100)) for _ in range(n)]
+                        + [('2027-01-01',)] * 500)       # після дати випуску — не рахується
+        self.assertEqual(D.pershyi_rik_vypusku(con), 2016)
+        con.execute('DELETE FROM event')
+        self.assertEqual(D.pershyi_rik_vypusku(con), __import__('tsiny').PIDPYSKA_VID)
 
     def test_roky_lyshe_z_karty_pidpysnyka(self):
         """ZAVDANNYA-174 (ZVIT-166, №4): «у підписці» — лише роки, які є в карті підписника (dani-edrsr S-Д.8: від 2023);
@@ -709,7 +748,7 @@ class Sait(unittest.TestCase):
         self.assertIn(f'з {T.PIDPYSKA_VID} року', daie)
         self.assertNotIn('усі роки', daie)
         oferta = (KORIN / 'site' / 'zahlushka' / 'oferta.html').read_text(encoding='utf-8')
-        self.assertIn(f'з {T.PIDPYSKA_VID} року', oferta)
+        self.assertIn('з {{pidpyska.vid}} року', oferta)       # MV-180: рік підставляє збирання з site/tsiny.py
         self.assertNotIn('усі роки даних', oferta)
         d = json.loads((self.sait / 'karta' / 'soty-9.json').read_text(encoding='utf-8'))
         self.assertEqual(d['roky'], D.STARI_ROKY + D.VIDKRYTI_ROKY)
@@ -787,7 +826,8 @@ class Sait(unittest.TestCase):
             con.close()
             period = f'{roky[0]}–{roky[1]}' if roky[0] != roky[1] else str(roky[0])
             self.assertIn(f'події за {period} зі стислим описом з рішення', mb)
-            self.assertIn(f'Київ, {period}', (self.sait / 'biznes' / 'index.html').read_text(encoding='utf-8'))
+            # «Для бізнесу» — роки самої копії (ZAVDANNYA-172: числа = копія), не роки повних даних
+            self.assertIn('Київ, 2018–2025', (self.sait / 'biznes' / 'index.html').read_text(encoding='utf-8'))
         for shl in ('miy-budynok', 'biznes'):
             self.assertNotIn('10 років', (self.sait / shl / 'index.html').read_text(encoding='utf-8'), shl)
         con = sqlite3.connect(':memory:')
