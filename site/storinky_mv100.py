@@ -386,7 +386,7 @@ def storinka_budynku(b: dict, bud: Budynky, adresa_saitu: str, susidni: list, pe
                   f'цього будинку немає; за {Z.PERIOD_ZAMKNENYI} — є, у підписці.</p></section>')
 
     # ZVIT-165, п. 7: без другого опису тієї самої довідки; одна головна кнопка. Гасло лінії над блоком лишається (MV-106).
-    ch.append(f'''<section class="rozdil">{haslo_budynku()}<h2>Довідка про будинок</h2>
+    ch.append(f'''<section class="rozdil rozdil--kupyty">{haslo_budynku()}<h2>Довідка про будинок</h2>
 {urivok_dovidky(b, bud.r_susidy)}
 {knopky_dovidky(b['url'], 'budynok', b['adresa'], odna=True)}
 <p class="rozdil__pidpys">Повний звіт «перед купівлею» — ще й {podii_zvitu(period_podii)}, рік за роком, що повторюється на вулиці

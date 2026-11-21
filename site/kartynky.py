@@ -1,9 +1,9 @@
 """Картинки для поширення в соцмережах (Open Graph, `og:image`) — ZAVDANNYA-88, п. 3.
 
 Лише числа: назва місця (адреса будинку, вулиця, вітрина) і одне-два числа з підписом. Жодних описів подій, слів про
-небезпеку чи оцінок (ROLYKY-I-SOTSMEREZHI, розд. 5, п. 2). Колір — бренд (індиго), а не «страх».
+небезпеку чи оцінок (ROLYKY-I-SOTSMEREZHI, розд. 5, п. 2). Колір — тема сайту (MV-219), а не «страх».
 
-Розмір 1200 × 630 — рекомендований для Facebook, Telegram, X, LinkedIn. Шрифт — IBM Plex Sans з сайту (woff2 читає
+Розмір 1200 × 630 — рекомендований для Facebook, Telegram, X, LinkedIn. Шрифт тексту теми з сайту (woff2 читає
 Pillow): кирилиця й латиниця — окремі файли, тож текст малюється відрізками за діапазонами з `sait.css`.
 """
 from __future__ import annotations
@@ -17,6 +17,7 @@ from PIL import Image, ImageDraw, ImageFont
 SHYRYNA, VYSOTA = 1200, 630
 SHRYFTY = Path(__file__).resolve().parent / 'sait' / 'shryfty'
 POLE = 72
+SHRYFT = 'ibm-plex-sans'     # родина шрифту тексту теми — ставить збирач (zibraty_sait.vstanovyty_temu, MV-219)
 
 
 def _kyrylytsia(ch: str) -> bool:
@@ -24,9 +25,13 @@ def _kyrylytsia(ch: str) -> bool:
     return 0x0400 <= k <= 0x045F or k in (0x0301, 0x0490, 0x0491, 0x04B0, 0x04B1, 0x2116)
 
 
-@lru_cache(maxsize=None)
 def _shryft(nabir: str, vaha: int, rozmir: int) -> ImageFont.FreeTypeFont:
-    return ImageFont.truetype(str(SHRYFTY / f'ibm-plex-sans-{nabir}-{vaha}-normal.woff2'), rozmir)
+    return _shryft_r(SHRYFT, nabir, vaha, rozmir)
+
+
+@lru_cache(maxsize=None)
+def _shryft_r(rodyna: str, nabir: str, vaha: int, rozmir: int) -> ImageFont.FreeTypeFont:
+    return ImageFont.truetype(str(SHRYFTY / f'{rodyna}-{nabir}-{vaha}-normal.woff2'), rozmir)
 
 
 def _vidrizky(tekst: str):

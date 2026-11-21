@@ -7,7 +7,7 @@
 .sp-smuha { height: 12px; background: var(--surface-tint); border-radius: var(--radius-pill); overflow: hidden; }
 .sp-smuha i { display: block; height: 100%; background: var(--accent); border-radius: var(--radius-pill); }
 .sp-roky { grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); }
-.sp-tablytsia-ramka { overflow-x: auto; border: 1.5px solid var(--mezha); border-radius: var(--radius-m); background: var(--surface); box-shadow: 0 3px 0 var(--bort); }
+.sp-tablytsia-ramka { overflow-x: auto; border: var(--klav-mezha-w) solid var(--mezha); border-radius: var(--radius-m); background: var(--surface); box-shadow: var(--klav-ten); }
 .sp-tablytsia { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
 .sp-tablytsia th, .sp-tablytsia td { padding: 8px 12px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
 .sp-tablytsia th:first-child { text-align: left; }
@@ -17,8 +17,8 @@
 .sp-tablytsia--zamk td.sp-zamk { color: var(--muted); }
 .sp-filtry { flex-direction: row; flex-wrap: wrap; gap: 12px; }
 .sp-filtry label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; color: var(--muted); }
-.sp-filtry select { font: inherit; font-size: 15px; color: var(--ink); background: var(--surface); border: 1.5px solid var(--mezha);
-  border-radius: var(--radius-m); box-shadow: 0 3px 0 var(--bort); padding: 8px 12px; min-width: 150px; }
+.sp-filtry select { font: inherit; font-size: 15px; color: var(--ink); background: var(--surface); border: var(--klav-mezha-w) solid var(--mezha);
+  border-radius: var(--radius-m); box-shadow: var(--klav-ten); padding: 8px 12px; min-width: 150px; }
 .sp-spysok { margin: 0; padding-left: 20px; max-width: 760px; display: flex; flex-direction: column; gap: 8px; color: var(--ink-2); }
 .sp-faq h3 { margin: 0 0 6px; font-size: 17px; }
 .sp-faq p { margin: 0; color: var(--ink-2); max-width: 760px; }
@@ -34,8 +34,8 @@
 .sp-zast { max-width: 760px; margin: 8px 0 20px; padding: 12px 16px; border: 1.5px solid var(--accent); border-radius: var(--radius-m);
   background: var(--surface); color: var(--ink-2); font-size: 15px; }
 .sp-poshuk__pole { display: flex; flex-direction: column; gap: 6px; max-width: 560px; font-size: 14px; font-weight: 600; color: var(--muted); }
-.sp-poshuk__pole input { font: inherit; font-size: 17px; color: var(--ink); background: var(--surface); border: 1.5px solid var(--mezha);
-  border-radius: var(--radius-m); box-shadow: 0 3px 0 var(--bort); padding: 10px 14px; }
+.sp-poshuk__pole input { font: inherit; font-size: 17px; color: var(--ink); background: var(--surface); border: var(--klav-mezha-w) solid var(--mezha);
+  border-radius: var(--radius-m); box-shadow: var(--klav-ten); padding: 10px 14px; }
 .sp-stattia[hidden], .sp-kodeks[hidden] { display: none; }
 .sp-filtry label, .sp-filtry select { max-width: 100%; }
 /* ZAVDANNYA-172 (ZVIT-169): на телефоні — знак, що таблицю гортають; рамка таблиці з видимим фокусом */

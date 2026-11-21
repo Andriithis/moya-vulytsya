@@ -617,8 +617,11 @@ class Sait(unittest.TestCase):
         self.assertIn('html[data-t="temna"]', css)
         for zm in ('--sc-1', '--sc-5', '--pk-1', '--pk-2', '--vyd', '--karta-park', '--karta-voda'):
             self.assertIn(zm + ':#', css)
-        self.assertIn('font-family: Plex', css)
-        self.assertTrue((self.sait / 'sait' / 'shryfty' / 'OFL-IBM-Plex-Sans.txt').is_file())
+        # шрифти — обраної теми (MV-219): @font-face з її файлами й ліцензією поруч
+        tema = self.zs.dani_temy(self.zs.TEMA)
+        for s in tema['shryfty']:
+            self.assertIn(f"font-family: '{s['simia']}'", css)
+            self.assertTrue((self.sait / 'sait' / 'shryfty' / s['litsenziia']).is_file())
         holovna = (self.sait / 'index.html').read_text(encoding='utf-8')
         for id_ in ('poshuk-karty', 'f3d', 'ftema', 'finfo', 'filtr', 'kartka', 'dzherela'):
             self.assertIn(f'id="{id_}"', holovna)

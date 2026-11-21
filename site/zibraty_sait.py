@@ -1,6 +1,6 @@
 """Збирання сайту «Моя вулиця» з випуску бази (ZAVDANNYA-10, MV-23).
 
-    python site/zibraty_sait.py <events.db> <тека> [--pereimenuvannya CSV] [--mezhi-rayoniv JSON]
+    python site/zibraty_sait.py <events.db> <тека> [--tema spokiyna|indygo] [--pereimenuvannya CSV] [--mezhi-rayoniv JSON]
                                 [--adresa-saitu https://…] [--koloda КОЛОДА]
                                 [--perekazy perekazy.json] [--kandydaty-istorii kandydaty.json]
 
@@ -33,6 +33,7 @@ import datetime
 import functools
 import html
 import json
+import os
 import re
 import shutil
 import sys
@@ -140,12 +141,13 @@ def web_manifest(n: dict) -> str:
     оболонка. Позначки dzherelo=dodatok тут немає: встановлений із браузера сайт — це сайт, не застосунок Google Play."""
     def bez_dodatku(url: str) -> str:
         return re.sub(r'[?&]dzherelo=dodatok$', '', url.replace('?dzherelo=dodatok&', '?').replace('&dzherelo=dodatok', ''))
-    ikona = '/zahlushka/ikony/'
+    ikona = '/sait/ikony/'          # іконки теми (ikonky_temy), MV-219
+    k = kolory_tem()['svitla']
     return json.dumps({
         'id': '/', 'name': n['name'], 'short_name': n['launcherName'], 'lang': 'uk', 'dir': 'ltr',
         'description': 'Що відбувається під боком: скарги мешканців і події з рішень судів — по кожному будинку.',
         'start_url': '/', 'scope': '/', 'display': 'standalone',
-        'background_color': n['backgroundColor'], 'theme_color': n['themeColor'],
+        'background_color': k['ground'], 'theme_color': k['ground'],
         'icons': [{'src': ikona + 'ikona-192.png', 'sizes': '192x192', 'type': 'image/png', 'purpose': 'any'},
                   {'src': ikona + 'ikona-512.png', 'sizes': '512x512', 'type': 'image/png', 'purpose': 'any'},
                   {'src': ikona + 'ikona-maskable-512.png', 'sizes': '512x512', 'type': 'image/png', 'purpose': 'maskable'},
@@ -183,7 +185,7 @@ ZNAK = ('<svg aria-hidden="true" width="26" height="28" viewBox="0 0 26 28"><pat
 
 RODOVYI_RAYONU = {}   # «Голосіївський» → «Голосіївський район»
 
-# ---------------------------------------------------------------- кольори «Індиго й м'ята» (MV-58)
+# ---------------------------------------------------------------- кольори: OKLCH → sRGB (тема indygo — у OKLCH, MV-58)
 
 def oklch_hex(c) -> str:
     """OKLCH [L, C, h] → #RRGGBB (ті самі формули, що й у макеті М7)."""
@@ -208,29 +210,71 @@ def zmishaty(a: str, b: str, k: float) -> str:
     return '#' + ''.join(f'{round(x + (y - x) * k):02X}' for x, y in zip(ra, rb))
 
 
-@functools.lru_cache(maxsize=1)
-def kolory_tem() -> dict:
-    """Кольори обох тем з site/sait/kolory.json (напрям «Індиго й м'ята» макета М7) — уже в sRGB."""
-    dzh = json.loads((DZHERELO / 'sait' / 'kolory.json').read_text(encoding='utf-8'))
+# ---------------------------------------------------------------- теми вигляду (MV-219, ZAVDANNYA-197)
+# Усе, що відрізняє вигляд, — у site/temy/<тема>.json (+ <тема>.css): кольори обох режимів, шрифти, кнопки, соти й
+# підписи карти, іконка. Сторінки беруть лише CSS-змінні. Перемикання — --tema або змінна MV_TEMA; перехід = перезбірка.
+TEMY_TEKA = DZHERELO / 'temy'
+TEMY = ('spokiyna', 'indygo')
+TEMA_ZA_ZAMOVCHUVANNYAM = 'spokiyna'      # Андрій, 21.11.2026: публікуємось на «Спокійній й чистій» (MV-219)
+TEMA = (os.environ.get('MV_TEMA') or TEMA_ZA_ZAMOVCHUVANNYAM).strip()
+
+
+def vstanovyty_temu(tema: str | None) -> str:
+    """Обрати тему для всього збирання (і для kolory_tem() / kolory_css() без аргументу)."""
+    global TEMA
+    t = (tema or os.environ.get('MV_TEMA') or TEMA_ZA_ZAMOVCHUVANNYAM).strip()
+    if t not in TEMY:
+        raise SystemExit(f'невідома тема «{t}»: є {", ".join(TEMY)} (site/temy/)')
+    TEMA = t
+    import kartynky
+    import zastavka
+    kartynky.SHRYFT = dani_temy(t)['shryfty'][0]['fail']
+    zastavka.TEMA = t
+    return t
+
+
+@functools.lru_cache(maxsize=None)
+def dani_temy(tema: str) -> dict:
+    if tema not in TEMY:
+        raise ValueError(f'невідома тема {tema!r}')
+    return json.loads((TEMY_TEKA / f'{tema}.json').read_text(encoding='utf-8'))
+
+
+def _kolir(v):
+    """#RRGGBB лишається як є (великими літерами); OKLCH [L, C, h] → #RRGGBB."""
+    if isinstance(v, str):
+        return v.upper()
+    return oklch_hex(v)
+
+
+@functools.lru_cache(maxsize=None)
+def _kolory_tem(tema: str) -> dict:
     tem = {}
     for t in ('svitla', 'temna'):
-        k = {n: (None if v is None else [oklch_hex(x) for x in v] if isinstance(v[0], list) else oklch_hex(v))
-             for n, v in dzh[t].items()}
-        tem[t] = k
+        tem[t] = {n: (None if v is None else [_kolir(x) for x in v] if isinstance(v, list) and v and not isinstance(v[0], (int, float))
+                      else _kolir(v)) for n, v in dani_temy(tema)['kolory'][t].items()}
     return tem
 
 
-def kolory_css() -> str:
-    """CSS-змінні обох тем. Світла — за замовчуванням; темна — html[data-t="temna"] (ставить sait/tema.js)."""
-    tem = kolory_tem()
-    blok = {}
+def kolory_tem(tema: str | None = None) -> dict:
+    """Кольори обох режимів теми (за замовчуванням — обраної для збирання) — уже в sRGB."""
+    return _kolory_tem(tema or TEMA)
+
+
+def zminni_temy(tema: str | None = None) -> dict:
+    """CSS-змінні обох режимів: {'svitla': {...}, 'temna': {...}} — кольори й решта (шрифти, кнопки, карта)."""
+    tema = tema or TEMA
+    dz, tem = dani_temy(tema), kolory_tem(tema)
+    vykhid = {}
     for t, k in tem.items():
         temna = t == 'temna'
         v = {
             'ground': k['ground'], 'surface': k['surface'], 'surface-tint': k['tint'], 'ink': k['ink'], 'ink-2': k['ink2'],
-            'muted': k['muted'], 'line': k['line'], 'line-strong': zmishaty(k['line'], k['mezha'], 0.4), 'mezha': k['mezha'],
-            'bort': zmishaty(k['ground'], '#000000', 0.55) if temna else zmishaty(k['mezha'], '#000000', 0.25),
-            'accent': k['accent'], 'accent-strong': zmishaty(k['accent'], '#FFFFFF' if temna else '#000000', 0.25),
+            'muted': k['muted'], 'line': k['line'], 'line-strong': k.get('lineStrong') or zmishaty(k['line'], k['mezha'], 0.4),
+            'mezha': k['mezha'],
+            'bort': k.get('bort') or (zmishaty(k['ground'], '#000000', 0.55) if temna else zmishaty(k['mezha'], '#000000', 0.25)),
+            'accent': k['accent'],
+            'accent-strong': k.get('accentStrong') or zmishaty(k['accent'], '#FFFFFF' if temna else '#000000', 0.25),
             'accent-soft': k['accentSoft'], 'on-accent': k['onAccent'], 'data-city': k['muted'],
             'vyd': k['vyd'], 'pk-1': k['pk'][0], 'pk-2': k['pk'][1],
             'karta-tlo': k['bg'], 'karta-park': k['park'], 'karta-voda': k['water'], 'karta-budynky': k['building'],
@@ -239,10 +283,79 @@ def kolory_css() -> str:
         for i, c in enumerate(k['sc'], 1):
             v[f'sc-{i}'] = c
             v[f'data-{i}'] = c          # шкала сторінок вулиць — та сама, що й на карті
-        blok[t] = ''.join(f'--{n}:{c};' for n, c in v.items())
-    return ('/* Кольори — напрям «Індиго й м’ята» (MV-58), з site/sait/kolory.json; збирач пише їх сюди. */\n'
+        v.update(dz.get('zminni_tem', {}).get(t, {}))
+        vykhid[t] = v
+    return vykhid
+
+
+def shryfty_css(tema: str | None = None, shliakh: str = 'shryfty/') -> str:
+    """@font-face шрифтів теми (файли — site/sait/shryfty, кирилиця й латиниця окремо)."""
+    KYR = 'U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116'
+    LAT = ('U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,'
+           'U+2215,U+FEFF,U+FFFD')
+    ryadky = []
+    for s in dani_temy(tema or TEMA)['shryfty']:
+        for w in s['vahy']:
+            vaha = s.get('vaha_css', {}).get(str(w), str(w))
+            for nabir, diap in (('cyrillic', KYR), ('latin', LAT)):
+                ryadky.append(f"@font-face {{ font-family: '{s['simia']}'; font-style: normal; font-display: swap; font-weight: {vaha}; "
+                              f"src: url({shliakh}{s['fail']}-{nabir}-{w}-normal.woff2) format('woff2'); unicode-range: {diap}; }}")
+    return '\n'.join(ryadky) + '\n'
+
+
+def fayly_shryftiv(tema: str | None = None) -> list[str]:
+    """Назви файлів шрифтів теми й ліцензій — лише їх кладемо в сайт."""
+    out = []
+    for s in dani_temy(tema or TEMA)['shryfty']:
+        out.append(s['litsenziia'])
+        out += [f"{s['fail']}-{n}-{w}-normal.woff2" for w in s['vahy'] for n in ('cyrillic', 'latin')]
+    return out
+
+
+def kolory_css(tema: str | None = None) -> str:
+    """CSS-змінні теми: рядок 2 — світла (за замовчуванням), рядок 3 — темна (html[data-t="temna"], ставить sait/tema.js);
+    далі — спільні змінні (шрифти, кнопки, карта) і @font-face."""
+    tema = tema or TEMA
+    dz, z = dani_temy(tema), zminni_temy(tema)
+    blok = {t: ''.join(f'--{n}:{c};' for n, c in v.items()) for t, v in z.items()}
+    spilni = ''.join(f'--{n}:{c};' for n, c in dz.get('zminni', {}).items())
+    return (f'/* Тема «{dz["nazva"]}» ({tema}) — site/temy/{tema}.json; збирач пише змінні сюди (MV-219). */\n'
             f':root{{color-scheme:light;{blok["svitla"]}}}\n'
-            f'html[data-t="temna"]{{color-scheme:dark;{blok["temna"]}}}\n')
+            f'html[data-t="temna"]{{color-scheme:dark;{blok["temna"]}}}\n'
+            f':root{{{spilni}}}\n' + shryfty_css(tema))
+
+
+def css_temy(tema: str | None = None) -> str:
+    """Власні правила теми (site/temy/<тема>.css) — дописуються в кінець стилів сайту; немає — порожньо."""
+    f = dani_temy(tema or TEMA).get('css')
+    return ('\n/* ---- тема: site/temy/' + f + ' ---- */\n' + (TEMY_TEKA / f).read_text(encoding='utf-8')) if f else ''
+
+
+def PRELOAD_SHRYFTIV() -> str:
+    """Попереднє завантаження двох головних файлів шрифтів теми (текст і заголовки/числа)."""
+    return ''.join(f'<link rel="preload" href="/sait/shryfty/{f}" as="font" type="font/woff2" crossorigin>\n'
+                   for f in dani_temy(TEMA).get('preload', []))
+
+
+def ikonky_temy(teka: Path, tema: str | None = None) -> None:
+    """Іконки сайту в кольорах теми (MV-219): знак — шестикутник кольору accent з «вікном» кольору тла, як ZNAK у шапці.
+    192, 512, maskable 512 (знак у безпечному колі 80 %) і monochrome 512 (білий знак на прозорому)."""
+    from PIL import Image, ImageDraw
+    k = kolory_tem(tema)['svitla']
+
+    def znak(d, cx, cy, r, zovn, vnutr):
+        import math
+        tochky = lambda rr: [(cx + rr * math.cos(math.radians(a)), cy + rr * math.sin(math.radians(a))) for a in range(-90, 270, 60)]
+        d.polygon(tochky(r), fill=zovn)
+        d.polygon(tochky(r * 0.42), fill=vnutr)
+
+    teka.mkdir(parents=True, exist_ok=True)
+    for nazva, s, chastka, mono in (('ikona-192.png', 192, 0.46, False), ('ikona-512.png', 512, 0.46, False),
+                                    ('ikona-maskable-512.png', 512, 0.34, False), ('ikona-monochrome-512.png', 512, 0.4, True)):
+        im = Image.new('RGBA', (s * 2, s * 2), (0, 0, 0, 0) if mono else k['ground'])
+        d = ImageDraw.Draw(im)
+        znak(d, s, s, s * 2 * chastka, '#FFFFFF' if mono else k['accent'], (0, 0, 0, 0) if mono else k['ground'])
+        im.resize((s, s), Image.LANCZOS).save(teka / nazva, optimize=True)
 
 
 def e(t) -> str:
@@ -407,11 +520,9 @@ def storinka(*, shlyakh: str, title: str, opys: str, tilo: str, adresa_saitu: st
 <meta property="og:description" content="{e(opys)}">
 <meta property="og:url" content="{e(adresa_saitu + shlyakh)}">
 {og_kartynka(adresa_saitu, *kartynka) if kartynka else ''}<meta name="theme-color" content="{kolory_tem()['svitla']['ground']}">
-<link rel="icon" type="image/png" sizes="192x192" href="/zahlushka/ikony/ikona-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/sait/ikony/ikona-192.png">
 <link rel="manifest" href="/manifest.webmanifest">
-<link rel="preload" href="/sait/shryfty/ibm-plex-sans-cyrillic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="/sait/shryfty/ibm-plex-sans-cyrillic-700-normal.woff2" as="font" type="font/woff2" crossorigin>
-<script src="/sait/tema.js"></script>
+{PRELOAD_SHRYFTIV()}<script src="/sait/tema.js"></script>
 {css_mapy}<link rel="stylesheet" href="/sait/sait.css">
 {dodatkovo_head}</head>
 <body{' class="z-kartoyu"' if pered_main else ''}>
@@ -580,7 +691,7 @@ def storinka_vulytsi(dn: D.Dani, v: D.Vulytsia, pr: dict, adresa_saitu: str, sus
         f'<span class="rik__stovpchyk" data-vys="{VYSOTA_ZAMKNENOHO}"></span><span>{r}</span></div>'
         for r in D.STARI_ROKY) if pr['stari'] else ''
     stovpchyky += ''.join(
-        f'<div class="rik"><span class="rik__chyslo">{chyslo(n) if n else ""}</span>'
+        f'<div class="rik{" rik--nepovnyi" if r == D.ROKY[-1] else ""}"><span class="rik__chyslo">{chyslo(n) if n else ""}</span>'
         f'<span class="rik__stovpchyk" data-vys="{max(2, round(n / maks * 140))}"></span><span>{r}</span></div>'
         for r, n in pr['roky'].items())
     pidpys_rokiv = f'Безкоштовно — {roky_t}; {D.ROKY[-1]} — неповний рік.'
@@ -820,7 +931,7 @@ def holovna(dn: D.Dani, vulytsi: list, rayony: list, adresa_saitu: str, sudova_p
     ld = M.ld_skrypt({'@context': 'https://schema.org', '@type': 'WebSite', 'name': 'Моя вулиця', 'url': adresa_saitu + '/',
                       'inLanguage': 'uk'},
                      {'@context': 'https://schema.org', '@type': 'Organization', 'name': 'Моя вулиця', 'url': adresa_saitu + '/',
-                      'logo': adresa_saitu + '/zahlushka/ikony/ikona-192.png'})
+                      'logo': adresa_saitu + '/sait/ikony/ikona-192.png'})
     return storinka(shlyakh='/', title='Моя вулиця — що відбувається під боком: вулиці й будинки Києва', dodatkovo_head=ld + predzavantazhennia(zastavka),
                     opys='Що відбувається під боком: скарги мешканців і події з рішень судів — на кожній вулиці й по кожному будинку Києва. Карта, покажчик вулиць, гра.',
                     tilo=tilo, adresa_saitu=adresa_saitu, pered_main=ekran_karty(dn, holovna=True),
@@ -923,7 +1034,8 @@ REChENNIA_HOLOVNOI = 'Скарги мешканців до 1551 і події з
 def ekran_karty(dn: D.Dani, holovna: bool = False) -> str:
     """Карта на весь екран у вигляді макета М7 (MV-58): угорі ліворуч — рядок пошуку зі значками 3D/2D, день/ніч і «ⓘ»,
     під ним — фільтр «Усі події ▾»; картка соти — «в повітрі» праворуч (телефон — шторка); джерела — правий нижній кут
-    (телефон — у «ⓘ»). Легенди й «+/−» немає. Поведінка зуму — як у карті Києва (S-К.4, S-К.6, S-К.13, S-К.18, S-К.21)."""
+    (телефон — у «ⓘ»). Легенда кольору — маленька плашка «менше ▭▭▭▭▭ більше» (ZVIT-196: її шукали на телефоні; ZAVDANNYA-197);
+    «+/−» немає. Поведінка зуму — як у карті Києва (S-К.4, S-К.6, S-К.13, S-К.18, S-К.21)."""
     import tsiny as T
     hrupy = ''.join(
         f'<li><label><input type="checkbox" data-hrupa="{k}" checked>{svg_html(IK_HRUP[k])}<span>{e(n)}</span></label></li>'
@@ -984,6 +1096,7 @@ def ekran_karty(dn: D.Dani, holovna: bool = False) -> str:
 <p>{DZHERELA_KARTY}</p>
 </section>
 <div id="tykha" class="tykha" hidden>будинки — у підписці</div>
+<div id="legenda" class="legenda plashka" role="img" aria-label="Колір соти: світліше — менше подій у даних, темніше — більше. Це кількість, а не оцінка місця."><span>менше</span><span class="legenda__zr" aria-hidden="true"><i class="d1"></i><i class="d2"></i><i class="d3"></i><i class="d4"></i><i class="d5"></i></span><span>більше подій</span></div>
 <div id="dzherela" class="dzherela">{DZHERELA_KARTY}</div>
 <aside id="kartka" class="plashka kartka-soty" hidden role="region" aria-labelledby="kartka-nazva" aria-label="Картка місця"></aside>
 <aside id="ihry" class="plashka panel-ihor" hidden aria-label="Ігри на карті"{dani_ihor()}></aside>
@@ -1203,12 +1316,18 @@ def kopiyuvaty_spilne(vykhid: Path) -> None:
     for f in ('kariera-yadro.js', 'kariera.js'):             # «Кваліфікуй: кар'єра» в панелі ігор (ZAVDANNYA-152)
         shutil.copyfile(DZHERELO / 'ihry' / 'kariera' / f, sait / f)
     # Кольори обох тем — на початок стилів (одна сторінка стилів, без зайвого запиту); ігри в карті — у кінець.
+    # Тема (MV-219): її змінні й шрифти — на початок, її власні правила — у кінець (після ігор, щоб важили більше).
     zapysaty(sait / 'sait.css', kolory_css() + (DZHERELO / 'sait' / 'sait.css').read_text(encoding='utf-8')
              + '\n' + (DZHERELO / 'ihry' / 'ihry.css').read_text(encoding='utf-8')
              + '\n' + (DZHERELO / 'ihry' / 'litopys' / 'litopys.css').read_text(encoding='utf-8')
-             + '\n' + (DZHERELO / 'ihry' / 'kariera' / 'kariera.css').read_text(encoding='utf-8'))
-    for f in sorted((DZHERELO / 'sait' / 'shryfty').iterdir()):   # IBM Plex Sans і ліцензія OFL поруч
-        shutil.copyfile(f, sait / 'shryfty' / f.name)
+             + '\n' + (DZHERELO / 'ihry' / 'kariera' / 'kariera.css').read_text(encoding='utf-8')
+             + css_temy())
+    for f in fayly_shryftiv():   # шрифти теми й ліцензії OFL поруч
+        shutil.copyfile(DZHERELO / 'sait' / 'shryfty' / f, sait / 'shryfty' / f)
+    if TEMA != 'indygo':         # IBM Plex лишається для ігор і сторінок, що їх беруть напряму (заглушка, гра)
+        for f in fayly_shryftiv('indygo'):
+            shutil.copyfile(DZHERELO / 'sait' / 'shryfty' / f, sait / 'shryfty' / f)
+    ikonky_temy(sait / 'ikony')
     (sait / 'biblioteka').mkdir(exist_ok=True)
     for f in sorted((DZHERELO / 'hra' / 'biblioteka').iterdir()):
         shutil.copyfile(f, sait / 'biblioteka' / f.name)
@@ -1222,14 +1341,16 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
                  kandydaty_istorii: Path | None = None, media: Path | None = None, sudova_praktyka: Path | None = None,
                  prodazh: dict | None = None, oplata: str = 'skoro', zapovnennya: dict | None = None,
                  dlya_publikatsiyi: bool = False, cf_analityka: str = '', domen: str = '',
-                 android_vidbytky: list[str] | None = None) -> dict:
-    """android_vidbytky — додаткові відбитки ключа застосунку для /.well-known/assetlinks.json (ZAVDANNYA-144; основні —
+                 android_vidbytky: list[str] | None = None, tema: str | None = None) -> dict:
+    """tema — тема вигляду (site/temy/, MV-219): spokiyna (за замовчуванням) чи indygo; без неї — MV_TEMA чи spokiyna.
+    android_vidbytky — додаткові відбитки ключа застосунку для /.well-known/assetlinks.json (ZAVDANNYA-144; основні —
     у android/twa-manifest.json, поле fingerprints).
     khostynh: 'pages' — кожна сторінка файлом (межа 20 000); 'workers' — будинки в пачках (site/khostynh.py).
     oplata (ZAVDANNYA-132): 'skoro' — на кнопках оплати «Скоро — залиште пошту»; 'tak' — звичайні кнопки (продаж увімкнено).
     prodazh — {'d1', 'servis', 'adresa', 'poshta'} для Workers: з базою D1 форми сайту пишуться в неї (не в Supabase).
     zapovnennya — дані партнера для оферти й політики ([ВЛАСНИК] тощо); dlya_publikatsiyi — зупинитися, якщо щось не заповнено.
     cf_analityka — публічний токен Cloudflare Web Analytics (лічба відвідувань без кукі); domen — свій домен для Workers."""
+    vstanovyty_temu(tema)
     import khostynh as KH
     import tsiny as T
     if oplata not in T.REZHYMY_OPLATY:
@@ -1242,6 +1363,7 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
     # Сторінки пишуть і інші модулі через `import zibraty_sait` — коли збирач запущено як скрипт, це інший об'єкт модуля.
     import zibraty_sait as _Z
     _Z.CSP, _Z.ANALITYKA = CSP, ANALITYKA
+    _Z.vstanovyty_temu(TEMA)
     if khostynh not in KH.VARIANTY:
         raise SystemExit(f'Невідомий варіант хостингу {khostynh!r}: {", ".join(KH.VARIANTY)}')
     if mezha_failiv is None:
@@ -1392,8 +1514,11 @@ def zibraty_sait(baza: Path, vykhid: Path, pereimenuvannya: Path | None, mezhi_r
                                                           separators=(',', ':')))
     zapysaty(vykhid / 'karta' / 'mistsevosti.json', json.dumps(mistsevosti(pereimenuvannya, rayony), ensure_ascii=False,
                                                                 separators=(',', ':')))
-    zapysaty(vykhid / 'karta' / 'index.html', storinka_karty(dn, adresa_saitu, fayly_zastavky))
-    zapysaty(vykhid / 'index.html', holovna(dn, vulytsi, rayony, adresa_saitu, bool(sudova_praktyka), fayly_zastavky))
+    # Немає знімків підкладки теми (нову тему ще не знімали, site/sait/pidkladka/znimaty.mjs) — без картинки першого екрана:
+    # жива карта одразу, як і без JavaScript-картинки (karta.js: ODRAZU, коли .zastavka немає).
+    bez = (lambda h: h) if fayly_zastavky else (lambda h: h.replace('<div class="zastavka" aria-hidden="true"></div>\n', ''))
+    zapysaty(vykhid / 'karta' / 'index.html', bez(storinka_karty(dn, adresa_saitu, fayly_zastavky)))
+    zapysaty(vykhid / 'index.html', bez(holovna(dn, vulytsi, rayony, adresa_saitu, bool(sudova_praktyka), fayly_zastavky)))
     zapysaty(vykhid / '404.html', storinka_404(adresa_saitu))
     zapysaty(vykhid / '_404-budynok.html', storinka_nemaie_budynku(adresa_saitu))
 
@@ -1562,6 +1687,9 @@ def main(argv=None) -> int:
     p.add_argument('--android-vidbytok', action='append', default=[],
                    help='відбиток SHA-256 ключа застосунку Android (AB:CD:…) для /.well-known/assetlinks.json; можна кілька разів '
                         '(ZAVDANNYA-144; постійні — у android/twa-manifest.json, fingerprints)')
+    p.add_argument('--tema', choices=TEMY, default=None,
+                   help='тема вигляду (site/temy/, MV-219): spokiyna — «Спокійна й чиста» (за замовчуванням), indygo — «Індиго й '
+                        'м\'ята»; без ключа — змінна MV_TEMA, інакше spokiyna. Перехід = перезбірка сайту')
     p.add_argument('--domen', default='', help='свій домен для Workers (напр. moyavulytsya.com.ua) — прив\'язка під час викладки')
     p.add_argument('--poshta-servis', choices=('zahlushka', 'http-json'), default='zahlushka', help='сервіс листів')
     p.add_argument('--karta-r2', action='store_true', help='карта підписника зі сховища R2 moya-vulytsya-karta (лише з --oplata tak; '
@@ -1580,7 +1708,7 @@ def main(argv=None) -> int:
                         a.zvit_zvedennia, a.budynky, a.mezha_failiv, a.khostynh, a.perekazy, a.kandydaty_istorii,
                         media=a.media, sudova_praktyka=a.sudova_praktyka, prodazh=prodazh, oplata=a.oplata,
                         zapovnennya=zapovnennya, dlya_publikatsiyi=a.dlya_publikatsiyi, cf_analityka=a.cf_analityka,
-                        domen=a.domen, android_vidbytky=a.android_vidbytok)
+                        domen=a.domen, android_vidbytky=a.android_vidbytok, tema=a.tema)
     for k, v in zvit.items():
         print(f'{k}: {v}')
     return 0
