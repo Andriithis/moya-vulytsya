@@ -1,5 +1,5 @@
 // Сторінки сервера продажу: замовлення, оплата, «дякуємо», кабінет (ZAVDANNYA-99).
-// Вигляд — стилі сайту (/sait/sait.css: змінні MV-58, кнопки-клавіші, картки) + кілька правил для форм (/prodazh/prodazh.css).
+// Вигляд — стилі сайту (/sait/sait.css: змінні теми вигляду — MV-219, кнопки, картки) + кілька правил для форм (/prodazh/prodazh.css).
 // Без вбудованих скриптів і стилів: політика безпеки сторінок та сама, що й на сайті.
 import TS from './tsiny.js';
 
@@ -438,9 +438,9 @@ export const CSS = `/* Сервер продажу (ZAVDANNYA-99): форми в
 .forma{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;max-width:460px}
 .forma label{font-weight:600;font-size:14px;line-height:20px}
 .lichylnyk{font-variant-numeric:tabular-nums}
-.forma input[type=email],.forma input[name=budynok]{width:100%;box-sizing:border-box;font:inherit;padding:10px 12px;border:1.5px solid var(--mezha);border-radius:var(--radius-m);background:var(--surface);color:var(--ink);box-shadow:0 3px 0 var(--bort)}
+.forma input[type=email],.forma input[name=budynok]{width:100%;box-sizing:border-box;font:inherit;padding:10px 12px;border:var(--klav-mezha-w) solid var(--mezha);border-radius:var(--radius-m);background:var(--surface);color:var(--ink);box-shadow:var(--klav-ten)}
 .forma .pravyla{font-weight:400;font-size:13px}
-.forma select{font:inherit;width:100%;min-width:0;padding:10px 12px;border:1.5px solid var(--mezha);border-radius:var(--radius-m);background:var(--surface);color:var(--ink);box-shadow:0 3px 0 var(--bort)}
+.forma select{font:inherit;width:100%;min-width:0;padding:10px 12px;border:var(--klav-mezha-w) solid var(--mezha);border-radius:var(--radius-m);background:var(--surface);color:var(--ink);box-shadow:var(--klav-ten)}
 .pomylka{color:var(--vyd);font-weight:700}
 .zalyshok{margin:0 0 20px}
 .abo-oplata{font-size:18px;line-height:24px;margin:8px 0 12px}
