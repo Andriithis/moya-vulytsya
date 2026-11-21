@@ -242,7 +242,8 @@ test('сторінки сервера: логотип зі значком і н�
 
 test('«скоро» довідки СП: стаття, суд і частина видно на сторінці й ідуть з формою; у базу — лише лічильник без пошти', async () => {
   const DOVIDNYK = { statti: { 'kupap-130': { stattia: 'ст.130 КУпАП', nazva: 'Керування', sudy: ['Голосіївський'], chastyny: ['1', '2'] } } };
-  for (const PRODAZH of ['tak', 'skoro']) {
+  // ZAVDANNYA-195: з оплатою «Судова практика» продається (форма замовлення) — «скоро» лишається, доки оплату не ввімкнено
+  for (const PRODAZH of ['skoro']) {
     const env = seredovyshche({ PRODAZH, ADMIN_KLIUCH: 'admin', ASSETS: { async fetch(req) {
       return new URL(req.url).pathname === '/sudova-praktyka/dovidnyk.json' ? Response.json(DOVIDNYK) : new Response('немає', { status: 404 });
     } } });

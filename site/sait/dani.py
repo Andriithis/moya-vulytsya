@@ -39,11 +39,38 @@ OSTANNI_ROKY = 3
 # MV-32: безкоштовно — лише останні 3 роки. Числа за старші роки (і за події без року) не потрапляють
 # у публічні файли сайту взагалі: лише прапорець «є дані — у підписці» (ZAVDANNYA-46).
 VIDKRYTI_ROKY = ROKY[-OSTANNI_ROKY:]
-# ZAVDANNYA-174 (ZVIT-166, №4): «у підписці» обіцяємо лише ті старші роки, які справді є в карті підписника —
-# dani-edrsr, S-Д.8: «від 2023 року». Події, старші за PIDPYSKA_VID, не дають ні замка, ні слів «у підписці».
-# Змінить dani-edrsr межу — змінити тут (тест tests/test_sait.py звіряє з tsiny.PIDPYSKA_VID).
-PIDPYSKA_VID = 2023
+# ZAVDANNYA-174 (ZVIT-166, №4): «у підписці» обіцяємо лише ті старші роки, які справді є в карті підписника.
+# MV-180 (ZAVDANNYA-195): перший рік карти підписника — з даних випуску (`pershyi_rik_vypusku`, те саме правило, що
+# dani-edrsr `karta_pidpysnyka.pershyi_rik`): збирання сайту ставить його через `vstanovyty_pidpysku_vid`. Поки випуск не
+# прочитано — типове з site/tsiny.py. Події, старші за PIDPYSKA_VID, не дають ні замка, ні слів «у підписці».
+PIDPYSKA_VID = 2016
 STARI_ROKY = [r for r in ROKY[:-OSTANNI_ROKY] if r >= PIDPYSKA_VID]
+CHASTKA_ROKU_PIDPYSKY = 10      # рік береться, якщо подій за нього ≥ 1/10 від найповнішого (кілька давніх подій — не рік)
+
+
+def pershyi_rik_vypusku(con) -> int:
+    """Перший рік подій випуску (MV-180): рік, подій за який щонайменше десята частина від найповнішого, і не раніше
+    ROKY[0] (MV-2). Так само рахує dani-edrsr `karta_pidpysnyka.pershyi_rik`. Немає дат — типове з site/tsiny.py."""
+    import tsiny as T
+    rr = [(int(r), n) for r, n in con.execute(
+        "SELECT substr(data_podii, 1, 4) r, count(*) n FROM event WHERE data_podii GLOB '[12][0-9][0-9][0-9]-*' "
+        "AND data_podii <= (SELECT max(versiia) FROM release) GROUP BY r ORDER BY r")]
+    if not rr:
+        return T.PIDPYSKA_VID
+    mezha = max(n for _, n in rr) / CHASTKA_ROKU_PIDPYSKY
+    return max(ROKY[0], next(r for r, n in rr if n >= mezha))
+
+
+def vstanovyty_pidpysku_vid(rik: int) -> None:
+    """Перший рік карти підписника — з випуску (MV-180): тут, у site/tsiny.py (текст «що дає підписка») і в підписах
+    періодів збирача. STARI_ROKY змінюється на місці — модулі, що вже взяли список, бачать новий."""
+    global PIDPYSKA_VID
+    import tsiny as T
+    PIDPYSKA_VID = T.PIDPYSKA_VID = int(rik)
+    STARI_ROKY[:] = [r for r in ROKY[:-OSTANNI_ROKY] if r >= PIDPYSKA_VID]
+    Z = sys.modules.get('zibraty_sait')
+    if Z is not None and hasattr(Z, 'periody_pidpysky'):
+        Z.periody_pidpysky()
 
 
 def u_pidpystsi(rik) -> bool:
@@ -573,6 +600,10 @@ def zibraty_dani(baza: Path, pereimenuvannia: Path | None, mezhi_rayoniv: Path |
                  vypravlennia: Path | None = None) -> Dani:
     con = sqlite3.connect(f'file:{baza}?mode=ro', uri=True)
     versiia = (con.execute('SELECT versiia FROM release ORDER BY versiia DESC LIMIT 1').fetchone() or ['?'])[0]
+    try:
+        vstanovyty_pidpysku_vid(pershyi_rik_vypusku(con))    # MV-180: перший рік карти підписника — з випуску
+    except sqlite3.OperationalError:
+        pass
     podii = prochytaty_podii(con)
     kanon = kanonichni_z_osm(con)
     pereim = prochytaty_pereimenuvannia(pereimenuvannia)
@@ -681,8 +712,13 @@ def zibraty_dani(baza: Path, pereimenuvannia: Path | None, mezhi_rayoniv: Path |
     # 6. Місто: види (для коефіцієнта локалізації) і соти.
     misto_vydy = Counter(vyd_lyudskoyu(p.stattia, p.vyd) for p in podii
                          if p.lat is not None and not p.chutlyva and vidkryta(p))
-    problemy = con.execute('SELECT problem_id, vyd, mekhanizm, status, lat, lon, podii FROM problem '
-                           'WHERE lat IS NOT NULL ORDER BY podii DESC, problem_id').fetchall()
+    # ZAVDANNYA-195 (MV-195, MV-196): стан з формату 188 (`masshtab.status_kartyny`) — згаслу показуємо інакше, ніж чинну;
+    # проблему домашнього насильства в будинку — ні (MV-194, MV-213: лише в платному)
+    problemy = [(pid, vyd, mekh, stan_problemy(mash, status)['pidpys'], lat, lon, n)
+                for (pid, vyd, mekh, status, lat, lon, n, mash) in con.execute(
+                    'SELECT problem_id, vyd, mekhanizm, status, lat, lon, podii, masshtab FROM problem '
+                    'WHERE lat IS NOT NULL ORDER BY podii DESC, problem_id')
+                if not stan_problemy(mash, status)['domashnie']]
     soty = {}
     if h3 is not None:
         for riven in (7, 8, 9):
@@ -695,6 +731,33 @@ def zibraty_dani(baza: Path, pereimenuvannia: Path | None, mezhi_rayoniv: Path |
         roky = None
     con.close()
     return Dani(versiia, podii, vulytsi, zv, misto_vydy, soty, vulytsi_podii, rayony, roky)
+
+
+# ---------------------------------------------------------------- стан проблеми (ZAVDANNYA-195)
+
+# Формат 188 (dani-edrsr `problemy_u_vypusk.py`, `stan`; MV-195): `masshtab.status_kartyny` — «триває / згасла / повернулась /
+# дані змінились», `roky_kartyny` — роки картини, `pokaz_domashnie` — проблема домашнього насильства в будинку (MV-194).
+# Старий формат (правилові проблеми) — лише `status` («хронічна»), як і раніше.
+CHYNNI_PROBLEMY = ('триває', 'повернулась')
+
+
+def stan_problemy(masshtab, status=None) -> dict:
+    """-> {'pidpys': (текст стану, чинна), 'domashnie': bool}. Згасла й «дані змінились» — не чинні."""
+    try:
+        m = json.loads(masshtab) if masshtab else {}
+    except (TypeError, ValueError):
+        m = {}
+    m = m if isinstance(m, dict) else {}
+    st, roky = m.get('status_kartyny') or '', m.get('roky_kartyny') or ''
+    if not st:
+        return {'pidpys': (status or '', True), 'domashnie': bool(m.get('pokaz_domashnie'))}
+    if st in CHYNNI_PROBLEMY:
+        t = f'{st}, {roky}' if roky else st
+    elif st == 'згасла':
+        t = f'було в {roky}, після того — ні' if roky else 'останні роки не повторювалось'
+    else:                                    # «дані змінились»: рішень поменшало по всьому місту — не «згасла»
+        t = f'було в {roky}; далі рішень поменшало по всьому місту' if roky else 'рішень поменшало по всьому місту'
+    return {'pidpys': (t, st in CHYNNI_PROBLEMY), 'domashnie': bool(m.get('pokaz_domashnie'))}
 
 
 # ---------------------------------------------------------------- соти головної карти
@@ -828,8 +891,9 @@ def soty_rivnia(podii: list, vulytsi_podii: list, varianty_slug: dict, problemy:
         if k in soty:
             nazva = (mekh or '').strip()
             nazva = nazva[:1].lower() + nazva[1:]
+            pidpys, chynna = status if isinstance(status, tuple) else (status or '', True)
             if nazva and nazva not in [x[0] for x in soty[k]['problemy']]:
-                soty[k]['problemy'].append((nazva, status or ''))
+                soty[k]['problemy'].append((nazva, pidpys, chynna))
     return soty
 
 

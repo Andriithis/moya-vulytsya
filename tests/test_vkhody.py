@@ -125,7 +125,7 @@ class Vkhody(unittest.TestCase):
         self.assertIn('href="/sudova-praktyka/">Усі статті</a>', t)
 
     def test_oplata_tak(self):
-        """Коли оплату ввімкнено — звичайні кнопки; «Судова практика» без даних лишається «скоро» (tsiny.BEZ_DANYKH)."""
+        """Коли оплату ввімкнено — звичайні кнопки; «Судова практика» з ZAVDANNYA-195 теж продається (дані — Release 21.11)."""
         import storinky_vkhodiv as V
         import tsiny as T
         bulo = T.OPLATA['rezhym']
@@ -138,7 +138,7 @@ class Vkhody(unittest.TestCase):
         self.assertNotIn('knopka--skoro', t)
         self.assertNotIn('Оплата ще не працює', t)
         self.assertIn('<a class="knopka knopka--holovna" href="/oplata/?tovar=dovidka&amp;dzherelo=vh-orendar">', t)
-        self.assertIn('knopka--skoro', y)
+        self.assertNotIn('knopka--skoro', y)
 
     def test_varianty_orendaria(self):
         """2–3 варіанти першого екрана орендаря (ZAVDANNYA-153) — усі з потребою, пошуком і кнопкою з ціною."""

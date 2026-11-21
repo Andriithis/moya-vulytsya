@@ -183,7 +183,8 @@
     Promise.all([zavantazhyty('spravy'), zavantazhyty('kvalifikuy')]).then(function (r) {
       var c = chas(), s = bali();
       var st = r[0] && Y.spravaTyzhnia(r[0].spravy, c.data);
-      var det = st ? 'день ' + c.den + ' з 7 · «' + esc(st.sprava.nazva) + '»' : 'справа тижня — скоро';
+      var det = !st ? 'справа тижня — скоро' : st.arkhiv ? 'нова справа скоро · минула: «' + esc(st.sprava.nazva) + '»'
+        : 'день ' + c.den + ' з 7 · «' + esc(st.sprava.nazva) + '»';
       var den = chytaty('mv-ihry-den-' + c.data, {});
       var kart = function (gra, nazva, opys, stan, vymk) {
         return '<button type="button" class="i-gra klav" data-i="hra" data-gra="' + gra + '"' + (vymk ? ' disabled' : '') + '><b>' + nazva +
@@ -252,9 +253,11 @@
       var c = chas();
       var st = d && Y.spravaTyzhnia(d.spravy, c.data);
       if (!st) { ramka('Детектив тижня', '<p>Справа тижня з\'явиться згодом.</p>'); return; }
-      var s = SPRAVA = st.sprava, ss = stanSpravy(s), t = Y.stanTyzhnia(c);
+      // минула справа (ZAVDANNYA-195): нової ще немає — усі сліди й розкриття відкриті, можна дограти
+      var s = SPRAVA = st.sprava, ss = stanSpravy(s), t = st.arkhiv ? { den: 7, slidiv: 6, rozkryttia: true } : Y.stanTyzhnia(c);
       var h = '<div class="i-poznachka"><b>' + esc(s.poznachka) + '</b><span>Заклади й свідки вигадані; вулиця, вид події, час і місце — з рішення суду. Гра шукає місце й подію, а не людину.</span></div>';
-      h += '<p class="i-den">' + esc(NAZVY_DNIV[c.den]) + ' · день ' + c.den + ' з 7' + (st.demo ? ' · <span class="i-zrazok">зразок</span>' : '') + '</p>';
+      h += st.arkhiv ? '<p class="i-den">Нова справа скоро · поки що — минула справа, усі сліди відкрито</p>'
+        : '<p class="i-den">' + esc(NAZVY_DNIV[c.den]) + ' · день ' + c.den + ' з 7' + (st.demo ? ' · <span class="i-zrazok">зразок</span>' : '') + '</p>';
       h += '<div class="i-kroky" aria-hidden="true">' + [1, 2, 3, 4, 5, 6, 7].map(function (i) {
         return '<i class="' + (i <= 6 && ss.znaideni.indexOf(i) !== -1 ? 'z' : i <= t.slidiv || (i === 7 && t.rozkryttia) ? 'v' : '') + '"></i>'; }).join('') + '</div>';
       h += '<h3>' + esc(s.nazva) + '</h3><p>' + esc(s.vyklyk) + '</p>';
@@ -630,7 +633,7 @@
       if (SESIIA.pokazano || shchosVidkryto()) return;
       K = K || r[2];
       var st = r[0] && Y.spravaTyzhnia(r[0].spravy, c.data), den = chytaty('mv-ihry-den-' + c.data, {});
-      var novyi = st && Math.min(c.den, 6) > stanSpravy(st.sprava).znaideni.length;
+      var novyi = st && !st.arkhiv && Math.min(c.den, 6) > stanSpravy(st.sprava).znaideni.length;
       var kv = kvPoruch(r[1]);
       var gra = Y.yakaGra({ kvalifikuyPoruch: !!kv, detektyvNovyiSlid: novyi, vulytsiaYe: !!DZH.vulytsia, vulytsiaZihrano: den.vulytsia,
         podiiaYe: !!DZH.koloda, podiiaZihrano: den.podiia, kvalifikuyZalyshylos: !!r[1] && K && Y.sproby(bali(), 'kvalifikuy', K, c.data).bezkoshtovnykh > 0 });

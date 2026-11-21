@@ -326,6 +326,7 @@ main.storinka:focus { outline: none; }
 .povt { margin: 0; padding: 0; list-style: none; }
 .povt li { padding: 3px 8px; margin-top: 3px; border-radius: var(--radius-s); background: var(--accent-soft); font: 400 13px/18px var(--sans); }
 .povt li:first-child { margin-top: 0; }
+.povt--zhasla li { background: var(--surface-tint); color: var(--ink-2); }   /* згасла проблема — не як чинна (ZAVDANNYA-195) */
 .k-vulytsi { margin: 0; font: 400 13px/20px var(--sans); }
 .k-vulytsi a { color: var(--ink); }
 .kartka-soty .zamok { margin-top: 10px; font-size: 13px; padding: 8px 12px; }

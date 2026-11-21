@@ -14,8 +14,10 @@
 # Вимкнено, доки не налаштовано: змінна VYDAVACH = uvimknuto (Settings → Secrets and variables → Actions).
 #   змінна  VYDAVACH           uvimknuto
 #   змінна  MV_ADRESA_SAITU    https://<сайт> (той самий, що ADRESA_SAITU у Workers)
-#   змінна  VYPUSK             тег Release dani-edrsr з випуском, напр. vypusk-2026-11-08 (файл events-*.db у ньому)
-#   змінна  SP_VYPUSK          тег Release dani-edrsr з даними «Судової практики» (файл sp-dovidka-*.json, ZAVDANNYA-135);
+#   змінна  VYPUSK             тег Release dani-edrsr з випуском, напр. vypusk-kyiv-2026-11-21 (ZAVDANNYA-195: береться
+#                              вузький vuzkyi-events-*.db.xz і розпаковується; старі випуски з events-*.db — теж)
+#   змінна  SP_VYPUSK          тег Release dani-edrsr з даними «Судової практики» (файл sp-dovidka-*.json, ZAVDANNYA-135;
+#                              з 21.11 — той самий vypusk-kyiv-2026-11-21, ZAVDANNYA-195);
 #                              без неї довідки «Судової практики» не збираються (повертаються в чергу, після 3 спроб — лист партнеру)
 #   змінна  VYDAVACH_SHI       tak — перекази ШІ (потрібен ANTHROPIC_API_KEY); інакше — описи правилами
 #   змінна  SHI_STELIA_USD     м'яка стеля витрат ШІ на місяць, $ (типово 10; жорстка — у консолі Anthropic)
@@ -98,8 +100,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.MV_DANI_TOKEN }}
         run: |
-          mkdir -p _dani
-          gh release download "${{ vars.VYPUSK }}" -R Andriithis/dani-edrsr --pattern 'events-*.db' --output _dani/vypusk.db --clobber
+          # ZAVDANNYA-195: з 21.11 у Release лише стиснуті .db.xz; вузький (MV-159) — спершу, далі повний, далі старий .db
+          mkdir -p _dani/rel
+          for p in 'vuzkyi-events-*.db.xz' 'events-*.db.xz' 'events-*.db'; do
+            gh release download "${{ vars.VYPUSK }}" -R Andriithis/dani-edrsr --pattern "$p" --dir _dani/rel --clobber && break
+          done
+          python produkt/site/prodazh/vypusk_z_release.py _dani/rel _dani/vypusk.db
+          rm -rf _dani/rel
           ls -la _dani
 
       - name: Дані «Судової практики» з кешу (ZAVDANNYA-135)

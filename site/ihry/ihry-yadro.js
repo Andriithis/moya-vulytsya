@@ -41,15 +41,17 @@
   var ROZKRYTTIA_HODYNA = 20;   // неділя, 20:00 за Києвом
 
   // Справа тижня: та, чий тиждень — цей. Немає — зразки по колу за номером тижня (позначка demo).
-  // ZAVDANNYA-176 (ZVIT-168, №2): справи по колу не крутимо — після останньої справи гри немає (картку сховано), доки
-  // хтось не покладе нову справу на свій тиждень. До першої справи — перша як «зразок» (перегляд до запуску).
+  // ZAVDANNYA-176 (ZVIT-168, №2): справи по колу не крутимо. До першої справи — перша як «зразок» (перегляд до запуску).
+  // ZAVDANNYA-195: після останньої справи гра не зникає — остання справа лишається як «минула» (arkhiv: усі сліди й
+  // розкриття відкриті, можна дограти), з написом «нова справа скоро», доки хтось не покладе нову справу на свій тиждень.
   function spravaTyzhnia(spravy, data) {
     if (!spravy || !spravy.length) return null;
     var pn = ponedilok(data);
     for (var i = 0; i < spravy.length; i++) if (spravy[i].tyzhden === pn) return { sprava: spravy[i], demo: false };
     var por = spravy.slice().sort(function (a, b) { return a.tyzhden < b.tyzhden ? -1 : a.tyzhden > b.tyzhden ? 1 : 0; });
     if (pn < por[0].tyzhden) return { sprava: por[0], demo: true };
-    return null;
+    var mynuli = por.filter(function (x) { return x.tyzhden < pn; });
+    return { sprava: mynuli[mynuli.length - 1], demo: false, arkhiv: true };
   }
   // Прогрес — за справою й тижнем: та сама справа на іншому тижні починається спочатку, а не «вже розв'язаною».
   function kliuchSpravy(sprava) { return 'mv-ihry-detektyv-' + sprava.id + '@' + sprava.tyzhden; }

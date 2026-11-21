@@ -11,8 +11,11 @@
 # MV_LYST_STEZHU=tak (без нього site/vyklasty.py не ввімкне оплату: підписка обіцяє цей лист).
 #   змінна  LYST_STEZHU        uvimknuto
 #   змінна  MV_ADRESA_SAITU    https://<сайт>
-#   змінна  VYPUSK             тег Release dani-edrsr з новим випуском (events-*.db, budynky-*.json)
-#   змінна  VYPUSK_POPEREDNII  тег попереднього випуску: «нове» = чого там не було
+#   змінна  VYPUSK             тег Release dani-edrsr з новим випуском (vuzkyi-events-*.db.xz чи events-*.db[.xz], budynky-*.json)
+#   змінна  VYPUSK_POPEREDNII  тег попереднього випуску: «нове» = чого там не було. ZAVDANNYA-195: ПОРОЖНЯ або та сама, що
+#                              VYPUSK, — «перший лист» (nove_tyzhnia.py --pershyi): нового не рахуємо, лист каже це словами.
+#                              Перший лист на vypusk-kyiv-2026-11-21 — саме так: проти пробного 08.11 (частина Києва, інша
+#                              схема) «новим» став би майже весь Київ.
 #   секрет  MV_DANI_TOKEN, VYDACHA_KLIUCH — як у vydavach.yml
 # НЕ ПЕРЕВІРЕНО на GitHub (у хмарі — лише проба на штучних даних і місцевому сервері продажу, docs/ZVIT-150.md).
 name: Лист Стежу
@@ -59,15 +62,26 @@ jobs:
           GH_TOKEN: ${{ secrets.MV_DANI_TOKEN }}
         run: |
           mkdir -p _dani
-          gh release download "${{ vars.VYPUSK }}" -R Andriithis/dani-edrsr --pattern 'events-*.db' --output _dani/nova.db --clobber
+          # ZAVDANNYA-195: з 21.11 у Release лише стиснуті .db.xz; вузький (MV-159) — спершу, далі повний, далі старий .db
+          vypusk() {
+            rm -rf _dani/rel && mkdir -p _dani/rel
+            for p in 'vuzkyi-events-*.db.xz' 'events-*.db.xz' 'events-*.db'; do
+              gh release download "$1" -R Andriithis/dani-edrsr --pattern "$p" --dir _dani/rel --clobber && break
+            done
+            python produkt/site/prodazh/vypusk_z_release.py _dani/rel "$2"
+            rm -rf _dani/rel
+          }
+          vypusk "${{ vars.VYPUSK }}" _dani/nova.db
           gh release download "${{ vars.VYPUSK }}" -R Andriithis/dani-edrsr --pattern 'budynky-*.json' --output _dani/budynky.json --clobber
-          gh release download "${{ vars.VYPUSK_POPEREDNII }}" -R Andriithis/dani-edrsr --pattern 'events-*.db' --output _dani/stara.db --clobber
+          if [ -n "${{ vars.VYPUSK_POPEREDNII }}" ] && [ "${{ vars.VYPUSK_POPEREDNII }}" != "${{ vars.VYPUSK }}" ]; then
+            vypusk "${{ vars.VYPUSK_POPEREDNII }}" _dani/stara.db
+          fi
           (cd dani-edrsr && git fetch --depth 1 origin dani-1551 && git worktree add ../_dani/1551 FETCH_HEAD)
 
       - name: Стрічка місяця і покажчик будинків
         run: |
-          python dani-edrsr/src/nove_tyzhnia.py _dani/nova.db _dani/1551 _dani/nove.json --do "$(date -u +%F)" --dniv 30 \
-            --poperednii _dani/stara.db
+          if [ -f _dani/stara.db ]; then POR="--poperednii _dani/stara.db"; else POR="--pershyi"; fi
+          python dani-edrsr/src/nove_tyzhnia.py _dani/nova.db _dani/1551 _dani/nove.json --do "$(date -u +%F)" --dniv 30 $POR
           python produkt/bot/indeks.py _dani/nova.db _dani/budynky.json _dani/indeks.json
 
       - name: Листи

@@ -36,16 +36,21 @@ TOVARY = {
 # Товари, яких ще немає в оферті заглушки (тексти оферти — окремим рішенням, MV-152). Вони — «скоро», навіть коли оплату
 # ввімкнено (prodaietsia()).
 NE_V_OFERTI = set()  # MV-164: обидва товари «Судової практики» — в оферті
-# ZAVDANNYA-150, п. 11: товари, для яких ще немає даних генератора (оплачену довідку не буде з чого зібрати). «Судова
-# практика»: генератор довідки — dani-edrsr PR #87 (не злито), файл sp-dovidka-<дата>.json — Release dani-edrsr (немає;
-# хмара Release не створює). Коли обидва є і у видавачі задано SP_VYPUSK — прибрати їх звідси (одна зміна тут).
-BEZ_DANYKH = {'spdovidka', 'spyurist'}
+# ZAVDANNYA-150, п. 11: товари, для яких ще немає даних генератора (оплачену довідку не буде з чого зібрати).
+# ZAVDANNYA-195: «Судову практику» ввімкнено — генератор `dani-edrsr/src/sp_dovidka.py` злито, дані в Release
+# vypusk-kyiv-2026-11-21 (`sp-dovidka-2026-11-21.json` — видавачу, змінна SP_VYPUSK; `sudova-praktyka-2026-11-21.json` —
+# сайту й R2 підписки юриста, site/prodazh/praktyka_r2.py). Оплату з нею викладка не вмикає без MV_SP_VYPUSK
+# (site/vyklasty.py) — той самий тег, що SP_VYPUSK у видавачі.
+BEZ_DANYKH = set()
 # За який строк ціна (порожньо — разово).
 STROK = {'pidpyska': ' на місяць', 'rieltor': ' на місяць', 'osbb': ' на рік', 'spyurist': ' на місяць'}
 ZA_DOMOVLENISTIU = 'ціна за домовленістю'
-# З якого року події є в карті підписника (dani-edrsr, S-Д.8: «від 2023»; ZAVDANNYA-174, ZVIT-166 №4). Не обіцяти
-# «усі роки», яких у карті немає. Те саме число — site/sait/dani.py, PIDPYSKA_VID (тест звіряє).
-PIDPYSKA_VID = 2023
+# З якого року події є в карті підписника. MV-180 (ZAVDANNYA-195): перший рік — з даних випуску, не сталим числом
+# (dani-edrsr `karta_pidpysnyka.pershyi_rik`; на пробному 08.11 — 2023, на повному Києві — 2016). Тут — типове значення
+# для оферти (`{{pidpyska.vid}}`) і сервера продажу (worker/prodazh/tsiny.js) — повний Київ, випуск 21.11; збирання сайту
+# ставить рік свого випуску (site/sait/dani.py, `vstanovyty_pidpysku_vid`). Не обіцяти «усі роки», яких у карті немає.
+PIDPYSKA_VID_TYPOVE = 2016      # сервер продажу й оферта (сталі файли) — повний Київ
+PIDPYSKA_VID = PIDPYSKA_VID_TYPOVE   # сторінки сайту — рік свого випуску (збирання ставить)
 
 # ZAVDANNYA-150, п. 4: що дає підписка 399 — ОДИН перелік для вітрини «Мій будинок», форми замовлення (сервер) і оферти.
 # Лише те, що працює: карта підписника — сховище R2 (MV-159, `--karta-r2` / MV_KARTA_R2), «Стежу» — щомісячний лист після
@@ -91,9 +96,9 @@ def knopka_oplaty(href: str, napys: str, holovna: bool = False) -> str:
     return f'<a class="{klas}" href="{href}">{napys}</a>'
 
 
-def pidpyska_daie() -> list[str]:
-    """Перелік «що дає підписка» з цінами з цієї таблиці."""
-    return [x.format(dodatkova=tsina('dodatkova'), vid=PIDPYSKA_VID) for x in PIDPYSKA_DAIE]
+def pidpyska_daie(vid: int | None = None) -> list[str]:
+    """Перелік «що дає підписка» з цінами з цієї таблиці; рік — випуску (сторінки сайту) чи заданий (сервер — типовий)."""
+    return [x.format(dodatkova=tsina('dodatkova'), vid=vid or PIDPYSKA_VID) for x in PIDPYSKA_DAIE]
 
 
 def dozvoleni_sumy() -> set[int]:
@@ -131,7 +136,7 @@ def dlia_servera() -> dict:
         'pro': 'Зібрано з site/tsiny.py (python site/tsiny.py). Не редагувати руками.',
         'tsiny': TSINY, 'nazvy': TOVARY, 'dovidok': DOVIDOK, 'period_misiatsiv': PERIOD_MISIATSIV,
         'rezhym': REZHYM, 'na_prodazh': list(NA_PRODAZH), 'prodaietsia': list(prodaietsia()), 'sudova': list(SUDOVA),
-        'pidpyska_daie': pidpyska_daie(),
+        'pidpyska_daie': pidpyska_daie(PIDPYSKA_VID_TYPOVE),
     }
 
 
